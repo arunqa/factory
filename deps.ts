@@ -12,7 +12,6 @@ export * as mediaTypes from "https://denopkg.com/oakserver/media_types@v2.10.1/m
 export * as events from "https://denopkg.com/ihack2712/eventemitter@1.2.3/mod.ts";
 
 export * as safety from "https://denopkg.com/shah/ts-safety@v1.0.2/mod.ts";
-export * as shell from "https://denopkg.com/shah/tsd-shell@v1.0.1/mod.ts";
 export * as govnSvcHealth from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.0/health.ts";
 export * as govnSvcTelemetry from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.0/telemetry.ts";
 export * as govnSvcMetrics from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.0/metrics.ts";
