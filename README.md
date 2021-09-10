@@ -13,9 +13,9 @@ Resource Factory's design goals include:
 - Information Architecture (IA) driven artifacts which are tightly governed.
 - Zero-compromise performance by implementing all dynamic functionality in V8
   through Deno and obviating the need for slow template processing outside of
-  V8. The only "templating language" needed on the server side should be 
-  modern string template literals in TypesScript/Javascript. On the client side
-  we encourage use of Web Components and vanilla JS focused on *native HTML*.
+  V8. The only "templating language" needed on the server side should be modern
+  string template literals in TypesScript/Javascript. On the client side we
+  encourage use of Web Components and vanilla JS focused on _native HTML_.
 - Type-safety from source to destination, including type-safe templates.
 - Source/_origination_ flexibility plus _destination_ abstraction.
 - Aribtrary rendering strategy to support structured generation of any type of
@@ -27,8 +27,8 @@ Resource Factory's design goals include:
   such as partial site generation (_site fragments_) when most of a target does
   not change often but portions change more frequently.
 - Async execution for high performance.
-- Support for *Incremental Static Regeneration*, *Distributed Persistent Rendering*
-  and *stale-while-revalidate*.
+- Support for _Incremental Static Regeneration_, _Distributed Persistent
+  Rendering_ and _stale-while-revalidate_.
 
 Resource Factory's purpose is to take raw materials called _resources_ from file
 systems, databases, or other sources and create _finished products_ such as
@@ -150,9 +150,9 @@ pages to adhere to a design system, not optimize for making local changes.
 
 - Add `Partial<govn.RenderContextSupplier<*Context>>` to HtmlLayout, JsonLayout,
   etc so that pages, partials, etc. can easily see which "environment" like
-  production, sandbox, devl, test, etc. they are running in. 
-  - This is especially helpful to show banners across the top/bottom of sites
-    in dev/test/sandbox environments for clarity.
+  production, sandbox, devl, test, etc. they are running in.
+  - This is especially helpful to show banners across the top/bottom of sites in
+    dev/test/sandbox environments for clarity.
 
 ### Visualization
 
