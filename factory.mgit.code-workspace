@@ -8,7 +8,7 @@
 		},
 		{
 			"path": "github.com/shah/ts-safety"
-		},
+		}
 	],
 	"extensions": {
 		"recommendations": [
