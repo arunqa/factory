@@ -1,0 +1,160 @@
+/* HTML Core */
+
+html {
+    background: white!important;
+}
+
+hr {
+    margin: 1rem 0;
+}
+
+/* SLDS */
+
+.slds-context-bar {
+    height: auto;
+    background: whitesmoke;
+}
+
+.slds-context-bar__label-action {
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+/* .slds-text-body_medium {
+    font-size: 0.85rem;
+    line-height: 5.4;
+} */
+
+/* Site Decoration */
+
+.site-brand-prime-logo {
+    width: 24px;
+    height: 24px;
+}
+
+/* .slds-context-bar__label-action {
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+
+.slds-context-bar .slds-grid {
+    flex-wrap: wrap;
+} */
+
+/* .slds-button {
+    line-height: normal;
+}
+
+.slds-button_neutral {
+    padding: 8px 10px;
+}
+
+.slds-button-group, .slds-button-group-list {
+    flex-wrap: wrap;
+}
+
+.slds-button-group .slds-button, .slds-button-group-list .slds-button, .slds-button_outline-brand {
+    padding: 5px 15px;
+}
+
+.slds-welcome-mat__info {
+    padding: 1rem 3rem 05rem!important;
+}
+
+.slds-welcome-mat__content {
+    min-height: inherit;
+    max-height: inherit;
+}
+
+.slds-badge {
+    white-space: normal;
+} */
+
+/* .ico-content-1 {
+    height: 50px;
+}
+
+.ico-content-2 {
+    width: 230px;
+    height: 118px;
+}
+
+.ico-footer-1 {
+    width: 180px;
+} */
+
+/* .footer {
+    background: #00396b;
+    color: #cae6f1;
+}
+
+.footer-menu {
+    border-bottom: 1px solid #235c76;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.footer-menu ul {
+    display: block;
+}
+
+.footer-menu li {
+    display: inline-block;
+}
+
+.footer-menu li a {
+    padding: 0 15px;
+    color: #cae6f1;
+} */
+
+/* .breadcrumbs-wrap {
+    background-color: #f4f6f9;
+} */
+
+/* .ico-bt-sm-1 {
+    background: #006dcc;
+    width: 30px;
+    height: 30px;
+    display: inline-block;
+    padding: 5px 5px;
+    border-radius: 3px;
+    border: 0px;
+    outline: 0px;
+    margin: 2px;
+}
+
+.ico-bt-sm-2 {
+    background: #808080;
+    width: 13px;
+    height: 13px;
+    padding: 2px;
+    border-radius: 2px;
+    margin-right: 8px;
+}
+
+.ico-bt-sm-3 {
+    background: #006dcc;
+    width: 15px;
+    height: 15px;
+    padding: 2px;
+    border-radius: 10px;
+    margin-right: 8px;
+} */
+
+/* .img-width-100 {
+    width: 100%;
+} */
+
+/* .post-figure {
+    width: 100%;
+    height: 400px;
+    object-fit: cover;
+}
+ */
+
+/* .news-content-overlap {
+    background: #ffffff;
+    border: 1px solid #dedede;
+    padding: 15px;
+    margin-top: -55px;
+} */

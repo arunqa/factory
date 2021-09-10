@@ -1,0 +1,47 @@
+{
+	"folders": [
+		{
+			"path": "github.com/resFactory/factory"
+		},
+		{
+			"path": "github.com/gov-suite/governed-service-helpers"
+		},
+		{
+			"path": "github.com/shah/ts-safety"
+		},
+	],
+	"extensions": {
+		"recommendations": [
+			"mikestead.dotenv",
+			"denoland.vscode-deno",
+			"ms-ossdata.vscode-postgresql",
+			"frigus02.vscode-sql-tagged-template-literals",
+			"humao.rest-client",
+			"graphql.vscode-graphql",
+			"yzhang.markdown-all-in-one",
+			"skellock.just",
+			"coenraads.bracket-pair-colorizer-2",
+			"shd101wyy.markdown-preview-enhanced",
+			"mechatroner.rainbow-csv",
+			"bungcip.better-toml"
+		]
+	},
+	"settings": {
+		"git.autofetch": true,
+		"terminal.integrated.fontFamily": "CascadianCode NF",
+		"deno.enable": true,
+		"deno.lint": true,
+		"deno.unstable": true,
+		"deno.codeLens.implementations": false,
+		"editor.formatOnSave": true,
+		"deno.import_intellisense_origins": {
+			"https://deno.land": true
+		},
+		"deno.suggest.imports.hosts": {
+			"https://deno.land": false,
+			"https://denopkg.com": false,
+			"https://cdn.jsdelivr.net": false,
+			"https://jspm.dev": false
+		}
+	}
+}
