@@ -65,7 +65,7 @@ Deno.test(`markdownHTML with typed frontmatter`, async () => {
   const nature = md.markdownContentNature;
   const asset:
     & md.MarkdownResource
-    & govn.FrontmatterConsumerSupplier<govn.UntypedFrontmatter>
+    & govn.FrontmatterConsumer<govn.UntypedFrontmatter>
     & Partial<govn.RouteSupplier>
     & govn.ParsedRouteConsumer = {
       nature,
@@ -97,7 +97,7 @@ Deno.test(`markdownHTML with typed frontmatter`, async () => {
       textSync: testTextWithFrontmatter,
     };
 
-  ta.assertEquals(asset.frontmatter.preParse, "value");
+  ta.assertEquals(asset.frontmatter?.preParse, "value");
 
   // should mutate the above with new frontmatter and content
   const fmr = fm.prepareFrontmatterSync(fm.yamlMarkdownFrontmatterRE)(asset);

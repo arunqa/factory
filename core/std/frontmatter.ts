@@ -10,14 +10,6 @@ export const isFrontmatterConsumer = safety.typeGuard<
   govn.FrontmatterConsumer<govn.UntypedFrontmatter>
 >("consumeParsedFrontmatter");
 
-export const isFrontmatterConsumerSupplier = safety.typeGuard<
-  govn.FrontmatterConsumerSupplier<govn.UntypedFrontmatter>
->("frontmatter", "consumeParsedFrontmatter");
-
-export const isUntypedFrontmatterConsumerSupplier = safety.typeGuard<
-  govn.UntypedFrontmatterConsumerSupplier
->("frontmatter", "consumeParsedFrontmatter");
-
 export const yamlMarkdownFrontmatterRE = /^---([\s\S]*?)^---$([\s\S]*)/m;
 export const yamlHtmlFrontmatterRE = /^<!---([\s\S]*?)^--->$([\s\S]*)/m;
 

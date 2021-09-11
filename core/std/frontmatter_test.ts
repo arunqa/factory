@@ -6,7 +6,8 @@ import * as mod from "./frontmatter.ts";
 Deno.test(`prepareFrontmatterSync`, () => {
   const asset:
     & govn.FrontmatterContentSupplier
-    & govn.UntypedFrontmatterConsumerSupplier = {
+    & govn.FrontmatterSupplier<govn.UntypedFrontmatter>
+    & govn.FrontmatterConsumer<govn.UntypedFrontmatter> = {
       textSync:
         "---\nfirst: value\nsecond: 40\n---\n__transform__ test with frontmatter and additional\n---\nseparators",
       frontmatter: { preParse: "value" },
@@ -41,7 +42,8 @@ Deno.test(`prepareFrontmatterSync`, () => {
 Deno.test(`prepareFrontmatter`, async () => {
   const asset:
     & govn.FrontmatterContentSupplier
-    & govn.UntypedFrontmatterConsumerSupplier = {
+    & govn.FrontmatterSupplier<govn.UntypedFrontmatter>
+    & govn.FrontmatterConsumer<govn.UntypedFrontmatter> = {
       textSync:
         "---\nfirst: value\nsecond: 40\n---\n__transform__ test with frontmatter and additional\n---\nseparators",
       frontmatter: { preParse: "value" },

@@ -81,7 +81,7 @@ export const constructResourceSync: (
   const nature = markdownContentNature;
   const result:
     & MarkdownResource
-    & govn.FrontmatterConsumerSupplier<govn.UntypedFrontmatter>
+    & govn.FrontmatterConsumer<govn.UntypedFrontmatter>
     & govn.RouteSupplier
     & govn.ParsedRouteConsumer = {
       nature,
@@ -97,7 +97,9 @@ export const constructResourceSync: (
       },
       consumeParsedFrontmatter: (parsed) => {
         if (!parsed.error) {
-          // we're going to mutate this object directly and not make a copy
+          // Assume frontmatter is the content's header, which has been parsed
+          // so the text after the frontmatter needs to become our new content.
+          // We're going to mutate this object directly and not make a copy.
           c.mutateFlexibleContent(result, parsed.content);
 
           // if the originator wants to override anything, give them a chance

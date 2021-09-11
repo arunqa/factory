@@ -23,7 +23,7 @@ export const constructResourceSync: (
 ) => StaticHtmlResource = (origination, options) => {
   const result:
     & StaticHtmlResource
-    & govn.FrontmatterConsumerSupplier<govn.UntypedFrontmatter>
+    & govn.FrontmatterConsumer<govn.UntypedFrontmatter>
     & govn.RouteSupplier
     & govn.ParsedRouteConsumer = {
       nature: nature.htmlContentNature,

@@ -164,10 +164,10 @@ pages to adhere to a design system, not optimize for making local changes.
 ### Redirects
 
 - Implement special link shortener and asset trackingredirects for web assets.
-  This would allow `domain.com/x/ABC` type definitions to allow automatic 
+  This would allow `domain.com/x/ABC` type definitions to allow automatic
   generation of redirects tied to shortcode (`ABC`). Also, it would allow easy
   implementation of [Scarf Gateway](https://about.scarf.sh/scarf-gateway) style
-  resource tracking (see related [Nomia](https://github.com/scarf-sh/nomia/) 
+  resource tracking (see related [Nomia](https://github.com/scarf-sh/nomia/)
   project for universal resource namespaces).
 
 ### Visualization

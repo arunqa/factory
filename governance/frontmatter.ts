@@ -21,11 +21,3 @@ export interface FrontmatterConsumer<FM extends UntypedFrontmatter> {
     fmpr: FrontmatterParseResult<FM>,
   ) => FM | undefined;
 }
-
-export type FrontmatterConsumerSupplier<FM extends UntypedFrontmatter> =
-  & FrontmatterConsumer<FM>
-  & FrontmatterSupplier<FM>;
-
-export type UntypedFrontmatterConsumerSupplier =
-  & FrontmatterConsumer<UntypedFrontmatter>
-  & FrontmatterSupplier<UntypedFrontmatter>;
