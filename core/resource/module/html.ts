@@ -1,5 +1,5 @@
 import * as govn from "../../../governance/mod.ts";
-import * as fsrf from "../../factory/file-sys-globs.ts";
+import * as fsrf from "../../originate/file-sys-globs.ts";
 import * as route from "../../../core/std/route.ts";
 
 export interface FileSysResourceHtmlModuleConstructor {

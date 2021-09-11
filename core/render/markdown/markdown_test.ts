@@ -19,6 +19,11 @@ Deno.test(`markdownHTML without frontmatter and integrated styles through data U
   > = {
     nature,
     route: route.route({ unit: "test", label: "test" }),
+    model: {
+      isContentModel: true,
+      isMarkdownModel: true,
+      isContentAvailable: true,
+    },
     text: testText,
     textSync: testText,
   };
@@ -66,6 +71,11 @@ Deno.test(`markdownHTML with typed frontmatter`, async () => {
       nature,
       route: route.route({ unit: "test", label: "test" }),
       frontmatter: { preParse: "value" },
+      model: {
+        isContentModel: true,
+        isMarkdownModel: true,
+        isContentAvailable: true,
+      },
       consumeParsedFrontmatter: (parsed) => {
         if (parsed.frontmatter) {
           c.mutateFlexibleContent(asset, parsed.content);

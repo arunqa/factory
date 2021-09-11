@@ -1,7 +1,7 @@
 import { safety } from "../../deps.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as nature from "../../../core/std/nature.ts";
-import * as fsrf from "../../factory/file-sys-globs.ts";
+import * as fsrf from "../../originate/file-sys-globs.ts";
 import * as route from "../../../core/std/route.ts";
 
 export interface IssueHtmlResource

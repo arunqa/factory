@@ -1,8 +1,8 @@
 import { fs } from "../../deps.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as nature from "../../../core/std/nature.ts";
-import * as fsrf from "../../factory/file-sys-globs.ts";
-import * as fsp from "../../factory/file-sys-proxy.ts";
+import * as fsrf from "../../originate/file-sys-globs.ts";
+import * as fsp from "../../originate/file-sys-proxy.ts";
 import * as route from "../../../core/std/route.ts";
 import * as persist from "../../../core/std/persist.ts";
 

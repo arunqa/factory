@@ -5,7 +5,7 @@ import * as n from "../core/std/nature.ts";
 import * as m from "../core/std/model.ts";
 import * as rtree from "../core/std/route-tree.ts";
 import * as render from "../core/std/render.ts";
-import * as fsg from "../core/factory/file-sys-globs.ts";
+import * as fsg from "../core/originate/file-sys-globs.ts";
 import * as persist from "../core/std/persist.ts";
 import * as publ from "./publication.ts";
 import * as mdDS from "../core/render/markdown/mod.ts";
@@ -16,7 +16,7 @@ import * as c from "../core/std/content.ts";
 import * as lds from "../core/design-system/lightning/mod.ts";
 import * as ldsDirec from "../core/design-system/lightning/directive/mod.ts";
 import * as jrs from "../core/render/json.ts";
-import * as tfsg from "../core/factory/typical-file-sys-globs.ts";
+import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
 import * as obsC from "../core/content/observability.ts";
 import * as ldsObsC from "../core/design-system/lightning/content/observability.r.ts";
 import * as redirectC from "../core/design-system/lightning/content/redirects.r.ts";
@@ -237,10 +237,16 @@ export class HugoSite implements publ.Publication {
         (node) => {
           if (node.level < contextBarLevel) return false;
           if (node.level == contextBarLevel && node.route?.terminal) {
+            // hugoMarkdownFileSysGlobs adds .isContextBarRouteNode to node.route
             if (lds.isContextBarRouteNode(node.route.terminal)) {
               if (node.route.terminal.isContextBarRouteNode) return true;
             }
             if (
+              // TODO: this should only "appear" (uncloaked) when running in
+              // non-production environment so add ability to check at runtime
+              // in ClientCargo for hostname (e.g. devl.* or *.experimental*)
+              // and only show this if context is valid (otherwise it should be
+              // cloaked)
               ["Observability", "Control Panel"].find((label) =>
                 node.route?.terminal?.label == label
               )
