@@ -206,6 +206,18 @@ pages to adhere to a design system, not optimize for making local changes.
 
 ### Routes and Trees
 
+- Introduce namespaces into routes so they can indicate where they fit into
+  multiple systems (e.g. more than one statically generate site or multiple
+  projects that can be built without each others' knowledge).
+  - [Nomia](https://github.com/scarf-sh/nomia/) is an interesting project for
+    universal resource namespaces and might be worth integrating.
+- Incorporate https://deno.land/x/urlcat for type-safe URLs in Routes
+- Implement route computation using
+  [path-to-regexp.compile()](https://github.com/pillarjs/path-to-regexp/blob/master/src/index.ts#L252)
+  - Check out https://web.dev/urlpattern/ for additional ideas
+  - Check out https://www.skypack.dev/view/regexparam which is much smaller
+    could potentially be incorporated directly without becoming a source
+    dependency.
 - Read Astro's
   [File\-based routing, inspired by
   Next\.js](https://astro.build/blog/astro-019#file-based-routing-inspired-by-nextjs)
@@ -227,20 +239,6 @@ pages to adhere to a design system, not optimize for making local changes.
   - This capability might allow better partial routes which would allow a child
     to insert itself to a parent route, if it existed, and ignore if it did not
     exist.
-- Introduce namespaces into routes so they can indicate where they fit into
-  multiple systems (e.g. more than one statically generate site or multiple
-  projects that can be built without each others' knowledge)
-- Introduce `resolve()` method in tree nodes that would work similar relative
-  paths like `./child` `../sibling/child` etc. The `resolve()` method in
-  RouteNode resolves relative paths within a single route (does not accomodate
-  siblings or child traversal because Routes don't know about siblings).
-- Incorporate https://deno.land/x/urlcat for type-safe URLs in Routes
-- Implement route computation using
-  [path-to-regexp.compile()](https://github.com/pillarjs/path-to-regexp/blob/master/src/index.ts#L252)
-  - Check out https://web.dev/urlpattern/ for additional ideas
-  - Check out https://www.skypack.dev/view/regexparam which is much smaller
-    could potentially be incorporated directly without becoming a source
-    dependency.
 - Allow directories to become routes without necessarily tying it to a resource
   - Should directories themselves become originators (resource factories)?
 
