@@ -44,7 +44,7 @@ export class ToDoDirective implements
   ): string | undefined {
     let diagnostic: string | undefined = undefined;
     const todo: ToDoDirectiveState = { ...d.attributes, task: d.content };
-    const resource = d.renderEnv.resource;
+    const resource = d.markdownRenderEnv.resource;
     if (resource) {
       if (r.isRouteSupplier(resource)) {
         // deno-lint-ignore no-explicit-any

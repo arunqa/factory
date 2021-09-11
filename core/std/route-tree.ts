@@ -343,22 +343,34 @@ export class TypicalRouteTree implements govn.RouteTree {
     }
   }
 
-  routeConsumer(): govn.ResourceRefinery<govn.RouteSupplier<govn.RouteNode>> {
+  routeConsumer(
+    walk?: (
+      rs: govn.RouteSupplier<govn.RouteNode>,
+      rtn?: govn.RouteTreeNode,
+    ) => void,
+  ): govn.ResourceRefinery<govn.RouteSupplier<govn.RouteNode>> {
     // deno-lint-ignore require-await
     return async (resource) => {
       if (r.isRouteSupplier(resource)) {
-        this.consumeRoute(resource);
+        const result = this.consumeRoute(resource);
+        if (walk) walk(resource, result);
       }
       return resource;
     };
   }
 
-  routeConsumerSync(): govn.ResourceRefinerySync<
+  routeConsumerSync(
+    walk?: (
+      rs: govn.RouteSupplier<govn.RouteNode>,
+      rtn?: govn.RouteTreeNode,
+    ) => void,
+  ): govn.ResourceRefinerySync<
     govn.RouteSupplier<govn.RouteNode>
   > {
     return (resource) => {
       if (r.isRouteSupplier(resource)) {
-        this.consumeRoute(resource);
+        const result = this.consumeRoute(resource);
+        if (walk) walk(resource, result);
       }
       return resource;
     };

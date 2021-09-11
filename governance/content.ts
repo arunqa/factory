@@ -1,5 +1,10 @@
 import { safety } from "../deps.ts";
 
+export interface ContentModel {
+  readonly isContentModel: true;
+  readonly isContentAvailable: boolean;
+}
+
 export type HTML = string;
 
 export interface MediaTypeSupplier {

@@ -1,5 +1,17 @@
 import { io, safety } from "../deps.ts";
 import * as govn from "../../governance/mod.ts";
+import * as m from "./model.ts";
+
+export const isContentModel = safety.typeGuard<govn.ContentModel>(
+  "isContentModel",
+  "isContentAvailable",
+);
+
+export function isContentModelSupplier(
+  o: unknown,
+): o is govn.ModelSupplier<govn.ContentModel> {
+  return m.isModelSupplier(o) && isContentModel(o.model);
+}
 
 export const isTextSupplier = safety.typeGuard<govn.TextSupplier>("text");
 

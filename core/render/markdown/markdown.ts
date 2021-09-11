@@ -7,15 +7,25 @@ import { default as markdownItTitle } from "https://jspm.dev/markdown-it-title@4
 import { default as markdownItDirective } from "https://jspm.dev/markdown-it-directive@1.0.1";
 import * as govn from "../../../governance/mod.ts";
 import * as c from "../../../core/std/content.ts";
+import * as m from "../../../core/std/model.ts";
 import * as fm from "../../../core/std/frontmatter.ts";
 import * as md from "../../resource/markdown.ts";
 import mdStyle from "./markdown.css.ts";
 
-export interface MarkdownContentDirective<Attributes> {
+/**
+ * markdownRenderEnv is available after Markdown rendering and includes
+ * properties such as titles, footnotes, and other "generated" attributes.
+ */
+export interface MarkdownRenderEnvSupplier<
+  RenderEnv extends Record<string, unknown>,
+> {
+  readonly markdownRenderEnv: RenderEnv;
+}
+
+export interface MarkdownContentDirective<Attributes>
+  extends MarkdownRenderEnvSupplier<Record<string, unknown>> {
   readonly isMarkdownContentDirective: true;
   readonly identity: govn.DirectiveIdentity;
-  // deno-lint-ignore no-explicit-any
-  readonly renderEnv: any;
   readonly content: string;
   readonly destinations?: [link: string, string: string][];
   readonly attributes?: Attributes;
@@ -66,7 +76,10 @@ export interface MarkdownLayoutPreferences {
     parsedURL: string,
     renderEnv: Record<string, unknown>,
   ) => string;
-  readonly transformRendered?: (rendered: string) => string;
+  readonly transformRendered?: (
+    rendered: string,
+    resource: md.MarkdownResource,
+  ) => string;
 }
 
 export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
@@ -113,7 +126,7 @@ export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
               > = {
                 isMarkdownContentDirective: true,
                 isMarkdownContentInlineDirective: true,
-                renderEnv: state.env,
+                markdownRenderEnv: state.env,
                 identity: de.identity,
                 content: content,
                 destinations: dests
@@ -139,30 +152,45 @@ export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
     }
   }
 
-  async rendered(resource: md.MarkdownResource): Promise<govn.HtmlSupplier> {
-    const sourceText = await c.flexibleTextCustom(resource) ||
-      `async text not available in resource`;
-    const renderEnv = { resource };
-    const html = this.mdiRenderer.render(sourceText, renderEnv);
+  renderedMarkdownResource(
+    resource: md.MarkdownResource,
+    sourceText: string | undefined,
+    defaultText: string,
+  ): govn.HtmlSupplier {
+    // we want resource to be available during rendering for directives
+    const markdownRenderEnv = { resource };
+    const html = this.mdiRenderer.render(
+      sourceText || defaultText,
+      markdownRenderEnv,
+    );
+    // deno-lint-ignore no-explicit-any
+    delete (markdownRenderEnv as any).resource; // should not go into model
+    // take each property in markdownRenderEnv and put it into resource.model
+    m.mutateModelProperties(markdownRenderEnv, resource, {
+      append: [["isContentAvailable", sourceText ? true : false]],
+    });
     return {
       ...resource,
       html: this.mpl?.transformRendered
-        ? this.mpl.transformRendered(html)
+        ? this.mpl.transformRendered(html, resource)
         : html,
     };
   }
 
+  async rendered(resource: md.MarkdownResource): Promise<govn.HtmlSupplier> {
+    return this.renderedMarkdownResource(
+      resource,
+      await c.flexibleTextCustom(resource),
+      "async text not available in resource",
+    );
+  }
+
   renderedSync(resource: md.MarkdownResource): govn.HtmlSupplier {
-    const sourceText = c.flexibleTextSyncCustom(resource) ||
-      `sync text not available in resource`;
-    const renderEnv = { resource };
-    const html = this.mdiRenderer.render(sourceText, renderEnv);
-    return {
-      ...resource,
-      html: this.mpl?.transformRendered
-        ? this.mpl.transformRendered(html)
-        : html,
-    };
+    return this.renderedMarkdownResource(
+      resource,
+      c.flexibleTextSyncCustom(resource),
+      "sync text not available in resource",
+    );
   }
 }
 

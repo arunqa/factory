@@ -2,6 +2,7 @@ import { path, safety } from "../deps.ts";
 import * as govn from "../governance/mod.ts";
 import * as r from "../core/std/resource.ts";
 import * as n from "../core/std/nature.ts";
+import * as m from "../core/std/model.ts";
 import * as rtree from "../core/std/route-tree.ts";
 import * as render from "../core/std/render.ts";
 import * as fsg from "../core/factory/file-sys-globs.ts";
@@ -265,9 +266,18 @@ export class HugoSite implements publ.Publication {
     });
     const creator = new r.UniversalRefinery(this.originators(), {
       construct: {
-        // As each markdown file is read and a MarkdownResource is constructed,
-        // track it for navigation purposes. This is basically our sitemap.
-        resourceRefinerySync: allRoutes.routeConsumerSync(),
+        // As each markdown or other resource/file is read and a
+        // MarkdownResource or *Resource is constructed, track it for navigation
+        // or other design system purposes. This is basically our sitemap.
+        resourceRefinerySync: allRoutes.routeConsumerSync((rs, node) => {
+          if (node && route.isRouteSupplier(node) && m.isModelSupplier(rs)) {
+            // as we consume the routes, see if a model was produced; if it was,
+            // put that model into the route so it can be used for navigation
+            // and other design system needs; we don't want the design system to
+            // focus on the content, but the behavior of the content structure
+            m.referenceModel(rs, node.route);
+          }
+        }),
       },
       // These factories run during after initial construction of each resource
       // and beforeProduce event has been emitted. This allows resources that
@@ -293,8 +303,8 @@ export class HugoSite implements publ.Publication {
     // The above steps were all setup; nothing has actually been "executed" yet
     // but the creator.products() method now does all the work. First, all the
     // resources are constructed using the construct.resourceRefinerySync
-    // and then produce.resourceRefinery will be executed for each constructed
-    // resource.
+    // and then preProductionOriginators will generate resources and then
+    // produce.resourceRefinery will be executed for each constructed resource.
     // deno-lint-ignore no-empty
     for await (const _ of creator.products()) {
     }

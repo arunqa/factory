@@ -8,7 +8,11 @@ import * as route from "../../core/std/route.ts";
 import * as nature from "../../core/std/nature.ts";
 import * as fsrf from "../factory/file-sys-globs.ts";
 
-export interface MarkdownResource
+export interface MarkdownModel extends govn.ContentModel {
+  readonly isMarkdownModel: true;
+}
+
+export interface MarkdownResource<Model extends MarkdownModel = MarkdownModel>
   extends
     govn.TextSupplier,
     govn.TextSyncSupplier,
@@ -17,6 +21,7 @@ export interface MarkdownResource
       & govn.FileSysPersistenceSupplier<MarkdownResource>
     >,
     govn.RouteSupplier,
+    govn.ModelSupplier<Model>,
     Partial<govn.FrontmatterSupplier<govn.UntypedFrontmatter>>,
     Partial<govn.DiagnosticsSupplier> {
 }
@@ -84,8 +89,11 @@ export const constructResourceSync: (
       route: {
         ...origination.route,
         nature,
-        // our route could also become a govn.ExtractsSupplier, see
-        // consumeParsedExtracts below
+      },
+      model: {
+        isContentModel: true,
+        isContentAvailable: true,
+        isMarkdownModel: true,
       },
       consumeParsedFrontmatter: (parsed) => {
         if (!parsed.error) {
