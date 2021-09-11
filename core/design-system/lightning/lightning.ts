@@ -68,6 +68,11 @@ export function renderedIconContainer(
   return `<span class="slds-icon_container slds-icon-${collection}-${name}">${ renderedIcon(layout, identity) }</span>`
 }
 
+export const isContextBarRouteNode = safety.typeGuardCustom<
+  govn.RouteNode,
+  ldsGovn.ContextBarRouteNode
+>("isContextBarRouteNode");
+
 export const ldsContextBar: ldsGovn.LightningPartial = (_, layout) => {
   const cbs = layout.branding.contextBarSubject;
   const subject = typeof cbs === "function" ? cbs(layout, layout.assets) : cbs;

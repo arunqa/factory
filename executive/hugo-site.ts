@@ -1,4 +1,4 @@
-import { path, safety } from "../deps.ts";
+import { path } from "../deps.ts";
 import * as govn from "../governance/mod.ts";
 import * as r from "../core/std/resource.ts";
 import * as n from "../core/std/nature.ts";
@@ -64,11 +64,6 @@ export function hugoRouteParser(
 }
 
 export const contextBarLevel = 1;
-export const isContextBarEntry = safety.typeGuard<
-  govn.RouteNode & { isContextBarEntry: boolean }
->(
-  "isContextBarEntry",
-);
 
 export function hugoMarkdownFileSysGlob(
   mdrs: mdDS.MarkdownRenderStrategy,
@@ -96,7 +91,7 @@ export function hugoMarkdownFileSysGlob(
             const menu = mdr.frontmatter?.menu as any;
             terminal.weight = mdr.frontmatter?.weight || menu?.main?.weight;
             if (terminal.level == contextBarLevel && menu?.main?.name) {
-              terminal.isContextBarEntry = menu.main.name;
+              terminal.isContextBarRouteNode = menu.main.name;
             }
 
             // underscoreIndexRouteParser adds .isUnderscoreIndex
@@ -242,8 +237,8 @@ export class HugoSite implements publ.Publication {
         (node) => {
           if (node.level < contextBarLevel) return false;
           if (node.level == contextBarLevel && node.route?.terminal) {
-            if (isContextBarEntry(node.route.terminal)) {
-              if (node.route.terminal.isContextBarEntry) return true;
+            if (lds.isContextBarRouteNode(node.route.terminal)) {
+              if (node.route.terminal.isContextBarRouteNode) return true;
             }
             if (
               ["Observability", "Control Panel"].find((label) =>
@@ -268,7 +263,7 @@ export class HugoSite implements publ.Publication {
       construct: {
         // As each markdown or other resource/file is read and a
         // MarkdownResource or *Resource is constructed, track it for navigation
-        // or other design system purposes. This is basically our sitemap.
+        // or other design system purposes. allRoutes is basically our sitemap.
         resourceRefinerySync: allRoutes.routeConsumerSync((rs, node) => {
           if (node && route.isRouteSupplier(node) && m.isModelSupplier(rs)) {
             // as we consume the routes, see if a model was produced; if it was,

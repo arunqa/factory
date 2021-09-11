@@ -4,6 +4,8 @@ import * as e from "../core/std/extension.ts";
 import * as obs from "../core/std/observability.ts";
 import * as r from "../core/std/resource.ts";
 import * as n from "../core/std/nature.ts";
+import * as m from "../core/std/model.ts";
+import * as route from "../core/std/route.ts";
 import * as rtree from "../core/std/route-tree.ts";
 import * as fsg from "../core/factory/file-sys-globs.ts";
 import * as tfsg from "../core/factory/typical-file-sys-globs.ts";
@@ -158,9 +160,18 @@ export class TypicalPublication implements Publication {
       // any child resources (navigation is captured here before applying any
       // rendering strategies).
       construct: {
-        resourceRefinerySync: r.pipelineUnitsRefinerySyncUntyped(
-          allRoutes.routeConsumerSync(),
-        ),
+        // As each markdown or other resource/file is read and a
+        // MarkdownResource or *Resource is constructed, track it for navigation
+        // or other design system purposes. allRoutes is basically our sitemap.
+        resourceRefinerySync: allRoutes.routeConsumerSync((rs, node) => {
+          if (node && route.isRouteSupplier(node) && m.isModelSupplier(rs)) {
+            // as we consume the routes, see if a model was produced; if it was,
+            // put that model into the route so it can be used for navigation
+            // and other design system needs; we don't want the design system to
+            // focus on the content, but the behavior of the content structure
+            m.referenceModel(rs, node.route);
+          }
+        }),
       },
       // These factories run during after initial construction of each resource
       // and beforeProduce event has been emitted. This allows resources that
