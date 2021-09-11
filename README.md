@@ -153,6 +153,13 @@ pages to adhere to a design system, not optimize for making local changes.
   production, sandbox, devl, test, etc. they are running in.
   - This is especially helpful to show banners across the top/bottom of sites in
     dev/test/sandbox environments for clarity.
+  - Allow contexts to be carried into ClientCargo so generated web assets can
+    use `location.hostname` as a way of indicating devl/sandbox/prod contexts.
+
+### Models
+
+- Use [Ajv JSON schema validator](https://ajv.js.org/) to validate models since
+  need to be type-safe but fully extensible across resources.
 
 ### Visualization
 
@@ -251,6 +258,8 @@ pages to adhere to a design system, not optimize for making local changes.
   - Use this for RouteSupplier route unit declarations that will be used to
     build RouteTree nodes
   - Use this for LayoutSupplier declarations
+  - Consider [Ajv JSON schema validator](https://ajv.js.org/) for validating
+    frontmatter in JS instead of just TypeScript.
 
 ### Originators
 
