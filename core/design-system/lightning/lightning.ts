@@ -190,7 +190,7 @@ export const ldsVerticalNavigationShaded: ldsGovn.LightningPartial = (
       <div>
       <fieldset class="slds-nav-vertical slds-nav-vertical_compact slds-nav-vertical_shade">
         <legend class="slds-nav-vertical__title">${contentTree.label}</legend>               
-        ${contentTree.children.filter(rtn => rtn.children.length > 0 ? true : (c.potentialContentModelSupplier(rtn, rtn.route)?.model.isContentAvailable)).map(rtn => {
+        ${contentTree.children.map(rtn => {
           const isActive = layout.activeTreeNode && rtn.qualifiedPath == layout.activeTreeNode.qualifiedPath;
           const notification = layout.navigation?.notification(rtn);
           return `<span class="slds-nav-vertical__item">
