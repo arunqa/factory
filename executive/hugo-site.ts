@@ -1,4 +1,4 @@
-import { path, safety } from "../deps.ts";
+import { safety } from "../deps.ts";
 import * as govn from "../governance/mod.ts";
 import * as r from "../core/std/resource.ts";
 import * as n from "../core/std/nature.ts";
@@ -10,7 +10,6 @@ import * as mdDS from "../core/render/markdown/mod.ts";
 import * as rt from "../core/std/route.ts";
 import * as fm from "../core/std/frontmatter.ts";
 import * as md from "../core/resource/markdown.ts";
-import * as c from "../core/std/content.ts";
 import * as lds from "../core/design-system/lightning/mod.ts";
 import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
 import * as obsC from "../core/content/observability.ts";
@@ -44,6 +43,10 @@ export interface HugoUnderscoreIndex extends govn.RouteUnit {
   readonly isHugoUnderscoreIndex: true;
 }
 
+export const isHugoUnderscoreIndex = safety.typeGuard<HugoUnderscoreIndex>(
+  "isHugoUnderscoreIndex",
+);
+
 /**
  * Parses hugo-style '_index.*' routes and defaults unit to 'index'.
  * @param base the underlying parser to use
@@ -56,12 +59,9 @@ export function hugoRouteParser(
     const hfpfsr = base(fsp, ca);
     const isHugoUnderscoreIndex = hfpfsr.parsedPath.name === "_index";
     if (isHugoUnderscoreIndex) {
-      const parentName = path.basename(hfpfsr.parsedPath.dir);
       const routeUnit: HugoUnderscoreIndex = {
         unit: "index",
-        label: parentName && parentName.length > 0
-          ? c.humanFriendlyPhrase(parentName)
-          : "Index",
+        label: "_index",
         isHugoUnderscoreIndex,
       };
       return {
@@ -72,10 +72,6 @@ export function hugoRouteParser(
     return hfpfsr;
   };
 }
-
-export const isHugoUnderscoreIndex = safety.typeGuard<HugoUnderscoreIndex>(
-  "isHugoUnderscoreIndex",
-);
 
 /**
  * Originate Hugo style markdown files that are just like normal Markdown except
@@ -127,7 +123,7 @@ export class HugoRoutes extends publ.PublicationRoutes {
   }
 
   /**
-   * Inject Hugo-style page weights, menu attributes into routes and handle
+   * Inject Hugo-style page weights, menu attributes into routes and perform
    * special _index.md handling.
    * @param resource The Markdown or any other potential Frontmatter Supplier
    * @param rs The route supplier whose route will be mutated
