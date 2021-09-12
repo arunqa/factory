@@ -22,6 +22,12 @@ import * as ldsObsC from "../core/design-system/lightning/content/observability.
 import * as redirectC from "../core/design-system/lightning/content/redirects.r.ts";
 import * as sqlObsC from "../lib/db/observability.r.ts";
 
+/**
+ * Hugo-style page weight sorting comparator
+ * @param a The left tree node
+ * @param b The right tree node
+ * @returns 0 if weights are equal, +1 or -1 for sort order
+ */
 const orderByWeight: (a: govn.RouteTreeNode, b: govn.RouteTreeNode) => number =
   (a, b) => {
     // deno-lint-ignore no-explicit-any
@@ -65,6 +71,12 @@ export function hugoRouteParser(
 
 export const contextBarLevel = 1;
 
+/**
+ * Originate Hugo style markdown files that are just like normal Markdown except
+ * _index.md is treated special using hugoRouteParser().
+ * @param mdrs The Markdown rendering strategy that will convert *.md to HTML
+ * @returns single glob object that can be fed to orignators
+ */
 export function hugoMarkdownFileSysGlob(
   mdrs: mdDS.MarkdownRenderStrategy,
 ): fsg.FileSysPathGlob<md.MarkdownResource> {
@@ -83,6 +95,11 @@ export function hugoMarkdownFileSysGlob(
   };
 }
 
+/**
+ * Originate Hugo style markdown files from content path.
+ * @param mdrs The Markdown rendering strategy that will convert *.md to HTML
+ * @returns multiple file system paths object that can be fed to orignators
+ */
 export function hugoMarkdownFileSysGlobs(
   originRootPath: fsg.FileSysPathText,
   mdrs: mdDS.MarkdownRenderStrategy,
@@ -98,7 +115,16 @@ export function hugoMarkdownFileSysGlobs(
   };
 }
 
+/**
+ * Layout-specific text for design system rendering. This is a subclass so that
+ * mutateRoute can handle routes Hugo-style.
+ */
 export class HugoLayoutText extends lds.LightingDesignSystemText {
+  /**
+   * Inject Hugo-style page weights and menu attributes into routes.
+   * @param resource The Markdown or any other potential Frontmatter Supplier
+   * @param rs The route supplier whose route will be mutated
+   */
   mutateRoute<Resource>(resource: Resource, rs: govn.RouteSupplier): void {
     super.mutateRoute(resource, rs);
     const terminal = rs.route.terminal;
@@ -135,6 +161,11 @@ export class HugoSite implements publ.Publication {
   constructor(readonly config: publ.Configuration) {
   }
 
+  /**
+   * For any files that were not "consumed" (transformed or rendered) we will
+   * assume that they should be symlinked to the destination path in the same
+   * directory structure as they exist in the source content path.
+   */
   async mirrorUnconsumedAssets() {
     await Promise.all([
       this.config.lightningDS.symlinkAssets(this.config.destRootPath),
@@ -155,6 +186,10 @@ export class HugoSite implements publ.Publication {
     ]);
   }
 
+  /**
+   * Supply all valid directives that should be handled by Markdown engines.
+   * @returns list of directives we will allow in Markdown
+   */
   directiveExpectationsSupplier():
     | govn.DirectiveExpectationsSupplier<
       // deno-lint-ignore no-explicit-any
@@ -166,6 +201,11 @@ export class HugoSite implements publ.Publication {
     };
   }
 
+  /**
+   * Supply the markdown renderers that our Markdown resources can use to render
+   * their content to HTML.
+   * @returns list of Markdown layouts we will allow Markdown resources to use
+   */
   markdownRenderers(): mdDS.MarkdownRenderStrategy {
     return new mdDS.MarkdownRenderStrategy(
       new mdDS.MarkdownLayouts({
