@@ -1,6 +1,6 @@
 # Resource Factory
 
-![Resource Factory](docs/static/images/factory-hero-large.webp)
+![Resource Factory](docs/static/assets/images/factory-hero-large.webp)
 
 Resource Factory is a universal approach to generating and assembling code,
 HTML, or other assets that could comprise static sites or engineering artifacts.
