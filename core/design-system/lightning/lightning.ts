@@ -462,7 +462,6 @@ export class LightingDesignSystemText implements ldsGovn.LightningLayoutText {
       if (fm.isFrontmatterSupplier(resource) && resource.frontmatter.title) {
         // deno-lint-ignore no-explicit-any
         (terminal as any).label = resource.frontmatter.title;
-        console.log(terminal.unit, terminal.label);
       }
     }
   }
