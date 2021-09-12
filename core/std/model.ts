@@ -6,6 +6,50 @@ export const isModelSupplier = safety.typeGuard<govn.ModelSupplier<unknown>>(
   "model",
 );
 
+/**
+ * Find the first model supplier in a list of model suppliers
+ * @param o List of objects which might be potential model suppliers
+ * @returns Either the first model supplier or undefined if none found
+ */
+export function potentialModelSupplier<Model>(
+  ...o: unknown[]
+): govn.ModelSupplier<Model> | undefined {
+  const found = o.find((potential) => isModelSupplier(potential));
+  if (found) return found as govn.ModelSupplier<Model>;
+  return undefined;
+}
+
+/**
+ * Find the first model supplier in a list of model suppliers
+ * @param defaultSupplier What to return in case no model suppliers found
+ * @param o List of objects which might be potential model suppliers
+ * @returns Either the first model supplier or defaultSupplier
+ */
+export function modelSupplier<Model>(
+  defaultSupplier:
+    | govn.ModelSupplier<Model>
+    | (() => govn.ModelSupplier<Model>),
+  ...o: unknown[]
+): govn.ModelSupplier<Model> | undefined {
+  const found = o.find((potential) => isModelSupplier(potential));
+  if (found) return found as govn.ModelSupplier<Model>;
+  return typeof defaultSupplier === "function"
+    ? defaultSupplier()
+    : defaultSupplier;
+}
+
+/**
+ * Find the first model in a list of model suppliers
+ * @param defaultModel What to return in case no model suppliers supplied a model
+ * @param o List of objects which might be potential model suppliers
+ * @returns Either the first model supplier's model or defaultModel
+ */
+export function model<Model>(defaultModel: Model, ...o: unknown[]): Model {
+  const found = o.find((potential) => isModelSupplier(potential));
+  if (found) return (found as govn.ModelSupplier<Model>).model as Model;
+  return typeof defaultModel === "function" ? defaultModel() : defaultModel;
+}
+
 export const isIdentifiableModelSupplier = safety.typeGuard<
   govn.IdentifiableModelSupplier<unknown>
 >(

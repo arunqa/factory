@@ -88,7 +88,10 @@ export interface LightningBranding {
 }
 
 export interface LightningLayout
-  extends html.HtmlLayout, LightningNavigationContext {
+  extends
+    html.HtmlLayout,
+    LightningNavigationContext,
+    govn.ModelSupplier<govn.ContentModel> {
   readonly assets: AssetLocations;
   readonly navigation: LightningNavigation;
   readonly branding: LightningBranding;

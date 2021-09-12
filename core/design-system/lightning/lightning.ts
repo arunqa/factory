@@ -189,7 +189,7 @@ export const ldsVerticalNavigationShaded: ldsGovn.LightningPartial = (
       <div>
       <fieldset class="slds-nav-vertical slds-nav-vertical_compact slds-nav-vertical_shade">
         <legend class="slds-nav-vertical__title">${contentTree.label}</legend>               
-        ${contentTree.children.filter(rtn => rtn.children.length > 0 ? true : (c.isContentModelSupplier(rtn.route) ? rtn.route.model.isContentAvailable : false)).map(rtn => {
+        ${contentTree.children.filter(rtn => rtn.children.length > 0 ? true : (c.potentialContentModelSupplier(rtn, rtn.route)?.model.isContentAvailable)).map(rtn => {
           const isActive = layout.activeTreeNode && rtn.qualifiedPath == layout.activeTreeNode.qualifiedPath;
           const notification = layout.navigation?.notification(rtn);
           return `<span class="slds-nav-vertical__item">
@@ -454,6 +454,10 @@ export class LightingDesignSystemNavigation
   }
 }
 
+const defaultContentModel: () => govn.ContentModel = () => {
+  return { isContentModel: true, isContentAvailable: true };
+};
+
 export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   extends html.DesignSystem<Layout> {
   readonly lightningAssetsBaseURL = "/lightning";
@@ -534,17 +538,25 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
     const activeRoute = route.isRouteSupplier(bodySource)
       ? bodySource.route
       : undefined;
+    const activeTreeNode = activeRoute?.terminal
+      ? navigation.routeTree.node(activeRoute?.terminal.qualifiedPath)
+      : undefined;
+    const model = c.contentModel(
+      defaultContentModel,
+      activeTreeNode,
+      activeRoute,
+      bodySource,
+    );
     const result: ldsGovn.LightningLayout = {
       bodySource,
+      model,
       supplier,
       navigation,
       assets,
       branding,
       frontmatter,
       activeRoute,
-      activeTreeNode: activeRoute?.terminal
-        ? navigation.routeTree.node(activeRoute?.terminal.qualifiedPath)
-        : undefined,
+      activeTreeNode,
       contributions: this.contributions(),
       clientCargoPropertyName: "clientLayout",
       ...layoutArgs,

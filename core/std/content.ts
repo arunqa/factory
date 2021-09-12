@@ -13,6 +13,53 @@ export function isContentModelSupplier(
   return m.isModelSupplier(o) && isContentModel(o.model);
 }
 
+/**
+ * Find the first content model supplier in a list of model suppliers
+ * @param o List of objects which might be potential content model suppliers
+ * @returns Either the first model supplier or undefined if none found
+ */
+export function potentialContentModelSupplier(
+  ...o: unknown[]
+): govn.ModelSupplier<govn.ContentModel> | undefined {
+  const found = o.find((potential) => isContentModelSupplier(potential));
+  if (found) return found as govn.ModelSupplier<govn.ContentModel>;
+  return undefined;
+}
+
+/**
+ * Find the first content model supplier in a list of model suppliers
+ * @param defaultSupplier What to return in case no content model suppliers found
+ * @param o List of objects which might be potential content model suppliers
+ * @returns Either the first model supplier or defaultSupplier
+ */
+export function contentModelSupplier(
+  defaultSupplier:
+    | govn.ModelSupplier<govn.ContentModel>
+    | (() => govn.ModelSupplier<govn.ContentModel>),
+  ...o: unknown[]
+): govn.ModelSupplier<govn.ContentModel> {
+  const found = o.find((potential) => isContentModelSupplier(potential));
+  if (found) return found as govn.ModelSupplier<govn.ContentModel>;
+  return typeof defaultSupplier === "function"
+    ? defaultSupplier()
+    : defaultSupplier;
+}
+
+/**
+ * Find the first content model in a list of content model suppliers
+ * @param defaultModel What to return in case no content model suppliers supplied a model
+ * @param o List of objects which might be potential content model suppliers
+ * @returns Either the first model supplier's content model or defaultModel
+ */
+export function contentModel(
+  defaultModel: govn.ContentModel | (() => govn.ContentModel),
+  ...o: unknown[]
+): govn.ContentModel {
+  const found = o.find((potential) => isContentModelSupplier(potential));
+  if (found) return (found as govn.ModelSupplier<govn.ContentModel>).model;
+  return typeof defaultModel === "function" ? defaultModel() : defaultModel;
+}
+
 export const isTextSupplier = safety.typeGuard<govn.TextSupplier>("text");
 
 export const isTextSyncSupplier = safety.typeGuard<govn.TextSyncSupplier>(

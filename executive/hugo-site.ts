@@ -271,12 +271,15 @@ export class HugoSite implements publ.Publication {
         // MarkdownResource or *Resource is constructed, track it for navigation
         // or other design system purposes. allRoutes is basically our sitemap.
         resourceRefinerySync: allRoutes.routeConsumerSync((rs, node) => {
-          if (node && route.isRouteSupplier(node) && m.isModelSupplier(rs)) {
-            // as we consume the routes, see if a model was produced; if it was,
-            // put that model into the route so it can be used for navigation
-            // and other design system needs; we don't want the design system to
-            // focus on the content, but the behavior of the content structure
-            m.referenceModel(rs, node.route);
+          // as we consume the routes, see if a model was produced; if it was,
+          // put that model into the route so it can be used for navigation
+          // and other design system needs; we don't want the design system to
+          // focus on the content, but the behavior of the content structure
+          if (node && m.isModelSupplier(rs)) {
+            m.referenceModel(rs, node);
+            if (route.isRouteSupplier(node)) {
+              m.referenceModel(rs, node.route);
+            }
           }
         }),
       },
