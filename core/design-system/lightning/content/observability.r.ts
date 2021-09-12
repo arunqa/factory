@@ -23,14 +23,8 @@ const routesHTML: lds.LightningLayoutBodySupplier = (_layout) => `
               <a href="#" tabindex="-1">{resourceInstance}</a>
           </div>
       </th>
-      <td data-label="Nature" role="gridcell">
+      <td data-label="Nature" role="gridcell" width="20%">
           <div class="slds-truncate" title="{resourceNatureTitle}">{resourceNature}</div>
-      </td>
-      <td data-label="Render Targets" role="gridcell">
-          <div class="slds-truncate" title="{resourceRenderTargetsTitle}">{resourceRenderTargets}</div>
-      </td>
-      <td data-label="Rmarks" role="gridcell">
-          <div class="slds-truncate" title="{remarksTitle}">{remarksTitle}</div>
       </td>
   </tr>
 </template>
@@ -49,14 +43,8 @@ const routesHTML: lds.LightningLayoutBodySupplier = (_layout) => `
               <a href="{leafResourceInstanceURL}" tabindex="-1">{resourceInstance}</a>
           </div>
       </th>
-      <td data-label="Nature" role="gridcell">
+      <td data-label="Nature" role="gridcell" width="20%">
           <div class="slds-truncate" title="{resourceNatureTitle}">{resourceNature}</div>
-      </td>
-      <td data-label="Render Targets" role="gridcell">
-          <div class="slds-truncate" title="{resourceRenderTargetsTitle}">{resourceRenderTargets}</div>
-      </td>
-      <td data-label="Rmarks" role="gridcell">
-          <div class="slds-truncate" title="{remarksTitle}">{remarksTitle}</div>
       </td>
   </tr>
 </template>
@@ -95,7 +83,7 @@ const routesHTML: lds.LightningLayoutBodySupplier = (_layout) => `
               </div>
           </th>
           <th aria-label="Nature" aria-sort="none" class="slds-has-button-menu slds-is-resizable slds-is-sortable"
-              scope="col">
+              scope="col" width="20%">
               <a class="slds-th__action slds-text-link_reset" href="#" role="button" tabindex="-1">
                   <span class="slds-assistive-text">Sort by: </span>
                   <div class="slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
@@ -123,64 +111,6 @@ const routesHTML: lds.LightningLayoutBodySupplier = (_layout) => `
                   </span>
               </div>
           </th>
-          <th aria-label="Render Targets" aria-sort="none"
-              class="slds-has-button-menu slds-is-resizable slds-is-sortable" scope="col">
-              <a class="slds-th__action slds-text-link_reset" href="#" role="button" tabindex="-1">
-                  <span class="slds-assistive-text">Sort by: </span>
-                  <div class="slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
-                      <span class="slds-truncate" title="Render Targets">Render Targets</span>
-                      <span class="slds-icon_container slds-icon-utility-arrowdown">
-                          <svg class="slds-icon slds-icon-text-default slds-is-sortable__icon " aria-hidden="true">
-                              <use href="/assets/icons/utility-sprite/svg/symbols.svg#arrowdown"></use>
-                          </svg>
-                      </span>
-                  </div>
-              </a>
-              <button class="slds-button slds-button_icon slds-th__action-button slds-button_icon-x-small"
-                  aria-haspopup="true" tabindex="-1" title="Show Render Targets column actions">
-                  <svg class="slds-button__icon slds-button__icon_hint slds-button__icon_small" aria-hidden="true">
-                      <use href="/assets/icons/utility-sprite/svg/symbols.svg#chevrondown"></use>
-                  </svg>
-                  <span class="slds-assistive-text">Show Render Targets column actions</span>
-              </button>
-              <div class="slds-resizable">
-                  <input type="range" aria-label="Render Targets column width"
-                      class="slds-resizable__input slds-assistive-text" id="cell-resize-handle-128" max="1000"
-                      min="20" tabindex="-1" />
-                  <span class="slds-resizable__handle">
-                      <span class="slds-resizable__divider"></span>
-                  </span>
-              </div>
-          </th>
-          <th aria-label="Remarks" aria-sort="none"
-              class="slds-has-button-menu slds-is-resizable slds-is-sortable" scope="col">
-              <a class="slds-th__action slds-text-link_reset" href="#" role="button" tabindex="-1">
-                  <span class="slds-assistive-text">Sort by: </span>
-                  <div class="slds-grid slds-grid_vertical-align-center slds-has-flexi-truncate">
-                      <span class="slds-truncate" title="Remarks">Remarks</span>
-                      <span class="slds-icon_container slds-icon-utility-arrowdown">
-                          <svg class="slds-icon slds-icon-text-default slds-is-sortable__icon " aria-hidden="true">
-                              <use href="/assets/icons/utility-sprite/svg/symbols.svg#arrowdown"></use>
-                          </svg>
-                      </span>
-                  </div>
-              </a>
-              <button class="slds-button slds-button_icon slds-th__action-button slds-button_icon-x-small"
-                  aria-haspopup="true" tabindex="-1" title="Show Remarks column actions">
-                  <svg class="slds-button__icon slds-button__icon_hint slds-button__icon_small" aria-hidden="true">
-                      <use href="/assets/icons/utility-sprite/svg/symbols.svg#chevrondown"></use>
-                  </svg>
-                  <span class="slds-assistive-text">Show Remarks column actions</span>
-              </button>
-              <div class="slds-resizable">
-                  <input type="range" aria-label="Remarks column width"
-                      class="slds-resizable__input slds-assistive-text" id="cell-resize-handle-128" max="1000"
-                      min="20" tabindex="-1" />
-                  <span class="slds-resizable__handle">
-                      <span class="slds-resizable__divider"></span>
-                  </span>
-              </div>
-          </th>
       </tr>
   </thead>
   <tbody id="resourceTreeTableBody">
@@ -195,7 +125,7 @@ const routesHTML: lds.LightningLayoutBodySupplier = (_layout) => `
       const leafTemplate = document.querySelector('#resource-node-leaf-row');
 
       const handleNodes = (items) => {
-          items.forEach(i => {
+          items.sort((a, b) => (a.label > b.label) ? 1 : -1).forEach(i => {
               const hasChildren = i.children && i.children.length > 0;
               const content = hasChildren 
                 ? parentTemplate.content.cloneNode(true)
@@ -210,10 +140,10 @@ const routesHTML: lds.LightningLayoutBodySupplier = (_layout) => `
 
               const cells = content.querySelectorAll("td div");
               cells[0].textContent = i.route?.nature?.mediaType;
-              cells[1].textContent = Array.isArray(i.route?.nature?.renderTargets) 
-                ? i.route?.nature?.renderTargets.map(t => t.mediaType).join(", ") 
-                : (i.route?.nature?.renderTargets?.mediaType);
-              cells[2].textContent = i.remarks;
+              //cells[1].textContent = Array.isArray(i.route?.nature?.renderTargets) 
+              //  ? i.route?.nature?.renderTargets.map(t => t.mediaType).join(", ") 
+              //  : (i.route?.nature?.renderTargets?.mediaType);
+              //cells[2].textContent = i.remarks;
               tbody.appendChild(content);
 
               if(hasChildren) {
