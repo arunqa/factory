@@ -44,7 +44,10 @@ export function modelSupplier<Model>(
  * @param o List of objects which might be potential model suppliers
  * @returns Either the first model supplier's model or defaultModel
  */
-export function model<Model>(defaultModel: Model, ...o: unknown[]): Model {
+export function model<Model extends Record<string, unknown>>(
+  defaultModel: Model | (() => Model),
+  ...o: unknown[]
+): Model {
   const found = o.find((potential) => isModelSupplier(potential));
   if (found) return (found as govn.ModelSupplier<Model>).model as Model;
   return typeof defaultModel === "function" ? defaultModel() : defaultModel;

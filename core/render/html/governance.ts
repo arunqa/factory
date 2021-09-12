@@ -54,20 +54,27 @@ export interface HtmlLayoutArguments {
 // export interface HtmlLayoutRenderContext {
 // }
 
+export interface HtmlLayoutText<Layout> {
+  readonly title: (layout: Layout) => string;
+}
+
 /*
 TODO: Add Partial<govn.RenderContextSupplier<HtmlLayoutRenderContext>> to
 HtmlLayout so that pages, partials, etc. can easily see which "environment"
 like production, sandbox, devl, test, etc. they are running in.
 */
-export interface HtmlLayout
-  extends
-    Partial<govn.FrontmatterSupplier<govn.UntypedFrontmatter>>,
-    HtmlLayoutClientCargoSupplier,
-    HtmlLayoutArguments {
+export interface HtmlLayout<
+  // deno-lint-ignore no-explicit-any
+  LayoutText extends HtmlLayoutText<any> = HtmlLayoutText<any>,
+> extends
+  Partial<govn.FrontmatterSupplier<govn.UntypedFrontmatter>>,
+  HtmlLayoutClientCargoSupplier,
+  HtmlLayoutArguments {
   readonly bodySource: HtmlLayoutBody;
   // deno-lint-ignore no-explicit-any
   readonly supplier: HtmlLayoutStrategySupplier<any>;
   readonly contributions: HtmlLayoutContributions;
+  readonly layoutText: LayoutText;
 }
 
 /**

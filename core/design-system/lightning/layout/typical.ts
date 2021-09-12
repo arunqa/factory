@@ -57,9 +57,9 @@ export const lightningHead: ldsGovn.LightningPartial = (_, layout) => `
      TODO: consider https://addyosmani.com/basket.js/ as well -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
 ${dia.ldsMermaidDiagrams(_, layout)}
-${lightningClientCargo(_, layout)}
+${lightningClientCargo(_, layout)} 
 <link rel="shortcut icon" href="${layout.assets.favIcon("/favicon.ico")}"/>
-<title>${layout.activeRoute?.terminal?.label || "(no layout.activeRoute?.terminal)"}</title>
+<title>${layout.layoutText.title(layout)}</title>
 `;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)

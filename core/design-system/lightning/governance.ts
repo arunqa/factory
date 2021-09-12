@@ -87,9 +87,14 @@ export interface LightningBranding {
     ) => LightningContextBarSubjectImageSrc);
 }
 
+// deno-lint-ignore no-empty-interface
+export interface LightningLayoutText
+  extends html.HtmlLayoutText<LightningLayout> {
+}
+
 export interface LightningLayout
   extends
-    html.HtmlLayout,
+    html.HtmlLayout<LightningLayoutText>,
     LightningNavigationContext,
     govn.ModelSupplier<govn.ContentModel> {
   readonly assets: AssetLocations;

@@ -77,38 +77,6 @@ export function hugoMarkdownFileSysGlob(
       // deno-lint-ignore no-explicit-any
       r.pipelineUnitsRefinerySync<any>(
         fm.prepareFrontmatterSync(fm.yamlMarkdownFrontmatterRE),
-        (resource) => {
-          const mdr = resource as md.MarkdownResource;
-          if (mdr.route.terminal) {
-            // deno-lint-ignore no-explicit-any
-            const terminal = mdr.route.terminal as any;
-
-            if (mdr.frontmatter?.title) {
-              // Hugo pages have title as their page labels
-              terminal.label = mdr.frontmatter.title;
-            }
-            // deno-lint-ignore no-explicit-any
-            const menu = mdr.frontmatter?.menu as any;
-            terminal.weight = mdr.frontmatter?.weight || menu?.main?.weight;
-            if (terminal.level == contextBarLevel && menu?.main?.name) {
-              terminal.isContextBarRouteNode = menu.main.name;
-            }
-
-            // underscoreIndexRouteParser adds .isUnderscoreIndex
-            if (terminal.isUnderscoreIndex) {
-              // in Hugo, an _index.md controls the parent of the current node
-              // so let's mimic that behavior
-              const unitsLen = mdr.route.units.length;
-              if (unitsLen > 1) {
-                // deno-lint-ignore no-explicit-any
-                const parent = mdr.route.units[unitsLen - 2] as any;
-                parent.label = mdr.route.terminal.label;
-                parent.weight = terminal.weight;
-              }
-            }
-          }
-          return resource;
-        },
         mdrs.rendererSync(),
       ),
     ),
@@ -128,6 +96,38 @@ export function hugoMarkdownFileSysGlobs(
       globs: [hugoMarkdownFileSysGlob(mdrs)],
     }],
   };
+}
+
+export class HugoLayoutText extends lds.LightingDesignSystemText {
+  mutateRoute<Resource>(resource: Resource, rs: govn.RouteSupplier): void {
+    super.mutateRoute(resource, rs);
+    const terminal = rs.route.terminal;
+    if (terminal && fm.isFrontmatterSupplier(resource)) {
+      // deno-lint-ignore no-explicit-any
+      const terminalUntyped = terminal as any;
+      const fmUntyped = resource.frontmatter;
+      // deno-lint-ignore no-explicit-any
+      const menu = fmUntyped.menu as any;
+      terminalUntyped.weight = fmUntyped.weight || menu?.main?.weight;
+      if (terminal.level == contextBarLevel && menu?.main?.name) {
+        terminalUntyped.isContextBarRouteNode = menu.main.name;
+      }
+
+      // underscoreIndexRouteParser adds .isUnderscoreIndex
+      if (terminalUntyped.isUnderscoreIndex) {
+        const route = rs.route;
+        // in Hugo, an _index.md controls the parent of the current node
+        // so let's mimic that behavior
+        const unitsLen = route.units.length;
+        if (unitsLen > 1) {
+          // deno-lint-ignore no-explicit-any
+          const parent = route.units[unitsLen - 2] as any;
+          parent.label = terminal.label;
+          parent.weight = terminalUntyped.weight;
+        }
+      }
+    }
+  }
 }
 
 export class HugoSite implements publ.Publication {
@@ -213,6 +213,7 @@ export class HugoSite implements publ.Publication {
 
   async produce() {
     const allRoutes = new rtree.TypicalRouteTree();
+    const layoutText = new HugoLayoutText();
     const navigation = new lds.LightingDesignSystemNavigation(
       true,
       new rtree.TypicalRouteTree(),
@@ -237,7 +238,7 @@ export class HugoSite implements publ.Publication {
         (node) => {
           if (node.level < contextBarLevel) return false;
           if (node.level == contextBarLevel && node.route?.terminal) {
-            // hugoMarkdownFileSysGlobs adds .isContextBarRouteNode to node.route
+            // HugoLayoutText.mutateRoute adds .isContextBarRouteNode to node.route
             if (lds.isContextBarRouteNode(node.route.terminal)) {
               if (node.route.terminal.isContextBarRouteNode) return true;
             }
@@ -271,14 +272,16 @@ export class HugoSite implements publ.Publication {
         // MarkdownResource or *Resource is constructed, track it for navigation
         // or other design system purposes. allRoutes is basically our sitemap.
         resourceRefinerySync: allRoutes.routeConsumerSync((rs, node) => {
-          // as we consume the routes, see if a model was produced; if it was,
-          // put that model into the route so it can be used for navigation
-          // and other design system needs; we don't want the design system to
-          // focus on the content, but the behavior of the content structure
+          // As we consume the routes, see if a model was produced; if it was,
+          // put a reference to the model into the route tree node and the route
+          // so it can be used for navigation and other design system needs; we
+          // don't want the design system to focus on the content, but the
+          // behavior of the content _structure_ instead.
           if (node && m.isModelSupplier(rs)) {
             m.referenceModel(rs, node);
             if (route.isRouteSupplier(node)) {
               m.referenceModel(rs, node.route);
+              layoutText.mutateRoute(rs, node);
             }
           }
         }),
@@ -294,6 +297,7 @@ export class HugoSite implements publ.Publication {
         resourceRefinery: r.pipelineUnitsRefineryUntyped(
           this.config.lightningDS.prettyUrlsHtmlProducer(
             this.config.destRootPath,
+            layoutText,
             navigation,
             assets,
             branding,

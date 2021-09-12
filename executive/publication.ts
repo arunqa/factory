@@ -126,6 +126,7 @@ export class TypicalPublication implements Publication {
 
   async produce() {
     const allRoutes = new rtree.TypicalRouteTree();
+    const layoutText = new lds.LightingDesignSystemText();
     const navigation = new lds.LightingDesignSystemNavigation(
       true,
       new rtree.TypicalRouteTree(),
@@ -164,12 +165,17 @@ export class TypicalPublication implements Publication {
         // MarkdownResource or *Resource is constructed, track it for navigation
         // or other design system purposes. allRoutes is basically our sitemap.
         resourceRefinerySync: allRoutes.routeConsumerSync((rs, node) => {
-          if (node && route.isRouteSupplier(node) && m.isModelSupplier(rs)) {
-            // as we consume the routes, see if a model was produced; if it was,
-            // put that model into the route so it can be used for navigation
-            // and other design system needs; we don't want the design system to
-            // focus on the content, but the behavior of the content structure
-            m.referenceModel(rs, node.route);
+          // As we consume the routes, see if a model was produced; if it was,
+          // put a reference to the model into the route tree node and the route
+          // so it can be used for navigation and other design system needs; we
+          // don't want the design system to focus on the content, but the
+          // behavior of the content _structure_ instead.
+          if (node && m.isModelSupplier(rs)) {
+            m.referenceModel(rs, node);
+            if (route.isRouteSupplier(node)) {
+              m.referenceModel(rs, node.route);
+              layoutText.mutateRoute(rs, node);
+            }
           }
         }),
       },
@@ -183,6 +189,7 @@ export class TypicalPublication implements Publication {
         resourceRefinery: r.pipelineUnitsRefineryUntyped(
           this.config.lightningDS.prettyUrlsHtmlProducer(
             this.config.destRootPath,
+            layoutText,
             navigation,
             assets,
             branding,

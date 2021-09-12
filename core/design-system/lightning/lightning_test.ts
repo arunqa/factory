@@ -17,6 +17,7 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
   // ***** TODO ****
   // ***** REPLACE surface in context ****
   const routeTree = new rtree.TypicalRouteTree();
+  const layoutText = new mod.LightingDesignSystemText();
   const navigation = new mod.LightingDesignSystemNavigation(true, routeTree);
   const assets = lds.assets();
   const branding: modGovn.LightningBranding = {
@@ -24,7 +25,7 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
     contextBarSubjectImageSrc: "test",
   };
   const syncResult = ls.renderedSync(
-    lds.layout(resource, lss, navigation, assets, branding),
+    lds.layout(resource, layoutText, lss, navigation, assets, branding),
   );
   ta.assert(content.isHtmlSupplier(syncResult));
   // console.dir(syncResult);
@@ -36,7 +37,7 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
   // ***** TODO ****
   // ***** REPLACE surface in context ****
   const asyncResult = await ls.rendered(
-    lds.layout(resource, lss, navigation, assets, branding),
+    lds.layout(resource, layoutText, lss, navigation, assets, branding),
   );
   ta.assert(content.isHtmlSupplier(asyncResult));
   // console.dir(asyncResult);
