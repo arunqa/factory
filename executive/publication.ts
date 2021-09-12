@@ -53,11 +53,84 @@ export interface Publication {
   readonly produce: () => Promise<void>;
 }
 
-export class TypicalPublication implements Publication {
-  readonly consumedFileSysWalkPaths = new Set<string>();
-  constructor(readonly config: Configuration) {
+export class PublicationRoutes {
+  readonly allRoutes = new rtree.TypicalRouteTree();
+  readonly navigationTree = new rtree.TypicalRouteTree();
+
+  constructor() {
   }
 
+  prepareNavigation() {
+    this.allRoutes.consumeAliases();
+    this.navigationTree.consumeTree(
+      this.allRoutes,
+      (node) =>
+        render.isRenderableMediaTypeResource(
+            node.route,
+            n.htmlMediaTypeNature.mediaType,
+          )
+          ? true
+          : false,
+    );
+  }
+
+  routeConsumerSync(): govn.ResourceRefinerySync<
+    govn.RouteSupplier<govn.RouteNode>
+  > {
+    return (resource) => {
+      if (route.isRouteSupplier(resource)) {
+        const node = this.allRoutes.consumeRoute(resource);
+        if (m.isModelSupplier(resource)) {
+          m.referenceModel(resource, node);
+          if (route.isRouteSupplier(node)) {
+            m.referenceModel(resource, node.route);
+          }
+        }
+      }
+      return resource;
+    };
+  }
+
+  redirectResources(): govn.ResourcesFactoriesSupplier<govn.HtmlResource> {
+    return redirectC.redirectResources(this.allRoutes);
+  }
+}
+
+export class PublicationDesignSystemArguments {
+  readonly layoutText: lds.LightingDesignSystemText;
+  readonly navigation: lds.LightingDesignSystemNavigation;
+  readonly assets: lds.AssetLocations;
+  readonly branding: lds.LightningBranding;
+
+  constructor(config: Configuration, routes: PublicationRoutes) {
+    this.layoutText = new lds.LightingDesignSystemText();
+    this.navigation = new lds.LightingDesignSystemNavigation(
+      true,
+      routes.navigationTree,
+    );
+    this.assets = config.lightningDS.assets();
+    this.branding = {
+      contextBarSubject: config.appName,
+      contextBarSubjectImageSrc: (assets) =>
+        assets.image("/assets/images/brand/logo-icon-100x100.png"),
+    };
+  }
+}
+
+export class TypicalPublication implements Publication {
+  readonly consumedFileSysWalkPaths = new Set<string>();
+  constructor(
+    readonly config: Configuration,
+    readonly routes = new PublicationRoutes(),
+    readonly ds = new PublicationDesignSystemArguments(config, routes),
+  ) {
+  }
+
+  /**
+   * For any files that were not "consumed" (transformed or rendered) we will
+   * assume that they should be symlinked to the destination path in the same
+   * directory structure as they exist in the source content path.
+   */
   async mirrorUnconsumedAssets() {
     await Promise.all([
       this.config.lightningDS.symlinkAssets(this.config.destRootPath),
@@ -78,6 +151,10 @@ export class TypicalPublication implements Publication {
     ]);
   }
 
+  /**
+   * Supply all valid directives that should be handled by Markdown engines.
+   * @returns list of directives we will allow in Markdown
+   */
   directiveExpectationsSupplier():
     | govn.DirectiveExpectationsSupplier<
       // deno-lint-ignore no-explicit-any
@@ -89,10 +166,20 @@ export class TypicalPublication implements Publication {
     };
   }
 
+  /**
+  * Supply the markdown renderers that our Markdown resources can use to render
+  * their content to HTML.
+  * @returns list of Markdown layouts we will allow Markdown resources to use
+  */
   markdownRenderers(): mdr.MarkdownRenderStrategy {
     return new mdr.MarkdownRenderStrategy(
       new mdr.MarkdownLayouts({
         directiveExpectations: this.directiveExpectationsSupplier(),
+        // TODO: replace all Hugo URL link-* shortcodes with this
+        // rewriteURL: (parsedURL, renderEnv) => {
+        //   console.log(parsedURL, Object.keys(renderEnv));
+        //   return parsedURL;
+        // },
       }),
     );
   }
@@ -103,6 +190,8 @@ export class TypicalPublication implements Publication {
     const watcher = new fsg.FileSysGlobsOriginatorEventEmitter();
     // deno-lint-ignore require-await
     watcher.on("beforeYieldWalkEntry", async (we) => {
+      // if we "consumed" (handled) the resource it means we do not want it to
+      // go to the destination directory so let's track it
       this.consumedFileSysWalkPaths.add(we.path);
     });
     return [
@@ -125,84 +214,66 @@ export class TypicalPublication implements Publication {
   }
 
   async produce() {
-    const allRoutes = new rtree.TypicalRouteTree();
-    const layoutText = new lds.LightingDesignSystemText();
-    const navigation = new lds.LightingDesignSystemNavigation(
-      true,
-      new rtree.TypicalRouteTree(),
-    );
-    const assets = this.config.lightningDS.assets();
-    const branding: lds.LightningBranding = {
-      contextBarSubject: this.config.appName,
-      contextBarSubjectImageSrc: (assets) =>
-        assets.image("/images/brand/logo-icon-101x101.png"),
-    };
     // deno-lint-ignore no-explicit-any
     const urWatcher = new r.UniversalRefineryEventEmitter<any>();
     // deno-lint-ignore require-await
     urWatcher.on("beforeProduce", async () => {
-      // After the navigation tree is built, mutate it to organize by Hugo page
-      // weights (each child will be sorted by weight given in frontmatter).
-      allRoutes.consumeAliases();
-      navigation.routeTree.consumeTree(
-        allRoutes,
-        (node) =>
-          render.isRenderableMediaTypeResource(
-              node.route,
-              n.htmlMediaTypeNature.mediaType,
-            )
-            ? true
-            : false,
-      );
+      // After all resources are constructed and the routes are known, prepare
+      // the navigation tree. There is a full, sitemap, routes tree but the
+      // navigation tree is only for routes that are navigable by end users.
+      // urWatcher.on("beforeProduce", ...) is executed after creator.construct
+      // factories are concluded.
+      this.routes.prepareNavigation();
     });
 
     const creator = new r.UniversalRefinery(this.originators(), {
-      // These refineries run during construction of each resource including
-      // any child resources (navigation is captured here before applying any
-      // rendering strategies).
       construct: {
         // As each markdown or other resource/file is read and a
         // MarkdownResource or *Resource is constructed, track it for navigation
         // or other design system purposes. allRoutes is basically our sitemap.
-        resourceRefinerySync: allRoutes.routeConsumerSync((rs, node) => {
-          // As we consume the routes, see if a model was produced; if it was,
-          // put a reference to the model into the route tree node and the route
-          // so it can be used for navigation and other design system needs; we
-          // don't want the design system to focus on the content, but the
-          // behavior of the content _structure_ instead.
-          if (node && m.isModelSupplier(rs)) {
-            m.referenceModel(rs, node);
-            if (route.isRouteSupplier(node)) {
-              m.referenceModel(rs, node.route);
-              layoutText.mutateRoute(rs, node);
-            }
-          }
-        }),
+        // After all the routes are captured during resource construction, then
+        // urWatcher.on("beforeProduce", ...) will be run to prepare the UX
+        // navigation tree.
+        resourceRefinerySync: this.routes.routeConsumerSync(),
       },
+
       // These factories run during after initial construction of each resource
       // and beforeProduce event has been emitted. This allows resources that
       // only be known after initial construction is completed to be originated.
-      preProductionOriginators: [redirectC.redirectResources(allRoutes)],
-      // These refineries run after construction is concluded and we want to
-      // "produce" products ("rendering")
+      preProductionOriginators: [this.routes.redirectResources()],
+
+      // This resourceRefinery pipeline will be "executed" after all known
+      // resources are constructed, all routes are registered, and the
+      // UX navigation tree is prepared; we render HTML using design system
+      // page renderer and then persist each file to the file system.
       produce: {
         resourceRefinery: r.pipelineUnitsRefineryUntyped(
           this.config.lightningDS.prettyUrlsHtmlProducer(
             this.config.destRootPath,
-            layoutText,
-            navigation,
-            assets,
-            branding,
+            this.ds.layoutText,
+            this.ds.navigation,
+            this.ds.assets,
+            this.ds.branding,
           ),
-          jrs.jsonProducer(this.config.destRootPath, { routeTree: allRoutes }),
+          jrs.jsonProducer(this.config.destRootPath, {
+            routeTree: this.routes.allRoutes,
+          }),
         ),
       },
       eventEmitter: () => urWatcher,
     });
 
-    // The UnversalRefinery will first construct all resources and child
-    // resources recursively, then apply design system rendering and persist
-    // resources as necessary.
+    // The above steps were all setup; nothing has actually been "executed" yet
+    // but the creator.products() method now does all the work:
+    // 1. Each originator in this.originators() is executed in parallel
+    // 2. After all resources are produced, they are passed through the
+    //    creator.resourceRefinerySync pipeline
+    // 3. urWatcher.on("beforeProduce", ...) will be called
+    // 4. creator.preProductionOriginators will now be run to give one last
+    //    to construct resources like redirects or other resources that depend
+    //    on resources constructed in step 1
+    // 5. creator.produce refineries will be run to generate HTML, JSON, etc.
+    //    and presist each resource to disk
     // deno-lint-ignore no-empty
     for await (const _ of creator.products()) {
     }

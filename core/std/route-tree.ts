@@ -6,6 +6,13 @@ export const isRouteTreeSupplier = safety.typeGuard<govn.RouteTreeSupplier>(
   "routeTree",
 );
 
+export const isRouteTreeNode = safety.typeGuard<govn.RouteTreeNode>(
+  "owner",
+  "ancestors",
+  "children",
+  "select",
+);
+
 /**
  * Convert relative path to absolute
  * @param base the path that `relative` is relative to
@@ -189,9 +196,9 @@ export class TypicalRouteTree implements govn.RouteTree {
   }
 
   consumeRoute(
-    hs: govn.RouteSupplier | govn.Route,
+    rs: govn.RouteSupplier | govn.Route,
   ): govn.RouteTreeNode | undefined {
-    const route = r.isRouteSupplier(hs) ? hs.route : hs;
+    const route = r.isRouteSupplier(rs) ? rs.route : rs;
     this.registerTargetableRoute(route);
     const units = route.units;
     const terminalIndex = units.length - 1;
@@ -341,38 +348,5 @@ export class TypicalRouteTree implements govn.RouteTree {
     for (const node of this.items) {
       organizeTreeNodes(node);
     }
-  }
-
-  routeConsumer(
-    walk?: (
-      rs: govn.RouteSupplier<govn.RouteNode>,
-      rtn?: govn.RouteTreeNode,
-    ) => void,
-  ): govn.ResourceRefinery<govn.RouteSupplier<govn.RouteNode>> {
-    // deno-lint-ignore require-await
-    return async (resource) => {
-      if (r.isRouteSupplier(resource)) {
-        const result = this.consumeRoute(resource);
-        if (walk) walk(resource, result);
-      }
-      return resource;
-    };
-  }
-
-  routeConsumerSync(
-    walk?: (
-      rs: govn.RouteSupplier<govn.RouteNode>,
-      rtn?: govn.RouteTreeNode,
-    ) => void,
-  ): govn.ResourceRefinerySync<
-    govn.RouteSupplier<govn.RouteNode>
-  > {
-    return (resource) => {
-      if (r.isRouteSupplier(resource)) {
-        const result = this.consumeRoute(resource);
-        if (walk) walk(resource, result);
-      }
-      return resource;
-    };
   }
 }

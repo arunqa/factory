@@ -456,16 +456,6 @@ export class LightingDesignSystemNavigation
 }
 
 export class LightingDesignSystemText implements ldsGovn.LightningLayoutText {
-  mutateRoute<Resource>(resource: Resource, rs: govn.RouteSupplier): void {
-    const terminal = rs.route.terminal;
-    if (terminal) {
-      if (fm.isFrontmatterSupplier(resource) && resource.frontmatter.title) {
-        // deno-lint-ignore no-explicit-any
-        (terminal as any).label = resource.frontmatter.title;
-      }
-    }
-  }
-
   /**
    * Supply the <title> tag text from a inheritable set of model suppliers.
    * @param layout the active layout where the title will be rendered

@@ -1,26 +1,25 @@
-import { path } from "../deps.ts";
+import { path, safety } from "../deps.ts";
 import * as govn from "../governance/mod.ts";
 import * as r from "../core/std/resource.ts";
 import * as n from "../core/std/nature.ts";
 import * as m from "../core/std/model.ts";
-import * as rtree from "../core/std/route-tree.ts";
 import * as render from "../core/std/render.ts";
 import * as fsg from "../core/originate/file-sys-globs.ts";
-import * as persist from "../core/std/persist.ts";
 import * as publ from "./publication.ts";
 import * as mdDS from "../core/render/markdown/mod.ts";
-import * as route from "../core/std/route.ts";
+import * as rt from "../core/std/route.ts";
 import * as fm from "../core/std/frontmatter.ts";
 import * as md from "../core/resource/markdown.ts";
 import * as c from "../core/std/content.ts";
 import * as lds from "../core/design-system/lightning/mod.ts";
-import * as ldsDirec from "../core/design-system/lightning/directive/mod.ts";
-import * as jrs from "../core/render/json.ts";
 import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
 import * as obsC from "../core/content/observability.ts";
 import * as ldsObsC from "../core/design-system/lightning/content/observability.r.ts";
-import * as redirectC from "../core/design-system/lightning/content/redirects.r.ts";
 import * as sqlObsC from "../lib/db/observability.r.ts";
+
+export interface HugoWeightSupplier {
+  readonly weight: number;
+}
 
 /**
  * Hugo-style page weight sorting comparator
@@ -28,18 +27,22 @@ import * as sqlObsC from "../lib/db/observability.r.ts";
  * @param b The right tree node
  * @returns 0 if weights are equal, +1 or -1 for sort order
  */
-const orderByWeight: (a: govn.RouteTreeNode, b: govn.RouteTreeNode) => number =
-  (a, b) => {
-    // deno-lint-ignore no-explicit-any
-    const weightA = (a as any).weight;
-    // deno-lint-ignore no-explicit-any
-    const weightB = (b as any).weight;
+const orderByWeight: (
+  a: govn.RouteTreeNode & Partial<HugoWeightSupplier>,
+  b: govn.RouteTreeNode & Partial<HugoWeightSupplier>,
+) => number = (a, b) => {
+  const weightA = a.weight;
+  const weightB = b.weight;
 
-    if (weightA && weightB) return weightA - weightB;
-    if (weightA && !weightB) return -1;
-    if (!weightA && weightB) return 1;
-    return 0; // order doesn't matter if no weight
-  };
+  if (weightA && weightB) return weightA - weightB;
+  if (weightA && !weightB) return -1;
+  if (!weightA && weightB) return 1;
+  return 0; // order doesn't matter if no weight
+};
+
+export interface HugoUnderscoreIndex extends govn.RouteUnit {
+  readonly isHugoUnderscoreIndex: true;
+}
 
 /**
  * Parses hugo-style '_index.*' routes and defaults unit to 'index'.
@@ -47,29 +50,32 @@ const orderByWeight: (a: govn.RouteTreeNode, b: govn.RouteTreeNode) => number =
  * @returns
  */
 export function hugoRouteParser(
-  base: route.FileSysRouteParser,
-): route.FileSysRouteParser {
+  base: rt.FileSysRouteParser,
+): rt.FileSysRouteParser {
   return (fsp, ca) => {
     const hfpfsr = base(fsp, ca);
-    const isUnderscoreIndex = hfpfsr.parsedPath.name === "_index";
-    if (isUnderscoreIndex) {
+    const isHugoUnderscoreIndex = hfpfsr.parsedPath.name === "_index";
+    if (isHugoUnderscoreIndex) {
       const parentName = path.basename(hfpfsr.parsedPath.dir);
+      const routeUnit: HugoUnderscoreIndex = {
+        unit: "index",
+        label: parentName && parentName.length > 0
+          ? c.humanFriendlyPhrase(parentName)
+          : "Index",
+        isHugoUnderscoreIndex,
+      };
       return {
         parsedPath: hfpfsr.parsedPath,
-        routeUnit: {
-          unit: "index",
-          label: parentName && parentName.length > 0
-            ? c.humanFriendlyPhrase(parentName)
-            : "Index",
-          isUnderscoreIndex,
-        },
+        routeUnit,
       };
     }
     return hfpfsr;
   };
 }
 
-export const contextBarLevel = 1;
+export const isHugoUnderscoreIndex = safety.typeGuard<HugoUnderscoreIndex>(
+  "isHugoUnderscoreIndex",
+);
 
 /**
  * Originate Hugo style markdown files that are just like normal Markdown except
@@ -83,7 +89,7 @@ export function hugoMarkdownFileSysGlob(
   return {
     glob: "**/*.md",
     routeParser: hugoRouteParser(
-      route.humanFriendlyFileSysRouteParser,
+      rt.humanFriendlyFileSysRouteParser,
     ),
     factory: md.markdownFileSysResourceFactory(
       // deno-lint-ignore no-explicit-any
@@ -115,18 +121,18 @@ export function hugoMarkdownFileSysGlobs(
   };
 }
 
-/**
- * Layout-specific text for design system rendering. This is a subclass so that
- * mutateRoute can handle routes Hugo-style.
- */
-export class HugoLayoutText extends lds.LightingDesignSystemText {
+export class HugoRoutes extends publ.PublicationRoutes {
+  constructor(readonly contextBarLevel = 1) {
+    super();
+  }
+
   /**
-   * Inject Hugo-style page weights and menu attributes into routes.
+   * Inject Hugo-style page weights, menu attributes into routes and handle
+   * special _index.md handling.
    * @param resource The Markdown or any other potential Frontmatter Supplier
    * @param rs The route supplier whose route will be mutated
    */
   mutateRoute<Resource>(resource: Resource, rs: govn.RouteSupplier): void {
-    super.mutateRoute(resource, rs);
     const terminal = rs.route.terminal;
     if (terminal && fm.isFrontmatterSupplier(resource)) {
       // deno-lint-ignore no-explicit-any
@@ -134,89 +140,123 @@ export class HugoLayoutText extends lds.LightingDesignSystemText {
       const fmUntyped = resource.frontmatter;
       // deno-lint-ignore no-explicit-any
       const menu = fmUntyped.menu as any;
-      terminalUntyped.weight = fmUntyped.weight || menu?.main?.weight;
-      if (terminal.level == contextBarLevel && menu?.main?.name) {
+      const terminalWeight = fmUntyped.weight || menu?.main?.weight;
+      terminalUntyped.weight = terminalWeight;
+      if (terminal.level == this.contextBarLevel && menu?.main?.name) {
         terminalUntyped.isContextBarRouteNode = menu.main.name;
       }
 
-      // underscoreIndexRouteParser adds .isUnderscoreIndex
-      if (terminalUntyped.isUnderscoreIndex) {
+      if (isHugoUnderscoreIndex(terminalUntyped)) {
         const route = rs.route;
-        // in Hugo, an _index.md controls the parent of the current node
-        // so let's mimic that behavior
+        // in Hugo, an _index.md controls the parent of the current node so
+        // let's mimic that behavior
         const unitsLen = route.units.length;
         if (unitsLen > 1) {
           // deno-lint-ignore no-explicit-any
           const parent = route.units[unitsLen - 2] as any;
           parent.label = terminal.label;
-          parent.weight = terminalUntyped.weight;
+          parent.weight = terminalWeight;
         }
+
+        // console.log(
+        //   terminal.qualifiedPath,
+        //   rtree.isRouteTreeNode(rs),
+        //   c.isContentModelSupplier(rs),
+        //   (rs as any).model?.isContentAvailable,
+        //   (rs as any).parent?.children?.length,
+        // );
+        // if (
+        //   rtree.isRouteTreeNode(rs) && c.isContentModelSupplier(rs) &&
+        //   !rs.model.isContentAvailable && rs.parent &&
+        //   rs.parent.children.length > 0
+        // ) {
+        //   // if we're setting up the route tree (which is normal) and there is
+        //   // no content for this route, location should refer to the first child
+        //   // with content not the empty _index route
+        //   // deno-lint-ignore no-explicit-any
+        //   (terminalUntyped as any).location = (
+        //     baseOrOptions?: string | govn.RouteLocationOptions,
+        //   ) => rt.routeNodeLocation(rs.parent!.children[0], baseOrOptions);
+        //   console.log(
+        //     "redirect",
+        //     rs.qualifiedPath,
+        //     "to",
+        //     rs.parent.children[0].qualifiedPath,
+        //   );
+        // }
       }
     }
   }
-}
 
-export class HugoSite implements publ.Publication {
-  readonly consumedFileSysWalkPaths = new Set<string>();
-  constructor(readonly config: publ.Configuration) {
-  }
-
-  /**
-   * For any files that were not "consumed" (transformed or rendered) we will
-   * assume that they should be symlinked to the destination path in the same
-   * directory structure as they exist in the source content path.
-   */
-  async mirrorUnconsumedAssets() {
-    await Promise.all([
-      this.config.lightningDS.symlinkAssets(this.config.destRootPath),
-      persist.symlinkAssets(
-        this.config.contentRootPath,
-        this.config.destRootPath,
-        {
-          glob: "**/*",
-          options: { exclude: ["**/*.ts"] },
-          include: (we) =>
-            we.isFile && !this.consumedFileSysWalkPaths.has(we.path),
-        },
-      ),
-      persist.symlinkDirectoryChildren(
-        path.join(this.config.staticAssetsRootPath),
-        path.join(this.config.destRootPath),
-      ),
-    ]);
-  }
-
-  /**
-   * Supply all valid directives that should be handled by Markdown engines.
-   * @returns list of directives we will allow in Markdown
-   */
-  directiveExpectationsSupplier():
-    | govn.DirectiveExpectationsSupplier<
-      // deno-lint-ignore no-explicit-any
-      govn.DirectiveExpectation<any, string | undefined>
-    >
-    | undefined {
-    return {
-      allowedDirectives: () => [new ldsDirec.ToDoDirective()],
+  routeConsumerSync(): govn.ResourceRefinerySync<
+    govn.RouteSupplier<govn.RouteNode>
+  > {
+    return (resource) => {
+      if (rt.isRouteSupplier(resource)) {
+        const node = this.allRoutes.consumeRoute(resource);
+        if (node) {
+          const terminal = node.route?.terminal;
+          if (terminal) {
+            if (
+              fm.isFrontmatterSupplier(resource) && resource.frontmatter.title
+            ) {
+              // deno-lint-ignore no-explicit-any
+              (terminal as any).label = resource.frontmatter.title;
+            }
+          }
+          if (m.isModelSupplier(resource)) {
+            m.referenceModel(resource, node);
+            if (rt.isRouteSupplier(node)) {
+              m.referenceModel(resource, node.route);
+              this.mutateRoute(resource, node);
+            }
+          }
+        }
+      }
+      return resource;
     };
   }
 
-  /**
-   * Supply the markdown renderers that our Markdown resources can use to render
-   * their content to HTML.
-   * @returns list of Markdown layouts we will allow Markdown resources to use
-   */
-  markdownRenderers(): mdDS.MarkdownRenderStrategy {
-    return new mdDS.MarkdownRenderStrategy(
-      new mdDS.MarkdownLayouts({
-        directiveExpectations: this.directiveExpectationsSupplier(),
-        // TODO: replace all Hugo URL link-* shortcodes with this
-        // rewriteURL: (parsedURL, renderEnv) => {
-        //   console.log(parsedURL, Object.keys(renderEnv));
-        //   return parsedURL;
-        // },
-      }),
+  prepareNavigation() {
+    this.allRoutes.consumeAliases();
+    this.navigationTree.consumeTree(
+      this.allRoutes,
+      (node) => {
+        if (node.level < this.contextBarLevel) return false;
+        if (node.level == this.contextBarLevel && node.route?.terminal) {
+          // this.mutateRoute adds .isContextBarRouteNode to node.route
+          if (lds.isContextBarRouteNode(node.route.terminal)) {
+            if (node.route.terminal.isContextBarRouteNode) return true;
+          }
+          if (
+            // TODO: this should only "appear" (uncloaked) when running in
+            // non-production environment so add ability to check at runtime
+            // in ClientCargo for hostname (e.g. devl.* or *.experimental*)
+            // and only show this if context is valid (otherwise it should be
+            // cloaked)
+            ["Observability", "Control Panel"].find((label) =>
+              node.route?.terminal?.label == label
+            )
+          ) {
+            return true;
+          }
+          return false;
+        }
+        return render.isRenderableMediaTypeResource(
+            node.route,
+            n.htmlMediaTypeNature.mediaType,
+          )
+          ? true
+          : false;
+      },
+      orderByWeight,
     );
+  }
+}
+
+export class HugoSite extends publ.TypicalPublication {
+  constructor(config: publ.Configuration) {
+    super(config, new HugoRoutes());
   }
 
   // deno-lint-ignore no-explicit-any
@@ -249,115 +289,5 @@ export class HugoSite implements publ.Publication {
       ldsObsC.observabilityResources(obsC.observabilityRoute),
       sqlObsC.observabilityResources(obsC.observabilityRoute),
     ];
-  }
-
-  async produce() {
-    const allRoutes = new rtree.TypicalRouteTree();
-    const layoutText = new HugoLayoutText();
-    const navigation = new lds.LightingDesignSystemNavigation(
-      true,
-      new rtree.TypicalRouteTree(),
-    );
-    const assets = this.config.lightningDS.assets();
-    const branding: lds.LightningBranding = {
-      contextBarSubject: this.config.appName,
-      contextBarSubjectImageSrc: (assets) =>
-        assets.image("/assets/images/brand/logo-icon-100x100.png"),
-    };
-
-    // deno-lint-ignore no-explicit-any
-    const urWatcher = new r.UniversalRefineryEventEmitter<any>();
-    // deno-lint-ignore require-await
-    urWatcher.on("beforeProduce", async () => {
-      // After the navigation tree is built, mutate it to organize to only
-      // accept HTML renderable pages sorted by Hugo page weights (each child
-      // will be sorted by weight given in frontmatter).
-      allRoutes.consumeAliases();
-      navigation.routeTree.consumeTree(
-        allRoutes,
-        (node) => {
-          if (node.level < contextBarLevel) return false;
-          if (node.level == contextBarLevel && node.route?.terminal) {
-            // HugoLayoutText.mutateRoute adds .isContextBarRouteNode to node.route
-            if (lds.isContextBarRouteNode(node.route.terminal)) {
-              if (node.route.terminal.isContextBarRouteNode) return true;
-            }
-            if (
-              // TODO: this should only "appear" (uncloaked) when running in
-              // non-production environment so add ability to check at runtime
-              // in ClientCargo for hostname (e.g. devl.* or *.experimental*)
-              // and only show this if context is valid (otherwise it should be
-              // cloaked)
-              ["Observability", "Control Panel"].find((label) =>
-                node.route?.terminal?.label == label
-              )
-            ) {
-              return true;
-            }
-            return false;
-          }
-          return render.isRenderableMediaTypeResource(
-              node.route,
-              n.htmlMediaTypeNature.mediaType,
-            )
-            ? true
-            : false;
-        },
-        orderByWeight,
-      );
-    });
-    const creator = new r.UniversalRefinery(this.originators(), {
-      construct: {
-        // As each markdown or other resource/file is read and a
-        // MarkdownResource or *Resource is constructed, track it for navigation
-        // or other design system purposes. allRoutes is basically our sitemap.
-        resourceRefinerySync: allRoutes.routeConsumerSync((rs, node) => {
-          // As we consume the routes, see if a model was produced; if it was,
-          // put a reference to the model into the route tree node and the route
-          // so it can be used for navigation and other design system needs; we
-          // don't want the design system to focus on the content, but the
-          // behavior of the content _structure_ instead.
-          if (node && m.isModelSupplier(rs)) {
-            m.referenceModel(rs, node);
-            if (route.isRouteSupplier(node)) {
-              m.referenceModel(rs, node.route);
-              layoutText.mutateRoute(rs, node);
-            }
-          }
-        }),
-      },
-      // These factories run during after initial construction of each resource
-      // and beforeProduce event has been emitted. This allows resources that
-      // only be known after initial construction is completed to be originated.
-      preProductionOriginators: [redirectC.redirectResources(allRoutes)],
-      produce: {
-        // This resourceRefinery will be "executed" after all resources are
-        // constructed so we render HTML using design system page renderer
-        // and then persist each file to the file system.
-        resourceRefinery: r.pipelineUnitsRefineryUntyped(
-          this.config.lightningDS.prettyUrlsHtmlProducer(
-            this.config.destRootPath,
-            layoutText,
-            navigation,
-            assets,
-            branding,
-          ),
-          jrs.jsonProducer(this.config.destRootPath, { routeTree: allRoutes }),
-        ),
-      },
-      eventEmitter: () => urWatcher,
-    });
-
-    // The above steps were all setup; nothing has actually been "executed" yet
-    // but the creator.products() method now does all the work. First, all the
-    // resources are constructed using the construct.resourceRefinerySync
-    // and then preProductionOriginators will generate resources and then
-    // produce.resourceRefinery will be executed for each constructed resource.
-    // deno-lint-ignore no-empty
-    for await (const _ of creator.products()) {
-    }
-
-    // any files that were not consumed should "mirrored" to the destination
-    this.mirrorUnconsumedAssets();
   }
 }
