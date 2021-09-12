@@ -187,9 +187,11 @@ const lightningTreeGridRowClick = (event) => {
 
 const lightningTreeGridsActivate = (
   buttons = Array.from(lightningTreeGridRowButtons()),
+  click = true,
 ) => {
   buttons.forEach((btn) => {
     btn.addEventListener("click", lightningTreeGridRowClick, false);
+    if (click) btn.click();
   });
 };
 
