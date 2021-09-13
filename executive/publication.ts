@@ -4,6 +4,7 @@ import * as e from "../core/std/extension.ts";
 import * as obs from "../core/std/observability.ts";
 import * as r from "../core/std/resource.ts";
 import * as n from "../core/std/nature.ts";
+import * as fm from "../core/std/frontmatter.ts";
 import * as m from "../core/std/model.ts";
 import * as route from "../core/std/route.ts";
 import * as rtree from "../core/std/route-tree.ts";
@@ -60,6 +61,42 @@ export class PublicationRoutes {
   constructor() {
   }
 
+  consumeRoute(
+    rs: govn.RouteSupplier<govn.RouteNode>,
+  ): govn.RouteTreeNode | undefined {
+    return this.allRoutes.consumeRoute(rs);
+  }
+
+  /**
+   * Supply a refinery which will observe each resource and, if it has a route,
+   * will "consume" (track) the route by creating a RouteTreeNode instance tied
+   * to the resource. If the resource defines either frontmatter or a model
+   * those objects are injected into the RouteTreeNode as well.
+   * @returns
+   */
+  routeConsumerSync(): govn.ResourceRefinerySync<
+    govn.RouteSupplier<govn.RouteNode>
+  > {
+    return (resource) => {
+      if (route.isRouteSupplier(resource)) {
+        const node = this.consumeRoute(resource);
+        if (fm.isFrontmatterSupplier(resource)) {
+          fm.referenceFrontmatter(resource, node);
+        }
+        if (m.isModelSupplier(resource)) {
+          m.referenceModel(resource, node);
+        }
+      }
+      return resource;
+    };
+  }
+
+  /**
+   * Build a navigation tree that can be used for end-user UI/UX use. This
+   * method is a companion to the routeConsumerSync() refinery.
+   * prepareNavigation assumes that this.allRoutes has been populated with all
+   * known resources and that the navigation tree is a subset of allRoutes.
+   **/
   prepareNavigation() {
     this.allRoutes.consumeAliases();
     this.navigationTree.consumeTree(
@@ -74,23 +111,12 @@ export class PublicationRoutes {
     );
   }
 
-  routeConsumerSync(): govn.ResourceRefinerySync<
-    govn.RouteSupplier<govn.RouteNode>
-  > {
-    return (resource) => {
-      if (route.isRouteSupplier(resource)) {
-        const node = this.allRoutes.consumeRoute(resource);
-        if (m.isModelSupplier(resource)) {
-          m.referenceModel(resource, node);
-          if (route.isRouteSupplier(node)) {
-            m.referenceModel(resource, node.route);
-          }
-        }
-      }
-      return resource;
-    };
-  }
-
+  /**
+   * Create a resource factory which can generate redirect resources; redirect
+   * resources represent content whose job it is to redirect to a different URL
+   * either within the same site or to external resources.
+   * @returns
+   */
   redirectResources(): govn.ResourcesFactoriesSupplier<govn.HtmlResource> {
     return redirectC.redirectResources(this.allRoutes);
   }

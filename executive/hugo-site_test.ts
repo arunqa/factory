@@ -18,7 +18,7 @@ Deno.test(`underscore index file sys route parser`, () => {
     },
     routeUnit: {
       unit: "index",
-      label: "File Sys Path",
+      label: "_index",
       isHugoUnderscoreIndex: true,
     },
   });

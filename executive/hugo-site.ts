@@ -98,7 +98,7 @@ export function hugoMarkdownFileSysGlob(
 }
 
 /**
- * Originate Hugo style markdown files from content path.
+ * Originate Hugo style markdown files from originRootPath.
  * @param mdrs The Markdown rendering strategy that will convert *.md to HTML
  * @returns multiple file system paths object that can be fed to orignators
  */
@@ -124,22 +124,28 @@ export class HugoRoutes extends publ.PublicationRoutes {
 
   /**
    * Inject Hugo-style page weights, menu attributes into routes and perform
-   * special _index.md handling.
+   * special _index.md handling before calling super.consumeRoute(rs).
    * @param resource The Markdown or any other potential Frontmatter Supplier
    * @param rs The route supplier whose route will be mutated
    */
-  mutateRoute<Resource>(resource: Resource, rs: govn.RouteSupplier): void {
+  consumeRoute(
+    rs: govn.RouteSupplier<govn.RouteNode>,
+  ): govn.RouteTreeNode | undefined {
     const terminal = rs.route.terminal;
-    if (terminal && fm.isFrontmatterSupplier(resource)) {
+    if (terminal && fm.isFrontmatterSupplier(rs)) {
       // deno-lint-ignore no-explicit-any
       const terminalUntyped = terminal as any;
-      const fmUntyped = resource.frontmatter;
+      const fmUntyped = rs.frontmatter;
       // deno-lint-ignore no-explicit-any
       const menu = fmUntyped.menu as any;
       const terminalWeight = fmUntyped.weight || menu?.main?.weight;
       terminalUntyped.weight = terminalWeight;
       if (terminal.level == this.contextBarLevel && menu?.main?.name) {
         terminalUntyped.isContextBarRouteNode = menu.main.name;
+      }
+      if (fmUntyped.title) {
+        // deno-lint-ignore no-explicit-any
+        (terminal as any).label = fmUntyped.title;
       }
 
       if (isHugoUnderscoreIndex(terminalUntyped)) {
@@ -182,35 +188,7 @@ export class HugoRoutes extends publ.PublicationRoutes {
         // }
       }
     }
-  }
-
-  routeConsumerSync(): govn.ResourceRefinerySync<
-    govn.RouteSupplier<govn.RouteNode>
-  > {
-    return (resource) => {
-      if (rt.isRouteSupplier(resource)) {
-        const node = this.allRoutes.consumeRoute(resource);
-        if (node) {
-          const terminal = node.route?.terminal;
-          if (terminal) {
-            if (
-              fm.isFrontmatterSupplier(resource) && resource.frontmatter.title
-            ) {
-              // deno-lint-ignore no-explicit-any
-              (terminal as any).label = resource.frontmatter.title;
-            }
-          }
-          if (m.isModelSupplier(resource)) {
-            m.referenceModel(resource, node);
-            if (rt.isRouteSupplier(node)) {
-              m.referenceModel(resource, node.route);
-              this.mutateRoute(resource, node);
-            }
-          }
-        }
-      }
-      return resource;
-    };
+    return super.consumeRoute(rs);
   }
 
   prepareNavigation() {
