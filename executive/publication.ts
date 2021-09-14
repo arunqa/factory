@@ -55,32 +55,36 @@ export interface Publication {
 }
 
 export class PublicationRoutes {
-  readonly allRoutes = new rtree.TypicalRouteTree();
+  readonly resourcesTree = new rtree.TypicalRouteTree();
   readonly navigationTree = new rtree.TypicalRouteTree();
 
   constructor() {
   }
 
   /**
-   * Add the given route to this.allRoutes. Subclasses can override this method
-   * if the route should be reject for some reason.
+   * Add the given route to this.resourcesTree. Subclasses can override this
+   * method if the route should be reject for some reason.
    * @param rs The route supplier whose route will be consumed or rejected
    * @returns the newly create tree node or undefined if route is rejected
    */
   consumeRoute(
     rs: govn.RouteSupplier<govn.RouteNode>,
   ): govn.RouteTreeNode | undefined {
-    return this.allRoutes.consumeRoute(rs);
+    return this.resourcesTree.consumeRoute(rs);
   }
 
   /**
    * Supply a refinery which will observe each resource and, if it has a route,
-   * will "consume" (track) the route by creating a RouteTreeNode instance tied
-   * to the resource. If the resource defines either frontmatter or a model
-   * those objects are injected into the RouteTreeNode as well.
+   * will populate (consume/track) the route by creating a RouteTreeNode
+   * instance tied to the resource. If the resource defines either frontmatter
+   * or a model those objects are injected into the RouteTreeNode as well. The
+   * job of the resourcesTreeConsumerSync refinery is to populate the
+   * resourcesTree but not make any business logic or presentation logic
+   * decisions. Presentation and business logic associated with routes should be
+   * handled by prepareNavigationTree().
    * @returns
    */
-  routeConsumerSync(): govn.ResourceRefinerySync<
+  resourcesTreePopulatorSync(): govn.ResourceRefinerySync<
     govn.RouteSupplier<govn.RouteNode>
   > {
     return (resource) => {
@@ -101,14 +105,15 @@ export class PublicationRoutes {
 
   /**
    * Build a navigation tree that can be used for end-user UI/UX use. This
-   * method is a companion to the routeConsumerSync() refinery.
-   * prepareNavigation assumes that this.allRoutes has been populated with all
-   * known resources and that the navigation tree is a subset of allRoutes.
+   * method is a companion to the resourcesTreePopulatorSync() refinery.
+   * prepareNavigation assumes that this.resourcesTree has been populated with
+   * all known resources and that the navigation tree is a navigable subset of
+   * resourcesTree.
    **/
   prepareNavigationTree() {
-    this.allRoutes.consumeAliases();
+    this.resourcesTree.consumeAliases();
     this.navigationTree.consumeTree(
-      this.allRoutes,
+      this.resourcesTree,
       (node) =>
         render.isRenderableMediaTypeResource(
             node.route,
@@ -126,7 +131,7 @@ export class PublicationRoutes {
    * @returns
    */
   redirectResources(): govn.ResourcesFactoriesSupplier<govn.HtmlResource> {
-    return redirectC.redirectResources(this.allRoutes);
+    return redirectC.redirectResources(this.resourcesTree);
   }
 }
 
@@ -264,11 +269,11 @@ export class TypicalPublication implements Publication {
       construct: {
         // As each markdown or other resource/file is read and a
         // MarkdownResource or *Resource is constructed, track it for navigation
-        // or other design system purposes. allRoutes is basically our sitemap.
-        // After all the routes are captured during resource construction, then
-        // urWatcher.on("beforeProduce", ...) will be run to prepare the UX
-        // navigation tree.
-        resourceRefinerySync: this.routes.routeConsumerSync(),
+        // or other design system purposes. resourcesTree is basically our
+        // sitemap. After all the routes are captured during resource
+        // construction, then urWatcher.on("beforeProduce", ...) will be run to
+        // prepare the UX navigation tree.
+        resourceRefinerySync: this.routes.resourcesTreePopulatorSync(),
       },
 
       // These factories run during after initial construction of each resource
@@ -290,7 +295,7 @@ export class TypicalPublication implements Publication {
             this.ds.branding,
           ),
           jrs.jsonProducer(this.config.destRootPath, {
-            routeTree: this.routes.allRoutes,
+            routeTree: this.routes.resourcesTree,
           }),
         ),
       },

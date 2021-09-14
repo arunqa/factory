@@ -193,9 +193,9 @@ export class HugoRoutes extends publ.PublicationRoutes {
   }
 
   prepareNavigationTree() {
-    this.allRoutes.consumeAliases();
+    this.resourcesTree.consumeAliases();
     this.navigationTree.consumeTree(
-      this.allRoutes,
+      this.resourcesTree,
       (node) => {
         if (node.level < this.contextBarLevel) return false;
         if (node.level == this.contextBarLevel && node.route?.terminal) {
