@@ -11,7 +11,6 @@ import * as fm from "../core/std/frontmatter.ts";
 import * as md from "../core/resource/markdown.ts";
 import * as lds from "../core/design-system/lightning/mod.ts";
 import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
-import * as obsC from "../core/content/observability.ts";
 import * as ldsObsC from "../core/design-system/lightning/content/observability.r.ts";
 import * as sqlObsC from "../lib/db/observability.r.ts";
 
@@ -104,6 +103,7 @@ export function hugoMarkdownFileSysGlob(
 export function hugoMarkdownFileSysGlobs(
   originRootPath: fsg.FileSysPathText,
   mdrs: mdDS.MarkdownRenderStrategy,
+  fsRouteFactory: rt.FileSysRouteFactory,
 ): fsg.FileSysPaths<md.MarkdownResource> {
   return {
     humanFriendlyName: "Hugo Markdown Content",
@@ -113,12 +113,16 @@ export function hugoMarkdownFileSysGlobs(
       fileSysPath: originRootPath,
       globs: [hugoMarkdownFileSysGlob(mdrs)],
     }],
+    fsRouteFactory,
   };
 }
 
 export class HugoRoutes extends publ.PublicationRoutes {
-  constructor(readonly contextBarLevel = 1) {
-    super();
+  constructor(
+    readonly routeFactory: govn.RouteFactory,
+    readonly contextBarLevel = 1,
+  ) {
+    super(routeFactory);
   }
 
   /**
@@ -231,7 +235,7 @@ export class HugoRoutes extends publ.PublicationRoutes {
 
 export class HugoSite extends publ.TypicalPublication {
   constructor(config: publ.Configuration) {
-    super(config, new HugoRoutes());
+    super(config, new HugoRoutes(config.fsRouteFactory));
   }
 
   // deno-lint-ignore no-explicit-any
@@ -249,20 +253,33 @@ export class HugoSite extends publ.TypicalPublication {
         [
           // process modules first so that if there are any proxies or other
           // generated content, it can be processed but the remaining originators
-          tfsg.moduleFileSysGlobs(this.config.contentRootPath),
+          tfsg.moduleFileSysGlobs(
+            this.config.contentRootPath,
+            this.config.fsRouteFactory,
+          ),
           hugoMarkdownFileSysGlobs(
             this.config.contentRootPath,
             this.markdownRenderers(),
+            this.config.fsRouteFactory,
           ),
-          tfsg.htmlFileSysGlobs(this.config.contentRootPath),
+          tfsg.htmlFileSysGlobs(
+            this.config.contentRootPath,
+            this.config.fsRouteFactory,
+          ),
         ],
         this.config.extensionsManager,
         {
           eventEmitter: () => fsgoWatcher,
         },
       ),
-      ldsObsC.observabilityResources(obsC.observabilityRoute),
-      sqlObsC.observabilityResources(obsC.observabilityRoute),
+      ldsObsC.observabilityResources(
+        this.config.observabilityRoute,
+        this.config.fsRouteFactory,
+      ),
+      sqlObsC.observabilityResources(
+        this.config.observabilityRoute,
+        this.config.fsRouteFactory,
+      ),
     ];
   }
 }

@@ -2,6 +2,7 @@ import { testingAsserts as ta } from "../../../deps-test.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as content from "../../../core/std/content.ts";
 import * as modGovn from "./governance.ts";
+import * as rt from "../../../core/std/route.ts";
 import * as rtree from "../../../core/std/route-tree.ts";
 import * as mod from "./lightning.ts";
 
@@ -16,7 +17,8 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
   };
   // ***** TODO ****
   // ***** REPLACE surface in context ****
-  const routeTree = new rtree.TypicalRouteTree();
+  const rf = new rt.TypicalRouteFactory();
+  const routeTree = new rtree.TypicalRouteTree(rf);
   const layoutText = new mod.LightingDesignSystemText();
   const navigation = new mod.LightingDesignSystemNavigation(true, routeTree);
   const assets = lds.assets();

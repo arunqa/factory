@@ -132,7 +132,7 @@ export class TypicalRouteTree implements govn.RouteTree {
     govn.Route[]
   >();
 
-  constructor() {
+  constructor(readonly routeFactory: govn.RouteFactory) {
   }
 
   targetableRouteNode(
@@ -269,7 +269,7 @@ export class TypicalRouteTree implements govn.RouteTree {
           (found as any).redirect = node;
           if (!found.route) {
             // deno-lint-ignore no-explicit-any
-            (found as any).route = r.route(found);
+            (found as any).route = this.routeFactory.route(found);
           }
           if (r.isRedirectSupplier(found)) {
             this.redirects.push(found);

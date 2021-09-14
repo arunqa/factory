@@ -57,12 +57,13 @@ const m2Component1Service1Route: govn.RouteUnits = {
 };
 
 Deno.test(`tree nodes`, () => {
-  const tree = new mod.TypicalRouteTree();
-  tree.consumeRoute(r.route(homeRoute));
-  tree.consumeRoute(r.route(root2Route));
-  tree.consumeRoute(r.route(module1Route));
-  tree.consumeRoute(r.route(m1Component1Route));
-  const finalNode = tree.consumeRoute(r.route(m2Component1Service1Route));
+  const rf = new r.TypicalRouteFactory();
+  const tree = new mod.TypicalRouteTree(rf);
+  tree.consumeRoute(rf.route(homeRoute));
+  tree.consumeRoute(rf.route(root2Route));
+  tree.consumeRoute(rf.route(module1Route));
+  tree.consumeRoute(rf.route(m1Component1Route));
+  const finalNode = tree.consumeRoute(rf.route(m2Component1Service1Route));
   tree.consumeAliases();
 
   const nodes = Array.from(tree.filterNodes(() => true));
@@ -128,12 +129,13 @@ Deno.test(`tree nodes`, () => {
 });
 
 Deno.test(`tree nodes selector`, () => {
-  const tree = new mod.TypicalRouteTree();
-  const homeNode = tree.consumeRoute(r.route(homeRoute));
-  tree.consumeRoute(r.route(root2Route));
-  tree.consumeRoute(r.route(module1Route));
-  const m1c1Node = tree.consumeRoute(r.route(m1Component1Route));
-  const terminal = tree.consumeRoute(r.route(m2Component1Service1Route));
+  const rf = new r.TypicalRouteFactory();
+  const tree = new mod.TypicalRouteTree(rf);
+  const homeNode = tree.consumeRoute(rf.route(homeRoute));
+  tree.consumeRoute(rf.route(root2Route));
+  tree.consumeRoute(rf.route(module1Route));
+  const m1c1Node = tree.consumeRoute(rf.route(m1Component1Route));
+  const terminal = tree.consumeRoute(rf.route(m2Component1Service1Route));
 
   ta.assert(terminal);
   ta.assertEquals(terminal.select(".")?.unit, "service1");

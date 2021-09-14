@@ -1,5 +1,4 @@
 import * as govn from "../../governance/mod.ts";
-import * as route from "../std/route.ts";
 
 const controlPanelRouteUnit: govn.RouteUnit = {
   unit: ".control-panel",
@@ -16,4 +15,6 @@ const observabilityRouteUnits: govn.RouteUnits = {
   terminal: observabilityRouteUnit,
 };
 
-export const observabilityRoute = route.route(observabilityRouteUnits);
+export function observabilityRoute(rf: govn.RouteFactory): govn.Route {
+  return rf.route(observabilityRouteUnits);
+}

@@ -9,6 +9,8 @@ const testPath = path.relative(
   path.dirname(import.meta.url).substr("file://".length),
 );
 
+const routeFactory = new mod.TypicalRouteFactory();
+
 const root1: govn.RouteUnit = {
   unit: "home",
   label: "Home",
@@ -134,7 +136,7 @@ Deno.test(`human friendly file sys route parser`, () => {
 });
 
 Deno.test(`root route with replacement`, () => {
-  const route = assertable(mod.route(homeRoute));
+  const route = assertable(routeFactory.route(homeRoute));
   ta.assertEquals(route.units, [{
     level: 0,
     qualifiedPath: "/home",
@@ -161,7 +163,7 @@ Deno.test(`root route with replacement`, () => {
 });
 
 Deno.test(`first level route`, () => {
-  const route = assertable(mod.route(module1Route));
+  const route = assertable(routeFactory.route(module1Route));
   ta.assertEquals(route.units[0].isIntermediate, true);
   ta.assertEquals(route.units[1], {
     level: 1,
@@ -173,7 +175,7 @@ Deno.test(`first level route`, () => {
 });
 
 Deno.test(`second level route`, () => {
-  const route = assertable(mod.route(m1Component1Route));
+  const route = assertable(routeFactory.route(m1Component1Route));
   ta.assertEquals(route.units[0].isIntermediate, true);
   ta.assertEquals(route.units[1].isIntermediate, true);
   ta.assertEquals(route.units[2], {
@@ -186,13 +188,13 @@ Deno.test(`second level route`, () => {
 });
 
 Deno.test(`create child routes`, () => {
-  const parentRoute = assertable(mod.route(m1Component1Route));
+  const parentRoute = assertable(routeFactory.route(m1Component1Route));
   const replaceTerminal: govn.RouteUnit = {
     unit: "replacedChild",
     label: "Replace Child",
   };
   const route1 = assertable(
-    mod.childRoute(replaceTerminal, parentRoute, true),
+    routeFactory.childRoute(replaceTerminal, parentRoute, true),
   );
   ta.assertEquals(route1.units.length, 3);
   ta.assertEquals(route1.units[0].isIntermediate, true);
@@ -205,7 +207,7 @@ Deno.test(`create child routes`, () => {
     isIntermediate: false,
   });
   const emptyRoute1 = assertable(
-    mod.childRoute(replaceTerminal, mod.emptyRouteSupplier, true),
+    routeFactory.childRoute(replaceTerminal, mod.emptyRouteSupplier, true),
   );
   ta.assertEquals(emptyRoute1.units.length, 1);
   ta.assertEquals(emptyRoute1.units[0], {
@@ -220,7 +222,7 @@ Deno.test(`create child routes`, () => {
     unit: "newChild",
     label: "New Child",
   };
-  const route2 = assertable(mod.childRoute(newChild, parentRoute));
+  const route2 = assertable(routeFactory.childRoute(newChild, parentRoute));
   ta.assertEquals(route2.units.length, 4);
   ta.assertEquals(route2.units[0].isIntermediate, true);
   ta.assertEquals(route2.units[1].isIntermediate, true);
@@ -233,7 +235,7 @@ Deno.test(`create child routes`, () => {
     isIntermediate: false,
   });
   const emptyRoute2 = assertable(
-    mod.childRoute(newChild, mod.emptyRouteSupplier),
+    routeFactory.childRoute(newChild, mod.emptyRouteSupplier),
   );
   ta.assertEquals(emptyRoute2.units.length, 1);
   ta.assertEquals(emptyRoute2.units[0], {
@@ -246,7 +248,7 @@ Deno.test(`create child routes`, () => {
 });
 
 Deno.test(`third level route with replacement`, () => {
-  const route = assertable(mod.route(m2Component1Service1Route));
+  const route = assertable(routeFactory.route(m2Component1Service1Route));
   ta.assertEquals(route.units[0].isIntermediate, true);
   ta.assertEquals(route.units[1].isIntermediate, true);
   ta.assertEquals(route.units[2].isIntermediate, true);
@@ -284,7 +286,7 @@ Deno.test(`third level route with replacement`, () => {
 });
 
 Deno.test(`third level route with replacement and aliases`, () => {
-  const route = assertable(mod.route(m2Component1Service1Route));
+  const route = assertable(routeFactory.route(m2Component1Service1Route));
   ta.assertEquals(route.units[0].isIntermediate, true);
   ta.assertEquals(route.units[1].isIntermediate, true);
   ta.assertEquals(route.units[2].isIntermediate, true);
@@ -314,7 +316,7 @@ Deno.test(`third level route with replacement and aliases`, () => {
     aliases: ["../"],
   });
 
-  const route2 = assertable(mod.route(m2Component1Service1Route));
+  const route2 = assertable(routeFactory.route(m2Component1Service1Route));
   const replaceRS2: govn.UntypedFrontmatter = {
     route: {
       unit: "newService1",
@@ -338,7 +340,7 @@ Deno.test(`third level route with replacement and aliases`, () => {
     }],
   });
 
-  const route3 = assertable(mod.route(m2Component1Service1Route));
+  const route3 = assertable(routeFactory.route(m2Component1Service1Route));
   const replaceRS3: govn.UntypedFrontmatter = {
     route: {
       unit: "newService1",
@@ -370,7 +372,7 @@ Deno.test(`third level route with replacement and aliases`, () => {
 });
 
 Deno.test(`hierarchical route resolution`, () => {
-  const route = mod.route(m2Component1Service1Route);
+  const route = routeFactory.route(m2Component1Service1Route);
   ta.assert(route.terminal);
   ta.assertEquals(
     route.terminal.qualifiedPath,
@@ -389,7 +391,7 @@ Deno.test(`hierarchical route resolution`, () => {
 });
 
 Deno.test(`route locations`, () => {
-  const route = mod.route(m2Component1Service1Route);
+  const route = routeFactory.route(m2Component1Service1Route);
   ta.assert(route.terminal);
   ta.assertEquals(
     route.terminal.location(),
@@ -403,12 +405,13 @@ Deno.test(`route locations`, () => {
 
 Deno.test(`FileSysRoutes`, async () => {
   const em = new CachedExtensions();
-  const fsr = new mod.FileSysRoutes();
+  const fsRouteFactory = new mod.FileSysRouteFactory();
   const base = path.resolve(testPath, "route_test", "content");
-  const index = await fsr.route(
+  const index = await fsRouteFactory.fsRoute(
     path.resolve(base, "index.md"),
     base,
     {
+      fsRouteFactory,
       routeParser: mod.humanFriendlyFileSysRouteParser,
       extensionsManager: em,
       log: log.getLogger(),
@@ -420,10 +423,11 @@ Deno.test(`FileSysRoutes`, async () => {
   ta.assertEquals(index.terminal?.label, "Index");
   ta.assertEquals(index.terminal?.location(), "/index");
 
-  const test = await fsr.route(
+  const test = await fsRouteFactory.fsRoute(
     path.resolve(base, "test.md"),
     base,
     {
+      fsRouteFactory,
       routeParser: mod.humanFriendlyFileSysRouteParser,
       extensionsManager: em,
       log: log.getLogger(),

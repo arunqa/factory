@@ -6,6 +6,7 @@ import * as c from "../../../core/std/content.ts";
 import * as md from "../../resource/markdown.ts";
 import * as mod from "./mod.ts";
 
+const routeFactory = new route.TypicalRouteFactory();
 const mds = new mod.MarkdownRenderStrategy(new mod.MarkdownLayouts());
 const renderer =
   mds.layoutStrategies.defaultLayoutStrategySupplier.layoutStrategy;
@@ -18,7 +19,7 @@ Deno.test(`markdownHTML without frontmatter and integrated styles through data U
     "consumeParsedFrontmatter" | "frontmatter"
   > = {
     nature,
-    route: route.route({ unit: "test", label: "test" }),
+    route: routeFactory.route({ unit: "test", label: "test" }),
     model: {
       isContentModel: true,
       isMarkdownModel: true,
@@ -69,7 +70,7 @@ Deno.test(`markdownHTML with typed frontmatter`, async () => {
     & Partial<govn.RouteSupplier>
     & govn.ParsedRouteConsumer = {
       nature,
-      route: route.route({ unit: "test", label: "test" }),
+      route: routeFactory.route({ unit: "test", label: "test" }),
       frontmatter: { preParse: "value" },
       model: {
         isContentModel: true,
@@ -89,7 +90,7 @@ Deno.test(`markdownHTML with typed frontmatter`, async () => {
         if (route.isParsedRouteSupplier(rs)) {
           // we're going to mutate this object directly
           // deno-lint-ignore no-explicit-any
-          (asset as any).route = route.route(rs.route);
+          (asset as any).route = routeFactory.route(rs.route);
         }
         return rs;
       },

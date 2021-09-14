@@ -1,6 +1,5 @@
 import * as govn from "../../../../governance/mod.ts";
 import * as nature from "../../../std/nature.ts";
-import * as route from "../../../std/route.ts";
 import * as rModule from "../../../resource/module/module.ts";
 import * as jRender from "../../../render/json.ts";
 import * as rJSON from "../../../content/routes.json.ts";
@@ -169,6 +168,7 @@ const routesHTML: lds.LightningLayoutBodySupplier = (_layout) => `
  */
 export function observabilityResources(
   parentRoute: govn.Route,
+  rf: govn.RouteFactory,
   // deno-lint-ignore no-explicit-any
 ): govn.ResourcesFactoriesSupplier<any> {
   return {
@@ -180,7 +180,7 @@ export function observabilityResources(
             {
               nature: nature.htmlContentNature,
               route: {
-                ...route.childRoute(
+                ...rf.childRoute(
                   { unit: "index", label: "Routes" },
                   parentRoute,
                   false,
@@ -205,7 +205,7 @@ export function observabilityResources(
             {
               nature: nature.jsonContentNature,
               route: {
-                ...route.childRoute(
+                ...rf.childRoute(
                   { unit: "routes", label: "Routes JSON" },
                   parentRoute,
                   false,
@@ -257,7 +257,7 @@ export function observabilityResources(
  * files.
  *
  * @param we The walk entry where the resources should be generated
- * @param _options Configuration preferences
+ * @param options Configuration preferences
  * @param imported The module thats imported (e.g. index.r.ts)
  * @returns
  */
@@ -265,13 +265,13 @@ export const fileSysModuleConstructor:
   // deno-lint-ignore require-await
   rModule.FileSysResourceModuleConstructor = async (
     we,
-    _options,
+    options,
     imported,
   ) => {
     return {
       imported,
       isChildResourcesFactoriesSupplier: true,
       yieldParentWithChildren: false,
-      ...observabilityResources(we.route),
+      ...observabilityResources(we.route, options.fsRouteFactory),
     };
   };

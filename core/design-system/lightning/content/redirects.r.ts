@@ -1,6 +1,5 @@
 import * as govn from "../../../../governance/mod.ts";
 import * as n from "../../../std/nature.ts";
-import * as r from "../../../std/route.ts";
 import * as rtree from "../../../std/route-tree.ts";
 import * as lds from "../mod.ts";
 
@@ -11,11 +10,11 @@ import * as lds from "../mod.ts";
 //      https://www.redhat.com/sysadmin/beginners-guide-redirects-htaccess
 
 export function redirectResources(
-  allRoutes: rtree.TypicalRouteTree,
+  resourcesTree: rtree.TypicalRouteTree,
 ): govn.ResourcesFactoriesSupplier<govn.HtmlResource> {
   return {
     resourcesFactories: async function* () {
-      for (const alias of allRoutes.redirects) {
+      for (const alias of resourcesTree.redirects) {
         const htmlFS: govn.ResourceFactorySupplier<govn.HtmlResource> = {
           // deno-lint-ignore require-await
           resourceFactory: async () => {
@@ -46,7 +45,7 @@ export function redirectResources(
                   },
                 },
                 route: {
-                  ...r.childRoute(
+                  ...resourcesTree.routeFactory.childRoute(
                     { unit: "index", label: "Routes" },
                     alias.route!, // the route for aliases is created in rtree.TypicalRouteTree
                     false,

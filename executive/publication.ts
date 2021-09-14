@@ -29,8 +29,10 @@ export interface Preferences {
 
 export class Configuration implements Preferences {
   readonly telemetry: telem.Instrumentation = new telem.Telemetry();
+  readonly fsRouteFactory = new route.FileSysRouteFactory();
   readonly extensionsManager = new e.CachedExtensions();
   readonly observability: obs.Observability;
+  readonly observabilityRoute: govn.Route;
   readonly lightningDS = new lds.LightingDesignSystem();
   readonly contentRootPath: fsg.FileSysPathText;
   readonly staticAssetsRootPath: fsg.FileSysPathText;
@@ -47,6 +49,9 @@ export class Configuration implements Preferences {
     this.destRootPath = prefs.destRootPath;
     this.appName = prefs.appName;
     this.logger = log.getLogger();
+    this.observabilityRoute = obsC.observabilityRoute(
+      this.fsRouteFactory,
+    );
   }
 }
 
@@ -55,10 +60,12 @@ export interface Publication {
 }
 
 export class PublicationRoutes {
-  readonly resourcesTree = new rtree.TypicalRouteTree();
-  readonly navigationTree = new rtree.TypicalRouteTree();
+  readonly resourcesTree: rtree.TypicalRouteTree;
+  readonly navigationTree: rtree.TypicalRouteTree;
 
-  constructor() {
+  constructor(readonly routeFactory: govn.RouteFactory) {
+    this.resourcesTree = new rtree.TypicalRouteTree(this.routeFactory);
+    this.navigationTree = new rtree.TypicalRouteTree(this.routeFactory);
   }
 
   /**
@@ -160,7 +167,7 @@ export class TypicalPublication implements Publication {
   readonly consumedFileSysWalkPaths = new Set<string>();
   constructor(
     readonly config: Configuration,
-    readonly routes = new PublicationRoutes(),
+    readonly routes = new PublicationRoutes(config.fsRouteFactory),
     readonly ds = new PublicationDesignSystemArguments(config, routes),
   ) {
   }
@@ -239,16 +246,23 @@ export class TypicalPublication implements Publication {
         [
           // process modules first so that if there are any proxies or other
           // generated content, it can be processed but the remaining originators
-          tfsg.moduleFileSysGlobs(originRootPath),
-          tfsg.markdownFileSysGlobs(originRootPath, this.markdownRenderers()),
-          tfsg.htmlFileSysGlobs(originRootPath),
+          tfsg.moduleFileSysGlobs(originRootPath, this.config.fsRouteFactory),
+          tfsg.markdownFileSysGlobs(
+            originRootPath,
+            this.markdownRenderers(),
+            this.config.fsRouteFactory,
+          ),
+          tfsg.htmlFileSysGlobs(originRootPath, this.config.fsRouteFactory),
         ],
         this.config.extensionsManager,
         {
           eventEmitter: () => watcher,
         },
       ),
-      ldsObsC.observabilityResources(obsC.observabilityRoute),
+      ldsObsC.observabilityResources(
+        this.config.observabilityRoute,
+        this.config.fsRouteFactory,
+      ),
     ];
   }
 

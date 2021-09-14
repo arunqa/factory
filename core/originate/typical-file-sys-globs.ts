@@ -28,6 +28,7 @@ export function markdownFileSysGlob(
 export function markdownFileSysGlobs(
   originRootPath: fsg.FileSysPathText,
   mdrs: mdDS.MarkdownRenderStrategy,
+  fsRouteFactory: route.FileSysRouteFactory,
 ): fsg.FileSysPaths<md.MarkdownResource> {
   return {
     humanFriendlyName: "Markdown Content",
@@ -37,6 +38,7 @@ export function markdownFileSysGlobs(
       fileSysPath: originRootPath,
       globs: [markdownFileSysGlob(mdrs)],
     }],
+    fsRouteFactory,
   };
 }
 
@@ -57,6 +59,7 @@ export function htmlFileSysGlob(): fsg.FileSysPathGlob<
 
 export function htmlFileSysGlobs(
   originRootPath: fsg.FileSysPathText,
+  fsRouteFactory: route.FileSysRouteFactory,
 ): fsg.FileSysPaths<html.StaticHtmlResource> {
   return {
     humanFriendlyName: "HTML Content with Optional Frontmatter",
@@ -66,6 +69,7 @@ export function htmlFileSysGlobs(
       fileSysPath: originRootPath,
       globs: [htmlFileSysGlob()],
     }],
+    fsRouteFactory,
   };
 }
 
@@ -93,6 +97,7 @@ export function jsonModuleFileSysGlob(): fsg.FileSysPathGlob<
 
 export function moduleFileSysGlobs(
   originRootPath: fsg.FileSysPathText,
+  fsRouteFactory: route.FileSysRouteFactory,
 ): fsg.FileSysPaths<govn.ModuleResource> {
   return {
     humanFriendlyName: "Module Content",
@@ -107,5 +112,6 @@ export function moduleFileSysGlobs(
         jsonModuleFileSysGlob() as fsg.FileSysPathGlob<any>,
       ],
     }],
+    fsRouteFactory,
   };
 }

@@ -1,6 +1,5 @@
 import * as govn from "../../governance/mod.ts";
 import * as nature from "../../core/std/nature.ts";
-import * as route from "../../core/std/route.ts";
 import * as rModule from "../../core/resource/module/module.ts";
 import * as htmlDS from "../../core/render/html/mod.ts";
 import "./sql.ts"; // for window.* globals
@@ -22,6 +21,7 @@ const sqlHTML: htmlDS.HtmlLayoutBodySupplier = (_layout) => {
  */
 export function observabilityResources(
   parentRoute: govn.Route,
+  rf: govn.RouteFactory,
   // deno-lint-ignore no-explicit-any
 ): govn.ResourcesFactoriesSupplier<any> {
   return {
@@ -32,7 +32,7 @@ export function observabilityResources(
           const html: govn.PersistableHtmlResource & govn.RouteSupplier = {
             nature: nature.htmlContentNature,
             route: {
-              ...route.childRoute(
+              ...rf.childRoute(
                 { unit: "databases", label: "Databases" },
                 parentRoute,
                 false,
@@ -70,7 +70,7 @@ export function observabilityResources(
  * files.
  *
  * @param we The walk entry where the resources should be generated
- * @param _options Configuration preferences
+ * @param options Configuration preferences
  * @param imported The module thats imported (e.g. index.r.ts)
  * @returns
  */
@@ -78,13 +78,13 @@ export const fileSysModuleConstructor:
   // deno-lint-ignore require-await
   rModule.FileSysResourceModuleConstructor = async (
     we,
-    _options,
+    options,
     imported,
   ) => {
     return {
       imported,
       isChildResourcesFactoriesSupplier: true,
       yieldParentWithChildren: false,
-      ...observabilityResources(we.route),
+      ...observabilityResources(we.route, options.fsRouteFactory),
     };
   };

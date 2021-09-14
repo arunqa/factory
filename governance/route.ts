@@ -145,6 +145,21 @@ export interface RouteSupplier<Unit extends RouteNode = RouteNode>
   readonly route: Route<Unit>;
 }
 
+export interface RouteFactory {
+  readonly route: (rs: RouteUnit | RouteUnits | RouteUnitsSupplier) => Route;
+  readonly childRoute: (
+    child: RouteUnit,
+    rs:
+      | Route
+      | RouteSupplier,
+    replaceTerminal?: boolean,
+  ) => Route;
+  readonly resourceRoute: <Resource>(
+    rs: RouteUnit | RouteUnits | RouteUnitsSupplier,
+    resource: Resource,
+  ) => Route;
+}
+
 export interface RouteTreeNode extends RouteNode {
   readonly owner: RouteTree;
   readonly route?: Route;

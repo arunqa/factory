@@ -1133,7 +1133,7 @@ role="treegrid" aria-label="Example tree grid with deep nesting">
 // deno-lint-ignore require-await
 const constructor: htmlModule.FileSysResourceHtmlModulesConstructor = async (
   we,
-  _options,
+  options,
   imported,
 ) => {
   return {
@@ -1158,7 +1158,7 @@ const constructor: htmlModule.FileSysResourceHtmlModulesConstructor = async (
               {
                 nature: nature.htmlContentNature,
                 route: {
-                  ...route.childRoute(ru, we.route, true),
+                  ...options.fsRouteFactory.childRoute(ru, we.route, true),
                   nature: nature.htmlContentNature,
                 },
                 html: {

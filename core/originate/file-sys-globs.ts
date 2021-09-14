@@ -53,6 +53,7 @@ export interface FileSysPaths<Resource>
   readonly humanFriendlyName: string;
   readonly ownerFileSysPath: FileSysPathText;
   readonly lfsPaths: Iterable<FileSysPath<Resource>>;
+  readonly fsRouteFactory: r.FileSysRouteFactory;
 }
 
 export class FileSysGlobsOriginatorEventEmitter<Resource>
@@ -79,7 +80,6 @@ export class FileSysGlobsOriginator<Resource>
     govn.ObservabilityHealthComponentStatus,
     govn.NamespacesSupplier {
   readonly namespaceURIs = ["FileSysGlobsOriginator<Resource>"];
-  readonly fileSysRoutes: r.FileSysRoutes;
   readonly fsee?: FileSysGlobsOriginatorEventEmitter<Resource>;
   readonly oee?: govn.ObservabilityEventsEmitter;
   constructor(
@@ -87,7 +87,6 @@ export class FileSysGlobsOriginator<Resource>
     readonly extensionsManager: govn.ExtensionsManager,
     options?: FileSysGlobsOriginatorOptions<Resource>,
   ) {
-    this.fileSysRoutes = new r.FileSysRoutes();
     if (options?.eventEmitter) {
       this.fsee = options?.eventEmitter(this);
     }
@@ -119,6 +118,8 @@ export class FileSysGlobsOriginator<Resource>
           const refine = glob.factory?.refine ||
             lfsPath.factory?.refine || tllfsPath.factory?.refine;
           const fsrOptions: r.FileSysRouteOptions = {
+            fsRouteFactory: glob.fsRouteFactory || lfsPath.fsRouteFactory ||
+              tllfsPath.fsRouteFactory,
             routeParser: glob.routeParser || lfsPath.routeParser ||
               tllfsPath.routeParser || r.typicalFileSysRouteParser,
             extensionsManager: glob.extensionsManager ||
@@ -149,7 +150,7 @@ export class FileSysGlobsOriginator<Resource>
               ownerFileSysPath: tllfsPath.ownerFileSysPath,
               lfsPath,
               glob,
-              route: await this.fileSysRoutes.route(
+              route: await fsrOptions.fsRouteFactory.fsRoute(
                 we.path,
                 rootPath,
                 fsrOptions,

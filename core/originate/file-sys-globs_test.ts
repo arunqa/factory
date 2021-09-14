@@ -3,6 +3,7 @@ import { testingAsserts as ta } from "../../deps-test.ts";
 import * as govn from "../../governance/mod.ts";
 import * as obs from "../../core/std/observability.ts";
 import * as e from "../../core/std/extension.ts";
+import * as r from "../../core/std/route.ts";
 import * as mod from "./file-sys-globs.ts";
 
 const testPath = path.relative(
@@ -18,6 +19,7 @@ const observability = new obs.Observability(
 );
 const testGlobPrime = "**/*";
 const extensionsManager = new e.CachedExtensions();
+const fsRouteFactory = new r.FileSysRouteFactory();
 const fsgo = new mod.FileSysGlobsOriginator<fs.WalkEntry>(
   [{
     humanFriendlyName: `test top level`,
@@ -29,6 +31,7 @@ const fsgo = new mod.FileSysGlobsOriginator<fs.WalkEntry>(
     }],
     // deno-lint-ignore require-await
     factory: { construct: async (we) => we },
+    fsRouteFactory,
   }],
   extensionsManager,
   {

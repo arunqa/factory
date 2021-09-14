@@ -29,6 +29,7 @@ const m2Component1Service1: govn.RouteUnit = {
 };
 
 Deno.test(`route file destinations`, () => {
+  const routeFactory = new r.TypicalRouteFactory();
   const homeRoute: govn.RouteUnits = { units: [root1] };
   const module2Route: govn.RouteUnits = {
     units: [...homeRoute.units, module2],
@@ -43,7 +44,7 @@ Deno.test(`route file destinations`, () => {
     ],
   };
 
-  const route = r.route(m2Component1Service1Route);
+  const route = routeFactory.route(m2Component1Service1Route);
   ta.assert(route.terminal);
   ta.assertEquals(
     route.terminal.location(),
@@ -70,7 +71,7 @@ Deno.test(`route file destinations`, () => {
   );
   ta.assertEquals(
     prettyNS({
-      route: r.route({
+      route: routeFactory.route({
         units: [
           ...m2Component1Route.units,
           m2Component1Index,

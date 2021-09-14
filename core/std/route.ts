@@ -218,106 +218,6 @@ export const emptyRouteSupplier: govn.RouteSupplier = {
   route: emptyRoute,
 };
 
-export function route(
-  rs: govn.RouteUnit | govn.RouteUnits | govn.RouteUnitsSupplier,
-): govn.Route {
-  const units = isRouteUnitsSupplier(rs)
-    ? rs.route.units
-    : (isRouteUnits(rs) ? rs.units : [rs]);
-  const hierUnits: govn.RouteNode[] = [];
-  const terminalIndex = units.length - 1;
-  const parentIndex = terminalIndex - 1;
-  let qualifiedPath = "";
-  for (let i = 0; i < units.length; i++) {
-    const component = units[i];
-    qualifiedPath += "/" + component.unit;
-    const node: govn.RouteNode = {
-      level: i,
-      qualifiedPath,
-      resolve: (relative) => resolveRouteUnit(relative, i, result),
-      location: (baseOrOptions) => routeNodeLocation(node, baseOrOptions),
-      isIntermediate: i < terminalIndex,
-      inRoute: (route) => route.inRoute(node) ? true : false,
-      ...component,
-    };
-    hierUnits.push(node);
-  }
-  const parent = parentIndex >= 0
-    ? route({ units: hierUnits.slice(0, parentIndex) })
-    : undefined;
-  const result: govn.Route = {
-    units: hierUnits,
-    consumeParsedRoute: (pr) => consumeParsedRoute(pr, result),
-    terminal: hierUnits.length > 0 ? hierUnits[terminalIndex] : undefined,
-    inRoute: (unit) => {
-      return hierUnits.find((u) => u.qualifiedPath == unit.qualifiedPath);
-    },
-    parent,
-  };
-  return result;
-}
-
-export function childRoute(
-  child: govn.RouteUnit,
-  rs:
-    | govn.Route
-    | govn.RouteSupplier,
-  replaceTerminal?: boolean,
-): govn.Route {
-  const rh = isRouteSupplier(rs) ? rs.route : rs;
-  const hierUnits = [...rh.units];
-  let terminalIndex = -1;
-  let qualifiedPath = "";
-  if (replaceTerminal) {
-    if (hierUnits.length > 1) {
-      const grandparent = hierUnits[hierUnits.length - 2];
-      terminalIndex = hierUnits.length - 1;
-      qualifiedPath = grandparent.qualifiedPath;
-      hierUnits[hierUnits.length - 2] = {
-        ...grandparent,
-        isIntermediate: true,
-      };
-    } else {
-      terminalIndex = 0;
-    }
-  } else {
-    if (hierUnits.length > 0) {
-      const parent = hierUnits[hierUnits.length - 1];
-      terminalIndex = hierUnits.length;
-      qualifiedPath = parent.qualifiedPath;
-      hierUnits[hierUnits.length - 1] = {
-        ...parent,
-        isIntermediate: true,
-      };
-    } else {
-      terminalIndex = 0;
-    }
-  }
-  qualifiedPath += "/" + child.unit;
-  const node: govn.RouteNode = {
-    level: terminalIndex,
-    qualifiedPath,
-    resolve: (relative) => resolveRouteUnit(relative, terminalIndex, result),
-    location: (baseOrOptions) => routeNodeLocation(node, baseOrOptions),
-    isIntermediate: false,
-    inRoute: (route) => route.inRoute(node) ? true : false,
-    ...child,
-  };
-  hierUnits[terminalIndex] = node;
-  const parent = terminalIndex - 1 >= 0
-    ? route({ units: hierUnits.slice(0, terminalIndex - 1) })
-    : undefined;
-  const result: govn.Route = {
-    units: hierUnits,
-    consumeParsedRoute: (pr) => consumeParsedRoute(pr, result),
-    terminal: hierUnits.length > 0 ? hierUnits[terminalIndex] : undefined,
-    inRoute: (unit) => {
-      return hierUnits.find((u) => u.qualifiedPath == unit.qualifiedPath);
-    },
-    parent,
-  };
-  return result;
-}
 /**
  * Convert relative path to absolute
  * @param base the path that `relative` is relative to
@@ -371,6 +271,118 @@ export function resolveRouteUnit(
     return route.units[unitIndex];
   }
   return noMatch ? noMatch(unitIndex) : undefined;
+}
+
+export class TypicalRouteFactory implements govn.RouteFactory {
+  route(
+    rs: govn.RouteUnit | govn.RouteUnits | govn.RouteUnitsSupplier,
+  ): govn.Route {
+    const units = isRouteUnitsSupplier(rs)
+      ? rs.route.units
+      : (isRouteUnits(rs) ? rs.units : [rs]);
+    const hierUnits: govn.RouteNode[] = [];
+    const terminalIndex = units.length - 1;
+    const parentIndex = terminalIndex - 1;
+    let qualifiedPath = "";
+    for (let i = 0; i < units.length; i++) {
+      const component = units[i];
+      qualifiedPath += "/" + component.unit;
+      const node: govn.RouteNode = {
+        level: i,
+        qualifiedPath,
+        resolve: (relative) => resolveRouteUnit(relative, i, result),
+        location: (baseOrOptions) => routeNodeLocation(node, baseOrOptions),
+        isIntermediate: i < terminalIndex,
+        inRoute: (route) => route.inRoute(node) ? true : false,
+        ...component,
+      };
+      hierUnits.push(node);
+    }
+    const parent = parentIndex >= 0
+      ? this.route({ units: hierUnits.slice(0, parentIndex) })
+      : undefined;
+    const result: govn.Route = {
+      units: hierUnits,
+      consumeParsedRoute: (pr) => consumeParsedRoute(pr, result),
+      terminal: hierUnits.length > 0 ? hierUnits[terminalIndex] : undefined,
+      inRoute: (unit) => {
+        return hierUnits.find((u) => u.qualifiedPath == unit.qualifiedPath);
+      },
+      parent,
+    };
+    return result;
+  }
+
+  childRoute(
+    child: govn.RouteUnit,
+    rs:
+      | govn.Route
+      | govn.RouteSupplier,
+    replaceTerminal?: boolean,
+  ): govn.Route {
+    const rh = isRouteSupplier(rs) ? rs.route : rs;
+    const hierUnits = [...rh.units];
+    let terminalIndex = -1;
+    let qualifiedPath = "";
+    if (replaceTerminal) {
+      if (hierUnits.length > 1) {
+        const grandparent = hierUnits[hierUnits.length - 2];
+        terminalIndex = hierUnits.length - 1;
+        qualifiedPath = grandparent.qualifiedPath;
+        hierUnits[hierUnits.length - 2] = {
+          ...grandparent,
+          isIntermediate: true,
+        };
+      } else {
+        terminalIndex = 0;
+      }
+    } else {
+      if (hierUnits.length > 0) {
+        const parent = hierUnits[hierUnits.length - 1];
+        terminalIndex = hierUnits.length;
+        qualifiedPath = parent.qualifiedPath;
+        hierUnits[hierUnits.length - 1] = {
+          ...parent,
+          isIntermediate: true,
+        };
+      } else {
+        terminalIndex = 0;
+      }
+    }
+    qualifiedPath += "/" + child.unit;
+    const node: govn.RouteNode = {
+      level: terminalIndex,
+      qualifiedPath,
+      resolve: (relative) => resolveRouteUnit(relative, terminalIndex, result),
+      location: (baseOrOptions) => routeNodeLocation(node, baseOrOptions),
+      isIntermediate: false,
+      inRoute: (route) => route.inRoute(node) ? true : false,
+      ...child,
+    };
+    hierUnits[terminalIndex] = node;
+    const parent = terminalIndex - 1 >= 0
+      ? this.route({ units: hierUnits.slice(0, terminalIndex - 1) })
+      : undefined;
+    const result: govn.Route = {
+      units: hierUnits,
+      consumeParsedRoute: (pr) => consumeParsedRoute(pr, result),
+      terminal: hierUnits.length > 0 ? hierUnits[terminalIndex] : undefined,
+      inRoute: (unit) => {
+        return hierUnits.find((u) => u.qualifiedPath == unit.qualifiedPath);
+      },
+      parent,
+    };
+    return result;
+  }
+
+  resourceRoute<Resource>(
+    rs: govn.RouteUnit | govn.RouteUnits | govn.RouteUnitsSupplier,
+    resource: Resource,
+  ): govn.Route {
+    const result = this.route(rs);
+    // TODO: add resource route handler
+    return result;
+  }
 }
 
 export type FileExtnModifiers = string[];
@@ -442,6 +454,7 @@ export const humanFriendlyFileSysRouteParser: FileSysRouteParser = (
 };
 
 export interface FileSysRouteOptions {
+  readonly fsRouteFactory: FileSysRouteFactory;
   readonly routeParser: FileSysRouteParser;
   readonly extensionsManager: govn.ExtensionsManager;
   readonly log: log.Logger;
@@ -469,11 +482,8 @@ export const isFileSysRouteUnit = safety.typeGuard<FileSysRouteNode>(
 
 export type FileSysRoute = govn.Route<FileSysRouteNode>;
 
-export class FileSysRoutes {
+export class FileSysRouteFactory extends TypicalRouteFactory {
   readonly cache = new Map<string, FileSysRoute>();
-
-  constructor() {
-  }
 
   /**
    * Determine all route units between fileSysPath and commonAncestor. Both
@@ -485,7 +495,7 @@ export class FileSysRoutes {
    * @param pathParser which path parser we should use
    * @returns the full set of route units between fileSysPath and commonAncestor
    */
-  async route(
+  async fsRoute(
     fileSysPath: string,
     commonAncestor: string,
     rps: FileSysRouteOptions,
@@ -512,7 +522,7 @@ export class FileSysRoutes {
       commonAncestor,
       path.join(fileSysPathParts.dir, parsedUnit.unit),
     );
-    const parent = await this.route(
+    const parent = await this.fsRoute(
       path.dirname(fileSysPath),
       commonAncestor,
       rps,
@@ -520,7 +530,7 @@ export class FileSysRoutes {
     const result: FileSysRoute = {
       units: qualifiedPath.length > 0
         ? [
-          ...(await this.route(
+          ...(await this.fsRoute(
             fileSysPathParts.dir,
             commonAncestor,
             rps,
