@@ -7,7 +7,6 @@ export * as path from "https://deno.land/std@0.106.0/path/mod.ts";
 export * as yaml from "https://deno.land/std@0.106.0/encoding/yaml.ts";
 export * as uuid from "https://deno.land/std@0.106.0/uuid/mod.ts";
 
-export * as cxg from "https://denopkg.com/cfjello/cxgraph@v1.2/mod.ts";
 export * as mediaTypes from "https://denopkg.com/oakserver/media_types@v2.10.1/mod.ts";
 export * as events from "https://denopkg.com/ihack2712/eventemitter@1.2.3/mod.ts";
 
