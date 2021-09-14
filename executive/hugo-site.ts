@@ -124,73 +124,75 @@ export class HugoRoutes extends publ.PublicationRoutes {
   /**
    * Inject Hugo-style page weights, menu attributes into routes and perform
    * special _index.md handling before calling super.consumeRoute(rs).
-   * @param resource The Markdown or any other potential Frontmatter Supplier
-   * @param rs The route supplier whose route will be mutated
+   * @param rs The route supplier whose route will be consumed or rejected
    */
   consumeRoute(
     rs: govn.RouteSupplier<govn.RouteNode>,
   ): govn.RouteTreeNode | undefined {
-    const terminal = rs.route.terminal;
-    if (terminal && fm.isFrontmatterSupplier(rs)) {
-      // deno-lint-ignore no-explicit-any
-      const terminalUntyped = terminal as any;
-      const fmUntyped = rs.frontmatter;
-      // deno-lint-ignore no-explicit-any
-      const menu = fmUntyped.menu as any;
-      const terminalWeight = fmUntyped.weight || menu?.main?.weight;
-      terminalUntyped.weight = terminalWeight;
-      if (terminal.level == this.contextBarLevel && menu?.main?.name) {
-        terminalUntyped.isContextBarRouteNode = menu.main.name;
-      }
-      if (fmUntyped.title) {
+    const result = super.consumeRoute(rs);
+    if (result?.route) {
+      const terminal = result?.route?.terminal;
+      if (terminal && fm.isFrontmatterSupplier(rs)) {
         // deno-lint-ignore no-explicit-any
-        (terminal as any).label = fmUntyped.title;
-      }
-
-      if (isHugoUnderscoreIndex(terminalUntyped)) {
-        const route = rs.route;
-        // in Hugo, an _index.md controls the parent of the current node so
-        // let's mimic that behavior
-        const unitsLen = route.units.length;
-        if (unitsLen > 1) {
+        const terminalUntyped = terminal as any;
+        const fmUntyped = rs.frontmatter;
+        // deno-lint-ignore no-explicit-any
+        const menu = fmUntyped.menu as any;
+        const terminalWeight = fmUntyped.weight || menu?.main?.weight;
+        terminalUntyped.weight = terminalWeight;
+        if (terminal.level == this.contextBarLevel && menu?.main?.name) {
+          terminalUntyped.isContextBarRouteNode = menu.main.name;
+        }
+        if (fmUntyped.title) {
           // deno-lint-ignore no-explicit-any
-          const parent = route.units[unitsLen - 2] as any;
-          parent.label = terminal.label;
-          parent.weight = terminalWeight;
+          (terminal as any).label = fmUntyped.title;
         }
 
-        // console.log(
-        //   terminal.qualifiedPath,
-        //   rtree.isRouteTreeNode(rs),
-        //   c.isContentModelSupplier(rs),
-        //   (rs as any).model?.isContentAvailable,
-        //   (rs as any).parent?.children?.length,
-        // );
-        // if (
-        //   rtree.isRouteTreeNode(rs) && c.isContentModelSupplier(rs) &&
-        //   !rs.model.isContentAvailable && rs.parent &&
-        //   rs.parent.children.length > 0
-        // ) {
-        //   // if we're setting up the route tree (which is normal) and there is
-        //   // no content for this route, location should refer to the first child
-        //   // with content not the empty _index route
-        //   // deno-lint-ignore no-explicit-any
-        //   (terminalUntyped as any).location = (
-        //     baseOrOptions?: string | govn.RouteLocationOptions,
-        //   ) => rt.routeNodeLocation(rs.parent!.children[0], baseOrOptions);
-        //   console.log(
-        //     "redirect",
-        //     rs.qualifiedPath,
-        //     "to",
-        //     rs.parent.children[0].qualifiedPath,
-        //   );
-        // }
+        if (isHugoUnderscoreIndex(terminalUntyped)) {
+          // in Hugo, an _index.md controls the parent of the current node so
+          // let's mimic that behavior
+          const unitsLen = result.route.units.length;
+          if (unitsLen > 1) {
+            // deno-lint-ignore no-explicit-any
+            const parent = result.route.units[unitsLen - 2] as any;
+            parent.label = terminal.label;
+            parent.weight = terminalWeight;
+          }
+
+          // console.log(
+          //   terminal.qualifiedPath,
+          //   rtree.isRouteTreeNode(rs),
+          //   c.isContentModelSupplier(rs),
+          //   (rs as any).model?.isContentAvailable,
+          //   (rs as any).parent?.children?.length,
+          // );
+          // if (
+          //   rtree.isRouteTreeNode(rs) && c.isContentModelSupplier(rs) &&
+          //   !rs.model.isContentAvailable && rs.parent &&
+          //   rs.parent.children.length > 0
+          // ) {
+          //   // if we're setting up the route tree (which is normal) and there is
+          //   // no content for this route, location should refer to the first child
+          //   // with content not the empty _index route
+          //   // deno-lint-ignore no-explicit-any
+          //   (terminalUntyped as any).location = (
+          //     baseOrOptions?: string | govn.RouteLocationOptions,
+          //   ) => rt.routeNodeLocation(rs.parent!.children[0], baseOrOptions);
+          //   console.log(
+          //     "redirect",
+          //     rs.qualifiedPath,
+          //     "to",
+          //     rs.parent.children[0].qualifiedPath,
+          //   );
+          // }
+        }
       }
     }
-    return super.consumeRoute(rs);
+
+    return result;
   }
 
-  prepareNavigation() {
+  prepareNavigationTree() {
     this.allRoutes.consumeAliases();
     this.navigationTree.consumeTree(
       this.allRoutes,

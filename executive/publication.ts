@@ -61,6 +61,12 @@ export class PublicationRoutes {
   constructor() {
   }
 
+  /**
+   * Add the given route to this.allRoutes. Subclasses can override this method
+   * if the route should be reject for some reason.
+   * @param rs The route supplier whose route will be consumed or rejected
+   * @returns the newly create tree node or undefined if route is rejected
+   */
   consumeRoute(
     rs: govn.RouteSupplier<govn.RouteNode>,
   ): govn.RouteTreeNode | undefined {
@@ -80,11 +86,13 @@ export class PublicationRoutes {
     return (resource) => {
       if (route.isRouteSupplier(resource)) {
         const node = this.consumeRoute(resource);
-        if (fm.isFrontmatterSupplier(resource)) {
-          fm.referenceFrontmatter(resource, node);
-        }
-        if (m.isModelSupplier(resource)) {
-          m.referenceModel(resource, node);
+        if (node) {
+          if (fm.isFrontmatterSupplier(resource)) {
+            fm.referenceFrontmatter(resource, node);
+          }
+          if (m.isModelSupplier(resource)) {
+            m.referenceModel(resource, node);
+          }
         }
       }
       return resource;
@@ -97,7 +105,7 @@ export class PublicationRoutes {
    * prepareNavigation assumes that this.allRoutes has been populated with all
    * known resources and that the navigation tree is a subset of allRoutes.
    **/
-  prepareNavigation() {
+  prepareNavigationTree() {
     this.allRoutes.consumeAliases();
     this.navigationTree.consumeTree(
       this.allRoutes,
@@ -249,7 +257,7 @@ export class TypicalPublication implements Publication {
       // navigation tree is only for routes that are navigable by end users.
       // urWatcher.on("beforeProduce", ...) is executed after creator.construct
       // factories are concluded.
-      this.routes.prepareNavigation();
+      this.routes.prepareNavigationTree();
     });
 
     const creator = new r.UniversalRefinery(this.originators(), {
