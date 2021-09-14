@@ -2,7 +2,6 @@ import { safety } from "../deps.ts";
 import * as govn from "../governance/mod.ts";
 import * as r from "../core/std/resource.ts";
 import * as n from "../core/std/nature.ts";
-import * as m from "../core/std/model.ts";
 import * as render from "../core/std/render.ts";
 import * as fsg from "../core/originate/file-sys-globs.ts";
 import * as publ from "./publication.ts";
