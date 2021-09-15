@@ -60,9 +60,26 @@ export class Configuration implements Preferences {
  * handling of routes when they are consumed and inserted into resourcesTree.
  */
 export interface PublicationRouteEventsHandler<Context> {
+  /**
+   * Mutate the resource route before a route tree node is created. Context is
+   * an arbitrary return value that can be used to pass into
+   * prepareResourceTreeNode as necessary.
+   * @param rs the resource, which has rs.route and all other resource content
+   */
   readonly prepareResourceRoute?: (
     rs: govn.RouteSupplier<govn.RouteNode>,
   ) => Context;
+
+  /**
+   * Mutate the resource's route tree node after construction plus frontmatter
+   * and model references have been added. When this event handler is called,
+   * the route and route tree node are fully resolved. This event handler is
+   * useful if the route tree node should be mutated based on the resource's
+   * content, frontmatter, model, or any other business/presentation logic.
+   * @param rs the resource
+   * @param rtn the route tree node, if creation was successful
+   * @param ctx if prepareResourceRoute was called before prepareResourceTreeNode, this is the Context
+   */
   readonly prepareResourceTreeNode?: (
     rs: govn.RouteSupplier<govn.RouteNode>,
     rtn?: govn.RouteTreeNode,
@@ -102,19 +119,32 @@ export class PublicationRoutes {
   consumeResourceRoute(
     rs: govn.RouteSupplier<govn.RouteNode>,
   ): govn.RouteTreeNode | undefined {
+    let ctx: unknown;
     const terminal = rs?.route?.terminal;
-    if (isPublicationRouteEventsHandler(terminal)) {
-      const ctx = terminal.prepareResourceRoute
-        ? terminal.prepareResourceRoute(rs)
-        : undefined;
-      const treeNode = this.resourcesTree.consumeRoute(rs);
-      if (terminal.prepareResourceTreeNode) {
-        terminal.prepareResourceTreeNode(rs, treeNode, ctx);
-      }
-      return treeNode;
+    if (
+      isPublicationRouteEventsHandler(terminal) && terminal.prepareResourceRoute
+    ) {
+      ctx = terminal.prepareResourceRoute(rs);
     }
 
-    return this.resourcesTree.consumeRoute(rs);
+    const result = this.resourcesTree.consumeRoute(rs);
+    if (result) {
+      if (fm.isFrontmatterSupplier(rs)) {
+        fm.referenceFrontmatter(rs, result);
+      }
+      if (m.isModelSupplier(rs)) {
+        m.referenceModel(rs, result);
+      }
+    }
+
+    if (
+      isPublicationRouteEventsHandler(terminal) &&
+      terminal.prepareResourceTreeNode
+    ) {
+      terminal.prepareResourceTreeNode(rs, result, ctx);
+    }
+
+    return result;
   }
 
   /**
@@ -133,15 +163,7 @@ export class PublicationRoutes {
   > {
     return (resource) => {
       if (route.isRouteSupplier(resource)) {
-        const node = this.consumeResourceRoute(resource);
-        if (node) {
-          if (fm.isFrontmatterSupplier(resource)) {
-            fm.referenceFrontmatter(resource, node);
-          }
-          if (m.isModelSupplier(resource)) {
-            m.referenceModel(resource, node);
-          }
-        }
+        this.consumeResourceRoute(resource);
       }
       return resource;
     };

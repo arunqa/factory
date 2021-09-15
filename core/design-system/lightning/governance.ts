@@ -2,6 +2,19 @@ import * as govn from "../../../governance/mod.ts";
 import * as html from "../../render/html/mod.ts";
 
 /**
+ * Interface implemented by route tree nodes to add specific design system-
+ * specific capabilities.
+ */
+export interface MutatableNavigationTreeNodeCapabilities {
+  isContextBarRouteNode?: boolean;
+  isIndexNode?: boolean;
+}
+
+export type NavigationTreeNodeCapabilities = Readonly<
+  MutatableNavigationTreeNodeCapabilities
+>;
+
+/**
  * Used by Deno HTML modules as html: { text: LightningLayoutBodySupplier }
  */
 export interface LightningLayoutBodySupplier {

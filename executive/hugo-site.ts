@@ -7,8 +7,8 @@ import * as publ from "./publication.ts";
 import * as rt from "../core/std/route.ts";
 import * as fm from "../core/std/frontmatter.ts";
 import * as md from "../core/resource/markdown.ts";
-import * as lds from "../core/design-system/lightning/mod.ts";
 import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
+import * as lds from "../core/design-system/lightning/mod.ts";
 import * as ldsObsC from "../core/design-system/lightning/content/observability.r.ts";
 import * as sqlObsC from "../lib/db/observability.r.ts";
 
@@ -81,12 +81,11 @@ export class HugoRoutes extends publ.PublicationRoutes {
     this.navigationTree.consumeTree(
       this.resourcesTree,
       (node) => {
+        const nodeNav = node as lds.NavigationTreeNodeCapabilities;
         if (node.level < this.contextBarLevel) return false;
         if (node.level == this.contextBarLevel) {
           // this.mutateRoute adds .isContextBarRouteNode to node.route
-          if (lds.isContextBarRouteNode(node)) {
-            if (node.isContextBarRouteNode) return true;
-          }
+          if (nodeNav.isContextBarRouteNode) return true;
           if (
             // TODO: this should only "appear" (uncloaked) when running in
             // non-production environment so add ability to check at runtime
@@ -138,16 +137,10 @@ export class HugoSite extends publ.TypicalPublication {
       const isHugoUnderscoreIndex = hffsrp.parsedPath.name === "_index";
       const routeUnit:
         & govn.RouteUnit
-        & publ.PublicationRouteEventsHandler<HugoPageProperties>
-        & {
-          readonly isHugoUnderscoreIndex: boolean;
-        } = {
+        & publ.PublicationRouteEventsHandler<HugoPageProperties> = {
           ...hffsrp.routeUnit,
           unit: isHugoUnderscoreIndex ? "index" : hffsrp.routeUnit.unit,
-          isHugoUnderscoreIndex,
           prepareResourceRoute: (rs) => {
-            // in Hugo, an _index.md controls the parent of the current node so
-            // let's mimic that behavior
             const hpp = hugoPageProperties(rs);
             // deno-lint-ignore no-explicit-any
             const terminalUntyped = rs.route.terminal as any;
@@ -157,6 +150,8 @@ export class HugoSite extends publ.TypicalPublication {
               terminalUntyped.weight = hpp.weight;
             }
             if (isHugoUnderscoreIndex) {
+              // in Hugo, an _index.md controls the parent of the current node so
+              // let's mimic that behavior
               const units = rs.route.units;
               if (units && units.length > 1) {
                 // deno-lint-ignore no-explicit-any
@@ -164,13 +159,17 @@ export class HugoSite extends publ.TypicalPublication {
                 if (hpp.title) parent.label = hpp.title;
                 if (hpp.weight) parent.weight = hpp.weight;
               }
+              terminalUntyped.isHugoUnderscoreIndex = true;
             }
             return hpp;
           },
           prepareResourceTreeNode: (_rs, node, hpp) => {
+            const nodeNav = node as lds.MutatableNavigationTreeNodeCapabilities;
             if (node?.level == HugoSite.contextBarLevel && hpp!.mainMenuName) {
-              // deno-lint-ignore no-explicit-any
-              (node as any).isContextBarRouteNode = true;
+              nodeNav.isContextBarRouteNode = true;
+            }
+            if (isHugoUnderscoreIndex || node?.unit == "index") {
+              nodeNav.isIndexNode = true;
             }
           },
         };
