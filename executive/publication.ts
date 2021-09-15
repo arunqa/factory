@@ -1,4 +1,4 @@
-import { govnSvcTelemetry as telem, log, path } from "../deps.ts";
+import { govnSvcTelemetry as telem, log, path, safety } from "../deps.ts";
 import * as govn from "../governance/mod.ts";
 import * as e from "../core/std/extension.ts";
 import * as obs from "../core/std/observability.ts";
@@ -55,17 +55,42 @@ export class Configuration implements Preferences {
   }
 }
 
+/**
+ * Implement this interface in RouteUnit terminals when you want to do special
+ * handling of routes when they are consumed and inserted into resourcesTree.
+ */
+export interface PublicationRouteEventsHandler<Context> {
+  readonly prepareResourceRoute?: (
+    rs: govn.RouteSupplier<govn.RouteNode>,
+  ) => Context;
+  readonly prepareResourceTreeNode?: (
+    rs: govn.RouteSupplier<govn.RouteNode>,
+    rtn?: govn.RouteTreeNode,
+    ctx?: Context,
+  ) => void;
+}
+
+export const isPublicationRouteEventsHandler = safety.typeGuard<
+  // deno-lint-ignore no-explicit-any
+  PublicationRouteEventsHandler<any>
+>("prepareResourceRoute", "prepareResourceTreeNode");
+
 export interface Publication {
   readonly produce: () => Promise<void>;
 }
 
-export class PublicationRoutes {
-  readonly resourcesTree: rtree.TypicalRouteTree;
-  readonly navigationTree: rtree.TypicalRouteTree;
+export class ResourcesTree extends rtree.TypicalRouteTree {
+}
 
-  constructor(readonly routeFactory: govn.RouteFactory) {
-    this.resourcesTree = new rtree.TypicalRouteTree(this.routeFactory);
-    this.navigationTree = new rtree.TypicalRouteTree(this.routeFactory);
+export class NavigationTree extends rtree.TypicalRouteTree {
+}
+
+export class PublicationRoutes {
+  constructor(
+    readonly routeFactory: govn.RouteFactory,
+    readonly resourcesTree = new ResourcesTree(routeFactory),
+    readonly navigationTree = new NavigationTree(routeFactory),
+  ) {
   }
 
   /**
@@ -74,9 +99,21 @@ export class PublicationRoutes {
    * @param rs The route supplier whose route will be consumed or rejected
    * @returns the newly create tree node or undefined if route is rejected
    */
-  consumeRoute(
+  consumeResourceRoute(
     rs: govn.RouteSupplier<govn.RouteNode>,
   ): govn.RouteTreeNode | undefined {
+    const terminal = rs?.route?.terminal;
+    if (isPublicationRouteEventsHandler(terminal)) {
+      const ctx = terminal.prepareResourceRoute
+        ? terminal.prepareResourceRoute(rs)
+        : undefined;
+      const treeNode = this.resourcesTree.consumeRoute(rs);
+      if (terminal.prepareResourceTreeNode) {
+        terminal.prepareResourceTreeNode(rs, treeNode, ctx);
+      }
+      return treeNode;
+    }
+
     return this.resourcesTree.consumeRoute(rs);
   }
 
@@ -96,7 +133,7 @@ export class PublicationRoutes {
   > {
     return (resource) => {
       if (route.isRouteSupplier(resource)) {
-        const node = this.consumeRoute(resource);
+        const node = this.consumeResourceRoute(resource);
         if (node) {
           if (fm.isFrontmatterSupplier(resource)) {
             fm.referenceFrontmatter(resource, node);
@@ -116,7 +153,7 @@ export class PublicationRoutes {
    * prepareNavigation assumes that this.resourcesTree has been populated with
    * all known resources and that the navigation tree is a navigable subset of
    * resourcesTree.
-   **/
+   */
   prepareNavigationTree() {
     this.resourcesTree.consumeAliases();
     this.navigationTree.consumeTree(
@@ -213,10 +250,10 @@ export class TypicalPublication implements Publication {
   }
 
   /**
-  * Supply the markdown renderers that our Markdown resources can use to render
-  * their content to HTML.
-  * @returns list of Markdown layouts we will allow Markdown resources to use
-  */
+   * Supply the markdown renderers that our Markdown resources can use to render
+   * their content to HTML.
+   * @returns list of Markdown layouts we will allow Markdown resources to use
+   */
   markdownRenderers(): mdr.MarkdownRenderStrategy {
     return new mdr.MarkdownRenderStrategy(
       new mdr.MarkdownLayouts({
@@ -232,7 +269,7 @@ export class TypicalPublication implements Publication {
 
   // deno-lint-ignore no-explicit-any
   originators(): govn.ResourcesFactoriesSupplier<any>[] {
-    const originRootPath = this.config.contentRootPath;
+    const { contentRootPath, fsRouteFactory, observabilityRoute } = this.config;
     const watcher = new fsg.FileSysGlobsOriginatorEventEmitter();
     // deno-lint-ignore require-await
     watcher.on("beforeYieldWalkEntry", async (we) => {
@@ -246,23 +283,20 @@ export class TypicalPublication implements Publication {
         [
           // process modules first so that if there are any proxies or other
           // generated content, it can be processed but the remaining originators
-          tfsg.moduleFileSysGlobs(originRootPath, this.config.fsRouteFactory),
+          tfsg.moduleFileSysGlobs(contentRootPath, fsRouteFactory),
           tfsg.markdownFileSysGlobs(
-            originRootPath,
+            contentRootPath,
             this.markdownRenderers(),
-            this.config.fsRouteFactory,
+            fsRouteFactory,
           ),
-          tfsg.htmlFileSysGlobs(originRootPath, this.config.fsRouteFactory),
+          tfsg.htmlFileSysGlobs(contentRootPath, fsRouteFactory),
         ],
         this.config.extensionsManager,
         {
           eventEmitter: () => watcher,
         },
       ),
-      ldsObsC.observabilityResources(
-        this.config.observabilityRoute,
-        this.config.fsRouteFactory,
-      ),
+      ldsObsC.observabilityResources(observabilityRoute, fsRouteFactory),
     ];
   }
 

@@ -154,15 +154,10 @@ export interface RouteFactory {
       | RouteSupplier,
     replaceTerminal?: boolean,
   ) => Route;
-  readonly resourceRoute: <Resource>(
-    rs: RouteUnit | RouteUnits | RouteUnitsSupplier,
-    resource: Resource,
-  ) => Route;
 }
 
-export interface RouteTreeNode extends RouteNode {
+export interface RouteTreeNode extends RouteNode, Partial<RouteSupplier> {
   readonly owner: RouteTree;
-  readonly route?: Route;
   readonly ancestors: RouteTreeNode[];
   readonly parent?: RouteTreeNode;
   readonly children: RouteTreeNode[];

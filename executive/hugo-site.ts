@@ -1,11 +1,9 @@
-import { safety } from "../deps.ts";
 import * as govn from "../governance/mod.ts";
 import * as r from "../core/std/resource.ts";
 import * as n from "../core/std/nature.ts";
 import * as render from "../core/std/render.ts";
 import * as fsg from "../core/originate/file-sys-globs.ts";
 import * as publ from "./publication.ts";
-import * as mdDS from "../core/render/markdown/mod.ts";
 import * as rt from "../core/std/route.ts";
 import * as fm from "../core/std/frontmatter.ts";
 import * as md from "../core/resource/markdown.ts";
@@ -14,8 +12,38 @@ import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
 import * as ldsObsC from "../core/design-system/lightning/content/observability.r.ts";
 import * as sqlObsC from "../lib/db/observability.r.ts";
 
-export interface HugoWeightSupplier {
-  readonly weight: number;
+export interface HugoPageWeightSupplier {
+  readonly weight?: number;
+}
+
+export interface HugoPageTitleSupplier {
+  readonly title?: string;
+}
+
+export interface HugoPageProperties
+  extends HugoPageWeightSupplier, HugoPageTitleSupplier {
+  readonly mainMenuName?: string;
+}
+
+export function hugoPageProperties<Resource>(
+  resource: Resource,
+): HugoPageProperties {
+  let weight: number | undefined;
+  let title: string | undefined;
+  let mainMenuName: string | undefined;
+  if (fm.isFrontmatterSupplier(resource)) {
+    const fmUntyped = resource.frontmatter;
+    // deno-lint-ignore no-explicit-any
+    const menu = fmUntyped.menu as any;
+    weight = fmUntyped.weight || menu?.main?.weight;
+    mainMenuName = menu?.main?.name;
+    title = fmUntyped.title ? String(fmUntyped.title) : mainMenuName;
+  }
+  return {
+    weight,
+    title,
+    mainMenuName,
+  };
 }
 
 /**
@@ -25,8 +53,8 @@ export interface HugoWeightSupplier {
  * @returns 0 if weights are equal, +1 or -1 for sort order
  */
 const orderByWeight: (
-  a: govn.RouteTreeNode & Partial<HugoWeightSupplier>,
-  b: govn.RouteTreeNode & Partial<HugoWeightSupplier>,
+  a: govn.RouteTreeNode & HugoPageWeightSupplier,
+  b: govn.RouteTreeNode & HugoPageWeightSupplier,
 ) => number = (a, b) => {
   const weightA = a.weight;
   const weightB = b.weight;
@@ -37,84 +65,7 @@ const orderByWeight: (
   return 0; // order doesn't matter if no weight
 };
 
-export interface HugoUnderscoreIndex extends govn.RouteUnit {
-  readonly isHugoUnderscoreIndex: true;
-}
-
-export const isHugoUnderscoreIndex = safety.typeGuard<HugoUnderscoreIndex>(
-  "isHugoUnderscoreIndex",
-);
-
-/**
- * Parses hugo-style '_index.*' routes and defaults unit to 'index'.
- * @param base the underlying parser to use
- * @returns
- */
-export function hugoRouteParser(
-  base: rt.FileSysRouteParser,
-): rt.FileSysRouteParser {
-  return (fsp, ca) => {
-    const hfpfsr = base(fsp, ca);
-    const isHugoUnderscoreIndex = hfpfsr.parsedPath.name === "_index";
-    if (isHugoUnderscoreIndex) {
-      const routeUnit: HugoUnderscoreIndex = {
-        unit: "index",
-        label: "_index",
-        isHugoUnderscoreIndex,
-      };
-      return {
-        parsedPath: hfpfsr.parsedPath,
-        routeUnit,
-      };
-    }
-    return hfpfsr;
-  };
-}
-
-/**
- * Originate Hugo style markdown files that are just like normal Markdown except
- * _index.md is treated special using hugoRouteParser().
- * @param mdrs The Markdown rendering strategy that will convert *.md to HTML
- * @returns single glob object that can be fed to orignators
- */
-export function hugoMarkdownFileSysGlob(
-  mdrs: mdDS.MarkdownRenderStrategy,
-): fsg.FileSysPathGlob<md.MarkdownResource> {
-  return {
-    glob: "**/*.md",
-    routeParser: hugoRouteParser(
-      rt.humanFriendlyFileSysRouteParser,
-    ),
-    factory: md.markdownFileSysResourceFactory(
-      // deno-lint-ignore no-explicit-any
-      r.pipelineUnitsRefinerySync<any>(
-        fm.prepareFrontmatterSync(fm.yamlMarkdownFrontmatterRE),
-        mdrs.rendererSync(),
-      ),
-    ),
-  };
-}
-
-/**
- * Originate Hugo style markdown files from originRootPath.
- * @param mdrs The Markdown rendering strategy that will convert *.md to HTML
- * @returns multiple file system paths object that can be fed to orignators
- */
-export function hugoMarkdownFileSysGlobs(
-  originRootPath: fsg.FileSysPathText,
-  mdrs: mdDS.MarkdownRenderStrategy,
-  fsRouteFactory: rt.FileSysRouteFactory,
-): fsg.FileSysPaths<md.MarkdownResource> {
-  return {
-    humanFriendlyName: "Hugo Markdown Content",
-    ownerFileSysPath: originRootPath,
-    lfsPaths: [{
-      humanFriendlyName: `Hugo Markdown Content (${originRootPath})`,
-      fileSysPath: originRootPath,
-      globs: [hugoMarkdownFileSysGlob(mdrs)],
-    }],
-    fsRouteFactory,
-  };
+export class HugoResourcesTree extends publ.ResourcesTree {
 }
 
 export class HugoRoutes extends publ.PublicationRoutes {
@@ -122,78 +73,7 @@ export class HugoRoutes extends publ.PublicationRoutes {
     readonly routeFactory: govn.RouteFactory,
     readonly contextBarLevel = 1,
   ) {
-    super(routeFactory);
-  }
-
-  /**
-   * Inject Hugo-style page weights, menu attributes into routes and perform
-   * special _index.md handling before calling super.consumeRoute(rs).
-   * @param rs The route supplier whose route will be consumed or rejected
-   */
-  consumeRoute(
-    rs: govn.RouteSupplier<govn.RouteNode>,
-  ): govn.RouteTreeNode | undefined {
-    const result = super.consumeRoute(rs);
-    if (result?.route) {
-      const terminal = result?.route?.terminal;
-      if (terminal && fm.isFrontmatterSupplier(rs)) {
-        // deno-lint-ignore no-explicit-any
-        const terminalUntyped = terminal as any;
-        const fmUntyped = rs.frontmatter;
-        // deno-lint-ignore no-explicit-any
-        const menu = fmUntyped.menu as any;
-        const terminalWeight = fmUntyped.weight || menu?.main?.weight;
-        terminalUntyped.weight = terminalWeight;
-        if (terminal.level == this.contextBarLevel && menu?.main?.name) {
-          terminalUntyped.isContextBarRouteNode = menu.main.name;
-        }
-        if (fmUntyped.title) {
-          // deno-lint-ignore no-explicit-any
-          (terminal as any).label = fmUntyped.title;
-        }
-
-        if (isHugoUnderscoreIndex(terminalUntyped)) {
-          // in Hugo, an _index.md controls the parent of the current node so
-          // let's mimic that behavior
-          const unitsLen = result.route.units.length;
-          if (unitsLen > 1) {
-            // deno-lint-ignore no-explicit-any
-            const parent = result.route.units[unitsLen - 2] as any;
-            parent.label = terminal.label;
-            parent.weight = terminalWeight;
-          }
-
-          // console.log(
-          //   terminal.qualifiedPath,
-          //   rtree.isRouteTreeNode(rs),
-          //   c.isContentModelSupplier(rs),
-          //   (rs as any).model?.isContentAvailable,
-          //   (rs as any).parent?.children?.length,
-          // );
-          // if (
-          //   rtree.isRouteTreeNode(rs) && c.isContentModelSupplier(rs) &&
-          //   !rs.model.isContentAvailable && rs.parent &&
-          //   rs.parent.children.length > 0
-          // ) {
-          //   // if we're setting up the route tree (which is normal) and there is
-          //   // no content for this route, location should refer to the first child
-          //   // with content not the empty _index route
-          //   // deno-lint-ignore no-explicit-any
-          //   (terminalUntyped as any).location = (
-          //     baseOrOptions?: string | govn.RouteLocationOptions,
-          //   ) => rt.routeNodeLocation(rs.parent!.children[0], baseOrOptions);
-          //   console.log(
-          //     "redirect",
-          //     rs.qualifiedPath,
-          //     "to",
-          //     rs.parent.children[0].qualifiedPath,
-          //   );
-          // }
-        }
-      }
-    }
-
-    return result;
+    super(routeFactory, new HugoResourcesTree(routeFactory));
   }
 
   prepareNavigationTree() {
@@ -202,10 +82,10 @@ export class HugoRoutes extends publ.PublicationRoutes {
       this.resourcesTree,
       (node) => {
         if (node.level < this.contextBarLevel) return false;
-        if (node.level == this.contextBarLevel && node.route?.terminal) {
+        if (node.level == this.contextBarLevel) {
           // this.mutateRoute adds .isContextBarRouteNode to node.route
-          if (lds.isContextBarRouteNode(node.route.terminal)) {
-            if (node.route.terminal.isContextBarRouteNode) return true;
+          if (lds.isContextBarRouteNode(node)) {
+            if (node.isContextBarRouteNode) return true;
           }
           if (
             // TODO: this should only "appear" (uncloaked) when running in
@@ -214,7 +94,7 @@ export class HugoRoutes extends publ.PublicationRoutes {
             // and only show this if context is valid (otherwise it should be
             // cloaked)
             ["Observability", "Control Panel"].find((label) =>
-              node.route?.terminal?.label == label
+              node.label == label
             )
           ) {
             return true;
@@ -234,8 +114,13 @@ export class HugoRoutes extends publ.PublicationRoutes {
 }
 
 export class HugoSite extends publ.TypicalPublication {
+  static readonly contextBarLevel = 1;
+
   constructor(config: publ.Configuration) {
-    super(config, new HugoRoutes(config.fsRouteFactory));
+    super(
+      config,
+      new HugoRoutes(config.fsRouteFactory, HugoSite.contextBarLevel),
+    );
   }
 
   // deno-lint-ignore no-explicit-any
@@ -247,39 +132,91 @@ export class HugoSite extends publ.TypicalPublication {
       // go to the destination directory so let's track it
       this.consumedFileSysWalkPaths.add(we.path);
     });
+
+    const routeParser: rt.FileSysRouteParser = (fsp, ca) => {
+      const hffsrp = rt.humanFriendlyFileSysRouteParser(fsp, ca);
+      const isHugoUnderscoreIndex = hffsrp.parsedPath.name === "_index";
+      const routeUnit:
+        & govn.RouteUnit
+        & publ.PublicationRouteEventsHandler<HugoPageProperties>
+        & {
+          readonly isHugoUnderscoreIndex: boolean;
+        } = {
+          ...hffsrp.routeUnit,
+          unit: isHugoUnderscoreIndex ? "index" : hffsrp.routeUnit.unit,
+          isHugoUnderscoreIndex,
+          prepareResourceRoute: (rs) => {
+            // in Hugo, an _index.md controls the parent of the current node so
+            // let's mimic that behavior
+            const hpp = hugoPageProperties(rs);
+            // deno-lint-ignore no-explicit-any
+            const terminalUntyped = rs.route.terminal as any;
+            if (terminalUntyped) {
+              terminalUntyped.label = hpp.title || hpp.mainMenuName ||
+                hffsrp.routeUnit.label;
+              terminalUntyped.weight = hpp.weight;
+            }
+            if (isHugoUnderscoreIndex) {
+              const units = rs.route.units;
+              if (units && units.length > 1) {
+                // deno-lint-ignore no-explicit-any
+                const parent = units[units.length - 2] as any;
+                if (hpp.title) parent.label = hpp.title;
+                if (hpp.weight) parent.weight = hpp.weight;
+              }
+            }
+            return hpp;
+          },
+          prepareResourceTreeNode: (_rs, node, hpp) => {
+            if (node?.level == HugoSite.contextBarLevel && hpp!.mainMenuName) {
+              // deno-lint-ignore no-explicit-any
+              (node as any).isContextBarRouteNode = true;
+            }
+          },
+        };
+      return {
+        parsedPath: hffsrp.parsedPath,
+        routeUnit,
+      };
+    };
+
+    const { contentRootPath, fsRouteFactory, observabilityRoute } = this.config;
     return [
       // deno-lint-ignore no-explicit-any
       new fsg.FileSysGlobsOriginator<any>(
         [
           // process modules first so that if there are any proxies or other
           // generated content, it can be processed but the remaining originators
-          tfsg.moduleFileSysGlobs(
-            this.config.contentRootPath,
-            this.config.fsRouteFactory,
-          ),
-          hugoMarkdownFileSysGlobs(
-            this.config.contentRootPath,
-            this.markdownRenderers(),
-            this.config.fsRouteFactory,
-          ),
-          tfsg.htmlFileSysGlobs(
-            this.config.contentRootPath,
-            this.config.fsRouteFactory,
-          ),
+          tfsg.moduleFileSysGlobs(contentRootPath, fsRouteFactory),
+          {
+            humanFriendlyName: "Hugo Markdown Content",
+            ownerFileSysPath: contentRootPath,
+            lfsPaths: [{
+              humanFriendlyName: `Hugo Markdown Content (${contentRootPath})`,
+              fileSysPath: contentRootPath,
+              globs: [{
+                glob: "**/*.md",
+                routeParser,
+                factory: md.markdownFileSysResourceFactory(
+                  // deno-lint-ignore no-explicit-any
+                  r.pipelineUnitsRefinerySync<any>(
+                    fm.prepareFrontmatterSync(fm.yamlMarkdownFrontmatterRE),
+                    this.markdownRenderers().rendererSync(),
+                  ),
+                ),
+              }],
+            }],
+            fsRouteFactory,
+          },
+          tfsg.htmlFileSysGlobs(contentRootPath, fsRouteFactory),
         ],
         this.config.extensionsManager,
         {
           eventEmitter: () => fsgoWatcher,
         },
       ),
-      ldsObsC.observabilityResources(
-        this.config.observabilityRoute,
-        this.config.fsRouteFactory,
-      ),
-      sqlObsC.observabilityResources(
-        this.config.observabilityRoute,
-        this.config.fsRouteFactory,
-      ),
+      ldsObsC.observabilityResources(observabilityRoute, fsRouteFactory),
+      sqlObsC.observabilityResources(observabilityRoute, fsRouteFactory),
     ];
   }
 }

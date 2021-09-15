@@ -374,15 +374,6 @@ export class TypicalRouteFactory implements govn.RouteFactory {
     };
     return result;
   }
-
-  resourceRoute<Resource>(
-    rs: govn.RouteUnit | govn.RouteUnits | govn.RouteUnitsSupplier,
-    resource: Resource,
-  ): govn.Route {
-    const result = this.route(rs);
-    // TODO: add resource route handler
-    return result;
-  }
 }
 
 export type FileExtnModifiers = string[];
