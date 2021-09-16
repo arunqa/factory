@@ -69,6 +69,44 @@ export function renderedIconContainer(
   return `<span class="slds-icon_container slds-icon-${collection}-${name}">${ renderedIcon(layout, identity) }</span>`
 }
 
+export type CardTitleLink = string;
+export type CardTitle = string;
+export type CardBody = string;
+
+export interface Card {
+  readonly title: CardTitle;
+  readonly icon?: IconIdentity;
+  readonly href?: CardTitleLink;
+  readonly body?: CardBody;
+}
+
+export function renderedCard(
+  layout: ldsGovn.LightningLayout,
+  card: Card,
+): string {
+  // deno-fmt-ignore
+  return `<article class="slds-card slds-var-m-around_small">
+    <div class="slds-card__header slds-grid">
+      <header class="slds-media slds-media_center slds-has-flexi-truncate">
+        ${card.icon? `<div class="slds-media__figure">
+          <span class="slds-icon_container slds-icon-standard-account" title="account">
+            ${renderedIcon(layout, card.icon)}
+            <span class="slds-assistive-text">{c.title}</span>
+          </span>
+        </div>` : ''}        
+        <div class="slds-media__body">
+          <h2 class="slds-card__header-title">
+            <a href="${card.href}" class="slds-card__header-link slds-truncate" title="${card.title}">
+              <span>${card.title}</span>
+            </a>
+          </h2>
+        </div>
+      </header>
+    </div>
+    ${card.body ? `<div class="slds-card__body slds-card__body_inner">${card.body}</div>` : ''}
+    </article>`
+}
+
 export const ldsContextBar: ldsGovn.LightningPartial = (_, layout) => {
   const cbs = layout.branding.contextBarSubject;
   const subject = typeof cbs === "function" ? cbs(layout, layout.assets) : cbs;
@@ -205,6 +243,23 @@ export const ldsVerticalNavigationShaded: ldsGovn.LightningPartial = (
       </div>
     </div> 
   </div>` : `<!-- no vertical shaded navigation -->`
+};
+
+export const ldsAutoIndexCardsBody: ldsGovn.LightningPartial = (_, layout) => {
+  const contentTree = layout.navigation.contentTree(layout);
+  // deno-fmt-ignore (because we don't want ${...} wrapped)
+  return contentTree
+    ? `<div class="slds-grid slds-wrap slds-var-m-around_medium">        
+        ${contentTree.children.map(rtn => `
+        <div class="slds-col slds-size_1-of-2 slds-order_2">
+          ${renderedCard(layout, {
+            icon: { collection: "utility", name: "assignment" },
+            title: rtn.label,
+            href: layout.navigation.location(rtn),
+          })}
+        </div>`).join('\n')}
+      </div>`
+    : `<!-- no index cards -->`;
 };
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
@@ -361,7 +416,8 @@ export const ldsInnerIndexAuto = lightningTemplate("lds/page/inner-index-auto")`
         ${ldsBreadcrumbs}
         ${ldsPageHeading}
         <div id="content" class="slds-m-top_x-large">
-        ${ldsContentTree} <!-- auto generated from local navigation -->
+        ${(body, layout) => layout.model.isContentAvailable ? l.lightningBody(body, layout) : ''}
+        ${ldsAutoIndexCardsBody}
         </div>
         ${l.ldsLayoutDiagnostics}
       </div>
