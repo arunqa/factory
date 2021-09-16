@@ -16,8 +16,8 @@ import * as jrs from "../core/render/json.ts";
 import * as persist from "../core/std/persist.ts";
 import * as render from "../core/std/render.ts";
 import * as obsC from "../core/content/observability.ts";
-import * as redirectC from "../core/design-system/lightning/content/redirects.r.ts";
-import * as ldsObsC from "../core/design-system/lightning/content/observability.r.ts";
+import * as redirectC from "../core/design-system/lightning/content/redirects.rf.ts";
+import * as ldsObsC from "../core/design-system/lightning/content/observability.rf.ts";
 import * as mdr from "../core/render/markdown/mod.ts";
 
 export interface Preferences {

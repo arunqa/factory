@@ -9,8 +9,8 @@ import * as fm from "../core/std/frontmatter.ts";
 import * as md from "../core/resource/markdown.ts";
 import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
 import * as lds from "../core/design-system/lightning/mod.ts";
-import * as ldsObsC from "../core/design-system/lightning/content/observability.r.ts";
-import * as sqlObsC from "../lib/db/observability.r.ts";
+import * as ldsObsC from "../core/design-system/lightning/content/observability.rf.ts";
+import * as sqlObsC from "../lib/db/observability.rf.ts";
 
 export interface HugoPageWeightSupplier {
   readonly weight?: number;

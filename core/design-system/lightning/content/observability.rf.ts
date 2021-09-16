@@ -247,10 +247,10 @@ export function observabilityResources(
  *
  * content/
  *   observability/
- *     index.r.ts
+ *     index.rf.ts
  *
- * And in index.r.ts you would have:
- *   import * as o from "../../../core/design-system/lightning/content/observability.r.ts";
+ * And in index.rf.ts you would have:
+ *   import * as o from "../../../core/design-system/lightning/content/observability.rf.ts";
  *   export default o.fileSysModuleConstructor;
  *
  * The above would allow you move the resources anywhere just by setting up the right

@@ -97,7 +97,7 @@ pages to adhere to a design system, not optimize for making local changes.
 
 - `name.m1.m2.ts` is used for TypeScript-based content with `m1` and `m2` as
   _modifiers_. Examples include:
-  - `name.r.ts` signifies with `.r.` _modifier_ that this TypeScript module
+  - `name.rf.ts` signifies with `.rf.` _modifier_ that this TypeScript module
     generates one or more _resources_ of _arbitrary nature_ (e.g. mixed HTML,
     JSON, etc.).
   - `name.html.ts` signifies with `.html` is that this module produces HTML.

@@ -77,7 +77,7 @@ export function resourceModuleFileSysGlob(): fsg.FileSysPathGlob<
   govn.ModuleResource
 > {
   return {
-    glob: "**/*.r.ts",
+    glob: "**/*.rf.ts",
     exclude: ["deps.ts"],
     routeParser: route.humanFriendlyFileSysRouteParser,
     factory: module.moduleFileSysResourceFactory(),
