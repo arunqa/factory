@@ -335,7 +335,7 @@ export const ldsSmartNavigationPage = lightningTemplate("lds/page/default")`<!DO
 </html>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const ldsHome = lightningTemplate("lds/page/home")`<!DOCTYPE html>
+export const ldsHomePage = lightningTemplate("lds/page/home")`<!DOCTYPE html>
 <html lang="en"> <!-- 'ldsHome' layout in ${import.meta.url} -->
   <head>
     ${l.lightningHead}
@@ -361,7 +361,7 @@ export const ldsHome = lightningTemplate("lds/page/home")`<!DOCTYPE html>
 </html>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const ldsInnerIndex = lightningTemplate("lds/page/inner-index")`<!DOCTYPE html>
+export const ldsInnerIndexPage = lightningTemplate("lds/page/inner-index")`<!DOCTYPE html>
 <html lang="en"> <!-- 'ldsInnerIndex' layout in ${import.meta.url} -->
   <head>
     ${l.lightningHead}
@@ -395,7 +395,7 @@ export const ldsInnerIndex = lightningTemplate("lds/page/inner-index")`<!DOCTYPE
 </html>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const ldsInnerIndexAuto = lightningTemplate("lds/page/inner-index-auto")`<!DOCTYPE html>
+export const ldsInnerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto")`<!DOCTYPE html>
 <html lang="en"> <!-- 'ldsInnerIndexAuto' layout in ${import.meta.url} -->
   <head>
     ${l.lightningHead}
@@ -461,9 +461,9 @@ export const ldsPrime: html.HtmlLayoutStrategy<ldsGovn.LightningLayout> = {
 
 const autoRegisterLayouts = [
   ldsPrime,
-  ldsHome,
-  ldsInnerIndex,
-  ldsInnerIndexAuto,
+  ldsHomePage,
+  ldsInnerIndexPage,
+  ldsInnerIndexAutoPage,
   ldsNoDecorationPage,
   ldsNoDefinitiveLayoutPage,
 ];
@@ -581,7 +581,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
     readonly emptyContentModelLayoutSS:
       & govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier>
       & govn.ModelLayoutStrategySupplier<Layout, govn.HtmlSupplier> = {
-        layoutStrategy: ldsInnerIndexAuto,
+        layoutStrategy: ldsInnerIndexAutoPage,
         isInferredLayoutStrategySupplier: true,
         isModelLayoutStrategy: true,
         modelLayoutStrategyDiagnostic: "no content available",

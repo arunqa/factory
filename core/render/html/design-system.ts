@@ -1,7 +1,67 @@
+import { safety } from "../../deps.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as fm from "../../std/frontmatter.ts";
 import * as html from "../../render/html/mod.ts";
 import * as contrib from "../contributions.ts";
+
+export interface DesignSystemLayoutArgumentsSupplier {
+  readonly layout:
+    | govn.RenderStrategyIdentity
+    | ({
+      readonly identity?: govn.RenderStrategyIdentity;
+    } & html.HtmlLayoutArguments);
+}
+
+export const isPotentialDesignSystemLayoutArgumentsSupplier = safety.typeGuard<
+  DesignSystemLayoutArgumentsSupplier
+>("layout");
+
+export function isDesignSystemLayoutArgumentsSupplier(
+  o: unknown,
+): o is DesignSystemLayoutArgumentsSupplier {
+  if (isPotentialDesignSystemLayoutArgumentsSupplier(o)) {
+    if (typeof o.layout === "string") return true;
+    if (typeof o.layout === "object") return true;
+  }
+  return false;
+}
+
+export interface DesignSystemArgumentsSupplier {
+  readonly designSystem: DesignSystemLayoutArgumentsSupplier;
+}
+
+export const isPotentialDesignSystemArgumentsSupplier = safety.typeGuard<
+  DesignSystemArgumentsSupplier
+>("designSystem");
+
+export interface KebabCaseDesignSystemArgumentsSupplier {
+  readonly "design-system": DesignSystemLayoutArgumentsSupplier;
+}
+
+export const isKebabCaseDesignSystemArgumentsSupplier = safety.typeGuard<
+  KebabCaseDesignSystemArgumentsSupplier
+>("design-system");
+
+export function isDesignSystemArgumentsSupplier(
+  o: unknown,
+): o is DesignSystemArgumentsSupplier {
+  if (isPotentialDesignSystemArgumentsSupplier(o)) {
+    if (isDesignSystemLayoutArgumentsSupplier(o.designSystem)) return true;
+  }
+  return false;
+}
+
+export function isFlexibleMutatedDesignSystemArgumentsSupplier(
+  o: unknown,
+): o is DesignSystemArgumentsSupplier {
+  if (isKebabCaseDesignSystemArgumentsSupplier(o)) {
+    // deno-lint-ignore no-explicit-any
+    const mutatableO = o as any;
+    mutatableO.designSystem = o["design-system"];
+    delete mutatableO["design-system"];
+  }
+  return isDesignSystemArgumentsSupplier(o);
+}
 
 export class DesignSystemLayouts<Layout extends html.HtmlLayout>
   implements govn.LayoutStrategies<Layout, govn.HtmlSupplier> {
@@ -71,12 +131,15 @@ export abstract class DesignSystem<
     ...args: unknown[]
   ): Layout;
 
-  frontmatterPropertyLayoutStrategy(
+  frontmatterLayoutStrategy(
+    layoutArgs: DesignSystemLayoutArgumentsSupplier,
     fmPropertyName: string,
-    strategyName?: unknown,
   ):
     | govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier>
     | undefined {
+    const strategyName = typeof layoutArgs.layout == "string"
+      ? layoutArgs.layout
+      : layoutArgs.layout.identity;
     if (!strategyName) return undefined;
     if (typeof strategyName === "string") {
       const layoutStrategy = strategyName
@@ -130,32 +193,23 @@ export abstract class DesignSystem<
     >,
   ): govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier> {
     const sourceMap = `(${import.meta.url}::inferredLayoutStrategy)`;
-    if (fm.isFrontmatterSupplier(s) && s.frontmatter) {
-      if ("layout" in s.frontmatter) {
-        const name = typeof s.frontmatter.layout === "string"
-          ? s.frontmatter.layout
-          : // deno-lint-ignore no-explicit-any
-            (s.frontmatter.layout as any)?.identity;
-        const layout = this.frontmatterPropertyLayoutStrategy("layout", name);
+    if (fm.isFrontmatterSupplier(s)) {
+      if (isDesignSystemLayoutArgumentsSupplier(s.frontmatter)) {
+        const layout = this.frontmatterLayoutStrategy(s.frontmatter, "layout");
         if (layout) return layout;
         return this.layoutStrategies.diagnosticLayoutStrategy(
-          `frontmatter 'layout' property '${name}' not found ${sourceMap}`,
+          `frontmatter 'layout' not found ${sourceMap}`,
         );
       }
-      if ("design-system" in s.frontmatter) {
-        const ds = s.frontmatter["design-system"];
-        if (ds && typeof ds === "object" && "layout" in ds) {
-          // deno-lint-ignore no-explicit-any
-          const identity = (ds as any).layout;
-          const layout = this.frontmatterPropertyLayoutStrategy(
-            "design-system.layout",
-            identity,
-          );
-          if (layout) return layout;
-          return this.layoutStrategies.diagnosticLayoutStrategy(
-            `frontmatter 'designSystem.layout' property '${identity}' not found ${sourceMap}`,
-          );
-        }
+      if (isFlexibleMutatedDesignSystemArgumentsSupplier(s.frontmatter)) {
+        const layout = this.frontmatterLayoutStrategy(
+          s.frontmatter.designSystem,
+          "design-system.layout",
+        );
+        if (layout) return layout;
+        return this.layoutStrategies.diagnosticLayoutStrategy(
+          `frontmatter 'design-system.layout' not found ${sourceMap}`,
+        );
       }
       return this.layoutStrategies.diagnosticLayoutStrategy(
         `frontmatter 'layout' or 'designSystem.layout' property not available, using default ${sourceMap}`,
@@ -166,33 +220,17 @@ export abstract class DesignSystem<
     );
   }
 
-  // Might consider [zod](https://denopkg.com/colinhacks/zod/deno/lib/mod.ts) for
-  // safer parsing?
   frontmatterLayoutArgs(
     utfm?: govn.UntypedFrontmatter,
   ): html.HtmlLayoutArguments | undefined {
-    let diagnostics: html.HtmlLayoutDiagnosticsRequest | undefined;
-    let redirectConsoleToHTML: boolean | undefined;
-    if (utfm && "layout" in utfm) {
-      if (typeof utfm.layout === "object") {
-        const layoutArgs = utfm.layout as Record<string, unknown>;
-        if (
-          layoutArgs.diagnostics &&
-          (typeof layoutArgs.diagnostics === "boolean" ||
-            typeof layoutArgs.diagnostics === "string")
-        ) {
-          // deno-lint-ignore no-explicit-any
-          diagnostics = layoutArgs.diagnostics as any;
-        }
-        if (typeof layoutArgs.redirectConsoleToHTML === "boolean") {
-          redirectConsoleToHTML = layoutArgs.redirectConsoleToHTML;
-        }
-      }
+    if (isDesignSystemLayoutArgumentsSupplier(utfm)) {
+      return typeof utfm.layout === "string" ? undefined : utfm.layout;
     }
-    return {
-      diagnostics,
-      redirectConsoleToHTML,
-    };
+    if (isFlexibleMutatedDesignSystemArgumentsSupplier(utfm)) {
+      return typeof utfm.designSystem.layout === "string"
+        ? undefined
+        : utfm.designSystem.layout;
+    }
   }
 
   contributions(): html.HtmlLayoutContributions {

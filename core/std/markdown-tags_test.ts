@@ -40,7 +40,7 @@ Deno.test(`simple Markdown content generator`, () => {
   const customTag = md.htmlTagFn("tag");
 
   const markdown = md.lines([
-    md.frontMatterYAML({ title: "Generated Markdown" }),
+    md.untypedFrontMatterYAML({ title: "Generated Markdown" }),
     md.lines(
       md.times((index) => md.heading(index + 1, "This is a heading."), 6),
     ),

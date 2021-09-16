@@ -13,11 +13,21 @@ export const prefix = (str1: string, str2: string) => `${str1}${str2}`;
 export const always = <T>(value: T) => () => value;
 export const join = (stringArray: Array<string>) => stringArray.join("");
 
-export const frontMatterYAML = (fm: Record<string, unknown>) =>
+export const untypedFrontMatterYAML = (fm: Record<string, unknown>) =>
   wrap("---\n", yaml.stringify(fm));
 
-export const frontMatterYAMLInHtml = (fm: Record<string, unknown>) =>
+export function frontMatterYAML<FM extends Record<string, unknown>>(fm: FM) {
+  return wrap("---\n", yaml.stringify(fm));
+}
+
+export const untypedFrontMatterYAMLInHtml = (fm: Record<string, unknown>) =>
   `<!---\n${yaml.stringify(fm)}\n--->`;
+
+export function frontMatterYAMLInHtml<FM extends Record<string, unknown>>(
+  fm: FM,
+) {
+  return `<!---\n${yaml.stringify(fm)}\n--->`;
+}
 
 export const htmlTag = (
   ht: string | [string, string | string[] | Record<string, unknown>],
