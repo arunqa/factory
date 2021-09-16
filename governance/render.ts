@@ -1,4 +1,5 @@
 import * as fm from "./frontmatter.ts";
+import * as m from "./model.ts";
 
 export interface RenderTargetsSupplier<Nature> {
   readonly renderTargets: Nature | Nature[];
@@ -35,8 +36,13 @@ export interface DefaultLayoutStrategySupplier<Layout, LayoutResult>
   readonly isDefaultLayoutStrategy: true;
 }
 
-export interface FrontmatterLayoutStrategySupplier<Layout, LayoutResult>
+export interface InferredLayoutStrategySupplier<Layout, LayoutResult>
   extends LayoutStrategySupplier<Layout, LayoutResult> {
+  readonly isInferredLayoutStrategySupplier: true;
+}
+
+export interface FrontmatterLayoutStrategySupplier<Layout, LayoutResult>
+  extends InferredLayoutStrategySupplier<Layout, LayoutResult> {
   readonly isFrontmatterLayoutStrategy: true;
   readonly frontmatterLayoutStrategyPropertyName: string;
 }
@@ -62,8 +68,11 @@ export type RenderStrategyIdentity = string;
 export interface RenderStrategy<Layout, LayoutResult>
   extends LayoutStrategiesSupplier<Layout, LayoutResult> {
   readonly identity: RenderStrategyIdentity;
-  readonly frontmatterLayoutStrategy: (
-    fms: Partial<fm.FrontmatterSupplier<fm.UntypedFrontmatter>>,
+  readonly inferredLayoutStrategy: (
+    s: Partial<
+      | fm.FrontmatterSupplier<fm.UntypedFrontmatter>
+      | m.ModelSupplier<m.UntypedModel>
+    >,
   ) => LayoutStrategySupplier<Layout, LayoutResult>;
 }
 
@@ -82,8 +91,13 @@ export interface NamedRenderStrategySupplier<Layout, LayoutResult>
   readonly renderStrategyIdentity: RenderStrategyIdentity;
 }
 
-export interface FrontmatterRenderStrategySupplier<Layout, LayoutResult>
+export interface InferredRenderStrategySupplier<Layout, LayoutResult>
   extends RenderStrategySupplier<Layout, LayoutResult> {
+  readonly isInferredRenderStrategySupplier: true;
+}
+
+export interface FrontmatterRenderStrategySupplier<Layout, LayoutResult>
+  extends InferredRenderStrategySupplier<Layout, LayoutResult> {
   readonly isFrontmatterRenderStrategySupplier: true;
   readonly frontmatterRenderStrategyPropertyName: string;
 }
@@ -104,8 +118,11 @@ export interface RenderStrategies {
     name: RenderStrategyIdentity,
     ddss?: DefaultRenderStrategySupplier<Layout, LayoutResult>,
   ) => RenderStrategySupplier<Layout, LayoutResult>;
-  readonly frontmatterRenderStrategy: <Layout, LayoutResult>(
-    fms: Partial<fm.FrontmatterSupplier<fm.UntypedFrontmatter>>,
+  readonly inferredLayoutStrategy: <Layout, LayoutResult>(
+    s: Partial<
+      | fm.FrontmatterSupplier<fm.UntypedFrontmatter>
+      | m.ModelSupplier<m.UntypedModel>
+    >,
     ddss?: DefaultRenderStrategySupplier<Layout, LayoutResult>,
   ) => RenderStrategySupplier<Layout, LayoutResult>;
 }

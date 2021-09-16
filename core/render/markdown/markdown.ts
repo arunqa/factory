@@ -291,6 +291,7 @@ export class MarkdownRenderStrategy
           > = {
             layoutStrategy,
             isNamedLayoutStrategyStrategySupplier: true,
+            isInferredLayoutStrategySupplier: true,
             isFrontmatterLayoutStrategy: true,
             layoutStrategyIdentity: layoutName,
             frontmatterLayoutStrategyPropertyName: fmPropertyName,
@@ -300,17 +301,20 @@ export class MarkdownRenderStrategy
     }
   }
 
-  frontmatterLayoutStrategy(
-    fms: Partial<govn.FrontmatterSupplier<govn.UntypedFrontmatter>>,
+  inferredLayoutStrategy(
+    s: Partial<
+      | govn.FrontmatterSupplier<govn.UntypedFrontmatter>
+      | govn.ModelSupplier<govn.UntypedModel>
+    >,
   ): govn.LayoutStrategySupplier<md.MarkdownResource, govn.HtmlSupplier> {
-    if (fms.frontmatter) {
+    if (fm.isFrontmatterSupplier(s) && s.frontmatter) {
       for (const propName of this.frontmatterPropNames) {
-        if (propName in fms.frontmatter) {
-          const layoutName = fms.frontmatter[propName];
+        if (propName in s.frontmatter) {
+          const layoutName = s.frontmatter[propName];
           const layout = this.frontmatterPropertyLayout(propName, layoutName);
           if (layout) return layout;
           return this.layoutStrategies.diagnosticLayoutStrategy(
-            `frontmatter '${propName}' property '${fms.frontmatter.mdrender}' not found in MarkdownRenderStrategy.frontmatterLayoutStrategy`,
+            `frontmatter '${propName}' property '${s.frontmatter.mdrender}' not found in MarkdownRenderStrategy.frontmatterLayoutStrategy`,
           );
         }
         return this.layoutStrategies.diagnosticLayoutStrategy(
@@ -321,7 +325,7 @@ export class MarkdownRenderStrategy
       }
     }
     return this.layoutStrategies.diagnosticLayoutStrategy(
-      `frontmatter not available, using default in MarkdownRenderStrategy.frontmatterLayoutStrategy`,
+      `neither frontmatter nor model available, using default in MarkdownRenderStrategy.frontmatterLayoutStrategy`,
     );
   }
 
@@ -332,7 +336,7 @@ export class MarkdownRenderStrategy
   renderer(): govn.ResourceRefinery<md.MarkdownResource> {
     return async (resource) => {
       const lss = fm.isFrontmatterSupplier(resource)
-        ? this.frontmatterLayoutStrategy(resource)
+        ? this.inferredLayoutStrategy(resource)
         : this.layoutStrategies.diagnosticLayoutStrategy(
           "Frontmatter not supplied to MarkdownRenderStrategy.renderer",
         );
@@ -349,7 +353,7 @@ export class MarkdownRenderStrategy
   rendererSync(): govn.ResourceRefinerySync<md.MarkdownResource> {
     return (resource) => {
       const lss = fm.isFrontmatterSupplier(resource)
-        ? this.frontmatterLayoutStrategy(resource)
+        ? this.inferredLayoutStrategy(resource)
         : this.layoutStrategies.diagnosticLayoutStrategy(
           "Frontmatter not supplied to MarkdownRenderStrategy.renderer",
         );

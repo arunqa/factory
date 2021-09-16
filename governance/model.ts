@@ -1,3 +1,7 @@
+// deno-lint-ignore no-empty-interface
+export interface UntypedModel extends Record<string, unknown> {
+}
+
 /**
  * Models are portions of content in resources that are used to make decisions
  * about _behavior_ stemming _from content_. For example, routes use _models_

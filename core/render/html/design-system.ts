@@ -1,4 +1,5 @@
 import * as govn from "../../../governance/mod.ts";
+import * as fm from "../../std/frontmatter.ts";
 import * as html from "../../render/html/mod.ts";
 import * as contrib from "../contributions.ts";
 
@@ -88,6 +89,7 @@ export abstract class DesignSystem<
             {
               layoutStrategy,
               isNamedLayoutStrategyStrategySupplier: true,
+              isInferredLayoutStrategySupplier: true,
               isFrontmatterLayoutStrategy: true,
               layoutStrategyIdentity: strategyName,
               frontmatterLayoutStrategyPropertyName: fmPropertyName,
@@ -97,24 +99,28 @@ export abstract class DesignSystem<
     }
   }
 
-  frontmatterLayoutStrategy(
-    fms: Partial<govn.FrontmatterSupplier<govn.UntypedFrontmatter>>,
+  inferredLayoutStrategy(
+    s: Partial<
+      govn.FrontmatterSupplier<
+        govn.UntypedFrontmatter
+      > | govn.ModelSupplier<govn.UntypedModel>
+    >,
   ): govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier> {
     const sourceMap = `(${import.meta.url}::frontmatterLayoutStrategy)`;
-    if (fms.frontmatter) {
-      if ("layout" in fms.frontmatter) {
-        const name = typeof fms.frontmatter.layout === "string"
-          ? fms.frontmatter.layout
+    if (fm.isFrontmatterSupplier(s) && s.frontmatter) {
+      if ("layout" in s.frontmatter) {
+        const name = typeof s.frontmatter.layout === "string"
+          ? s.frontmatter.layout
           : // deno-lint-ignore no-explicit-any
-            (fms.frontmatter.layout as any)?.identity;
+            (s.frontmatter.layout as any)?.identity;
         const layout = this.frontmatterPropertyLayoutStrategy("layout", name);
         if (layout) return layout;
         return this.layoutStrategies.diagnosticLayoutStrategy(
           `frontmatter 'layout' property '${name}' not found ${sourceMap}`,
         );
       }
-      if ("design-system" in fms.frontmatter) {
-        const ds = fms.frontmatter["design-system"];
+      if ("design-system" in s.frontmatter) {
+        const ds = s.frontmatter["design-system"];
         if (ds && typeof ds === "object" && "layout" in ds) {
           // deno-lint-ignore no-explicit-any
           const identity = (ds as any).layout;
@@ -133,7 +139,7 @@ export abstract class DesignSystem<
       );
     }
     return this.layoutStrategies.diagnosticLayoutStrategy(
-      `frontmatter not available, using default ${sourceMap}`,
+      `neither frontmatter nor model available, using default ${sourceMap}`,
     );
   }
 

@@ -1,5 +1,6 @@
 import { safety } from "../../deps.ts";
 import * as govn from "../../governance/mod.ts";
+import * as fm from "./frontmatter.ts";
 
 export function isRenderTargetsSupplier<Nature>(
   o: unknown,
@@ -81,7 +82,7 @@ export function isRenderStrategy<Layout, LayoutResult>(
   >(
     "identity",
     "layoutStrategies",
-    "frontmatterLayoutStrategy",
+    "inferredLayoutStrategy",
   );
   return isType(o);
 }
@@ -173,14 +174,20 @@ export class RenderStrategiesFactory implements govn.RenderStrategies {
     );
   }
 
-  frontmatterRenderStrategy<Layout, LayoutResult>(
-    fms: Partial<govn.FrontmatterSupplier<govn.UntypedFrontmatter>>,
+  inferredLayoutStrategy<Layout, LayoutResult>(
+    s: Partial<
+      | govn.FrontmatterSupplier<govn.UntypedFrontmatter>
+      | govn.ModelSupplier<govn.UntypedModel>
+    >,
     ddss?: govn.DefaultRenderStrategySupplier<Layout, LayoutResult>,
   ): govn.RenderStrategySupplier<Layout, LayoutResult> {
-    if (fms.frontmatter && this.dsFrontmatterPropNames.length > 0) {
+    if (
+      fm.isFrontmatterSupplier(s) && s.frontmatter &&
+      this.dsFrontmatterPropNames.length > 0
+    ) {
       for (const propName of this.dsFrontmatterPropNames) {
-        if (propName in fms.frontmatter) {
-          const identity = String(fms.frontmatter[propName]);
+        if (propName in s.frontmatter) {
+          const identity = String(s.frontmatter[propName]);
           const renderStrategy = this.renderStrategy(identity);
           if (renderStrategy) {
             const named:
@@ -191,6 +198,7 @@ export class RenderStrategiesFactory implements govn.RenderStrategies {
               > = {
                 renderStrategy,
                 isNamedRenderStrategySupplier: true,
+                isInferredRenderStrategySupplier: true,
                 isFrontmatterRenderStrategySupplier: true,
                 renderStrategyIdentity: identity,
                 frontmatterRenderStrategyPropertyName: propName,
@@ -211,7 +219,7 @@ export class RenderStrategiesFactory implements govn.RenderStrategies {
       );
     }
     return this.diagnosticRenderStrategy(
-      `frontmatter not available, using default`,
+      `neither frontmatter nor model available, using default`,
       ddss,
     );
   }

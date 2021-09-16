@@ -260,6 +260,8 @@ pages to adhere to a design system, not optimize for making local changes.
 
 ### Frontmatter
 
+- Unify frontmatter and model in resources so that FM is more about unstructured
+  data while model is structured and type-safe
 - Use
   [Superstruct Describing Types](https://docs.superstructjs.org/guides/06-using-typescript#describing-types)
   feature to create a frontmatter guard-based "typer" that allows untyped

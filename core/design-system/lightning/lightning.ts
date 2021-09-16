@@ -598,7 +598,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   ): govn.ResourceRefinery<govn.HtmlSupplier> {
     return async (resource) => {
       const lss = fm.isFrontmatterSupplier(resource)
-        ? this.frontmatterLayoutStrategy(resource)
+        ? this.inferredLayoutStrategy(resource)
         : this.layoutStrategies.diagnosticLayoutStrategy(
           "Frontmatter not supplied to LightingDesignSystem.renderPage",
         );
@@ -622,7 +622,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   ): govn.ResourceRefinerySync<govn.HtmlSupplier> {
     return (resource) => {
       const lss = fm.isFrontmatterSupplier(resource)
-        ? this.frontmatterLayoutStrategy(resource)
+        ? this.inferredLayoutStrategy(resource)
         : this.layoutStrategies.diagnosticLayoutStrategy(
           "Frontmatter not supplied to LightingDesignSystem.renderPage",
         );
