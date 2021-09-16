@@ -1,6 +1,5 @@
 import * as govn from "../../governance/mod.ts";
 import * as nature from "../../core/std/nature.ts";
-import * as route from "../../core/std/route.ts";
 import * as htmlModule from "../../core/resource/module/html.ts";
 import * as lds from "../../core/design-system/lightning/mod.ts";
 
