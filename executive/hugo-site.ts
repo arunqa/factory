@@ -158,7 +158,7 @@ export class HugoSite extends publ.TypicalPublication {
               if (units && units.length > 1) {
                 // deno-lint-ignore no-explicit-any
                 const parent = units[units.length - 2] as any;
-                if (overrideLabel) parent.label = overrideLabel;
+                parent.label = terminalUntyped.label;
                 if (hpp.weight) parent.weight = hpp.weight;
               }
               terminalUntyped.isHugoUnderscoreIndex = true;
