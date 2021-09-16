@@ -16,6 +16,8 @@ const executive = new mod.Executive([new mod.TypicalPublication(config)]);
 
 Deno.test(`Publication discovered proper number of assets ${config.contentRootPath}`, async () => {
   await executive.execute();
+  // TODO: help find async leaks in executive.execute()
+  // console.dir(Deno.metrics());
   // let count = 0;
   // ta.assertEquals(count, 1);
 });
