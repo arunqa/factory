@@ -120,15 +120,8 @@ export const constructResourceSync: (
         }
         return parsed.frontmatter;
       },
-      consumeParsedRoute: (rs) => {
-        if (route.isParsedRouteConsumer(origination)) {
-          // give the originator the first shot
-          return origination.consumeParsedRoute(rs);
-        } else {
-          // we already have a route so try to mutate it based on the given
-          // instructions because the originator doesn't care
-          return result.route.consumeParsedRoute(rs);
-        }
+      consumeParsedRoute: (pr) => {
+        return result.route.consumeParsedRoute(pr);
       },
       // deno-lint-ignore require-await
       text: async () => Deno.readTextFile(origination.path),

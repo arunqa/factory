@@ -142,11 +142,13 @@ export class HugoSite extends publ.TypicalPublication {
           unit: isHugoUnderscoreIndex ? "index" : hffsrp.routeUnit.unit,
           prepareResourceRoute: (rs) => {
             const hpp = hugoPageProperties(rs);
+            const overrideLabel = hpp.title || hpp.mainMenuName;
             // deno-lint-ignore no-explicit-any
             const terminalUntyped = rs.route.terminal as any;
             if (terminalUntyped) {
-              terminalUntyped.label = hpp.title || hpp.mainMenuName ||
-                hffsrp.routeUnit.label;
+              // by now the frontmatter route will have been consumed but it's
+              // possible that the markdown title or mainMenu is also available
+              if (overrideLabel) terminalUntyped.label = overrideLabel;
               terminalUntyped.weight = hpp.weight;
             }
             if (isHugoUnderscoreIndex) {
@@ -156,7 +158,7 @@ export class HugoSite extends publ.TypicalPublication {
               if (units && units.length > 1) {
                 // deno-lint-ignore no-explicit-any
                 const parent = units[units.length - 2] as any;
-                if (hpp.title) parent.label = hpp.title;
+                if (overrideLabel) parent.label = overrideLabel;
                 if (hpp.weight) parent.weight = hpp.weight;
               }
               terminalUntyped.isHugoUnderscoreIndex = true;
@@ -198,9 +200,9 @@ export class HugoSite extends publ.TypicalPublication {
                 routeParser,
                 factory: md.markdownFileSysResourceFactory(
                   // deno-lint-ignore no-explicit-any
-                  r.pipelineUnitsRefinerySync<any>(
-                    fm.prepareFrontmatterSync(fm.yamlMarkdownFrontmatterRE),
-                    this.markdownRenderers().rendererSync(),
+                  r.pipelineUnitsRefinery<any>(
+                    fm.prepareFrontmatter(fm.yamlMarkdownFrontmatterRE),
+                    this.markdownRenderers().renderer(),
                   ),
                 ),
               }],

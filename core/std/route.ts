@@ -115,7 +115,7 @@ export function routeNodeLocation(
 
 /**
  * Clone properties from parsed into dest if the property in parsed does not
- * alrady exist in dest.
+ * already exist in dest.
  * @param parsed The parsed (source) route unit
  * @param dest The destination route unit
  * @returns The destination route unit
@@ -139,37 +139,37 @@ export const inheritParsedProperties = (
 };
 
 export function consumeParsedRoute(
-  pr: govn.ParsedRouteSupplier<govn.RouteUnit> | govn.UntypedFrontmatter,
-  rs: govn.Route | govn.RouteSupplier,
+  src: govn.ParsedRouteSupplier<govn.RouteUnit> | govn.UntypedFrontmatter,
+  dest: govn.Route | govn.RouteSupplier,
 ) {
-  const hierUnits = isRouteSupplier(rs) ? rs.route.units : rs.units;
-  if (typeof pr?.route === "object") {
-    const parsed = pr.route as unknown as govn.RouteUnit;
-    if (hierUnits.length > 0) {
-      const activeUnitIndex = hierUnits.length - 1;
-      const finalUnit = hierUnits[activeUnitIndex];
+  const destUnits = isRouteSupplier(dest) ? dest.route.units : dest.units;
+  if (typeof src?.route === "object") {
+    const parsed = src.route as unknown as govn.RouteUnit;
+    if (destUnits.length > 0) {
+      const activeUnitIndex = destUnits.length - 1;
+      const destUnit = destUnits[activeUnitIndex];
       if (parsed.unit) {
         // deno-lint-ignore no-explicit-any
-        (finalUnit.unit as any) = parsed.unit;
+        (destUnit.unit as any) = parsed.unit;
         if (activeUnitIndex > 0) {
-          const parentUnit = hierUnits[activeUnitIndex - 1];
+          const parentUnit = destUnits[activeUnitIndex - 1];
           // deno-lint-ignore no-explicit-any
-          (finalUnit.qualifiedPath as any) = parentUnit.qualifiedPath + "/" +
-            finalUnit.unit;
+          (destUnit.qualifiedPath as any) = parentUnit.qualifiedPath + "/" +
+            destUnit.unit;
         } else {
           // deno-lint-ignore no-explicit-any
-          (finalUnit.qualifiedPath as any) = "/" + finalUnit.unit;
+          (destUnit.qualifiedPath as any) = "/" + destUnit.unit;
         }
       }
-      const parsedUntyped = pr.route as Record<string, unknown>;
+      const parsedUntyped = src.route as Record<string, unknown>;
       if (parsedUntyped.alias || parsedUntyped.aliases) {
         // these are more convenient than using routeAliases.target
         const mergeAlias = (alias: Record<string, string>) => {
-          let aliases = finalUnit.aliases;
+          let aliases = destUnit.aliases;
           if (!aliases) {
             aliases = [];
             // deno-lint-ignore no-explicit-any
-            (finalUnit.aliases as any) = aliases;
+            (destUnit.aliases as any) = aliases;
           }
           if (typeof alias === "string") {
             aliases.push(alias);
@@ -200,11 +200,11 @@ export function consumeParsedRoute(
         }
       }
       // deno-lint-ignore no-explicit-any
-      if (parsed.label) (finalUnit.label as any) = parsed.label;
-      inheritParsedProperties(parsed, finalUnit, ["alias", "aliases"]);
+      if (parsed.label) (destUnit as any).label = parsed.label;
+      inheritParsedProperties(parsed, destUnit, ["alias", "aliases"]);
     }
   }
-  return pr;
+  return src;
 }
 
 export const emptyRoute: govn.Route = {
@@ -497,7 +497,7 @@ export class FileSysRouteFactory extends TypicalRouteFactory {
     if (fileSysPath == commonAncestor) {
       return {
         units: [],
-        consumeParsedRoute: (pr) => consumeParsedRoute(pr, result),
+        consumeParsedRoute: (pr) => pr,
         inRoute: (unit) => {
           return result.units.find((u) =>
             u.qualifiedPath == unit.qualifiedPath
