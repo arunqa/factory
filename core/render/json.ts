@@ -194,7 +194,7 @@ export function jsonProducer(
 //   constructor() {
 //   }
 
-//   frontmatterLayoutStrategy(
+//   inferredLayoutStrategy(
 //     _fms: Partial<govn.FrontmatterSupplier<govn.UntypedFrontmatter>>,
 //   ): govn.LayoutStrategySupplier<govn.JsonResource, govn.JsonTextSupplier> {
 //     return this.layoutStrategies.defaultLayoutStrategySupplier;

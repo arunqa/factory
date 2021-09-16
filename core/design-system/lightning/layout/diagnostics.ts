@@ -45,7 +45,7 @@ ${layout.contributions.scripts.prime`<script>function toggleDiagnostic(id) { con
 <div id="ldsDiagnostics" style="display:none">
   ${ldsResourceDiagnostics(body, layout)}
   <h1>Layout Strategy</h1>
-  <pre><code class="language-js">${c.escapeHTML(Deno.inspect(layout.supplier, { depth: undefined }).trimStart())}</code></pre>
+  <pre><code class="language-js">${c.escapeHTML(Deno.inspect(layout.layoutSS, { depth: undefined }).trimStart())}</code></pre>
   <h1>Layout Contributions</h1>
   <div id="diag_contributionsRenderJSON"></div>
   <table>

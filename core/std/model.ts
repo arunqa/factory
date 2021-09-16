@@ -2,7 +2,9 @@ import { safety } from "../deps.ts";
 import * as govn from "../../governance/mod.ts";
 import * as e from "./extension.ts";
 
-export const isModelSupplier = safety.typeGuard<govn.ModelSupplier<unknown>>(
+export const isModelSupplier = safety.typeGuard<
+  govn.ModelSupplier<govn.UntypedModel>
+>(
   "model",
 );
 

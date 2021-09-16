@@ -72,7 +72,7 @@ export interface HtmlLayout<
   HtmlLayoutArguments {
   readonly bodySource: HtmlLayoutBody;
   // deno-lint-ignore no-explicit-any
-  readonly supplier: HtmlLayoutStrategySupplier<any>;
+  readonly layoutSS: HtmlLayoutStrategySupplier<any>;
   readonly contributions: HtmlLayoutContributions;
   readonly layoutText: LayoutText;
 }

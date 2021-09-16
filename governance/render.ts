@@ -47,6 +47,12 @@ export interface FrontmatterLayoutStrategySupplier<Layout, LayoutResult>
   readonly frontmatterLayoutStrategyPropertyName: string;
 }
 
+export interface ModelLayoutStrategySupplier<Layout, LayoutResult>
+  extends InferredLayoutStrategySupplier<Layout, LayoutResult> {
+  readonly isModelLayoutStrategy: true;
+  readonly modelLayoutStrategyDiagnostic: string;
+}
+
 export interface ErrorLayoutStrategySupplier<Layout, LayoutResult>
   extends LayoutStrategySupplier<Layout, LayoutResult> {
   readonly isErrorLayoutStrategySupplier: true;

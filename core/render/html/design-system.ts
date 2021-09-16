@@ -99,14 +99,37 @@ export abstract class DesignSystem<
     }
   }
 
+  modelLayoutStrategy(diagnostic: string, strategyName?: unknown):
+    | govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier>
+    | undefined {
+    if (!strategyName) return undefined;
+    if (typeof strategyName === "string") {
+      const layoutStrategy = strategyName
+        ? this.layoutStrategies.layoutStrategy(strategyName)
+        : undefined;
+      if (layoutStrategy) {
+        const named:
+          & govn.NamedLayoutStrategySupplier<Layout, govn.HtmlSupplier>
+          & govn.ModelLayoutStrategySupplier<Layout, govn.HtmlSupplier> = {
+            layoutStrategy,
+            isNamedLayoutStrategyStrategySupplier: true,
+            isInferredLayoutStrategySupplier: true,
+            isModelLayoutStrategy: true,
+            layoutStrategyIdentity: strategyName,
+            modelLayoutStrategyDiagnostic: diagnostic,
+          };
+        return named;
+      }
+    }
+  }
+
   inferredLayoutStrategy(
     s: Partial<
-      govn.FrontmatterSupplier<
-        govn.UntypedFrontmatter
-      > | govn.ModelSupplier<govn.UntypedModel>
+      | govn.FrontmatterSupplier<govn.UntypedFrontmatter>
+      | govn.ModelSupplier<govn.UntypedModel>
     >,
   ): govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier> {
-    const sourceMap = `(${import.meta.url}::frontmatterLayoutStrategy)`;
+    const sourceMap = `(${import.meta.url}::inferredLayoutStrategy)`;
     if (fm.isFrontmatterSupplier(s) && s.frontmatter) {
       if ("layout" in s.frontmatter) {
         const name = typeof s.frontmatter.layout === "string"

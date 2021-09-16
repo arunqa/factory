@@ -371,7 +371,7 @@ const selectedRowHTML: lds.LightningLayoutBodySupplier = (layout) =>
 
 // deno-fmt-ignore
 const deeplyNestedHTML: lds.LightningLayoutBodySupplier = (layout) =>
-  `<pre>${Deno.inspect(layout.supplier.layoutStrategy)}</pre><table aria-multiselectable="true"
+  `<pre>${Deno.inspect(layout.layoutSS.layoutStrategy)}</pre><table aria-multiselectable="true"
 class="slds-table slds-table_bordered slds-table_edit slds-table_fixed-layout slds-table_resizable-cols slds-tree slds-table_tree"
 role="treegrid" aria-label="Example tree grid with deep nesting">
 <thead>

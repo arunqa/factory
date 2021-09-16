@@ -340,6 +340,40 @@ export const ldsInnerIndex = lightningTemplate("lds/page/inner-index")`<!DOCTYPE
 </html>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
+export const ldsInnerIndexAuto = lightningTemplate("lds/page/inner-index-auto")`<!DOCTYPE html>
+<html lang="en"> <!-- 'ldsInnerIndexAuto' layout in ${import.meta.url} -->
+  <head>
+    ${l.lightningHead}
+    ${(_, layout) => layout.contributions.scripts.contributions()}
+    ${(_, layout) => layout.contributions.stylesheets.contributions()}
+  </head>
+  <body${l.lightningBodyAttrs}>
+  ${l.ldsRedirectConsoleContainer}
+  ${l.ldsResourceDiagnostics}
+  <header>
+  ${ldsContextBar}
+  </header>
+  
+  <main class="container flex slds-m-vertical_small">
+  <div class="slds-grid slds-wrap">
+    <div class="slds-grid slds-grid_align-center slds-gutters_medium slds-var-m-around_medium">
+      <div>
+        ${ldsBreadcrumbs}
+        ${ldsPageHeading}
+        <div id="content" class="slds-m-top_x-large">
+        ${ldsContentTree} <!-- auto generated from local navigation -->
+        </div>
+        ${l.ldsLayoutDiagnostics}
+      </div>
+    </div>
+  </div>
+  </main>
+  ${l.lightningTail}
+  ${l.ldsRedirectConsole}
+  </body>
+</html>`;
+
+// deno-fmt-ignore (because we don't want ${...} wrapped)
 export const ldsNoDefinitiveLayoutPage = lightningTemplate("lds/page/no-layout")`<!DOCTYPE html>
 <html lang="en"> <!-- 'ldsNoDefinitiveLayoutPage' layout in ${import.meta.url} -->
   <head>
@@ -355,7 +389,7 @@ export const ldsNoDefinitiveLayoutPage = lightningTemplate("lds/page/no-layout")
     You did not choose a proper layout either programmtically or through frontmatter.
     ${l.ldsResourceDiagnostics}
     <h2>Layout Strategy</h2>
-    <pre><code class="language-js">${(_, layout) => c.escapeHTML(Deno.inspect(layout.supplier, { depth: undefined }).trimStart())}</code></pre>
+    <pre><code class="language-js">${(_, layout) => c.escapeHTML(Deno.inspect(layout.layoutSS, { depth: undefined }).trimStart())}</code></pre>
     ${l.lightningTail}
     ${l.ldsRedirectConsole}
   </body>
@@ -369,19 +403,21 @@ export const ldsPrime: html.HtmlLayoutStrategy<ldsGovn.LightningLayout> = {
   identity: "lds/page/prime",
 };
 
+const autoRegisterLayouts = [
+  ldsPrime,
+  ldsHome,
+  ldsInnerIndex,
+  ldsInnerIndexAuto,
+  ldsNoDecorationPage,
+  ldsNoDefinitiveLayoutPage,
+];
+
 export class LightingDesignSystemLayouts<
   Layout extends ldsGovn.LightningLayout,
 > extends html.DesignSystemLayouts<Layout> {
   constructor() {
     super({ layoutStrategy: ldsPrime });
-    this.layouts.set(ldsPrime.identity, ldsPrime);
-    this.layouts.set(ldsHome.identity, ldsHome);
-    this.layouts.set(ldsInnerIndex.identity, ldsInnerIndex);
-    this.layouts.set(ldsNoDecorationPage.identity, ldsNoDecorationPage);
-    this.layouts.set(
-      ldsNoDefinitiveLayoutPage.identity,
-      ldsNoDefinitiveLayoutPage,
-    );
+    autoRegisterLayouts.forEach((l) => this.layouts.set(l.identity, l));
   }
 }
 
@@ -478,14 +514,23 @@ export class LightingDesignSystemText implements ldsGovn.LightningLayoutText {
 }
 
 const defaultContentModel: () => govn.ContentModel = () => {
-  return { isContentModel: true, isContentAvailable: true };
+  return { isContentModel: true, isContentAvailable: false };
 };
 
 export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   extends html.DesignSystem<Layout, ldsGovn.LightningLayoutText> {
   readonly lightningAssetsBaseURL = "/lightning";
   readonly lightningAssetsPathUnits = ["lightning"];
-  constructor() {
+  constructor(
+    readonly emptyContentModelLayoutSS:
+      & govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier>
+      & govn.ModelLayoutStrategySupplier<Layout, govn.HtmlSupplier> = {
+        layoutStrategy: ldsInnerIndexAuto,
+        isInferredLayoutStrategySupplier: true,
+        isModelLayoutStrategy: true,
+        modelLayoutStrategyDiagnostic: "no content available",
+      },
+  ) {
     super("LightningDS", new LightingDesignSystemLayouts());
   }
 
@@ -546,10 +591,22 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
     };
   }
 
+  inferredLayoutStrategy(
+    s: Partial<
+      | govn.FrontmatterSupplier<govn.UntypedFrontmatter>
+      | govn.ModelSupplier<govn.UntypedModel>
+    >,
+  ): govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier> {
+    if (c.isContentModelSupplier(s) && !s.model.isContentAvailable) {
+      return this.emptyContentModelLayoutSS;
+    }
+    return super.inferredLayoutStrategy(s);
+  }
+
   layout(
     body: html.HtmlLayoutBody | (() => html.HtmlLayoutBody),
     layoutText: ldsGovn.LightningLayoutText,
-    supplier: html.HtmlLayoutStrategySupplier<Layout>,
+    layoutSS: html.HtmlLayoutStrategySupplier<Layout>,
     navigation: ldsGovn.LightningNavigation,
     assets: ldsGovn.AssetLocations,
     branding: ldsGovn.LightningBranding,
@@ -575,7 +632,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       bodySource,
       model,
       layoutText,
-      supplier,
+      layoutSS,
       navigation,
       assets,
       branding,
@@ -597,11 +654,12 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
     refine?: govn.ResourceRefinery<html.HtmlLayoutBody>,
   ): govn.ResourceRefinery<govn.HtmlSupplier> {
     return async (resource) => {
-      const lss = fm.isFrontmatterSupplier(resource)
-        ? this.inferredLayoutStrategy(resource)
-        : this.layoutStrategies.diagnosticLayoutStrategy(
-          "Frontmatter not supplied to LightingDesignSystem.renderPage",
-        );
+      const lss =
+        fm.isFrontmatterSupplier(resource) || m.isModelSupplier(resource)
+          ? this.inferredLayoutStrategy(resource)
+          : this.layoutStrategies.diagnosticLayoutStrategy(
+            "Neither frontmatter nor model supplied to LightingDesignSystem.pageRenderer",
+          );
       return await lss.layoutStrategy.rendered(this.layout(
         refine ? await refine(resource) : resource,
         layoutText,
@@ -621,11 +679,12 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
     refine?: govn.ResourceRefinerySync<html.HtmlLayoutBody>,
   ): govn.ResourceRefinerySync<govn.HtmlSupplier> {
     return (resource) => {
-      const lss = fm.isFrontmatterSupplier(resource)
-        ? this.inferredLayoutStrategy(resource)
-        : this.layoutStrategies.diagnosticLayoutStrategy(
-          "Frontmatter not supplied to LightingDesignSystem.renderPage",
-        );
+      const lss =
+        fm.isFrontmatterSupplier(resource) || m.isModelSupplier(resource)
+          ? this.inferredLayoutStrategy(resource)
+          : this.layoutStrategies.diagnosticLayoutStrategy(
+            "Neither frontmatter nor model supplied to LightingDesignSystem.pageRendererSync",
+          );
       return lss.layoutStrategy.renderedSync(this.layout(
         refine ? refine(resource) : resource,
         layoutText,
