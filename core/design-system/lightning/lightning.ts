@@ -250,7 +250,7 @@ export const ldsAutoIndexCardsBody: ldsGovn.LightningPartial = (_, layout) => {
   // deno-fmt-ignore (because we don't want ${...} wrapped)
   return contentTree
     ? `<div class="slds-grid slds-wrap slds-var-m-around_medium">        
-        ${contentTree.children.map(rtn => `
+        ${contentTree.children.filter(rtn => rtn !== layout.activeTreeNode).map(rtn => `
         <div class="slds-col slds-size_1-of-2 slds-order_2">
           ${renderedCard(layout, {
             icon: { collection: "utility", name: "assignment" },
@@ -268,7 +268,19 @@ ${layout?.activeRoute ?
 `<!-- Breadcrumbs Navigation (see https://www.lightningdesignsystem.com/components/breadcrumbs/) -->
 <nav role="navigation" aria-label="Breadcrumbs">
   <ol class="slds-breadcrumb slds-list_horizontal slds-wrap">
-    ${layout?.activeRoute?.units.map(r => {
+    ${layout?.activeTreeNode?.ancestors.reverse().map(r => {
+      return r.qualifiedPath == layout.activeTreeNode?.qualifiedPath ? '' : `<li class="slds-breadcrumb__item"><a href="${layout.navigation.location(r)}">${r.label}</a></li>`
+    }).join("\n")} 
+  </ol>
+</nav>`: '<!-- no breadcrumbs -->'}`
+
+// deno-fmt-ignore (because we don't want ${...} wrapped)
+export const ldsBreadcrumbsWithoutTerminal: ldsGovn.LightningPartial = (_, layout) => `
+${layout?.activeRoute ?
+`<!-- Breadcrumbs Navigation (see https://www.lightningdesignsystem.com/components/breadcrumbs/) -->
+<nav role="navigation" aria-label="Breadcrumbs">
+  <ol class="slds-breadcrumb slds-list_horizontal slds-wrap">
+    ${layout?.activeTreeNode?.ancestors.slice(1).reverse().map(r => {
       return r.qualifiedPath == layout.activeTreeNode?.qualifiedPath ? '' : `<li class="slds-breadcrumb__item"><a href="${layout.navigation.location(r)}">${r.label}</a></li>`
     }).join("\n")} 
   </ol>
@@ -413,7 +425,7 @@ export const ldsInnerIndexAutoPage = lightningTemplate("lds/page/inner-index-aut
   <div class="slds-grid slds-wrap">
     <div class="slds-grid slds-grid_align-center slds-gutters_medium slds-var-m-around_medium">
       <div>
-        ${ldsBreadcrumbs}
+        ${ldsBreadcrumbsWithoutTerminal}
         ${ldsPageHeading}
         <div id="content" class="slds-m-top_x-large">
         ${(body, layout) => layout.model.isContentAvailable ? l.lightningBody(body, layout) : ''}
