@@ -88,8 +88,10 @@ export interface AssetNameMetrics {
 }
 
 export function assetNameMetrics(): FileSystemAssetAnalyticsSupplier {
-  return async (asset, walker, ams) => {
+  return async (asset, _walker, ams) => {
     if (!asset.walkEntry.isFile) return;
+
+    // count the total for extension, without regard to path
     const assetExtn = path.extname(asset.walkEntry.name);
     const ea = ams.nameMetrics.extnAnalytics(assetExtn);
     const stat = await Deno.stat(asset.walkEntry.path);
@@ -110,7 +112,6 @@ export function assetNameMetrics(): FileSystemAssetAnalyticsSupplier {
         epa.totalBytes.value() + stat.size,
       );
       assetPath = path.dirname(assetPath);
-      if (walker.root == assetPath) break;
     }
   };
 }
