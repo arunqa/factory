@@ -8,6 +8,11 @@ hr {
     margin: 1rem 0;
 }
 
+footer {
+    background: #00396b;
+    color: #cae6f1;
+}
+
 /* SLDS */
 
 .slds-context-bar {
@@ -81,30 +86,6 @@ hr {
 
 .ico-footer-1 {
     width: 180px;
-} */
-
-/* .footer {
-    background: #00396b;
-    color: #cae6f1;
-}
-
-.footer-menu {
-    border-bottom: 1px solid #235c76;
-    padding-bottom: 10px;
-    margin-bottom: 10px;
-}
-
-.footer-menu ul {
-    display: block;
-}
-
-.footer-menu li {
-    display: inline-block;
-}
-
-.footer-menu li a {
-    padding: 0 15px;
-    color: #cae6f1;
 } */
 
 /* .breadcrumbs-wrap {

@@ -156,6 +156,18 @@ export const ldsContextBar: ldsGovn.LightningPartial = (_, layout) => {
   </div>` : '<!-- contextBar: No ctx, state, or route tree -->'}`
 };
 
+export const ldsFooterFixedCopyrightBuild: ldsGovn.LightningPartial = () => {
+  // we hide the footer using display:none and then stickyFooter() in lightning.js will display it in the proper place
+  return `<footer class="footer font-size-medium" style="position: absolute; bottom: 0; height: 60px; margin-top: 40px; width: 100%; display:none;">
+    <div class="slds-container_x-large slds-container_center slds-p-left_small slds-p-right_small">      
+      <article class="slds-text-align_center slds-p-top_small slds-p-bottom_large">
+        <p class="slds-text-body_small">© 1997-<script>document.write(new Date().getFullYear())</script> Netspective Media LLC. All Rights Reserved.</p>
+        <p class="slds-text-body_small">Built on ${new Date()}</p>        
+      </article>
+    </div>
+  </footer>`;
+};
+
 export function ldsRouteTree(
   node: govn.RouteTreeNode | undefined,
   layout: ldsGovn.LightningLayout,
@@ -341,6 +353,7 @@ export const ldsSmartNavigationPage = lightningTemplate("lds/page/default")`<!DO
   </div>
   </main>
   ${l.asideTOC}
+  ${ldsFooterFixedCopyrightBuild}
   ${l.lightningTail}
   ${l.ldsRedirectConsole}
   </body>
@@ -367,6 +380,8 @@ export const ldsHomePage = lightningTemplate("lds/page/home")`<!DOCTYPE html>
     </div>
     ${l.ldsLayoutDiagnostics}
   </main>
+
+  ${ldsFooterFixedCopyrightBuild}
   ${l.lightningTail}
   ${l.ldsRedirectConsole}
   </body>
@@ -401,6 +416,7 @@ export const ldsInnerIndexPage = lightningTemplate("lds/page/inner-index")`<!DOC
     </div>
   </div>
   </main>
+  ${ldsFooterFixedCopyrightBuild}
   ${l.lightningTail}
   ${l.ldsRedirectConsole}
   </body>
@@ -436,6 +452,7 @@ export const ldsInnerIndexAutoPage = lightningTemplate("lds/page/inner-index-aut
     </div>
   </div>
   </main>
+  ${ldsFooterFixedCopyrightBuild}
   ${l.lightningTail}
   ${l.ldsRedirectConsole}
   </body>
@@ -458,6 +475,7 @@ export const ldsNoDefinitiveLayoutPage = lightningTemplate("lds/page/no-layout")
     ${l.ldsResourceDiagnostics}
     <h2>Layout Strategy</h2>
     <pre><code class="language-js">${(_, layout) => c.escapeHTML(Deno.inspect(layout.layoutSS, { depth: undefined }).trimStart())}</code></pre>
+    ${ldsFooterFixedCopyrightBuild}
     ${l.lightningTail}
     ${l.ldsRedirectConsole}
   </body>
