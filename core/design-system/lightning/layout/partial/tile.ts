@@ -1,12 +1,10 @@
-// import * as ldsGovn from "../governance.ts";
-
 export interface LightningTile {
   readonly title: string;
   readonly href?: string;
 }
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const ldsTileArticle = (tile: LightningTile) => `
+export const renderedTile = (tile: LightningTile) => `
 <article class="slds-tile">
     <h2 class="slds-tile__title" title="${tile.title}"><a href="${tile.href}/">${tile.title}</a></h2>
     <div class="slds-tile__detail">

@@ -7,6 +7,7 @@
 
 ## TODOs
 
+- Refactor common non-LDS-specific partials into base Design System.
 - Integrate [UFO](https://github.com/unjs/ufo) _URL utils for humans_ into
   design system infrastructure so that client-side JS can utilize proper URL
   functionality.

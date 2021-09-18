@@ -121,7 +121,7 @@ class ChartJsContent extends Content {
           } else {
             console.error(
               'Error loading canvas.dataset.chartjsConfigUrl "' + configURL +
-              '": response.status = ',
+                '": response.status = ',
               response.status,
             );
           }
@@ -180,7 +180,7 @@ class EChartsContent extends Content {
               } else {
                 console.error(
                   'Error loading canvas.dataset.echartsConfigUrl "' +
-                  configURL + '": response.status = ',
+                    configURL + '": response.status = ',
                   response.status,
                 );
               }
@@ -188,7 +188,7 @@ class EChartsContent extends Content {
           ).catch((error) => {
             console.error(
               'Error loading canvas.dataset.echartsConfigUrl "' + configURL +
-              '": ',
+                '": ',
               error,
             );
           });
@@ -268,7 +268,7 @@ class AgGridContent extends Content {
               } else {
                 console.error(
                   'Error loading canvas.dataset.aggridConfigUrl "' + configURL +
-                  '": response.status = ',
+                    '": response.status = ',
                   response.status,
                 );
               }
@@ -276,7 +276,7 @@ class AgGridContent extends Content {
           ).catch((error) => {
             console.error(
               'Error loading canvas.dataset.aggridConfigUrl "' + configURL +
-              '": ',
+                '": ',
               error,
             );
           });
