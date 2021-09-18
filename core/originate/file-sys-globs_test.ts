@@ -4,6 +4,7 @@ import * as govn from "../../governance/mod.ts";
 import * as obs from "../../core/std/observability.ts";
 import * as e from "../../core/std/extension.ts";
 import * as r from "../../core/std/route.ts";
+import * as g from "../../core/std/git.ts";
 import * as mod from "./file-sys-globs.ts";
 
 const testPath = path.relative(
@@ -14,6 +15,7 @@ const contentPathRel = path.relative(
   Deno.cwd(),
   path.resolve(testPath, "../../docs/content"),
 );
+const contentPathGitWorktree = g.discoverGitWorkTree(contentPathRel);
 const observability = new obs.Observability(
   new govn.ObservabilityEventsEmitter(),
 );
@@ -28,6 +30,7 @@ const fsgo = new mod.FileSysGlobsOriginator<fs.WalkEntry>(
       humanFriendlyName: `test path ${contentPathRel}`,
       fileSysPath: contentPathRel,
       globs: [{ glob: testGlobPrime }],
+      fileSysGitPaths: contentPathGitWorktree,
     }],
     // deno-lint-ignore require-await
     factory: { construct: async (we) => we },
@@ -44,6 +47,16 @@ const fsgo = new mod.FileSysGlobsOriginator<fs.WalkEntry>(
 
 Deno.test(`FileSysGlobsOriginator for fs.WalkEntry (async) in ${contentPathRel}`, async () => {
   ta.assert(fs.existsSync(contentPathRel), `${contentPathRel} should exist`);
+
+  ta.assert(contentPathGitWorktree);
+  ta.assertEquals(
+    path.relative(testPath, contentPathGitWorktree.workTreePath),
+    "../..",
+  );
+  ta.assertEquals(
+    path.relative(testPath, contentPathGitWorktree.gitDir),
+    "../../.git",
+  );
 
   let expectedFiles = 0;
   let expectedDirs = 0;

@@ -113,10 +113,8 @@ export class DesignSystemLayouts<Layout extends html.HtmlLayout>
   }
 }
 
-export abstract class DesignSystem<
-  Layout extends html.HtmlLayout,
-  LayoutText extends html.HtmlLayoutText<Layout>,
-> implements govn.RenderStrategy<Layout, govn.HtmlSupplier> {
+export abstract class DesignSystem<Layout extends html.HtmlLayout>
+  implements govn.RenderStrategy<Layout, govn.HtmlSupplier> {
   constructor(
     readonly identity: govn.RenderStrategyIdentity,
     readonly layoutStrategies: DesignSystemLayouts<Layout>,
@@ -126,7 +124,6 @@ export abstract class DesignSystem<
   abstract symlinkAssets(destRootPath: string): Promise<void>;
   abstract layout(
     body: html.HtmlLayoutBody | (() => html.HtmlLayoutBody),
-    layoutText: LayoutText,
     supplier: html.HtmlLayoutStrategySupplier<Layout>,
     ...args: unknown[]
   ): Layout;

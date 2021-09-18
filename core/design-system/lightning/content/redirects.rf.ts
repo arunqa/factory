@@ -19,7 +19,7 @@ export function redirectResources(
           // deno-lint-ignore require-await
           resourceFactory: async () => {
             const redirectHTML: lds.LightningLayoutBodySupplier = (layout) => {
-              const targetURL = layout.navigation.redirectUrl(alias);
+              const targetURL = layout.dsArgs.navigation.redirectUrl(alias);
               return `<!DOCTYPE HTML>
               <html lang="en-US">
                   <head>

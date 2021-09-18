@@ -89,7 +89,7 @@ ${layout.contributions.scripts.prime`<script>function toggleDiagnostic(id) { con
       document.getElementById("diag_activeRouteTerminalRenderJSON").prepend(renderjson(${JSON.stringify(layout.activeRoute?.terminal, routeTreeJsonReplacer)}));
       document.getElementById("diag_activeRouteTreeNodeRenderJSON").prepend(renderjson(${JSON.stringify(layout.activeTreeNode, routeTreeJsonReplacer)}));
       document.getElementById("diag_activeRouteTreeNodeParentRenderJSON").prepend(renderjson(${JSON.stringify(layout.activeTreeNode?.parent, routeTreeJsonReplacer)}));
-      document.getElementById("diag_routeTreeRenderJSON").prepend(renderjson(${JSON.stringify(layout.navigation.routeTree, routeTreeJsonReplacer)}));
+      document.getElementById("diag_routeTreeRenderJSON").prepend(renderjson(${JSON.stringify(layout.dsArgs.navigation.routeTree, routeTreeJsonReplacer)}));
       document.getElementById("diag_bodySourceRenderJSON").prepend(renderjson(${JSON.stringify(layout.bodySource, routeJsonReplacer)}));
       document.getElementById("diag_contributionsRenderJSON").prepend(renderjson(${JSON.stringify(layout.contributions, escapeHtmlJsonReplacer)}));
     });

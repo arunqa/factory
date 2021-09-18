@@ -15,7 +15,7 @@ export function renderedIcon(
     ? "utility"
     : identity.collection;
   const name = typeof identity === "string" ? identity : identity.name;
-  const sprite = layout.assets.ldsIcons(
+  const sprite = layout.dsArgs.assets.ldsIcons(
     `/${collection}-sprite/svg/symbols.svg#${name}`,
   );
   // deno-fmt-ignore
@@ -30,7 +30,7 @@ export function renderedButtonIcon(
     ? "utility"
     : identity.collection;
   const name = typeof identity === "string" ? identity : identity.name;
-  const sprite = layout.assets.ldsIcons(
+  const sprite = layout.dsArgs.assets.ldsIcons(
     `/${collection}-sprite/svg/symbols.svg#${name}`,
   );
   // deno-fmt-ignore

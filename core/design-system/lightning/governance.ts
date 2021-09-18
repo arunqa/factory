@@ -105,14 +105,21 @@ export interface LightningLayoutText
   extends html.HtmlLayoutText<LightningLayout> {
 }
 
+export interface LightingDesignSystemArguments {
+  readonly git?: govn.GitExecutive;
+  readonly gitCache?: govn.GitExecutive;
+  readonly layoutText: LightningLayoutText;
+  readonly navigation: LightningNavigation;
+  readonly assets: AssetLocations;
+  readonly branding: LightningBranding;
+}
+
 export interface LightningLayout
   extends
     html.HtmlLayout<LightningLayoutText>,
     LightningNavigationContext,
     govn.ModelSupplier<govn.ContentModel> {
-  readonly assets: AssetLocations;
-  readonly navigation: LightningNavigation;
-  readonly branding: LightningBranding;
+  readonly dsArgs: LightingDesignSystemArguments;
 }
 
 // deno-lint-ignore no-empty-interface

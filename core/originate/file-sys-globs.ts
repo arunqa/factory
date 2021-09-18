@@ -33,6 +33,7 @@ export interface FileSysPath<Resource>
     Partial<r.FileSysRouteOptions> {
   readonly humanFriendlyName: string;
   readonly fileSysPath: FileSysPathText;
+  readonly fileSysGitPaths: false | govn.GitPathsSupplier;
   readonly globs: Iterable<FileSysPathGlob<Resource>>;
 }
 

@@ -100,6 +100,8 @@ export interface RouteNode extends RouteUnit {
     baseOrOptions?: RouteLocation | RouteLocationOptions,
   ) => RouteLocation;
   readonly inRoute: (route: Route) => boolean;
+  readonly lastModifiedAt?: Date;
+  readonly createdAt?: Date;
 }
 
 /**

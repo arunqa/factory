@@ -549,6 +549,8 @@ export class FileSysRouteFactory extends TypicalRouteFactory {
       isSymlink: stat.isSymlink,
       size: stat.size,
       isIntermediate: stat.isDirectory,
+      lastModifiedAt: stat.mtime || undefined,
+      createdAt: stat.birthtime || undefined,
       resolve: (relative) => resolveRouteUnit(relative, level, result),
       location: (baseOrOptions) => routeNodeLocation(routeUnit, baseOrOptions),
       inRoute: (route) => route.inRoute(routeUnit) ? true : false,

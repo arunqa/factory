@@ -119,7 +119,7 @@ const defaultContentModel: () => govn.ContentModel = () => {
 };
 
 export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
-  extends html.DesignSystem<Layout, ldsGovn.LightningLayoutText> {
+  extends html.DesignSystem<Layout> {
   readonly lightningAssetsBaseURL = "/lightning";
   readonly lightningAssetsPathUnits = ["lightning"];
   constructor(
@@ -206,11 +206,8 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
 
   layout(
     body: html.HtmlLayoutBody | (() => html.HtmlLayoutBody),
-    layoutText: ldsGovn.LightningLayoutText,
     layoutSS: html.HtmlLayoutStrategySupplier<Layout>,
-    navigation: ldsGovn.LightningNavigation,
-    assets: ldsGovn.AssetLocations,
-    branding: ldsGovn.LightningBranding,
+    dsArgs: ldsGovn.LightingDesignSystemArguments,
   ): Layout {
     const bodySource = typeof body === "function" ? body() : body;
     const frontmatter = fm.isFrontmatterSupplier(bodySource)
@@ -221,7 +218,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       ? bodySource.route
       : undefined;
     const activeTreeNode = activeRoute?.terminal
-      ? navigation.routeTree.node(activeRoute?.terminal.qualifiedPath)
+      ? dsArgs.navigation.routeTree.node(activeRoute?.terminal.qualifiedPath)
       : undefined;
     const model = c.contentModel(
       defaultContentModel,
@@ -230,13 +227,11 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       bodySource,
     );
     const result: ldsGovn.LightningLayout = {
+      dsArgs,
       bodySource,
       model,
-      layoutText,
+      layoutText: dsArgs.layoutText,
       layoutSS,
-      navigation,
-      assets,
-      branding,
       frontmatter,
       activeRoute,
       activeTreeNode,
@@ -248,10 +243,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   }
 
   pageRenderer(
-    layoutText: ldsGovn.LightningLayoutText,
-    navigation: ldsGovn.LightningNavigation,
-    assets: ldsGovn.AssetLocations,
-    branding: ldsGovn.LightningBranding,
+    dsArgs: ldsGovn.LightingDesignSystemArguments,
     refine?: govn.ResourceRefinery<html.HtmlLayoutBody>,
   ): govn.ResourceRefinery<govn.HtmlSupplier> {
     return async (resource) => {
@@ -263,20 +255,14 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
           );
       return await lss.layoutStrategy.rendered(this.layout(
         refine ? await refine(resource) : resource,
-        layoutText,
         lss,
-        navigation,
-        assets,
-        branding,
+        dsArgs,
       ));
     };
   }
 
   pageRendererSync(
-    layoutText: ldsGovn.LightningLayoutText,
-    navigation: ldsGovn.LightningNavigation,
-    assets: ldsGovn.AssetLocations,
-    branding: ldsGovn.LightningBranding,
+    dsArgs: ldsGovn.LightingDesignSystemArguments,
     refine?: govn.ResourceRefinerySync<html.HtmlLayoutBody>,
   ): govn.ResourceRefinerySync<govn.HtmlSupplier> {
     return (resource) => {
@@ -288,24 +274,18 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
           );
       return lss.layoutStrategy.renderedSync(this.layout(
         refine ? refine(resource) : resource,
-        layoutText,
         lss,
-        navigation,
-        assets,
-        branding,
+        dsArgs,
       ));
     };
   }
 
   prettyUrlsHtmlProducer(
     destRootPath: string,
-    layoutText: ldsGovn.LightningLayoutText,
-    navigation: ldsGovn.LightningNavigation,
-    assets: ldsGovn.AssetLocations,
-    branding: ldsGovn.LightningBranding,
+    dsArgs: ldsGovn.LightingDesignSystemArguments,
   ): govn.ResourceRefinery<govn.HtmlSupplier> {
     const producer = r.pipelineUnitsRefineryUntyped(
-      this.pageRenderer(layoutText, navigation, assets, branding),
+      this.pageRenderer(dsArgs),
       nature.htmlContentNature.persistFileSysRefinery(
         destRootPath,
         persist.routePersistPrettyUrlHtmlNamingStrategy((ru) =>

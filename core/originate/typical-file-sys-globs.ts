@@ -8,6 +8,7 @@ import * as html from "../resource/html.ts";
 import * as module from "../resource/module/module.ts";
 import * as jsonM from "../resource/module/json.ts";
 import * as mdDS from "../render/markdown/mod.ts";
+import * as g from "../std/git.ts";
 
 export function markdownFileSysGlob(
   mdrs: mdDS.MarkdownRenderStrategy,
@@ -37,6 +38,7 @@ export function markdownFileSysGlobs(
       humanFriendlyName: `Markdown Content (${originRootPath})`,
       fileSysPath: originRootPath,
       globs: [markdownFileSysGlob(mdrs)],
+      fileSysGitPaths: g.discoverGitWorkTree(originRootPath),
     }],
     fsRouteFactory,
   };
@@ -68,6 +70,7 @@ export function htmlFileSysGlobs(
       humanFriendlyName: `HTML Content (${originRootPath})`,
       fileSysPath: originRootPath,
       globs: [htmlFileSysGlob()],
+      fileSysGitPaths: g.discoverGitWorkTree(originRootPath),
     }],
     fsRouteFactory,
   };
@@ -111,6 +114,7 @@ export function moduleFileSysGlobs(
         // deno-lint-ignore no-explicit-any
         jsonModuleFileSysGlob() as fsg.FileSysPathGlob<any>,
       ],
+      fileSysGitPaths: g.discoverGitWorkTree(originRootPath),
     }],
     fsRouteFactory,
   };

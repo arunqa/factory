@@ -4,6 +4,7 @@ import * as e from "../core/std/extension.ts";
 import * as obs from "../core/std/observability.ts";
 import * as r from "../core/std/resource.ts";
 import * as n from "../core/std/nature.ts";
+import * as g from "../core/std/git.ts";
 import * as fm from "../core/std/frontmatter.ts";
 import * as m from "../core/std/model.ts";
 import * as route from "../core/std/route.ts";
@@ -29,6 +30,7 @@ export interface Preferences {
 
 export class Configuration implements Preferences {
   readonly telemetry: telem.Instrumentation = new telem.Telemetry();
+  readonly git?: govn.GitExecutive;
   readonly fsRouteFactory = new route.FileSysRouteFactory();
   readonly extensionsManager = new e.CachedExtensions();
   readonly observability: obs.Observability;
@@ -41,6 +43,8 @@ export class Configuration implements Preferences {
   readonly logger: log.Logger;
 
   constructor(prefs: Preferences) {
+    const gitPaths = g.discoverGitWorkTree(prefs.contentRootPath);
+    if (gitPaths) this.git = new g.TypicalGit(gitPaths);
     this.observability = new obs.Observability(
       new govn.ObservabilityEventsEmitter(),
     );
@@ -201,13 +205,16 @@ export class PublicationRoutes {
   }
 }
 
-export class PublicationDesignSystemArguments {
+export class PublicationDesignSystemArguments
+  implements lds.LightingDesignSystemArguments {
+  readonly git?: govn.GitExecutive;
   readonly layoutText: lds.LightingDesignSystemText;
   readonly navigation: lds.LightingDesignSystemNavigation;
   readonly assets: lds.AssetLocations;
   readonly branding: lds.LightningBranding;
 
   constructor(config: Configuration, routes: PublicationRoutes) {
+    this.git = config.git;
     this.layoutText = new lds.LightingDesignSystemText();
     this.navigation = new lds.LightingDesignSystemNavigation(
       true,
@@ -323,6 +330,9 @@ export class TypicalPublication implements Publication {
   }
 
   async produce() {
+    // setup the cache and any other git-specific initialization
+    if (this.ds.git instanceof g.TypicalGit) await this.ds.git.init();
+
     // deno-lint-ignore no-explicit-any
     const urWatcher = new r.UniversalRefineryEventEmitter<any>();
     // deno-lint-ignore require-await
@@ -359,10 +369,7 @@ export class TypicalPublication implements Publication {
         resourceRefinery: r.pipelineUnitsRefineryUntyped(
           this.config.lightningDS.prettyUrlsHtmlProducer(
             this.config.destRootPath,
-            this.ds.layoutText,
-            this.ds.navigation,
-            this.ds.assets,
-            this.ds.branding,
+            this.ds,
           ),
           jrs.jsonProducer(this.config.destRootPath, {
             routeTree: this.routes.resourcesTree,
