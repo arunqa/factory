@@ -1,10 +1,7 @@
 import * as ldsGovn from "../../governance.ts";
 import * as card from "./card.ts";
 
-export const autoIndexCardsBodyPartial: ldsGovn.LightningPartial = (
-  _,
-  layout,
-) => {
+export const autoIndexCardsBodyPartial: ldsGovn.LightningPartial = (layout) => {
   const contentTree = layout.navigation.contentTree(layout);
   // deno-fmt-ignore (because we don't want ${...} wrapped)
   return contentTree

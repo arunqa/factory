@@ -97,8 +97,8 @@ export interface HtmlTemplateExprBodyTextSupplier {
 
 export interface HtmlTemplateExprLayoutSupplier<Layout extends HtmlLayout> {
   (
-    body: string | undefined,
     layout: Layout,
+    body?: string,
   ): string | contrib.TextContributionsPlaceholder;
 }
 

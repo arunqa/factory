@@ -11,7 +11,7 @@ export function lightningTemplate(identity: string): ldsGovn.LightningTemplate {
 }
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const pageHeadingPartial: ldsGovn.LightningPartial = (_, layout) => `
+export const pageHeadingPartial: ldsGovn.LightningPartial = (layout) => `
 ${layout.activeTreeNode ? `<div class="schema-header">
   <h1 class="slds-text-heading_large">
     <strong>${layout.layoutText.title(layout)}</strong>
@@ -23,8 +23,8 @@ export const homePage = lightningTemplate("lds/page/home")`<!DOCTYPE html>
 <html lang="en"> <!-- 'ldsHomePage' layout in ${import.meta.url} -->
   <head>
     ${p.typicalHeadPartial}
-    ${(_, layout) => layout.contributions.scripts.contributions()}
-    ${(_, layout) => layout.contributions.stylesheets.contributions()}
+    ${(layout) => layout.contributions.scripts.contributions()}
+    ${(layout) => layout.contributions.stylesheets.contributions()}
   </head>
   <body${p.bodyAttrsPartial}>
   ${p.redirectConsoleContainerPartial}
@@ -51,8 +51,8 @@ export const innerIndexPage = lightningTemplate("lds/page/inner-index")`<!DOCTYP
 <html lang="en"> <!-- 'ldsInnerIndexPage' layout in ${import.meta.url} -->
   <head>
     ${p.typicalHeadPartial}
-    ${(_, layout) => layout.contributions.scripts.contributions()}
-    ${(_, layout) => layout.contributions.stylesheets.contributions()}
+    ${(layout) => layout.contributions.scripts.contributions()}
+    ${(layout) => layout.contributions.stylesheets.contributions()}
   </head>
   <body${p.bodyAttrsPartial}>
   ${p.redirectConsoleContainerPartial}
@@ -86,8 +86,8 @@ export const innerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto")
 <html lang="en"> <!-- 'ldsInnerIndexAutoPage' layout in ${import.meta.url} -->
   <head>
     ${p.typicalHeadPartial}
-    ${(_, layout) => layout.contributions.scripts.contributions()}
-    ${(_, layout) => layout.contributions.stylesheets.contributions()}
+    ${(layout) => layout.contributions.scripts.contributions()}
+    ${(layout) => layout.contributions.stylesheets.contributions()}
   </head>
   <body${p.bodyAttrsPartial}>
   ${p.redirectConsoleContainerPartial}
@@ -103,13 +103,13 @@ export const innerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto")
         ${p.breadcrumbsWithoutTerminalPartial}
         ${pageHeadingPartial}
         <div id="content" class="slds-m-top_x-large">
-        ${(body, layout) => layout.model.isContentAvailable ? p.typicalBodyPartial(body, layout) : ''}
+        ${(layout, body) => layout.model.isContentAvailable ? p.typicalBodyPartial(layout, body) : ''}
         ${p.autoIndexCardsBodyPartial}
         </div>
         ${p.layoutDiagnosticsPartial}
       </div>
     </div>
-  </div>
+  </div> 
   </main>
   ${p.footerFixedCopyrightBuildPartial}
   ${p.typicalTailPartial}
@@ -133,7 +133,7 @@ export const noDefinitiveLayoutPage = lightningTemplate("lds/page/no-layout")`<!
     You did not choose a proper layout either programmtically or through frontmatter.
     ${p.resourceDiagnosticsPartial}
     <h2>Layout Strategy</h2>
-    <pre><code class="language-js">${(_, layout) => c.escapeHTML(Deno.inspect(layout.layoutSS, { depth: undefined }).trimStart())}</code></pre>
+    <pre><code class="language-js">${(layout) => c.escapeHTML(Deno.inspect(layout.layoutSS, { depth: undefined }).trimStart())}</code></pre>
     ${p.footerFixedCopyrightBuildPartial}
     ${p.typicalTailPartial}
     ${p.redirectConsolePartial}

@@ -25,10 +25,10 @@ export function htmlLayoutTemplate<T, Layout extends hGovn.HtmlLayout>(
   identity: string,
 ): hGovn.TemplateLiteralHtmlLayout<T, Layout> {
   return (literals, ...suppliedExprs) => {
-    const interpolate: (
-      body: string | undefined,
-      layout: Layout,
-    ) => string = (body, layout) => {
+    const interpolate: (layout: Layout, body?: string) => string = (
+      layout,
+      body,
+    ) => {
       // evaluate expressions and look for contribution placeholders
       const placeholders: number[] = [];
       const expressions: unknown[] = [];
@@ -36,7 +36,7 @@ export function htmlLayoutTemplate<T, Layout extends hGovn.HtmlLayout>(
       for (let i = 0; i < suppliedExprs.length; i++) {
         const expr = suppliedExprs[i];
         if (typeof expr === "function") {
-          const exprValue = expr(body, layout);
+          const exprValue = expr(layout, body);
           if (contrib.isTextContributionsPlaceholder(exprValue)) {
             placeholders.push(exprIndex);
             expressions[exprIndex] = expr; // we're going to run the function later
@@ -51,8 +51,8 @@ export function htmlLayoutTemplate<T, Layout extends hGovn.HtmlLayout>(
       if (placeholders.length > 0) {
         for (const ph of placeholders) {
           const tcph = (expressions[ph] as hGovn.HtmlPartial<Layout>)(
-            body,
             layout as Layout,
+            body,
           );
           expressions[ph] = contrib.isTextContributionsPlaceholder(tcph)
             ? tcph.contributions.map((c) => c.content).join("\n")
@@ -71,7 +71,7 @@ export function htmlLayoutTemplate<T, Layout extends hGovn.HtmlLayout>(
     };
     const layoutStrategy: hGovn.HtmlLayoutStrategy<Layout> = {
       identity,
-      rendered: async (layout: Layout) => {
+      rendered: async (layout) => {
         const resource = layout.bodySource;
         const ftcOptions = { functionArgs: [layout] };
         const activeBody = c.isHtmlSupplier(resource)
@@ -79,9 +79,9 @@ export function htmlLayoutTemplate<T, Layout extends hGovn.HtmlLayout>(
           : (c.isFlexibleContentSupplier(resource)
             ? await c.flexibleTextCustom(bodyAsync(resource), ftcOptions)
             : undefined);
-        return { ...resource, html: interpolate(activeBody, layout) };
+        return { ...resource, html: interpolate(layout, activeBody) };
       },
-      renderedSync: (layout: Layout) => {
+      renderedSync: (layout) => {
         const resource = layout.bodySource;
         const ftcOptions = { functionArgs: [layout] };
         const activeBody = c.isHtmlSupplier(resource)
@@ -89,7 +89,7 @@ export function htmlLayoutTemplate<T, Layout extends hGovn.HtmlLayout>(
           : (c.isFlexibleContentSyncSupplier(resource)
             ? c.flexibleTextSyncCustom(bodySync(resource), ftcOptions)
             : undefined);
-        return { ...resource, html: interpolate(activeBody, layout) };
+        return { ...resource, html: interpolate(layout, activeBody) };
       },
     };
 

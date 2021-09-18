@@ -2,7 +2,7 @@ import * as govn from "../../../../../governance/mod.ts";
 import * as ldsGovn from "../../governance.ts";
 import * as icon from "./icon.ts";
 
-export const contextBarPartial: ldsGovn.LightningPartial = (_, layout) => {
+export const contextBarPartial: ldsGovn.LightningPartial = (layout) => {
   const cbs = layout.branding.contextBarSubject;
   const subject = typeof cbs === "function" ? cbs(layout, layout.assets) : cbs;
   let subjectLabel, subjectHref;
@@ -74,7 +74,7 @@ export function routeTreePartial(
   </ul>` : `<!-- node not provided -->`;
 }
 
-export const contentTreePartial: ldsGovn.LightningPartial = (_, layout) => {
+export const contentTreePartial: ldsGovn.LightningPartial = (layout) => {
   const contentTree = layout.navigation.contentTree(layout);
   // deno-fmt-ignore (because we don't want ${...} wrapped)
   return contentTree ? `<div class="slds-box slds-box_x-small slds-text-align_center slds-m-around_x-small">
@@ -89,10 +89,7 @@ export const contentTreePartial: ldsGovn.LightningPartial = (_, layout) => {
     </div>` : `<!-- no contentTree -->`
 };
 
-export const verticalNavigationPartial: ldsGovn.LightningPartial = (
-  _,
-  layout,
-) => {
+export const verticalNavigationPartial: ldsGovn.LightningPartial = (layout) => {
   const contentTree = layout.navigation.contentTree(layout);
   // deno-fmt-ignore (because we don't want ${...} wrapped)
   return contentTree ? `<nav class="slds-nav-vertical" aria-label="Sub page">
@@ -111,7 +108,6 @@ export const verticalNavigationPartial: ldsGovn.LightningPartial = (
 };
 
 export const verticalNavigationShadedPartial: ldsGovn.LightningPartial = (
-  _,
   layout,
 ) => {
   const contentTree = layout.navigation.contentTree(layout);
@@ -144,7 +140,7 @@ export const verticalNavigationShadedPartial: ldsGovn.LightningPartial = (
 };
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const breadcrumbsPartial: ldsGovn.LightningPartial = (_, layout) => `
+export const breadcrumbsPartial: ldsGovn.LightningPartial = (layout) => `
 ${layout?.activeRoute ?
 `<!-- Breadcrumbs Navigation (see https://www.lightningdesignsystem.com/components/breadcrumbs/) -->
 <nav role="navigation" aria-label="Breadcrumbs">
@@ -156,7 +152,7 @@ ${layout?.activeRoute ?
 </nav>`: '<!-- no breadcrumbs -->'}`
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const breadcrumbsWithoutTerminalPartial: ldsGovn.LightningPartial = (_, layout) => `
+export const breadcrumbsWithoutTerminalPartial: ldsGovn.LightningPartial = (layout) => `
 ${layout?.activeRoute ?
 `<!-- Breadcrumbs Navigation (see https://www.lightningdesignsystem.com/components/breadcrumbs/) -->
 <nav role="navigation" aria-label="Breadcrumbs">

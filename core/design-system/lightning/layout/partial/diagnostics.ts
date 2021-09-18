@@ -7,10 +7,7 @@ import * as ldsGovn from "../../governance.ts";
  * @param layout the active layout strategy execution instance
  * @returns HTML
  */
-export const resourceDiagnosticsPartial: ldsGovn.LightningPartial = (
-  _,
-  layout,
-) =>
+export const resourceDiagnosticsPartial: ldsGovn.LightningPartial = (layout) =>
   // deno-fmt-ignore (because we don't want ${...} wrapped)
   `${c.isDiagnosticsSupplier(layout?.bodySource)? `<h1>Resource Diagnostics</h1><pre>${layout.bodySource.diagnostics}</pre>`: ""}`;
 
@@ -37,7 +34,7 @@ const routeJsonReplacer = (key: string, value: unknown) =>
  * @returns diagnostics HTML
  */
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const layoutDiagnosticsPartial: ldsGovn.LightningPartial = (body, layout) => `${layout?.diagnostics ? `
+export const layoutDiagnosticsPartial: ldsGovn.LightningPartial = (layout, body) => `${layout?.diagnostics ? `
 ${layout.contributions.scripts.prime`<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/highlight.min.js"></script>`}
 ${layout.contributions.scripts.prime`<script src="https://cdn.rawgit.com/caldwell/renderjson/master/renderjson.js"></script>`}
 ${layout.contributions.stylesheets.prime`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/styles/default.min.css">`}
@@ -46,7 +43,7 @@ ${layout.contributions.scripts.prime`<script>function toggleDiagnostic(id) { con
   Lightning Design System (LDS) Diagnostics
 </button>
 <div id="ldsDiagnostics" style="display:none">
-  ${resourceDiagnosticsPartial(body, layout)}
+  ${resourceDiagnosticsPartial(layout, body)}
   <h1>Layout Strategy</h1>
   <pre><code class="language-js">${c.escapeHTML(Deno.inspect(layout.layoutSS, { depth: undefined }).trimStart())}</code></pre>
   <h1>Layout Contributions</h1>

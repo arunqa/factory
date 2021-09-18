@@ -6,8 +6,8 @@ export const smartNavigationPage = t.lightningTemplate("lds/page/default")`<!DOC
 <html lang="en"> <!-- 'ldsSmartNavigationPage' layout in ${import.meta.url} -->
   <head>
     ${p.typicalHeadPartial}
-    ${(_, layout) => layout.contributions.scripts.contributions()}
-    ${(_, layout) => layout.contributions.stylesheets.contributions()}
+    ${(layout) => layout.contributions.scripts.contributions()}
+    ${(layout) => layout.contributions.stylesheets.contributions()}
   </head>
   <body${p.bodyAttrsPartial}>
   ${p.redirectConsoleContainerPartial}

@@ -1,7 +1,7 @@
 import * as ldsGovn from "../../governance.ts";
 import * as dia from "./diagrams.ts";
 
-export const typicalBodyPartial: ldsGovn.LightningPartial = (body) =>
+export const typicalBodyPartial: ldsGovn.LightningPartial = (_, body) =>
   body || "<!-- no lightningBody -->";
 
 // hide properties that could have circular references which will break JSON.stringify()
@@ -13,7 +13,7 @@ const routeJsonReplacer = (key: string, value: unknown) =>
     ? "(ignored)"
     : value;
 
-export const clientCargoPartial: ldsGovn.LightningPartial = (_, layout) => {
+export const clientCargoPartial: ldsGovn.LightningPartial = (layout) => {
   // deno-fmt-ignore (because we don't want ${...} wrapped)
   return `<script>
     "use strict";
@@ -40,11 +40,11 @@ export const clientCargoPartial: ldsGovn.LightningPartial = (_, layout) => {
     </script>`;
 };
 
-export const bodyAttrsPartial: ldsGovn.LightningPartial = (_, layout) =>
+export const bodyAttrsPartial: ldsGovn.LightningPartial = (layout) =>
   ` onload="if (typeof lightningActivatePage == 'function') { lightningActivatePage(${layout.clientCargoPropertyName}, lightningActivateAllPageItems); } else { console.warn('lightningActivatePage(cargo) not available'); }"`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const typicalHeadPartial: ldsGovn.LightningPartial = (_, layout) => `
+export const typicalHeadPartial: ldsGovn.LightningPartial = (layout) => `
 <meta charset="utf-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -56,21 +56,21 @@ export const typicalHeadPartial: ldsGovn.LightningPartial = (_, layout) => `
      and dependency manager. You should use this instead of <script> tags.
      TODO: consider https://addyosmani.com/basket.js/ as well -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
-${dia.mermaidDiagramsPartial(_, layout)}
-${clientCargoPartial(_, layout)} 
+${dia.mermaidDiagramsPartial(layout)}
+${clientCargoPartial(layout)} 
 <link rel="shortcut icon" href="${layout.assets.favIcon("/favicon.ico")}"/>
 <title>${layout.layoutText.title(layout)}</title>
 `;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const typicalTailPartial: ldsGovn.LightningPartial = (_, layout) => `
+export const typicalTailPartial: ldsGovn.LightningPartial = (layout) => `
 <script src="${layout.assets.dsScript("/content.js")}"></script>
 <script src="${layout.assets.dsScript("/lightning.js")}"></script>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const redirectConsoleContainerPartial: ldsGovn.LightningPartial = (_, layout) => layout.redirectConsoleToHTML ? `
+export const redirectConsoleContainerPartial: ldsGovn.LightningPartial = (layout) => layout.redirectConsoleToHTML ? `
 <ul id="container_ldsRedirectConsole"></ul>` : `<!-- layout.redirectConsoleToHTML is false -->`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const redirectConsolePartial: ldsGovn.LightningPartial = (_, layout) => layout.redirectConsoleToHTML ? `
+export const redirectConsolePartial: ldsGovn.LightningPartial = (layout) => layout.redirectConsoleToHTML ? `
 <script>lightningRedirectConsole()</script>` : `<!-- layout.redirectConsoleToHTML is false -->`;

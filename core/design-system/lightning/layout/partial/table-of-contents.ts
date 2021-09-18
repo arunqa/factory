@@ -1,7 +1,7 @@
 import * as ldsGovn from "../../governance.ts";
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const asideTocPartial: ldsGovn.LightningPartial = (_, layout) => `
+export const asideTocPartial: ldsGovn.LightningPartial = (layout) => `
 ${layout.contributions.scripts.prime`<script src="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.12.0/tocbot.min.js"></script>`}
 ${layout.contributions.stylesheets.prime`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.12.0/tocbot.css">`}
 <script>
@@ -14,7 +14,7 @@ tocbot.init({
 </script>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const asideTocIfRequestedPartial: ldsGovn.LightningPartial = (_, layout) => `${layout?.frontmatter?.asideTOC ? `
+export const asideTocIfRequestedPartial: ldsGovn.LightningPartial = (layout) => `${layout?.frontmatter?.asideTOC ? `
 ${layout.contributions.scripts.prime`<script src="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.12.0/tocbot.min.js"></script>`}
 ${layout.contributions.stylesheets.prime`<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tocbot/4.12.0/tocbot.css">`}
 <script>

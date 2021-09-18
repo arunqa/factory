@@ -18,7 +18,7 @@ const isMermaidDiagrams = (diagrams: unknown) => {
  * @returns diagrams scripts for <head> component
  */
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const mermaidDiagramsPartial: ldsGovn.LightningPartial = (_, layout) => 
+export const mermaidDiagramsPartial: ldsGovn.LightningPartial = (layout) => 
 (layout?.frontmatter?.diagrams && isMermaidDiagrams(layout.frontmatter.diagrams)) 
   ? `<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>\n<script>mermaid.initialize({startOnLoad:true});</script>`
   : '<!-- layout.frontmatter.diagrams is false -->';
