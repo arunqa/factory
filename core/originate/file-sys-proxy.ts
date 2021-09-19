@@ -101,6 +101,51 @@ export function fileSysResourceAgeProxyStrategy(
   };
 }
 
+export interface FileSysResourceAgeOrEnvVarProxyOptions {
+  readonly maxAgeInMS: number;
+  readonly identity: string;
+  readonly envVarNameMutator?: (suggested: string) => string;
+  readonly report?: (message: string) => void;
+}
+
+export function fileSysResourceAgeOrEnvVarProxyStrategy(
+  options: FileSysResourceAgeOrEnvVarProxyOptions,
+  ...envVarNames: string[]
+): FileSysResourceProxyStrategy {
+  const { maxAgeInMS, identity, envVarNameMutator, report } = options;
+  if (envVarNames && envVarNames.length > 0) {
+    for (const varName of envVarNames) {
+      const envVarName = envVarNameMutator
+        ? envVarNameMutator(varName)
+        : varName;
+      const envVarValue = Deno.env.get(envVarName);
+      if (typeof envVarValue === "string") {
+        const envVarMaxAgeInMS = Number.parseInt(envVarValue);
+        if (identity) {
+          if (envVarMaxAgeInMS) {
+            if (report) {
+              report(
+                `Proxying ${identity} using age ${envVarMaxAgeInMS} ms using ${envVarName} = ${envVarMaxAgeInMS}`,
+              );
+            }
+            return fileSysResourceAgeProxyStrategy(
+              Number.parseInt(envVarValue),
+            );
+          } else {
+            if (report) {
+              report(
+                `Proxies for ${identity} disabled using ${envVarName} = ${envVarMaxAgeInMS}`,
+              );
+            }
+            return fileSysResourceNeverProxyStrategy;
+          }
+        }
+      }
+    }
+  }
+  return fileSysResourceAgeProxyStrategy(maxAgeInMS);
+}
+
 export abstract class ProxyableFileSysResource<Resource, OriginContext>
   implements govn.ResourceFactorySupplier<Resource> {
   constructor(
