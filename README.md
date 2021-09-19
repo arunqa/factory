@@ -127,6 +127,9 @@ pages to adhere to a design system, not optimize for making local changes.
 - Use [deno-ci](https://github.com/justjavac/deno-ci) to store traceability data
   in observability diagnostics to indicate whether build was done in CI/CD
   environment.
+- Incorporate [polyglot-tag](https://github.com/rpaterson/polyglot-tag) approach
+  in renderers and design systems (e.g. partials, pages, etc.) so that arbitrary
+  languages can be called and assembled.
 - Incorporate [Design decisions](https://prpl.dev/design-decisions) into docs.
 - How can web workers improve rendering performance?
 - Use
