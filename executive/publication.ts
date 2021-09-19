@@ -106,6 +106,29 @@ export class ResourcesTree extends rtree.TypicalRouteTree {
 export class NavigationTree extends rtree.TypicalRouteTree {
 }
 
+export class PublicationIndexes {
+  readonly todosIndex = new m.ModelSuppliersIndex<
+    ldsDirec.ToDosDirectiveStateSupplier
+  >((r) => r.model.contentTODOs && r.model.contentTODOs.length > 0);
+
+  constructor() {
+  }
+
+  /**
+   * Supply a refinery which will observe each resource and index the content.
+   * @returns resource refinery
+   */
+  resourcesIndexer(): govn.ResourceRefinery<
+    govn.RouteSupplier<govn.RouteNode>
+  > {
+    // deno-lint-ignore require-await
+    return async (resource) => {
+      this.todosIndex.index(resource);
+      return resource;
+    };
+  }
+}
+
 export class PublicationRoutes {
   constructor(
     readonly routeFactory: govn.RouteFactory,
@@ -160,8 +183,20 @@ export class PublicationRoutes {
    * resourcesTree but not make any business logic or presentation logic
    * decisions. Presentation and business logic associated with routes should be
    * handled by prepareNavigationTree().
-   * @returns
+   * @returns resource refinery (sync)
    */
+  resourcesTreePopulator(): govn.ResourceRefinery<
+    govn.RouteSupplier<govn.RouteNode>
+  > {
+    // deno-lint-ignore require-await
+    return async (resource) => {
+      if (route.isRouteSupplier(resource)) {
+        this.consumeResourceRoute(resource);
+      }
+      return resource;
+    };
+  }
+
   resourcesTreePopulatorSync(): govn.ResourceRefinerySync<
     govn.RouteSupplier<govn.RouteNode>
   > {
@@ -234,6 +269,7 @@ export class TypicalPublication implements Publication {
   constructor(
     readonly config: Configuration,
     readonly routes = new PublicationRoutes(config.fsRouteFactory),
+    readonly indexes = new PublicationIndexes(),
     readonly ds = new PublicationDesignSystemArguments(config, routes),
   ) {
   }
@@ -353,7 +389,10 @@ export class TypicalPublication implements Publication {
         // sitemap. After all the routes are captured during resource
         // construction, then urWatcher.on("beforeProduce", ...) will be run to
         // prepare the UX navigation tree.
-        resourceRefinerySync: this.routes.resourcesTreePopulatorSync(),
+        resourceRefinery: r.pipelineUnitsRefineryUntyped(
+          this.indexes.resourcesIndexer(),
+          this.routes.resourcesTreePopulator(),
+        ),
       },
 
       // These factories run during after initial construction of each resource

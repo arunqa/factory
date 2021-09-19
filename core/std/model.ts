@@ -9,6 +9,21 @@ export const isModelSupplier = safety.typeGuard<
 );
 
 /**
+ * See if an object is a model supplier of the given shape
+ * @param o potential model supplier
+ * @param guard the expected shape of the model
+ * @returns true if o is a model supplier and o.model is of type guard
+ */
+export function isModelShapeSupplier<Model>(
+  o: unknown,
+  guard: (o: unknown) => o is Model,
+): o is govn.ModelSupplier<Model> {
+  if (isModelSupplier(o) && guard(o.model)) {
+    return true;
+  }
+  return false;
+}
+/**
  * Find the first model supplier in a list of model suppliers
  * @param o List of objects which might be potential model suppliers
  * @returns Either the first model supplier or undefined if none found
@@ -242,3 +257,75 @@ export const mutateModelProperties = <
   }
   return dest;
 };
+
+export interface ModelSuppliersIndexFilterCache<Model>
+  extends govn.ResourcesIndexFilterCache {
+  readonly filtered: govn.ModelSupplier<Model>[];
+}
+
+export class ModelSuppliersIndex<Model>
+  implements govn.ResourcesIndexStrategy<govn.ModelSupplier<Model>, void> {
+  readonly modelSuppliers: govn.ModelSupplier<Model>[] = [];
+  readonly cachedFilter = new Map<
+    govn.ResourcesIndexFilterCacheKey,
+    ModelSuppliersIndexFilterCache<Model>
+  >();
+
+  constructor(readonly isIndexable: (r: govn.ModelSupplier<Model>) => boolean) {
+  }
+
+  guard(r: unknown): r is govn.ModelSupplier<Model> {
+    return isModelSupplier(r);
+  }
+
+  async *resources(): AsyncGenerator<govn.ModelSupplier<Model>> {
+    for (const ms of this.modelSuppliers) yield ms;
+  }
+
+  // deno-lint-ignore require-await
+  async index(r: govn.ModelSupplier<Model> | unknown): Promise<void> {
+    if (this.guard(r) && this.isIndexable(r)) {
+      this.modelSuppliers.push(r);
+    }
+  }
+
+  async *filter(
+    predicate: govn.ResourcesIndexFilterPredicate<govn.ModelSupplier<Model>>,
+    options?: govn.ResourcesIndexFilterOptions,
+  ): AsyncGenerator<govn.ModelSupplier<Model>> {
+    let filtered: govn.ModelSupplier<Model>[] | undefined = undefined;
+    if (options?.cacheKey) {
+      const cached = this.cachedFilter.get(options?.cacheKey);
+      if (cached) {
+        if (options?.cacheExpired) {
+          if (!options?.cacheExpired(cached)) filtered = cached.filtered;
+        } else {
+          filtered = cached.filtered;
+        }
+      }
+    }
+    if (!filtered) {
+      const total = this.modelSuppliers.length;
+      const lastIndex = this.modelSuppliers.length - 1;
+      filtered = this.modelSuppliers.filter((r, index) =>
+        predicate(r, index, {
+          total,
+          isFirst: index === 0,
+          isLast: index === lastIndex,
+        })
+      );
+    }
+    if (filtered) {
+      for (const ms of filtered) {
+        yield ms;
+      }
+    }
+    if (options?.cacheKey) {
+      this.cachedFilter.set(options?.cacheKey, {
+        cacheKey: options?.cacheKey,
+        cachedAt: new Date(),
+        filtered,
+      });
+    }
+  }
+}

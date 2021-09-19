@@ -62,3 +62,38 @@ export interface ProxiedResourceNotAvailable extends ProxiedResource {
   readonly proxyNotAvailable: boolean;
   readonly proxyOriginError?: Error;
 }
+
+export type ResourcesIndexFilterCacheKey = string;
+
+export interface ResourcesIndexFilterPredicate<Resource> {
+  (r: Resource, index?: number, options?: {
+    total?: number;
+    isFirst?: boolean;
+    isLast?: boolean;
+  }): boolean;
+}
+
+export interface ResourcesIndexFilterCache {
+  readonly cacheKey: ResourcesIndexFilterCacheKey;
+  readonly cachedAt: Date;
+}
+
+export interface ResourcesIndexFilterOptions {
+  readonly cacheKey?: ResourcesIndexFilterCacheKey;
+  readonly constructCache?: (
+    suggested: ResourcesIndexFilterCache,
+  ) => ResourcesIndexFilterCache;
+  readonly cacheExpired?: (
+    cache: ResourcesIndexFilterCache,
+  ) => boolean;
+}
+
+export interface ResourcesIndexStrategy<Resource, IndexResult>
+  extends ResourcesSupplier<Resource> {
+  readonly guard: (r: unknown) => r is Resource;
+  readonly index: (r: Resource | unknown) => Promise<IndexResult>;
+  readonly filter: (
+    predicate: ResourcesIndexFilterPredicate<Resource>,
+    options?: ResourcesIndexFilterOptions,
+  ) => AsyncGenerator<Resource>;
+}
