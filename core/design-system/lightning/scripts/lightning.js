@@ -240,6 +240,15 @@ const lightningActivatePage = (
     KrokiContent.populateAll("pre.kroki-diagram[id]");
   }
 
+  stickyFooter();
+
+  if (MutationObserver) {
+    observer.observe(target, config);
+  } else {
+    //old IE
+    setInterval(stickyFooter, 500);
+  }
+
   if (typeof cargo?.finalize === "function") {
     // TODO: pass anything else constructed that cargo might find help
     cargo.finalize(cargo);
@@ -260,17 +269,6 @@ const MutationObserver = (function () {
   }
   return false;
 }());
-
-window.onload = function () {
-  stickyFooter();
-
-  if (MutationObserver) {
-    observer.observe(target, config);
-  } else {
-    //old IE
-    setInterval(stickyFooter, 500);
-  }
-};
 
 //check for changes to the DOM
 const target = document.body;
