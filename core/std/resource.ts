@@ -213,7 +213,7 @@ export class UniversalRefineryEventEmitter<Resource>
       parent?: Resource,
     ): Promise<void>;
     beforeProduce(
-      resources: Iterable<Resource>,
+      index: UniversalResourcesIndex<Resource>,
       ur: UniversalRefinery<Resource>,
     ): Promise<void>;
   }> {}
@@ -228,6 +228,7 @@ export interface UniversalRefineryOptions<Resource>
   readonly eventEmitter?: (
     fsrfs: UniversalRefinery<Resource>,
   ) => UniversalRefineryEventEmitter<Resource>;
+  readonly index?: UniversalResourcesIndex<Resource>;
 }
 
 export async function* refine<Resource>(
@@ -271,12 +272,15 @@ export class UniversalRefinery<Resource>
     govn.ResourcesSupplier<Resource>,
     govn.ObservabilityHealthComponentStatus,
     govn.NamespacesSupplier {
+  readonly resourcesIndex: UniversalResourcesIndex<Resource>;
   readonly namespaceURIs = ["UniversalRefinery<Resource>"];
   readonly ee?: UniversalRefineryEventEmitter<Resource>;
   constructor(
     readonly originators: Iterable<govn.ResourcesFactoriesSupplier<Resource>>,
     readonly options?: UniversalRefineryOptions<Resource>,
   ) {
+    this.resourcesIndex = options?.index ||
+      new UniversalResourcesIndex<Resource>();
     if (options?.eventEmitter) {
       this.ee = options?.eventEmitter(this);
     }
@@ -306,19 +310,20 @@ export class UniversalRefinery<Resource>
   async *products() {
     const refineries = this.options?.produce;
     if (refineries) {
-      const resources: Resource[] = [];
       for await (const resource of this.resources()) {
-        resources.push(resource);
+        this.resourcesIndex.index(resource);
       }
-      if (this.ee) await this.ee.emit("beforeProduce", resources, this);
+      if (this.ee) {
+        await this.ee.emit("beforeProduce", this.resourcesIndex, this);
+      }
       if (this.options?.preProductionOriginators) {
         for await (const ppo of this.options?.preProductionOriginators) {
           for await (const resource of refine(ppo, this.options, this.ee)) {
-            resources.push(resource);
+            this.resourcesIndex.index(resource);
           }
         }
       }
-      for (const constructed of resources) {
+      for (const constructed of this.resourcesIndex.resources()) {
         if (refineries.resourceRefinery) {
           yield await refineries.resourceRefinery(constructed);
         } else if (refineries.resourceRefinerySync) {
@@ -326,5 +331,92 @@ export class UniversalRefinery<Resource>
         }
       }
     }
+  }
+}
+
+export function isIndexableResourceIfNotNull<Resource>(
+  o: unknown,
+): o is Resource {
+  if (o) return true;
+  return false;
+}
+
+export interface UniversalResourcesIndexFilterCache<Resource>
+  extends govn.ResourcesIndexFilterCache {
+  readonly filtered: Resource[];
+}
+
+export class UniversalResourcesIndex<Resource>
+  implements govn.ResourcesIndexStrategy<Resource, void> {
+  readonly isIndexable: safety.TypeGuard<Resource>;
+  readonly resourcesIndex: Resource[] = [];
+  readonly cachedFilter = new Map<
+    govn.ResourcesIndexFilterCacheKey,
+    UniversalResourcesIndexFilterCache<Resource>
+  >();
+
+  constructor(isIndexable?: safety.TypeGuard<Resource>) {
+    this.isIndexable = isIndexable || isIndexableResourceIfNotNull;
+  }
+
+  resources(): Iterable<Resource> {
+    return this.resourcesIndex;
+  }
+
+  // deno-lint-ignore require-await
+  async index(r: Resource | unknown): Promise<void> {
+    if (this.isIndexable(r)) {
+      this.resourcesIndex.push(r);
+    }
+  }
+
+  indexSync(r: Resource | unknown): void {
+    if (this.isIndexable(r)) {
+      this.resourcesIndex.push(r);
+    }
+  }
+
+  // deno-lint-ignore require-await
+  async filter(
+    predicate: govn.ResourcesIndexFilterPredicate<Resource>,
+    options?: govn.ResourcesIndexFilterOptions,
+  ): Promise<Iterable<Resource>> {
+    return this.filterSync(predicate, options);
+  }
+
+  filterSync(
+    predicate: govn.ResourcesIndexFilterPredicate<Resource>,
+    options?: govn.ResourcesIndexFilterOptions,
+  ): Iterable<Resource> {
+    let filtered: Resource[] | undefined = undefined;
+    if (options?.cacheKey) {
+      const cached = this.cachedFilter.get(options?.cacheKey);
+      if (cached) {
+        if (options?.cacheExpired) {
+          if (!options?.cacheExpired(cached)) filtered = cached.filtered;
+        } else {
+          filtered = cached.filtered;
+        }
+      }
+    }
+    if (!filtered) {
+      const total = this.resourcesIndex.length;
+      const lastIndex = this.resourcesIndex.length - 1;
+      filtered = this.resourcesIndex.filter((r, index) =>
+        predicate(r, index, {
+          total,
+          isFirst: index === 0,
+          isLast: index === lastIndex,
+        })
+      );
+    }
+    if (options?.cacheKey) {
+      this.cachedFilter.set(options?.cacheKey, {
+        cacheKey: options?.cacheKey,
+        cachedAt: new Date(),
+        filtered,
+      });
+    }
+    return filtered;
   }
 }

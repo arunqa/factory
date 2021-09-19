@@ -88,12 +88,16 @@ export interface ResourcesIndexFilterOptions {
   ) => boolean;
 }
 
-export interface ResourcesIndexStrategy<Resource, IndexResult>
-  extends ResourcesSupplier<Resource> {
-  readonly guard: (r: unknown) => r is Resource;
-  readonly index: (r: Resource | unknown) => Promise<IndexResult>;
+export interface ResourcesIndexStrategy<Resource, IndexResult> {
+  readonly index: (r: Resource) => Promise<IndexResult>;
+  readonly indexSync: (r: Resource) => IndexResult;
+  readonly resources: () => Iterable<Resource>;
   readonly filter: (
     predicate: ResourcesIndexFilterPredicate<Resource>,
     options?: ResourcesIndexFilterOptions,
-  ) => AsyncGenerator<Resource>;
+  ) => Promise<Iterable<Resource>>;
+  readonly filterSync: (
+    predicate: ResourcesIndexFilterPredicate<Resource>,
+    options?: ResourcesIndexFilterOptions,
+  ) => Iterable<Resource>;
 }

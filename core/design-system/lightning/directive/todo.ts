@@ -21,6 +21,15 @@ export const isToDosDirectiveStateSupplier = safety.typeGuard<
   ToDosDirectiveStateSupplier
 >("contentTODOs");
 
+export function isContentTODOsModelSupplier(
+  o: unknown,
+): o is govn.ModelSupplier<ToDosDirectiveStateSupplier> {
+  if (m.isModelShapeSupplier(o, isToDosDirectiveStateSupplier)) {
+    return o.model.contentTODOs && o.model.contentTODOs.length > 0;
+  }
+  return false;
+}
+
 export class ToDoDirectiveNotification
   implements lds.LightningNavigationNotification {
   readonly assistiveText = "TODOs";
@@ -54,9 +63,9 @@ export class ToDoDirective implements
         } else {
           // this is the first TODO so let's create the array and track as Model
           resource.model.contentTODOs = [todo];
-          if (!isToDosDirectiveStateSupplier(resource.model)) {
+          if (!isContentTODOsModelSupplier(resource)) {
             diagnostic =
-              `<br><mark>isToDosDirectiveStateSupplier(resource.model) is false for some reason</mark>`;
+              `<br><mark>isContentTODOsModelSupplier(resource.model) is false for some reason</mark>`;
             return;
           }
           if (r.isRouteSupplier(resource)) {

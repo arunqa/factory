@@ -106,27 +106,13 @@ export class ResourcesTree extends rtree.TypicalRouteTree {
 export class NavigationTree extends rtree.TypicalRouteTree {
 }
 
-export class PublicationIndexes {
-  readonly todosIndex = new m.ModelSuppliersIndex<
-    ldsDirec.ToDosDirectiveStateSupplier
-  >((r) => r.model.contentTODOs && r.model.contentTODOs.length > 0);
-
-  constructor() {
+export function isContentTODOsSupplier(o: unknown): o is govn.ModelSupplier<
+  ldsDirec.ToDosDirectiveStateSupplier
+> {
+  if (m.isModelShapeSupplier(o, ldsDirec.isToDosDirectiveStateSupplier)) {
+    return o.model.contentTODOs && o.model.contentTODOs.length > 0;
   }
-
-  /**
-   * Supply a refinery which will observe each resource and index the content.
-   * @returns resource refinery
-   */
-  resourcesIndexer(): govn.ResourceRefinery<
-    govn.RouteSupplier<govn.RouteNode>
-  > {
-    // deno-lint-ignore require-await
-    return async (resource) => {
-      this.todosIndex.index(resource);
-      return resource;
-    };
-  }
+  return false;
 }
 
 export class PublicationRoutes {
@@ -269,7 +255,6 @@ export class TypicalPublication implements Publication {
   constructor(
     readonly config: Configuration,
     readonly routes = new PublicationRoutes(config.fsRouteFactory),
-    readonly indexes = new PublicationIndexes(),
     readonly ds = new PublicationDesignSystemArguments(config, routes),
   ) {
   }
@@ -389,10 +374,7 @@ export class TypicalPublication implements Publication {
         // sitemap. After all the routes are captured during resource
         // construction, then urWatcher.on("beforeProduce", ...) will be run to
         // prepare the UX navigation tree.
-        resourceRefinery: r.pipelineUnitsRefineryUntyped(
-          this.indexes.resourcesIndexer(),
-          this.routes.resourcesTreePopulator(),
-        ),
+        resourceRefinerySync: this.routes.resourcesTreePopulatorSync(),
       },
 
       // These factories run during after initial construction of each resource
@@ -432,6 +414,17 @@ export class TypicalPublication implements Publication {
     // deno-lint-ignore no-empty
     for await (const _ of creator.products()) {
     }
+
+    // TODO REMOVE: For testing indexers
+    // for (
+    //   const ms of creator.resourcesIndex.filterSync(
+    //     ((r) => ldsDirec.isContentTODOsModelSupplier(r)),
+    //   )
+    // ) {
+    //   if (ldsDirec.isContentTODOsModelSupplier(ms)) {
+    //     console.dir(ms.model.contentTODOs);
+    //   }
+    // }
 
     // any files that were not consumed should "mirrored" to the destination
     this.mirrorUnconsumedAssets();
