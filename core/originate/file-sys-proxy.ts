@@ -303,6 +303,51 @@ export function fileSysDirectoryAgeProxyStrategy(
   };
 }
 
+export interface FileSysDirectoryAgeOrEnvVarProxyOptions {
+  readonly maxAgeInMS: number;
+  readonly identity: string;
+  readonly envVarNameMutator?: (suggested: string) => string;
+  readonly report?: (message: string) => void;
+}
+
+export function fileSysDirectoryAgeOrEnvVarProxyStrategy(
+  options: FileSysDirectoryAgeOrEnvVarProxyOptions,
+  ...envVarNames: string[]
+): FileSysDirectoryProxyStrategy {
+  const { maxAgeInMS, identity, envVarNameMutator, report } = options;
+  if (envVarNames && envVarNames.length > 0) {
+    for (const varName of envVarNames) {
+      const envVarName = envVarNameMutator
+        ? envVarNameMutator(varName)
+        : varName;
+      const envVarValue = Deno.env.get(envVarName);
+      if (typeof envVarValue === "string") {
+        const envVarMaxAgeInMS = Number.parseInt(envVarValue);
+        if (identity) {
+          if (envVarMaxAgeInMS) {
+            if (report) {
+              report(
+                `Proxying ${identity} using age ${envVarMaxAgeInMS} ms using ${envVarName} = ${envVarMaxAgeInMS}`,
+              );
+            }
+            return fileSysDirectoryAgeProxyStrategy(
+              Number.parseInt(envVarValue),
+            );
+          } else {
+            if (report) {
+              report(
+                `Proxies for ${identity} disabled using ${envVarName} = ${envVarMaxAgeInMS}`,
+              );
+            }
+            return fileSysDirectoryNeverProxyStrategy;
+          }
+        }
+      }
+    }
+  }
+  return fileSysDirectoryAgeProxyStrategy(maxAgeInMS);
+}
+
 export abstract class ProxyableFileSysDirectory<OriginContext> {
   static readonly ageOneSecondMS = 1000;
   static readonly ageOneMinuteMS = this.ageOneSecondMS * 60;
