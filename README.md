@@ -124,9 +124,9 @@ pages to adhere to a design system, not optimize for making local changes.
 - Use Oscar's
   [Git\-based package manager for Deno](https://github.com/oscarotero/gpm) to
   download assets locally from GitHub packages when design system is remote.
-- Use [deno-ci](https://github.com/justjavac/deno-ci) to store traceability 
-  data in observability diagnostics to indicate whether build was done in 
-  CI/CD environment.
+- Use [deno-ci](https://github.com/justjavac/deno-ci) to store traceability data
+  in observability diagnostics to indicate whether build was done in CI/CD
+  environment.
 - Incorporate [Design decisions](https://prpl.dev/design-decisions) into docs.
 - How can web workers improve rendering performance?
 - Use
