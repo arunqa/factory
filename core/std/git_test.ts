@@ -28,4 +28,5 @@ Deno.test(`Git in ${testPath}`, async () => {
 
   // TODO: figure out how to test this deterministically
   // console.dir(await git.status());
+  // console.dir(await git.log());
 });

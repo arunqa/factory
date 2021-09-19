@@ -37,6 +37,14 @@ export interface GitEntriesStatusesSupplier {
   readonly statusDiags: GitRunCmdDiagnostics;
 }
 
+export type GitCommitBase<Field extends string> = Record<Field, string>;
+export type GitCommitBaseWithFiles<Field extends string> =
+  & Record<
+    Field | "status",
+    string
+  >
+  & { files: string[] };
+
 export interface GitRunCmdOptionsSupplier {
   (gp: GitPathsSupplier): Deno.RunOptions;
 }

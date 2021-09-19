@@ -1,5 +1,6 @@
 import { fs, path, safety } from "../../deps.ts";
 import * as govn from "../../governance/mod.ts";
+import * as gl from "./git-log.ts";
 
 // deno-lint-ignore no-empty-interface
 export interface GitWorkTreeDiscoveryResult extends govn.GitPathsSupplier {
@@ -192,6 +193,18 @@ export class TypicalGit implements govn.GitExecutive {
     const cmdResult = await this.run(cmdOptions);
     if (isGitCmdSuccessful(cmdResult)) {
       return cmdResult.stdOut;
+    } else {
+      return undefined;
+    }
+  }
+
+  async log<Field extends gl.CommitField = gl.DefaultField>(): Promise<
+    govn.GitCommitBase<Field>[] | govn.GitCommitBaseWithFiles<Field>[] | void
+  > {
+    const [cmdOptions, onSuccess] = gl.gitLogCmd<Field>();
+    const cmdResult = await this.run(cmdOptions);
+    if (isGitCmdSuccessful(cmdResult)) {
+      return onSuccess(cmdResult.stdOut);
     } else {
       return undefined;
     }
