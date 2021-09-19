@@ -135,6 +135,7 @@ export class TypicalGit implements govn.GitExecutive {
       workTreePath: this.workTreePath,
       currentBranch: await this.currentBranch(),
       status: await this.status(),
+      isDirty: await this.isDirty(),
     };
     this.#initialized = true;
   }
@@ -165,6 +166,22 @@ export class TypicalGit implements govn.GitExecutive {
     }
     cmd.close();
     return result;
+  }
+
+  async isDirty(): Promise<boolean> {
+    const cmd = Deno.run({
+      cmd: [
+        "git",
+        `--git-dir=${this.gitDir}`,
+        `--work-tree=${this.workTreePath}`,
+        "diff",
+        "--no-ext-diff",
+        "--quiet",
+      ],
+    });
+    const status = await cmd.status();
+    cmd.close();
+    return status.code == 0 ? false : true;
   }
 
   async status(

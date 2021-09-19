@@ -54,6 +54,7 @@ export type GitBranch = string;
 export interface GitCacheablesSupplier extends GitPathsSupplier {
   readonly currentBranch: GitBranch | undefined;
   readonly status: GitEntriesStatusesSupplier;
+  readonly isDirty: boolean;
 }
 
 export interface GitExecutive extends GitPathsSupplier {
@@ -64,4 +65,5 @@ export interface GitExecutive extends GitPathsSupplier {
   readonly status: (
     cmd?: GitRunCmdOptionsSupplier,
   ) => Promise<GitEntriesStatusesSupplier>;
+  readonly isDirty: () => Promise<boolean>;
 }

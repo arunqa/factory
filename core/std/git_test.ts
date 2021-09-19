@@ -23,10 +23,13 @@ Deno.test(`Git in ${testPath}`, async () => {
   const git = new mod.TypicalGit(gitPaths);
   await git.init();
   const currentBranch = await git.currentBranch();
+  const isDirty = await git.isDirty();
   ta.assert(currentBranch);
   ta.assert(git.cached.currentBranch == currentBranch);
+  ta.assert(git.cached.isDirty == isDirty);
 
   // TODO: figure out how to test this deterministically
   // console.dir(await git.status());
   // console.dir(await git.log());
+  // console.dir(await git.isDirty());
 });
