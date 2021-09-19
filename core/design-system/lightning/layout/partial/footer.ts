@@ -9,7 +9,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
     <div class="slds-container_x-large slds-container_center slds-p-left_small slds-p-right_small">      
       <article class="slds-text-align_center slds-p-top_small slds-p-bottom_large">
         <p class="slds-text-body_small">© 1997-<script>document.write(new Date().getFullYear())</script> Netspective Media LLC. All Rights Reserved.</p>
-        <p class="slds-text-body_small">Publication created on ${new Date()}</p>
+        <p class="slds-text-body_small">Publication created on ${layout.dsArgs.renderedAt}</p>
         <p class="slds-text-body_small">${layout.dsArgs.git ? ` 🌲 ${layout.dsArgs.git?.cached.currentBranch || "??"}` : "not in Git work tree"} 📄 Modified: ${layout.activeRoute?.terminal?.lastModifiedAt}</p>
       </article>
     </div>

@@ -112,6 +112,7 @@ export interface LightingDesignSystemArguments {
   readonly navigation: LightningNavigation;
   readonly assets: AssetLocations;
   readonly branding: LightningBranding;
+  readonly renderedAt: Date;
 }
 
 export interface LightningLayout

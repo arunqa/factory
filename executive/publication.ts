@@ -233,6 +233,7 @@ export class PublicationDesignSystemArguments
   readonly navigation: lds.LightingDesignSystemNavigation;
   readonly assets: lds.AssetLocations;
   readonly branding: lds.LightningBranding;
+  readonly renderedAt = new Date();
 
   constructor(config: Configuration, routes: PublicationRoutes) {
     this.git = config.git;
