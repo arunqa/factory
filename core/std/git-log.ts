@@ -5,26 +5,6 @@ import * as govn from "../../governance/mod.ts";
 // Portions Copyright (c) 2016, Dominic Harrington
 
 const delimiter = "\t";
-const fieldMap = {
-  hash: "%H",
-  abbrevHash: "%h",
-  treeHash: "%T",
-  abbrevTreeHash: "%t",
-  parentHashes: "%P",
-  abbrevParentHashes: "%P",
-  authorName: "%an",
-  authorEmail: "%ae",
-  authorDate: "%ai",
-  authorDateRel: "%ar",
-  committerName: "%cn",
-  committerEmail: "%ce",
-  committerDate: "%cd",
-  committerDateRel: "%cr",
-  subject: "%s",
-  body: "%b",
-  rawBody: "%B",
-} as const;
-export type CommitField = keyof typeof fieldMap;
 
 const notOptFields = ["status", "files"] as const;
 type NotOptField = typeof notOptFields[number];
@@ -224,7 +204,7 @@ const parseCommits = <T extends string>(
 
 /** Run "git log" and return the result as JSON */
 function createCommandArguments<
-  T extends CommitField | DefaultField = DefaultField,
+  T extends govn.CommitField | DefaultField = DefaultField,
 >(options: GitlogOptions<T>) {
   // Start constructing command
   let command: string[] = ["log", "-l0"];
@@ -252,11 +232,13 @@ function createCommandArguments<
   if (options.fields) {
     options.fields.forEach((field) => {
       // deno-lint-ignore no-explicit-any
-      if (!fieldMap[field] && !notOptFields.includes(field as any)) {
+      if (
+        !govn.gitCommitFieldMap[field] && !notOptFields.includes(field as any)
+      ) {
         throw new Error(`Unknown field: ${field}`);
       }
 
-      prettyArgument += delimiter + fieldMap[field];
+      prettyArgument += delimiter + govn.gitCommitFieldMap[field];
     });
   }
 
@@ -288,7 +270,7 @@ function createCommandArguments<
   return command;
 }
 
-export function gitLogCmd<Field extends CommitField = DefaultField>(
+export function gitLogCmd<Field extends govn.CommitField = DefaultField>(
   userOptions?: GitlogOptions<Field>,
   inherit?: Partial<Deno.RunOptions>,
 ): [

@@ -37,6 +37,27 @@ export interface GitEntriesStatusesSupplier {
   readonly statusDiags: GitRunCmdDiagnostics;
 }
 
+export const gitCommitFieldMap = {
+  hash: "%H",
+  abbrevHash: "%h",
+  treeHash: "%T",
+  abbrevTreeHash: "%t",
+  parentHashes: "%P",
+  abbrevParentHashes: "%P",
+  authorName: "%an",
+  authorEmail: "%ae",
+  authorDate: "%ai",
+  authorDateRel: "%ar",
+  committerName: "%cn",
+  committerEmail: "%ce",
+  committerDate: "%cd",
+  committerDateRel: "%cr",
+  subject: "%s",
+  body: "%b",
+  rawBody: "%B",
+} as const;
+export type CommitField = keyof typeof gitCommitFieldMap;
+
 export type GitCommitBase<Field extends string> = Record<Field, string>;
 export type GitCommitBaseWithFiles<Field extends string> =
   & Record<
@@ -66,4 +87,7 @@ export interface GitExecutive extends GitPathsSupplier {
     cmd?: GitRunCmdOptionsSupplier,
   ) => Promise<GitEntriesStatusesSupplier>;
   readonly isDirty: () => Promise<boolean>;
+  readonly log: <Field extends CommitField>() => Promise<
+    GitCommitBase<Field>[] | GitCommitBaseWithFiles<Field>[] | void
+  >;
 }

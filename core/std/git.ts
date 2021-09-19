@@ -215,7 +215,7 @@ export class TypicalGit implements govn.GitExecutive {
     }
   }
 
-  async log<Field extends gl.CommitField = gl.DefaultField>(): Promise<
+  async log<Field extends govn.CommitField = gl.DefaultField>(): Promise<
     govn.GitCommitBase<Field>[] | govn.GitCommitBaseWithFiles<Field>[] | void
   > {
     const [cmdOptions, onSuccess] = gl.gitLogCmd<Field>();
