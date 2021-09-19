@@ -31,6 +31,7 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
     navigation,
     assets,
     branding,
+    renderedAt: new Date(),
   };
   const syncResult = ls.renderedSync(
     lds.layout(resource, lss, dsArgs),
