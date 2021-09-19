@@ -1,6 +1,7 @@
 import { safety } from "../../../deps.ts";
 import * as govn from "../../../../governance/mod.ts";
 import * as r from "../../../../core/std/route.ts";
+import * as m from "../../../../core/std/model.ts";
 import * as mdDS from "../../../../core/render/markdown/mod.ts";
 import * as lds from "../mod.ts";
 
@@ -46,24 +47,33 @@ export class ToDoDirective implements
     const todo: ToDoDirectiveState = { ...d.attributes, task: d.content };
     const resource = d.markdownRenderEnv.resource;
     if (resource) {
-      if (r.isRouteSupplier(resource)) {
-        // deno-lint-ignore no-explicit-any
-        const routeUntyped = resource.route as any;
-        if (isToDosDirectiveStateSupplier(routeUntyped)) {
-          // this means we already created the TODOs state so let's append
-          routeUntyped.contentTODOs.push(todo);
+      if (m.isModelSupplier(resource)) {
+        if (isToDosDirectiveStateSupplier(resource.model)) {
+          // there's already a TODO being tracked, let's just add it
+          resource.model.contentTODOs.push(todo);
         } else {
-          // this will inject the content TODOs into the resource and then
-          // isToDosDirectiveStateSupplier(resource) will be proper guard
-          routeUntyped.contentTODOs = [todo];
-          // the following now makes resource's route a lds.LightningNavigationNotificationSupplier
-          // which will get picked up in Lightning design system navigation
-          routeUntyped.ldsNavNotification = new ToDoDirectiveNotification(
-            routeUntyped,
-          );
-          if (!lds.isLightningNavigationNotificationSupplier(routeUntyped)) {
+          // this is the first TODO so let's create the array and track as Model
+          resource.model.contentTODOs = [todo];
+          if (!isToDosDirectiveStateSupplier(resource.model)) {
             diagnostic =
-              `<br><mark>lds.isLightningNavigationNotificationSupplier(routeUntyped) is false for some reason</mark>`;
+              `<br><mark>isToDosDirectiveStateSupplier(resource.model) is false for some reason</mark>`;
+            return;
+          }
+          if (r.isRouteSupplier(resource)) {
+            // the following now makes resource's route a lds.LightningNavigationNotificationSupplier
+            // which will get picked up in Lightning design system navigation to show notification
+            // values in navigation and other components
+            // deno-lint-ignore no-explicit-any
+            (resource.route as any).ldsNavNotification =
+              new ToDoDirectiveNotification(
+                resource.model,
+              );
+            if (
+              !lds.isLightningNavigationNotificationSupplier(resource.model)
+            ) {
+              diagnostic =
+                `<br><mark>lds.isLightningNavigationNotificationSupplier(resource.model) is false for some reason</mark>`;
+            }
           }
         }
       }
