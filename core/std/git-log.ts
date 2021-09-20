@@ -231,8 +231,8 @@ function createCommandArguments<
   // Iterating through the fields and adding them to the custom format
   if (options.fields) {
     options.fields.forEach((field) => {
-      // deno-lint-ignore no-explicit-any
       if (
+        // deno-lint-ignore no-explicit-any
         !govn.gitCommitFieldMap[field] && !notOptFields.includes(field as any)
       ) {
         throw new Error(`Unknown field: ${field}`);
