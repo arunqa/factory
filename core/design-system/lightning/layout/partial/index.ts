@@ -1,15 +1,24 @@
+import * as govn from "../../../../../governance/mod.ts";
 import * as ldsGovn from "../../governance.ts";
 import * as card from "./card.ts";
 
 export const autoIndexCardsBodyPartial: ldsGovn.LightningPartial = (layout) => {
   const contentTree = layout.dsArgs.navigation.contentTree(layout);
+  let cardNodes: govn.RouteTreeNode[] | undefined;
+  if (contentTree?.unit == ldsGovn.indexUnitName) {
+    cardNodes = contentTree?.parent
+      ? [...contentTree.parent.children, ...contentTree.children]
+      : contentTree.children;
+  } else if (contentTree) {
+    cardNodes = contentTree.children;
+  }
   // deno-fmt-ignore (because we don't want ${...} wrapped)
-  return contentTree
+  return cardNodes
     ? `<div class="slds-grid slds-wrap slds-var-m-around_medium">        
-        ${contentTree.children.filter(rtn => rtn !== layout.activeTreeNode).map(rtn => `
+        ${cardNodes.filter(rtn => rtn !== layout.activeTreeNode).map(rtn => `
         <div class="slds-col slds-size_1-of-2 slds-order_2">
           ${card.renderedCard(layout, {
-            icon: { collection: "utility", name: "assignment" },
+            icon: { collection: "utility", name: rtn.children.length > 0 ? "open_folder": "page" },
             title: rtn.label,
             href: layout.dsArgs.navigation.location(rtn),
           })}

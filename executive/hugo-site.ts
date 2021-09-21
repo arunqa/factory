@@ -83,24 +83,8 @@ export class HugoRoutes extends publ.PublicationRoutes {
       this.resourcesTree,
       (node) => {
         const nodeNav = node as lds.NavigationTreeNodeCapabilities;
+        if (nodeNav.isContextBarRouteNode) return true;
         if (node.level < this.contextBarLevel) return false;
-        if (node.level == this.contextBarLevel) {
-          // this.mutateRoute adds .isContextBarRouteNode to node.route
-          if (nodeNav.isContextBarRouteNode) return true;
-          if (
-            // TODO: this should only "appear" (uncloaked) when running in
-            // non-production environment so add ability to check at runtime
-            // in ClientCargo for hostname (e.g. devl.* or *.experimental*)
-            // and only show this if context is valid (otherwise it should be
-            // cloaked)
-            ["Observability", "Control Panel"].find((label) =>
-              node.label == label
-            )
-          ) {
-            return true;
-          }
-          return false;
-        }
         return render.isRenderableMediaTypeResource(
             node.route,
             n.htmlMediaTypeNature.mediaType,
@@ -140,7 +124,9 @@ export class HugoSite extends publ.TypicalPublication {
         & govn.RouteUnit
         & publ.PublicationRouteEventsHandler<HugoPageProperties> = {
           ...hffsrp.routeUnit,
-          unit: isHugoUnderscoreIndex ? "index" : hffsrp.routeUnit.unit,
+          unit: isHugoUnderscoreIndex
+            ? lds.indexUnitName
+            : hffsrp.routeUnit.unit,
           prepareResourceRoute: (rs) => {
             const hpp = hugoPageProperties(rs);
             const overrideLabel = hpp.title || hpp.mainMenuName;
@@ -171,7 +157,7 @@ export class HugoSite extends publ.TypicalPublication {
             if (node?.level == HugoSite.contextBarLevel && hpp!.mainMenuName) {
               nodeNav.isContextBarRouteNode = true;
             }
-            if (isHugoUnderscoreIndex || node?.unit == "index") {
+            if (isHugoUnderscoreIndex || node?.unit == lds.indexUnitName) {
               nodeNav.isIndexNode = true;
             }
           },

@@ -1,6 +1,8 @@
 import * as govn from "../../../governance/mod.ts";
 import * as html from "../../render/html/mod.ts";
 
+export const indexUnitName = "index";
+
 /**
  * Interface implemented by route tree nodes to add specific design system-
  * specific capabilities.

@@ -22,7 +22,7 @@ export function renderedCard(
       <header class="slds-media slds-media_center slds-has-flexi-truncate">
         ${card.icon? `<div class="slds-media__figure">
           <span class="slds-icon_container slds-icon-standard-account" title="account">
-            ${icon.renderedIcon(layout, card.icon)}
+            ${icon.renderedIcon(layout, card.icon, 'slds-icon_x-small')}
             <span class="slds-assistive-text">{c.title}</span>
           </span>
         </div>` : ''}        

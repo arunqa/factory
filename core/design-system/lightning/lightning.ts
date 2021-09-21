@@ -231,6 +231,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       bodySource,
       model,
       layoutText: dsArgs.layoutText,
+      designSystem: this,
       layoutSS,
       frontmatter,
       activeRoute,
@@ -289,7 +290,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       nature.htmlContentNature.persistFileSysRefinery(
         destRootPath,
         persist.routePersistPrettyUrlHtmlNamingStrategy((ru) =>
-          ru.unit === "index"
+          ru.unit === ldsGovn.indexUnitName
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import * as govn from "../../../governance/mod.ts";
+import * as ds from "./design-system.ts";
 import * as contrib from "../contributions.ts";
 
 export type HtmlLayoutClientCargoJavaScriptValue = string;
@@ -71,6 +72,8 @@ export interface HtmlLayout<
   HtmlLayoutClientCargoSupplier,
   HtmlLayoutArguments {
   readonly bodySource: HtmlLayoutBody;
+  // deno-lint-ignore no-explicit-any
+  readonly designSystem: ds.DesignSystem<any>;
   // deno-lint-ignore no-explicit-any
   readonly layoutSS: HtmlLayoutStrategySupplier<any>;
   readonly contributions: HtmlLayoutContributions;

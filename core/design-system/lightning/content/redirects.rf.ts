@@ -46,7 +46,7 @@ export function redirectResources(
                 },
                 route: {
                   ...resourcesTree.routeFactory.childRoute(
-                    { unit: "index", label: "Routes" },
+                    { unit: lds.indexUnitName, label: "Routes" },
                     alias.route!, // the route for aliases is created in rtree.TypicalRouteTree
                     false,
                   ),

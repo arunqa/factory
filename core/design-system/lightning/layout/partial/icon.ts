@@ -10,6 +10,7 @@ export type IconIdentity = string | {
 export function renderedIcon(
   layout: ldsGovn.LightningLayout,
   identity: IconIdentity,
+  css = "slds-icon_small",
 ): string {
   const collection = typeof identity === "string"
     ? "utility"
@@ -19,7 +20,7 @@ export function renderedIcon(
     `/${collection}-sprite/svg/symbols.svg#${name}`,
   );
   // deno-fmt-ignore
-  return `<svg class="slds-icon slds-icon_small" aria-hidden="true"><use href="${sprite}"></use></svg>`
+  return `<svg class="slds-icon ${css}" aria-hidden="true"><use href="${sprite}"></use></svg>`
 }
 
 export function renderedButtonIcon(
@@ -40,11 +41,12 @@ export function renderedButtonIcon(
 export function renderedIconContainer(
   layout: ldsGovn.LightningLayout,
   identity: IconIdentity,
+  css?: string,
 ): string {
   const collection = typeof identity === "string"
     ? "utility"
     : identity.collection;
   const name = typeof identity === "string" ? identity : identity.name;
   // deno-fmt-ignore
-  return `<span class="slds-icon_container slds-icon-${collection}-${name}">${ renderedIcon(layout, identity) }</span>`
+  return `<span class="slds-icon_container slds-icon-${collection}-${name}">${ renderedIcon(layout, identity, css) }</span>`
 }
