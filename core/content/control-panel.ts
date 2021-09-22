@@ -27,12 +27,13 @@ const diagnosticsRouteUnits: govn.RouteUnits = {
   terminal: diagnosticsRouteUnit,
 };
 
-const diagnosticsObsRedirectRouteTerminal:
-  & govn.RouteUnit
-  & govn.RedirectUrlSupplier = {
-    ...observabilityRouteUnit,
-    redirect: `../../${observabilityUnitName}/`, // will work for pretty URLs only
-  };
+const diagnosticsObsRedirectRouteTerminal: govn.RouteUnit = {
+  ...observabilityRouteUnit,
+  location: () => {
+    return `../../${observabilityUnitName}/`;
+  },
+};
+
 const diagnosticsObsRedirectRouteUnits: govn.RouteUnits = {
   units: [
     controlPanelRouteUnit,

@@ -95,7 +95,7 @@ export function routeNodeLocation(
     | govn.RouteLocation
     | govn.RouteLocationOptions,
 ): govn.RouteLocation {
-  const dest = isRedirectUrlSupplier(ru) ? ru.redirect : ru.qualifiedPath;
+  const dest = ru.qualifiedPath;
   if (typeof baseOrOptions === "string") {
     return `${baseOrOptions}${dest}`;
   }

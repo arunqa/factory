@@ -48,6 +48,9 @@ export interface RouteUnit
   readonly isIntermediate?: boolean;
   readonly aliases?: RouteAlias[];
   readonly targetableID?: TargetableRouteIdentity;
+  readonly location?: (
+    baseOrOptions?: RouteLocation | RouteLocationOptions,
+  ) => RouteLocation;
 }
 
 export interface RouteTargetsSupplier {
