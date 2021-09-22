@@ -36,7 +36,7 @@ const metricsHTML: lds.LightningLayoutBodySupplier = (_layout) => `
             complete: function (parsed) {
                 // "Date","Time",,"File Extension","Count of Files with Extension","Total Bytes in all Files with Extension","Build ID","Host"
                 $("#summaryPivotUI").pivotUI(parsed.data, {
-                    rows: ["File Extension", "Count of Files with Extension", "Total Bytes in all Files with Extension"],
+                    rows: ["Scope", "File Extension", "Count of Files with Extension", "Total Bytes in all Files with Extension"],
                     cols: ["Date"],
                     rendererOptions: { table: { rowTotals: false, colTotals: false, } },
                 });
@@ -48,7 +48,7 @@ const metricsHTML: lds.LightningLayoutBodySupplier = (_layout) => `
             complete: function (parsed) {
                 // "Date","Time","Files Path","File Extension in Path","Count of Files with Extension in Path","Total Bytes in all Files with Extension in Path","Build ID","Host"
                 $("#typesPivotUI").pivotUI(parsed.data, {
-                    rows: ["Files Path", "File Extension in Path", "Count of Files with Extension in Path", "Total Bytes in all Files with Extension in Path"],
+                    rows: ["Scope", "Files Path", "File Extension in Path", "Count of Files with Extension in Path", "Total Bytes in all Files with Extension in Path"],
                     cols: ["Date"],
                     rendererOptions: { table: { rowTotals: false, colTotals: false, } },
                 });

@@ -82,9 +82,11 @@ export class Configuration implements Omit<Preferences, "assetsMetricsArgs"> {
       ? prefs.assetsMetricsArgs(this)
       : {
         walkers: [{
+          identity: "origin",
           root: this.contentRootPath,
           options: assetMetricsWalkOptions,
         }, {
+          identity: "destination",
           root: this.destRootPath,
           options: assetMetricsWalkOptions,
         }],

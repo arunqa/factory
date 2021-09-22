@@ -4,7 +4,10 @@ import { fs, govnSvcMetrics as gsm, path } from "../deps.ts";
 export interface Asset {
 }
 
+export type FileSystemAssetWalkerIdentity = string;
+
 export interface FileSystemAsset extends Asset {
+  readonly walker: FileSysAssetWalker;
   readonly walkEntry: fs.WalkEntry;
 }
 
@@ -32,6 +35,7 @@ export interface FileSystemAssetAnalyticsSupplier {
 }
 
 export interface FileSysAssetWalker {
+  readonly identity: FileSystemAssetWalkerIdentity;
   readonly root: string;
   readonly remarks?: string;
   readonly options?: fs.WalkOptions;
@@ -52,11 +56,15 @@ export interface DateSupplier {
   readonly date: Date;
 }
 
+export type AssetScopeIdentity = string;
+
 export interface AssetExtensionSupplier {
+  readonly assetScopeID: AssetScopeIdentity;
   readonly assetExtn: string;
 }
 
 export interface AssetPathSupplier {
+  readonly assetScopeID: AssetScopeIdentity;
   readonly assetPath: string;
 }
 
@@ -68,7 +76,7 @@ export interface AssetAnalyticsMetrics<Labels extends gsm.TypedObject> {
 }
 
 export interface AssetNameMetrics {
-  readonly extnAnalytics: (extn: string) =>
+  readonly extnAnalytics: (extn: string, scopeID: AssetScopeIdentity) =>
     & AssetExtensionSupplier
     & AssetAnalyticsMetrics<
       AssetExtensionSupplier & Partial<TransactionIdSupplier> & DateSupplier
@@ -76,6 +84,7 @@ export interface AssetNameMetrics {
   readonly extnPathAnalytics: (
     path: string,
     extn: string,
+    scopeID: AssetScopeIdentity,
   ) =>
     & AssetExtensionSupplier
     & AssetPathSupplier
@@ -88,12 +97,12 @@ export interface AssetNameMetrics {
 }
 
 export function assetNameMetrics(): FileSystemAssetAnalyticsSupplier {
-  return async (asset, _walker, ams) => {
+  return async (asset, walker, ams) => {
     if (!asset.walkEntry.isFile) return;
 
     // count the total for extension, without regard to path
     const assetExtn = path.extname(asset.walkEntry.name);
-    const ea = ams.nameMetrics.extnAnalytics(assetExtn);
+    const ea = ams.nameMetrics.extnAnalytics(assetExtn, walker.identity);
     const stat = await Deno.stat(asset.walkEntry.path);
     ea.count.value(ea.count.value() + 1);
     ea.totalBytes.value(
@@ -106,6 +115,7 @@ export function assetNameMetrics(): FileSystemAssetAnalyticsSupplier {
       const epa = ams.nameMetrics.extnPathAnalytics(
         assetPath,
         assetExtn,
+        walker.identity,
       );
       epa.count.value(epa.count.value() + 1);
       epa.totalBytes.value(
@@ -150,11 +160,12 @@ export function assetNameLintIssues(
     "Mixed case in asset name",
   );
   // deno-lint-ignore require-await
-  return async (asset, _walker, ams) => {
+  return async (asset, walker, ams) => {
     if (!asset.walkEntry.isFile) return;
     const assetName = asset.walkEntry.name;
     if (asset.walkEntry.name.indexOf(" ") >= 0) {
       const issue: AssetNameSpacesIssue & Partial<TransactionIdSupplier> = {
+        assetScopeID: walker.identity,
         assetName,
         assetPath: path.dirname(asset.walkEntry.path),
         assetPathAndName: asset.walkEntry.path,
@@ -169,6 +180,7 @@ export function assetNameLintIssues(
       const issue:
         & AssetNameCaseSensitivityIssue
         & Partial<TransactionIdSupplier> = {
+          assetScopeID: walker.identity,
           assetName: asset.walkEntry.name,
           assetPath: path.dirname(asset.walkEntry.path),
           assetPathAndName: asset.walkEntry.path,
@@ -192,8 +204,10 @@ export interface AssetsMetricsResult {
     string,
     string,
     string,
+    string,
   ];
   readonly summaryRows: [
+    scopeID: string,
     date: string,
     time: string,
     extn: string,
@@ -211,8 +225,10 @@ export interface AssetsMetricsResult {
     string,
     string,
     string,
+    string,
   ];
   readonly pathsCSV: [
+    scopeID: string,
     date: string,
     time: string,
     path: string,
@@ -280,16 +296,18 @@ export async function assetsMetrics(
     txID: aapo.txID,
     txHost: aapo.txHost,
     nameMetrics: {
-      extnAnalytics: (assetExtn) => {
-        let analytics = extnAnalytics.get(assetExtn);
+      extnAnalytics: (assetExtn, assetScopeID) => {
+        let analytics = extnAnalytics.get(`${assetScopeID}:${assetExtn}`);
         if (!analytics) {
           const labels = {
+            assetScopeID,
             assetExtn,
             txID: aapo.txID,
             txHost: aapo.txHost,
             date: new Date(),
           };
           analytics = {
+            assetScopeID,
             assetExtn,
             count: countGauge.instance(0, labels),
             countGauge,
@@ -302,11 +320,12 @@ export async function assetsMetrics(
         }
         return analytics;
       },
-      extnPathAnalytics: (assetPath, assetExtn) => {
-        const mapKey = `${assetPath}${assetExtn}`;
+      extnPathAnalytics: (assetPath, assetExtn, assetScopeID) => {
+        const mapKey = `${assetScopeID}:${assetPath}${assetExtn}`;
         let analytics = extnPathAnalytics.get(mapKey);
         if (!analytics) {
           const labels = {
+            assetScopeID,
             assetPath,
             assetExtn,
             txID: aapo.txID,
@@ -314,6 +333,7 @@ export async function assetsMetrics(
             date: new Date(),
           };
           analytics = {
+            assetScopeID,
             assetPath,
             assetExtn,
             count: countByPathGauge.instance(0, labels),
@@ -333,7 +353,7 @@ export async function assetsMetrics(
   for (const walker of aapo.walkers) {
     for await (const we of fs.walkSync(walker.root, walker.options)) {
       for await (const ms of aapo.metricsSuppliers) {
-        await ms({ walkEntry: we }, walker, context);
+        await ms({ walker, walkEntry: we }, walker, context);
       }
     }
   }
@@ -341,6 +361,7 @@ export async function assetsMetrics(
   const result: AssetsMetricsResult = {
     metrics: context.allMetrics,
     summaryHeader: [
+      "Scope",
       "Date",
       "Time",
       "File Extension",
@@ -351,6 +372,7 @@ export async function assetsMetrics(
     ],
     summaryRows: [],
     pathsHeader: [
+      "Scope",
       "Date",
       "Time",
       "Files Path",
@@ -367,6 +389,7 @@ export async function assetsMetrics(
     const labels = ea.count.labels.object;
     result.summaryRows.push(
       [
+        ea.assetScopeID,
         labels.date.toLocaleDateString("en-US"),
         labels.date.toLocaleTimeString("en-US"),
         labels.assetExtn,
@@ -382,6 +405,7 @@ export async function assetsMetrics(
     const labels = epa.count.labels.object;
     result.pathsCSV.push(
       [
+        epa.assetScopeID,
         labels.date.toLocaleDateString("en-US"),
         labels.date.toLocaleTimeString("en-US"),
         labels.assetPath,
