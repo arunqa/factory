@@ -10,8 +10,6 @@ import * as g from "../core/std/git.ts";
 import * as md from "../core/resource/markdown.ts";
 import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
 import * as lds from "../core/design-system/lightning/mod.ts";
-import * as ldsObsC from "../core/design-system/lightning/content/observability.rf.ts";
-import * as sqlObsC from "../lib/db/observability.rf.ts";
 
 export interface HugoPageWeightSupplier {
   readonly weight?: number;
@@ -117,6 +115,8 @@ export class HugoSite extends publ.TypicalPublication {
       this.consumedFileSysWalkPaths.add(we.path);
     });
 
+    // use this file system routes parser to handle special rules and conditions;
+    // this will not be used for non-file-system routes (such as control panel)
     const routeParser: rt.FileSysRouteParser = (fsp, ca) => {
       const hffsrp = rt.humanFriendlyFileSysRouteParser(fsp, ca);
       const isHugoUnderscoreIndex = hffsrp.parsedPath.name === "_index";
@@ -168,14 +168,18 @@ export class HugoSite extends publ.TypicalPublication {
       };
     };
 
-    const { contentRootPath, fsRouteFactory, observabilityRoute } = this.config;
+    const { contentRootPath, fsRouteFactory } = this.config;
     return [
       // deno-lint-ignore no-explicit-any
       new fsg.FileSysGlobsOriginator<any>(
         [
           // process modules first so that if there are any proxies or other
           // generated content, it can be processed but the remaining originators
-          tfsg.moduleFileSysGlobs(contentRootPath, fsRouteFactory),
+          tfsg.moduleFileSysGlobs<publ.PublicationState>(
+            contentRootPath,
+            fsRouteFactory,
+            this.state,
+          ),
           {
             humanFriendlyName: "Hugo Markdown Content",
             ownerFileSysPath: contentRootPath,
@@ -204,8 +208,7 @@ export class HugoSite extends publ.TypicalPublication {
           eventEmitter: () => fsgoWatcher,
         },
       ),
-      ldsObsC.observabilityResources(observabilityRoute, fsRouteFactory),
-      sqlObsC.observabilityResources(observabilityRoute, fsRouteFactory),
+      ...this.controlPanelOriginators(),
     ];
   }
 }

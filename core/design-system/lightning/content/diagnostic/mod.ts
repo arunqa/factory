@@ -1,22 +1,25 @@
-import * as govn from "../../../../governance/mod.ts";
-import * as rModule from "../../../resource/module/module.ts";
+import * as govn from "../../../../../governance/mod.ts";
+import * as rModule from "../../../../resource/module/module.ts";
 import * as routes from "./routes.ts";
 import * as renderers from "./renderers.ts";
 
 /**
- * Use observabilityResources as originators within any parent route.
+ * Use diagnosticsResources as originators within any parent route.
  * @param parentRoute Where you want the resources generated
  * @returns resources factories to be included as originators
  */
-export function observabilityResources(
+export function diagnosticsResources<
+  State extends { resourcesTree: govn.RouteTree },
+>(
   parentRoute: govn.Route,
   rf: govn.RouteFactory,
+  state: State,
   // deno-lint-ignore no-explicit-any
 ): govn.ResourcesFactoriesSupplier<any> {
   return {
     resourcesFactories: async function* () {
-      yield routes.routesHtmlFactorySupplier(parentRoute, rf);
-      yield routes.routesJsonFactorySupplier(parentRoute, rf);
+      yield routes.routesHtmlFactorySupplier(parentRoute, rf, state);
+      yield routes.routesJsonFactorySupplier(parentRoute, rf, state);
       yield renderers.renderersHtmlFactorySupplier(parentRoute, rf);
     },
   };
@@ -32,7 +35,7 @@ export function observabilityResources(
  *     index.rf.ts
  *
  * And in index.rf.ts you would have:
- *   import * as o from "../../../core/design-system/lightning/content/observability.rf.ts";
+ *   import * as o from "../../../core/design-system/lightning/content/diagnostic/mod.ts";
  *   export default o.fileSysModuleConstructor;
  *
  * The above would allow you move the resources anywhere just by setting up the right
@@ -43,17 +46,24 @@ export function observabilityResources(
  * @param imported The module thats imported (e.g. index.r.ts)
  * @returns
  */
-export const fileSysModuleConstructor:
+export const fileSysModuleConstructor: rModule.FileSysResourceModuleConstructor<
+  { resourcesTree: govn.RouteTree }
+> =
   // deno-lint-ignore require-await
-  rModule.FileSysResourceModuleConstructor = async (
+  async (
     we,
     options,
     imported,
+    state,
   ) => {
     return {
       imported,
       isChildResourcesFactoriesSupplier: true,
       yieldParentWithChildren: false,
-      ...observabilityResources(we.route, options.fsRouteFactory),
+      ...diagnosticsResources(
+        we.route,
+        options.fsRouteFactory,
+        state as { resourcesTree: govn.RouteTree },
+      ),
     };
   };

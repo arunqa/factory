@@ -1,4 +1,11 @@
-import { govnSvcTelemetry as telem, log, path, safety } from "../deps.ts";
+import {
+  fs,
+  govnSvcMetrics as gsm,
+  govnSvcTelemetry as telem,
+  log,
+  path,
+  safety,
+} from "../deps.ts";
 import * as govn from "../governance/mod.ts";
 import * as e from "../core/std/extension.ts";
 import * as obs from "../core/std/observability.ts";
@@ -14,27 +21,43 @@ import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
 import * as lds from "../core/design-system/lightning/mod.ts";
 import * as ldsDirec from "../core/design-system/lightning/directive/mod.ts";
 import * as jrs from "../core/render/json.ts";
+import * as tfr from "../core/render/text.ts";
+import * as dtr from "../core/render/delimited-text.ts";
 import * as persist from "../core/std/persist.ts";
 import * as render from "../core/std/render.ts";
-import * as obsC from "../core/content/observability.ts";
+import * as cpC from "../core/content/control-panel.ts";
 import * as redirectC from "../core/design-system/lightning/content/redirects.rf.ts";
-import * as ldsObsC from "../core/design-system/lightning/content/observability.rf.ts";
+import * as ldsDiagC from "../core/design-system/lightning/content/diagnostic/mod.ts";
+import * as ldsObsC from "../core/design-system/lightning/content/observability/mod.ts";
+import * as sqlObsC from "../lib/db/observability.rf.ts";
 import * as mdr from "../core/render/markdown/mod.ts";
+import * as am from "../lib/assets-metrics.ts";
+
+export const assetMetricsWalkOptions: fs.WalkOptions = {
+  skip: [/\.git/],
+};
 
 export interface Preferences {
   readonly contentRootPath: fsg.FileSysPathText;
   readonly staticAssetsRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
+  readonly assetsMetricsArgs?: (config: Configuration) => Pick<
+    am.AssetsMetricsArguments,
+    "walkers"
+  >;
 }
 
-export class Configuration implements Preferences {
+export class Configuration implements Omit<Preferences, "assetsMetricsArgs"> {
   readonly telemetry: telem.Instrumentation = new telem.Telemetry();
+  readonly metrics = new gsm.TypicalMetrics();
+  readonly assetsMetricsArgs: Pick<am.AssetsMetricsArguments, "walkers">;
   readonly git?: govn.GitExecutive;
   readonly fsRouteFactory = new route.FileSysRouteFactory();
   readonly extensionsManager = new e.CachedExtensions();
   readonly observability: obs.Observability;
   readonly observabilityRoute: govn.Route;
+  readonly diagnosticsRoute: govn.Route;
   readonly lightningDS = new lds.LightingDesignSystem();
   readonly contentRootPath: fsg.FileSysPathText;
   readonly staticAssetsRootPath: fsg.FileSysPathText;
@@ -53,9 +76,19 @@ export class Configuration implements Preferences {
     this.destRootPath = prefs.destRootPath;
     this.appName = prefs.appName;
     this.logger = log.getLogger();
-    this.observabilityRoute = obsC.observabilityRoute(
-      this.fsRouteFactory,
-    );
+    this.observabilityRoute = cpC.observabilityRoute(this.fsRouteFactory);
+    this.diagnosticsRoute = cpC.diagnosticsRoute(this.fsRouteFactory);
+    this.assetsMetricsArgs = prefs.assetsMetricsArgs
+      ? prefs.assetsMetricsArgs(this)
+      : {
+        walkers: [{
+          root: this.contentRootPath,
+          options: assetMetricsWalkOptions,
+        }, {
+          root: this.destRootPath,
+          options: assetMetricsWalkOptions,
+        }],
+      };
   }
 }
 
@@ -96,8 +129,25 @@ export const isPublicationRouteEventsHandler = safety.typeGuard<
   PublicationRouteEventsHandler<any>
 >("prepareResourceRoute", "prepareResourceTreeNode");
 
+// export enum PublicationLifecycleStep {
+//   BEFORE_PRODUCE,
+//   BEFORE_PRODUCE_INIT,
+//   AFTER_PRODUCE_INIT,
+//   AFTER_PRODUCE,
+//   FINALIZED,
+// }
+
+export interface PublicationState {
+  // readonly lifecycleStep: (
+  //   step?: PublicationLifecycleStep,
+  // ) => PublicationLifecycleStep;
+  readonly resourcesTree: govn.RouteTree;
+  assetsMetrics?: am.AssetsMetricsResult;
+}
+
 export interface Publication {
   readonly produce: () => Promise<void>;
+  readonly state: PublicationState;
 }
 
 export class ResourcesTree extends rtree.TypicalRouteTree {
@@ -252,12 +302,16 @@ export class PublicationDesignSystemArguments
 }
 
 export class TypicalPublication implements Publication {
+  readonly state: PublicationState;
   readonly consumedFileSysWalkPaths = new Set<string>();
   constructor(
     readonly config: Configuration,
     readonly routes = new PublicationRoutes(config.fsRouteFactory),
     readonly ds = new PublicationDesignSystemArguments(config, routes),
   ) {
+    this.state = {
+      resourcesTree: routes.resourcesTree,
+    };
   }
 
   /**
@@ -318,9 +372,26 @@ export class TypicalPublication implements Publication {
     );
   }
 
+  controlPanelOriginators() {
+    const { fsRouteFactory, diagnosticsRoute, observabilityRoute } =
+      this.config;
+    return [
+      ldsDiagC.diagnosticsResources(
+        diagnosticsRoute,
+        fsRouteFactory,
+        this.state,
+      ),
+      ldsObsC.observabilityPreProduceResources(
+        observabilityRoute,
+        fsRouteFactory,
+      ),
+      sqlObsC.observabilityResources(diagnosticsRoute, fsRouteFactory),
+    ];
+  }
+
   // deno-lint-ignore no-explicit-any
   originators(): govn.ResourcesFactoriesSupplier<any>[] {
-    const { contentRootPath, fsRouteFactory, observabilityRoute } = this.config;
+    const { contentRootPath, fsRouteFactory } = this.config;
     const watcher = new fsg.FileSysGlobsOriginatorEventEmitter();
     // deno-lint-ignore require-await
     watcher.on("beforeYieldWalkEntry", async (we) => {
@@ -334,7 +405,11 @@ export class TypicalPublication implements Publication {
         [
           // process modules first so that if there are any proxies or other
           // generated content, it can be processed but the remaining originators
-          tfsg.moduleFileSysGlobs(contentRootPath, fsRouteFactory),
+          tfsg.moduleFileSysGlobs<PublicationState>(
+            contentRootPath,
+            fsRouteFactory,
+            this.state,
+          ),
           tfsg.markdownFileSysGlobs(
             contentRootPath,
             this.markdownRenderers(),
@@ -347,13 +422,23 @@ export class TypicalPublication implements Publication {
           eventEmitter: () => watcher,
         },
       ),
-      ldsObsC.observabilityResources(observabilityRoute, fsRouteFactory),
+      ...this.controlPanelOriginators(),
     ];
   }
 
-  async produce() {
+  async initProduce() {
     // setup the cache and any other git-specific initialization
     if (this.ds.git instanceof g.TypicalGit) await this.ds.git.init();
+  }
+
+  async finalizeProduce() {
+    // any files that were not consumed should "mirrored" to the destination
+    await this.mirrorUnconsumedAssets();
+  }
+
+  async produce() {
+    // perform all pre-production activities
+    await this.initProduce();
 
     // deno-lint-ignore no-explicit-any
     const urWatcher = new r.UniversalRefineryEventEmitter<any>();
@@ -366,8 +451,24 @@ export class TypicalPublication implements Publication {
       // factories are concluded.
       this.routes.prepareNavigationTree();
     });
+    urWatcher.on("afterProduce", async () => {
+      // After all resources are persisted ("produced") perform analytics and
+      // prepare post-production assets.
+      this.state.assetsMetrics = await am.assetsMetrics({
+        ...this.config.assetsMetricsArgs,
+        metricsSuppliers: [
+          am.assetNameMetrics(),
+          am.assetNameLintIssues(this.config.metrics),
+        ],
+        metrics: this.config.metrics,
+        txID: "transactionID",
+        txHost: Deno.hostname(),
+      });
+    });
 
+    const { fsRouteFactory, observabilityRoute } = this.config;
     const creator = new r.UniversalRefinery(this.originators(), {
+      eventEmitter: () => urWatcher,
       construct: {
         // As each markdown or other resource/file is read and a
         // MarkdownResource or *Resource is constructed, track it for navigation
@@ -378,10 +479,11 @@ export class TypicalPublication implements Publication {
         resourceRefinerySync: this.routes.resourcesTreePopulatorSync(),
       },
 
-      // These factories run during after initial construction of each resource
-      // and beforeProduce event has been emitted. This allows resources that
-      // only be known after initial construction is completed to be originated.
-      preProductionOriginators: [this.routes.redirectResources()],
+      // These factories run after initial construction of each resource and
+      // beforeProduce event has been emitted. This allows resources to be
+      // constructed which can/ only be known after initial originators are
+      // executed.
+      preProduction: { originators: [this.routes.redirectResources()] },
 
       // This resourceRefinery pipeline will be "executed" after all known
       // resources are constructed, all routes are registered, and the
@@ -396,9 +498,29 @@ export class TypicalPublication implements Publication {
           jrs.jsonProducer(this.config.destRootPath, {
             routeTree: this.routes.resourcesTree,
           }),
+          dtr.csvProducer<PublicationState>(
+            this.config.destRootPath,
+            this.state,
+          ),
+          tfr.textFileProducer<PublicationState>(
+            this.config.destRootPath,
+            this.state,
+          ),
         ),
       },
-      eventEmitter: () => urWatcher,
+
+      postProduction: {
+        originators: [
+          ldsObsC.observabilityPostProduceResources(
+            observabilityRoute,
+            fsRouteFactory,
+            // before production assetsMetrics is undefined but by now it should
+            // be constructed as part of urWatcher.on("afterProduce", ...) so we
+            // do a type-assertion
+            this.state as { assetsMetrics: am.AssetsMetricsResult },
+          ),
+        ],
+      },
     });
 
     // The above steps were all setup; nothing has actually been "executed" yet
@@ -416,19 +538,7 @@ export class TypicalPublication implements Publication {
     for await (const _ of creator.products()) {
     }
 
-    // TODO REMOVE: For testing indexers
-    // for (
-    //   const ms of creator.resourcesIndex.filterSync(
-    //     ((r) => ldsDirec.isContentTODOsModelSupplier(r)),
-    //   )
-    // ) {
-    //   if (ldsDirec.isContentTODOsModelSupplier(ms)) {
-    //     console.dir(ms.model.contentTODOs);
-    //   }
-    // }
-
-    // any files that were not consumed should "mirrored" to the destination
-    this.mirrorUnconsumedAssets();
+    await this.finalizeProduce();
   }
 }
 

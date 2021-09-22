@@ -54,10 +54,6 @@ export interface LightningNavigationNotificationSupplier {
   readonly ldsNavNotification: LightningNavigationNotification;
 }
 
-export interface ContextBarRouteNode extends govn.RouteNode {
-  readonly isContextBarRouteNode: boolean;
-}
-
 export interface LightningNavigation
   extends govn.RouteTreeSupplier, html.HtmlLayoutClientCargoValueSupplier {
   readonly home: govn.RouteLocation;

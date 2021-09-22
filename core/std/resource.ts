@@ -216,15 +216,27 @@ export class UniversalRefineryEventEmitter<Resource>
       index: UniversalResourcesIndex<Resource>,
       ur: UniversalRefinery<Resource>,
     ): Promise<void>;
+    afterProduce(
+      index: UniversalResourcesIndex<Resource>,
+      ur: UniversalRefinery<Resource>,
+    ): Promise<void>;
   }> {}
 
 export interface UniversalRefineryOptions<Resource>
   extends Partial<govn.ObservabilityEventsEmitterSupplier> {
-  readonly preProductionOriginators?: Iterable<
-    govn.ResourcesFactoriesSupplier<Resource>
-  >;
   readonly construct?: Partial<govn.ResourceRefinerySuppliers<Resource>>;
+  readonly preProduction?: {
+    readonly originators: Iterable<
+      govn.ResourcesFactoriesSupplier<Resource>
+    >;
+  };
   readonly produce?: Partial<govn.ResourceRefinerySuppliers<Resource>>;
+  readonly postProduction?: {
+    readonly originators: Iterable<
+      govn.ResourcesFactoriesSupplier<Resource>
+    >;
+    readonly addResourcesToIndex?: boolean;
+  };
   readonly eventEmitter?: (
     fsrfs: UniversalRefinery<Resource>,
   ) => UniversalRefineryEventEmitter<Resource>;
@@ -316,18 +328,39 @@ export class UniversalRefinery<Resource>
       if (this.ee) {
         await this.ee.emit("beforeProduce", this.resourcesIndex, this);
       }
-      if (this.options?.preProductionOriginators) {
-        for await (const ppo of this.options?.preProductionOriginators) {
+      if (this.options?.preProduction) {
+        for await (const ppo of this.options.preProduction.originators) {
           for await (const resource of refine(ppo, this.options, this.ee)) {
             this.resourcesIndex.index(resource);
           }
         }
       }
-      for (const constructed of this.resourcesIndex.resources()) {
+      for (const resource of this.resourcesIndex.resources()) {
         if (refineries.resourceRefinery) {
-          yield await refineries.resourceRefinery(constructed);
+          yield await refineries.resourceRefinery(resource);
         } else if (refineries.resourceRefinerySync) {
-          yield refineries.resourceRefinerySync(constructed);
+          yield refineries.resourceRefinerySync(resource);
+        }
+      }
+      if (this.ee) {
+        await this.ee.emit("afterProduce", this.resourcesIndex, this);
+      }
+
+      // at this point, all resources have been constructed, refined, and
+      // produced but we give one more opportunity to originate any resources
+      // such as metrics, analytics, or any other post-production assets
+      if (this.options?.postProduction) {
+        for await (const ppo of this.options.postProduction.originators) {
+          for await (const resource of refine(ppo, this.options, this.ee)) {
+            if (this.options.postProduction.addResourcesToIndex) {
+              this.resourcesIndex.index(resource);
+            }
+            if (refineries.resourceRefinery) {
+              yield await refineries.resourceRefinery(resource);
+            } else if (refineries.resourceRefinerySync) {
+              yield refineries.resourceRefinerySync(resource);
+            }
+          }
         }
       }
     }

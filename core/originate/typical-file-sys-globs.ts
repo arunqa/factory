@@ -76,14 +76,16 @@ export function htmlFileSysGlobs(
   };
 }
 
-export function resourceModuleFileSysGlob(): fsg.FileSysPathGlob<
+export function resourceModuleFileSysGlob<State>(
+  state: State,
+): fsg.FileSysPathGlob<
   govn.ModuleResource
 > {
   return {
     glob: "**/*.rf.ts",
     exclude: ["deps.ts"],
     routeParser: route.humanFriendlyFileSysRouteParser,
-    factory: module.moduleFileSysResourceFactory(),
+    factory: module.moduleFileSysResourceFactory(state),
   };
 }
 
@@ -98,9 +100,10 @@ export function jsonModuleFileSysGlob(): fsg.FileSysPathGlob<
   };
 }
 
-export function moduleFileSysGlobs(
+export function moduleFileSysGlobs<State>(
   originRootPath: fsg.FileSysPathText,
   fsRouteFactory: route.FileSysRouteFactory,
+  state: State,
 ): fsg.FileSysPaths<govn.ModuleResource> {
   return {
     humanFriendlyName: "Module Content",
@@ -110,7 +113,7 @@ export function moduleFileSysGlobs(
       fileSysPath: originRootPath,
       globs: [
         // deno-lint-ignore no-explicit-any
-        resourceModuleFileSysGlob() as fsg.FileSysPathGlob<any>,
+        resourceModuleFileSysGlob(state) as fsg.FileSysPathGlob<any>,
         // deno-lint-ignore no-explicit-any
         jsonModuleFileSysGlob() as fsg.FileSysPathGlob<any>,
       ],

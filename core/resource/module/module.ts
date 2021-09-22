@@ -16,22 +16,25 @@ export const isModuleResource = safety.typeGuard<govn.ModuleResource>(
   "imported",
 );
 
-export interface FileSysResourceModuleConstructor {
+export interface FileSysResourceModuleConstructor<State> {
   (
     we: fsrf.FileSysGlobWalkEntry<govn.ModuleResource>,
     options: route.FileSysRouteOptions,
     imported: govn.ExtensionModule,
+    state: State,
   ): Promise<govn.ModuleResource>;
 }
 
 export function isModuleConstructor(
   o: unknown,
-): o is FileSysResourceModuleConstructor {
+  // deno-lint-ignore no-explicit-any
+): o is FileSysResourceModuleConstructor<any> {
   if (typeof o === "function") return true;
   return false;
 }
 
-export function moduleFileSysResourceFactory(
+export function moduleFileSysResourceFactory<State>(
+  state: State,
   refine?: govn.ResourceRefinery<govn.ModuleResource>,
 ): fsrf.FileSysGlobWalkEntryFactory<govn.ModuleResource> {
   return {
@@ -58,7 +61,7 @@ export function moduleFileSysResourceFactory(
         // deno-lint-ignore no-explicit-any
         const constructor = (imported.module as any).default;
         if (isModuleConstructor(constructor)) {
-          const instance = await constructor(we, options, imported);
+          const instance = await constructor(we, options, imported, state);
           if (isModuleResource(instance)) {
             return instance;
           } else {

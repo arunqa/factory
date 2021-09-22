@@ -5,9 +5,11 @@ import * as htmlDS from "../../core/render/html/mod.ts";
 import "./sql.ts"; // for window.* globals
 
 const sqlHTML: htmlDS.HtmlLayoutBodySupplier = (_layout) => {
-  const dbAccesses = Array.from(window.globalSqlDbConns.values()).map((conn) =>
-    Deno.inspect(conn)
-  );
+  const dbAccesses = window.globalSqlDbConns
+    ? Array.from(window.globalSqlDbConns.values()).map((conn) =>
+      Deno.inspect(conn)
+    )
+    : [];
   // deno-fmt-ignore
   return `<pre>
   ${window.globalSqlDbConns ? dbAccesses.length > 0 ? dbAccesses.join("\n\n") : "database accesses not required (no proxies or caches were updated)" : "window.globalSqlDbConns not initialized"}
@@ -76,7 +78,7 @@ export function observabilityResources(
  */
 export const fileSysModuleConstructor:
   // deno-lint-ignore require-await
-  rModule.FileSysResourceModuleConstructor = async (
+  rModule.FileSysResourceModuleConstructor<unknown> = async (
     we,
     options,
     imported,

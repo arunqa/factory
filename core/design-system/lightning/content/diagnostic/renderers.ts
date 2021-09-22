@@ -1,6 +1,6 @@
-import * as govn from "../../../../governance/mod.ts";
-import * as nature from "../../../std/nature.ts";
-import * as lds from "../mod.ts";
+import * as govn from "../../../../../governance/mod.ts";
+import * as nature from "../../../../std/nature.ts";
+import * as lds from "../../mod.ts";
 
 const layoutsGrid = "layouts";
 
