@@ -156,7 +156,7 @@ function routesHTML(
             });
         };
   
-        fetch('./routes.json')
+        fetch('../routes.json')
           .then(response => response.json())
           .then(data => {
             handleNodes(data.items);
@@ -184,7 +184,7 @@ export function routesHtmlFactorySupplier(
         nature: nature.htmlContentNature,
         route: {
           ...rf.childRoute(
-            { unit: lds.indexUnitName, label: "Routes" },
+            { unit: "routes", label: "Routes", aliases: ["../"] },
             parentRoute,
             false,
           ),

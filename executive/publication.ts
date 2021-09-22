@@ -252,6 +252,9 @@ export class PublicationRoutes {
    * resourcesTree.
    */
   prepareNavigationTree() {
+    this.navigationTree.consumeRoute(
+      cpC.diagnosticsObsRedirectRoute(this.routeFactory),
+    );
     this.resourcesTree.consumeAliases();
     this.navigationTree.consumeTree(
       this.resourcesTree,

@@ -5,8 +5,9 @@ const controlPanelRouteUnit: govn.RouteUnit = {
   label: "Control Panel",
 };
 
+const observabilityUnitName = "observability";
 const observabilityRouteUnit: govn.RouteUnit = {
-  unit: "observability",
+  unit: observabilityUnitName,
   label: "Observability",
 };
 
@@ -26,10 +27,29 @@ const diagnosticsRouteUnits: govn.RouteUnits = {
   terminal: diagnosticsRouteUnit,
 };
 
+const diagnosticsObsRedirectRouteTerminal:
+  & govn.RouteUnit
+  & govn.RedirectUrlSupplier = {
+    ...observabilityRouteUnit,
+    redirect: `../../${observabilityUnitName}/`, // will work for pretty URLs only
+  };
+const diagnosticsObsRedirectRouteUnits: govn.RouteUnits = {
+  units: [
+    controlPanelRouteUnit,
+    diagnosticsRouteUnit,
+    diagnosticsObsRedirectRouteTerminal,
+  ],
+  terminal: diagnosticsObsRedirectRouteTerminal,
+};
+
 export function observabilityRoute(rf: govn.RouteFactory): govn.Route {
   return rf.route(observabilityRouteUnits);
 }
 
 export function diagnosticsRoute(rf: govn.RouteFactory): govn.Route {
   return rf.route(diagnosticsRouteUnits);
+}
+
+export function diagnosticsObsRedirectRoute(rf: govn.RouteFactory): govn.Route {
+  return rf.route(diagnosticsObsRedirectRouteUnits);
 }

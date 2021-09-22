@@ -10,6 +10,7 @@ import * as g from "../core/std/git.ts";
 import * as md from "../core/resource/markdown.ts";
 import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
 import * as lds from "../core/design-system/lightning/mod.ts";
+import * as cpC from "../core/content/control-panel.ts";
 
 export interface HugoPageWeightSupplier {
   readonly weight?: number;
@@ -76,6 +77,9 @@ export class HugoRoutes extends publ.PublicationRoutes {
   }
 
   prepareNavigationTree() {
+    this.navigationTree.consumeRoute(
+      cpC.diagnosticsObsRedirectRoute(this.routeFactory),
+    );
     this.resourcesTree.consumeAliases();
     this.navigationTree.consumeTree(
       this.resourcesTree,
