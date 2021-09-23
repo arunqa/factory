@@ -1,5 +1,6 @@
 import {
   fs,
+  govnSvcHealth as health,
   govnSvcMetrics as gsm,
   govnSvcTelemetry as telem,
   log,
@@ -131,25 +132,10 @@ export const isPublicationRouteEventsHandler = safety.typeGuard<
   PublicationRouteEventsHandler<any>
 >("prepareResourceRoute", "prepareResourceTreeNode");
 
-// export enum PublicationLifecycleStep {
-//   BEFORE_PRODUCE,
-//   BEFORE_PRODUCE_INIT,
-//   AFTER_PRODUCE_INIT,
-//   AFTER_PRODUCE,
-//   FINALIZED,
-// }
-
 export interface PublicationState {
-  // readonly lifecycleStep: (
-  //   step?: PublicationLifecycleStep,
-  // ) => PublicationLifecycleStep;
   readonly resourcesTree: govn.RouteTree;
+  readonly resourcesIndex: r.UniversalResourcesIndex<unknown>;
   assetsMetrics?: am.AssetsMetricsResult;
-}
-
-export interface Publication {
-  readonly produce: () => Promise<void>;
-  readonly state: PublicationState;
 }
 
 export class ResourcesTree extends rtree.TypicalRouteTree {
@@ -306,9 +292,17 @@ export class PublicationDesignSystemArguments
   }
 }
 
-export class TypicalPublication implements Publication {
+export interface Publication {
+  readonly produce: () => Promise<void>;
+  readonly state: PublicationState;
+}
+
+export class TypicalPublication
+  implements Publication, govn.ObservabilityHealthComponentStatusSupplier {
+  readonly namespaceURIs = ["TypicalPublication<Resource>"];
   readonly state: PublicationState;
   readonly consumedFileSysWalkPaths = new Set<string>();
+
   constructor(
     readonly config: Configuration,
     readonly routes = new PublicationRoutes(config.fsRouteFactory),
@@ -316,6 +310,22 @@ export class TypicalPublication implements Publication {
   ) {
     this.state = {
       resourcesTree: routes.resourcesTree,
+      resourcesIndex: new r.UniversalResourcesIndex(),
+    };
+  }
+
+  obsHealthStatus() {
+    const time = new Date();
+    const status = health.healthyComponent({
+      componentId: this.namespaceURIs.join(", "),
+      componentType: "component",
+      links: {},
+      time,
+    });
+    return {
+      identity: this.config.appName,
+      category: "TypicalPublication",
+      status,
     };
   }
 
@@ -431,118 +441,143 @@ export class TypicalPublication implements Publication {
     ];
   }
 
+  originationRefinery() {
+    return this.routes.resourcesTreePopulatorSync();
+  }
+
+  producersRefinery() {
+    return r.pipelineUnitsRefineryUntyped(
+      this.config.lightningDS.prettyUrlsHtmlProducer(
+        this.config.destRootPath,
+        this.ds,
+      ),
+      jrs.jsonProducer(this.config.destRootPath, {
+        routeTree: this.routes.resourcesTree,
+      }),
+      dtr.csvProducer<PublicationState>(
+        this.config.destRootPath,
+        this.state,
+      ),
+      tfr.textFileProducer<PublicationState>(
+        this.config.destRootPath,
+        this.state,
+      ),
+    );
+  }
+
   async initProduce() {
     // setup the cache and any other git-specific initialization
     if (this.ds.git instanceof g.TypicalGit) await this.ds.git.init();
   }
 
-  async finalizeProduce() {
-    // any files that were not consumed should "mirrored" to the destination
-    await this.mirrorUnconsumedAssets();
+  async *originate<Resource>(
+    supplier: govn.ResourcesFactoriesSupplier<Resource>,
+    // deno-lint-ignore no-explicit-any
+    refine: govn.ResourceRefinerySync<any>,
+    _parent?: Resource,
+  ): AsyncGenerator<Resource> {
+    for await (const rf of supplier.resourcesFactories()) {
+      const resource = refine(await rf.resourceFactory()) as Resource;
+      let hasChildren = false;
+      let yieldWithChildren = false;
+      if (r.isChildResourcesFactoriesSupplier<Resource>(resource)) {
+        // our constructed resource wants to create its own resources so allow
+        // it become a dynamic supplier of resource factories via recursion
+        yield* this.originate(resource, refine, resource);
+        hasChildren = true;
+        yieldWithChildren = resource.yieldParentWithChildren ? true : false;
+      }
+      if (!hasChildren || (hasChildren && yieldWithChildren)) {
+        yield resource;
+      }
+    }
   }
 
-  async produce() {
-    // perform all pre-production activities
-    await this.initProduce();
+  async *resources<Resource>(refine: govn.ResourceRefinerySync<Resource>) {
+    for await (const originator of this.originators()) {
+      yield* this.originate(originator, refine);
+    }
+  }
 
-    // deno-lint-ignore no-explicit-any
-    const urWatcher = new r.UniversalRefineryEventEmitter<any>();
-    // deno-lint-ignore require-await
-    urWatcher.on("beforeProduce", async () => {
-      // After all resources are constructed and the routes are known, prepare
-      // the navigation tree. There is a full, sitemap, routes tree but the
-      // navigation tree is only for routes that are navigable by end users.
-      // urWatcher.on("beforeProduce", ...) is executed after creator.construct
-      // factories are concluded.
-      this.routes.prepareNavigationTree();
-    });
-    urWatcher.on("afterProduce", async () => {
-      // After all resources are persisted ("produced") perform analytics and
-      // prepare post-production assets.
-      this.state.assetsMetrics = await am.assetsMetrics({
-        ...this.config.assetsMetricsArgs,
-        metricsSuppliers: [
-          am.assetNameMetrics(),
-          am.assetNameLintIssues(this.config.metrics),
-        ],
-        metrics: this.config.metrics,
-        txID: "transactionID",
-        txHost: Deno.hostname(),
-      });
+  async produceMetrics() {
+    this.state.assetsMetrics = await am.assetsMetrics({
+      ...this.config.assetsMetricsArgs,
+      metricsSuppliers: [
+        am.assetNameMetrics(),
+        am.assetNameLintIssues(this.config.metrics),
+      ],
+      metrics: this.config.metrics,
+      txID: "transactionID",
+      txHost: Deno.hostname(),
     });
 
     const { fsRouteFactory, observabilityRoute } = this.config;
-    const creator = new r.UniversalRefinery(this.originators(), {
-      eventEmitter: () => urWatcher,
-      construct: {
-        // As each markdown or other resource/file is read and a
-        // MarkdownResource or *Resource is constructed, track it for navigation
-        // or other design system purposes. resourcesTree is basically our
-        // sitemap. After all the routes are captured during resource
-        // construction, then urWatcher.on("beforeProduce", ...) will be run to
-        // prepare the UX navigation tree.
-        resourceRefinerySync: this.routes.resourcesTreePopulatorSync(),
-      },
-
-      // These factories run after initial construction of each resource and
-      // beforeProduce event has been emitted. This allows resources to be
-      // constructed which can/ only be known after initial originators are
-      // executed.
-      preProduction: { originators: [this.routes.redirectResources()] },
-
-      // This resourceRefinery pipeline will be "executed" after all known
-      // resources are constructed, all routes are registered, and the
-      // UX navigation tree is prepared; we render HTML using design system
-      // page renderer and then persist each file to the file system.
-      produce: {
-        resourceRefinery: r.pipelineUnitsRefineryUntyped(
-          this.config.lightningDS.prettyUrlsHtmlProducer(
-            this.config.destRootPath,
-            this.ds,
-          ),
-          jrs.jsonProducer(this.config.destRootPath, {
-            routeTree: this.routes.resourcesTree,
-          }),
-          dtr.csvProducer<PublicationState>(
-            this.config.destRootPath,
-            this.state,
-          ),
-          tfr.textFileProducer<PublicationState>(
-            this.config.destRootPath,
-            this.state,
-          ),
+    const resourcesIndex = this.state.resourcesIndex;
+    const originationRefinery = this.originationRefinery();
+    const persist = this.producersRefinery();
+    for await (
+      const resource of this.originate<govn.HtmlSupplier>(
+        ldsObsC.observabilityPostProduceResources(
+          observabilityRoute,
+          fsRouteFactory,
+          // before production assetsMetrics is undefined but by now it should
+          // be constructed as part of urWatcher.on("afterProduce", ...) so we
+          // do a type-assertion
+          this.state as { assetsMetrics: am.AssetsMetricsResult },
         ),
-      },
+        originationRefinery,
+      )
+    ) {
+      resourcesIndex.index(await persist(resource));
+    }
+  }
 
-      postProduction: {
-        originators: [
-          ldsObsC.observabilityPostProduceResources(
-            observabilityRoute,
-            fsRouteFactory,
-            // before production assetsMetrics is undefined but by now it should
-            // be constructed as part of urWatcher.on("afterProduce", ...) so we
-            // do a type-assertion
-            this.state as { assetsMetrics: am.AssetsMetricsResult },
-          ),
-        ],
-      },
-    });
+  async finalizeProduce() {
+    // any files that were not consumed should "mirrored" to the destination
+    await this.mirrorUnconsumedAssets();
+    await this.produceMetrics();
+  }
 
-    // The above steps were all setup; nothing has actually been "executed" yet
-    // but the creator.products() method now does all the work:
-    // 1. Each originator in this.originators() is executed in parallel
-    // 2. After all resources are produced, they are passed through the
-    //    creator.resourceRefinerySync pipeline
-    // 3. urWatcher.on("beforeProduce", ...) will be called
-    // 4. creator.preProductionOriginators will now be run to give one last
-    //    to construct resources like redirects or other resources that depend
-    //    on resources constructed in step 1
-    // 5. creator.produce refineries will be run to generate HTML, JSON, etc.
-    //    and presist each resource to disk
-    // deno-lint-ignore no-empty
-    for await (const _ of creator.products()) {
+  async produce() {
+    // give opportunity for subclasses to intialize the production pipeline
+    await this.initProduce();
+
+    // we store all our resources in this index, as they are produced;
+    // ultimately the index contains every generated resource
+    const resourcesIndex = this.state.resourcesIndex;
+
+    // find and construct every orginatable resource from file system and other
+    // sources; as each resource is prepared, store it in the index -- each
+    // resource create child resources recursively and this loop handles all
+    // "fanned out" resources as well
+    const originationRefinery = this.originationRefinery();
+    for await (const resource of this.resources(originationRefinery)) {
+      resourcesIndex.index(resource);
     }
 
+    // the first found of all resources are now available, but haven't yet been
+    // persisted so let's prepare the navigation trees before we persist
+    this.routes.prepareNavigationTree();
+
+    // the navigation tree may have generated redirect HTML pages (e.g. aliases)
+    // so let's get those into the index too
+    for await (
+      const resource of this.originate(
+        this.routes.redirectResources(),
+        originationRefinery,
+      )
+    ) {
+      resourcesIndex.index(resource);
+    }
+
+    // now all resources, child resources, redirect pages, etc. have been
+    // so we can persist all pages
+    const persist = this.producersRefinery();
+    for (const resource of resourcesIndex.resources()) {
+      await persist(resource);
+    }
+
+    // give opportunity for subclasses to finalize the production pipeline
     await this.finalizeProduce();
   }
 }
