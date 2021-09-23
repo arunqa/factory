@@ -1,42 +1,46 @@
 import { govnSvcHealth as health, safety } from "../deps.ts";
 import * as govn from "../../governance/mod.ts";
-import * as e from "./extension.ts";
 
 export const isObservabilityHealthComponentSupplier = safety.typeGuard<
-  govn.ObservabilityHealthComponentStatus
+  govn.ObservabilityHealthComponentStatusSupplier
 >("obsHealthStatus");
 
 export class Observability implements govn.ObservabilityEventsEmitterSupplier {
-  readonly plugins: health.ServiceHealthComponentStatus[] = [];
-  readonly resourcesFactories: health.ServiceHealthComponentStatus[] = [];
-  readonly resourcesSuppliers: health.ServiceHealthComponentStatus[] = [];
-  readonly extensionConsumers: govn.ExtensionConsumer[] = [];
-  readonly cachedExtensions = new e.CachedExtensions();
+  readonly suppliers: govn.ObservabilityHealthComponentStatus[] = [];
   constructor(readonly observabilityEE: govn.ObservabilityEventsEmitter) {
     observabilityEE.on(
-      "healthyOriginator",
+      "healthy",
       (rf) => {
         if (isObservabilityHealthComponentSupplier(rf)) {
-          this.resourcesFactories.push(rf.obsHealthStatus());
-        }
-      },
-    );
-    observabilityEE.on(
-      "healthyRefinery",
-      (rs) => {
-        if (isObservabilityHealthComponentSupplier(rs)) {
-          this.resourcesSuppliers.push(rs.obsHealthStatus());
+          this.suppliers.push(rf.obsHealthStatus());
         }
       },
     );
   }
 
   serviceHealthComponentsDetails() {
-    return {
-      [`plugins`]: this.plugins,
-      [`resourcesFactories`]: this.resourcesFactories,
-      [`resourcesSuppliers`]: this.resourcesSuppliers,
+    const details: Record<string, health.ServiceHealthComponentStatus[]> = {};
+    const storeDetail = (
+      category: string,
+      status: health.ServiceHealthComponentStatus,
+    ) => {
+      const found = details[category];
+      if (found) {
+        found.push(status);
+      } else {
+        details[category] = [status];
+      }
     };
+    for (const supplier of this.suppliers) {
+      if (Array.isArray(supplier.category)) {
+        for (const category of supplier.category) {
+          storeDetail(category, supplier.status);
+        }
+      } else {
+        storeDetail(supplier.category, supplier.status);
+      }
+    }
+    return details;
   }
 
   serviceHealth() {

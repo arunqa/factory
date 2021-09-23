@@ -73,14 +73,17 @@ export interface FileSysGlobsOriginatorOptions<Resource>
   ) => FileSysGlobsOriginatorEventEmitter<
     Resource
   >;
+  readonly obsHealthStatusIdentity?:
+    govn.ObservabilityHealthComponentStatusIdentity;
 }
 
 export class FileSysGlobsOriginator<Resource>
   implements
     govn.ResourcesFactoriesSupplier<Resource>,
-    govn.ObservabilityHealthComponentStatus,
+    govn.ObservabilityHealthComponentStatusSupplier,
     govn.NamespacesSupplier {
   readonly namespaceURIs = ["FileSysGlobsOriginator<Resource>"];
+  readonly obsHealthIdentity: govn.ObservabilityHealthComponentStatusIdentity;
   readonly fsee?: FileSysGlobsOriginatorEventEmitter<Resource>;
   readonly oee?: govn.ObservabilityEventsEmitter;
   constructor(
@@ -94,12 +97,18 @@ export class FileSysGlobsOriginator<Resource>
     if (options?.observabilityEE) {
       this.oee = options?.observabilityEE;
     }
-    this.oee?.emitSync("healthyOriginator", this);
+    this.oee?.emitSync("healthy", this);
+    this.obsHealthIdentity = options?.obsHealthStatusIdentity || {
+      identity: `FileSysGlobsOriginator: ${
+        topLevelLfsPaths.map((p) => p.humanFriendlyName).join(", ")
+      }`,
+      category: `FileSysGlobsOriginator`,
+    };
   }
 
   obsHealthStatus() {
     const time = new Date();
-    return health.healthyComponent({
+    const status = health.healthyComponent({
       componentId: `${this.namespaceURIs.join(", ")} ${
         this.topLevelLfsPaths.map((tlp) => tlp.ownerFileSysPath).join(", ")
       }`,
@@ -107,6 +116,7 @@ export class FileSysGlobsOriginator<Resource>
       links: {},
       time,
     });
+    return { ...this.obsHealthIdentity, status };
   }
 
   async *resourcesFactories() {

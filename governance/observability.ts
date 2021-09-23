@@ -1,18 +1,22 @@
-import { events, govnSvcHealth as health, safety } from "../deps.ts";
-import * as r from "./resource.ts";
+import { events, govnSvcHealth as health } from "../deps.ts";
 
-export class ObservabilityEventsEmitter extends events.EventEmitter<{
-  healthyOriginator<Resource>(rf: r.ResourcesFactoriesSupplier<Resource>): void;
-  healthyRefinery<Resource>(rs: r.ResourcesSupplier<Resource>): void;
-}> {}
-
-export interface ObservabilityHealthComponentStatus {
-  readonly obsHealthStatus: () => health.ServiceHealthComponentStatus;
+export interface ObservabilityHealthComponentStatusIdentity {
+  readonly identity: string;
+  readonly category: string | string[];
 }
 
-export const isObservabilityHealthComponentSupplier = safety.typeGuard<
-  ObservabilityHealthComponentStatus
->("obsHealthStatus");
+export interface ObservabilityHealthComponentStatus
+  extends ObservabilityHealthComponentStatusIdentity {
+  readonly status: health.ServiceHealthComponentStatus;
+}
+
+export interface ObservabilityHealthComponentStatusSupplier {
+  readonly obsHealthStatus: () => ObservabilityHealthComponentStatus;
+}
+
+export class ObservabilityEventsEmitter extends events.EventEmitter<{
+  healthy(ohcss: ObservabilityHealthComponentStatusSupplier): void;
+}> {}
 
 export interface ObservabilityEventsEmitterSupplier {
   readonly observabilityEE: ObservabilityEventsEmitter;
