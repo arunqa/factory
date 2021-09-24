@@ -43,6 +43,7 @@ export interface Preferences {
   readonly staticAssetsRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
+  readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
   readonly assetsMetricsArgs?: (config: Configuration) => Pick<
     am.AssetsMetricsArguments,
     "walkers"
@@ -64,6 +65,7 @@ export class Configuration implements Omit<Preferences, "assetsMetricsArgs"> {
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
   readonly logger: log.Logger;
+  readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
 
   constructor(prefs: Preferences) {
     const gitPaths = g.discoverGitWorkTree(prefs.contentRootPath);
@@ -88,6 +90,7 @@ export class Configuration implements Omit<Preferences, "assetsMetricsArgs"> {
           options: assetMetricsWalkOptions,
         }],
       };
+    this.rewriteMarkdownLink = prefs.rewriteMarkdownLink;
   }
 }
 
@@ -378,11 +381,7 @@ export class TypicalPublication
     return new mdr.MarkdownRenderStrategy(
       new mdr.MarkdownLayouts({
         directiveExpectations: this.directiveExpectationsSupplier(),
-        // TODO: replace all Hugo URL link-* shortcodes with this
-        // rewriteURL: (parsedURL, renderEnv) => {
-        //   console.log(parsedURL, Object.keys(renderEnv));
-        //   return parsedURL;
-        // },
+        rewriteURL: this.config.rewriteMarkdownLink,
       }),
     );
   }

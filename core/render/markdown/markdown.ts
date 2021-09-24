@@ -64,6 +64,10 @@ export type DefaultMarkdownLayoutSupplier = govn.DefaultLayoutStrategySupplier<
   govn.HtmlSupplier
 >;
 
+export interface MarkdownLinkUrlRewriter {
+  (parsedURL: string, renderEnv: Record<string, unknown>): string;
+}
+
 export interface MarkdownLayoutPreferences {
   readonly directiveExpectations?: govn.DirectiveExpectationsSupplier<
     govn.DirectiveExpectation<
@@ -72,10 +76,7 @@ export interface MarkdownLayoutPreferences {
       string | undefined
     >
   >;
-  readonly rewriteURL?: (
-    parsedURL: string,
-    renderEnv: Record<string, unknown>,
-  ) => string;
+  readonly rewriteURL?: MarkdownLinkUrlRewriter;
   readonly transformRendered?: (
     rendered: string,
     resource: md.MarkdownResource,
