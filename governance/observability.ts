@@ -1,23 +1,22 @@
 import { events, govnSvcHealth as health } from "../deps.ts";
 
-export interface ObservabilityHealthComponentStatusIdentity {
-  readonly identity: string;
+export interface ObservabilityHealthComponentCategorySupplier {
   readonly category: string | string[];
 }
 
 export interface ObservabilityHealthComponentStatus
-  extends ObservabilityHealthComponentStatusIdentity {
+  extends ObservabilityHealthComponentCategorySupplier {
   readonly status: health.ServiceHealthComponentStatus;
 }
 
 export interface ObservabilityHealthComponentStatusSupplier {
-  readonly obsHealthStatus: () => ObservabilityHealthComponentStatus;
+  readonly obsHealthStatus: () => Generator<ObservabilityHealthComponentStatus>;
 }
 
 export class ObservabilityEventsEmitter extends events.EventEmitter<{
-  healthy(ohcss: ObservabilityHealthComponentStatusSupplier): void;
+  healthStatusSupplier(ohcss: ObservabilityHealthComponentStatusSupplier): void;
 }> {}
 
 export interface ObservabilityEventsEmitterSupplier {
-  readonly observabilityEE: ObservabilityEventsEmitter;
+  readonly events: ObservabilityEventsEmitter;
 }

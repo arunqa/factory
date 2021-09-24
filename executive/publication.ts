@@ -56,7 +56,6 @@ export class Configuration implements Omit<Preferences, "assetsMetricsArgs"> {
   readonly git?: govn.GitExecutive;
   readonly fsRouteFactory = new route.FileSysRouteFactory();
   readonly extensionsManager = new e.CachedExtensions();
-  readonly observability: obs.Observability;
   readonly observabilityRoute: govn.Route;
   readonly diagnosticsRoute: govn.Route;
   readonly lightningDS = new lds.LightingDesignSystem();
@@ -69,9 +68,6 @@ export class Configuration implements Omit<Preferences, "assetsMetricsArgs"> {
   constructor(prefs: Preferences) {
     const gitPaths = g.discoverGitWorkTree(prefs.contentRootPath);
     if (gitPaths) this.git = new g.TypicalGit(gitPaths);
-    this.observability = new obs.Observability(
-      new govn.ObservabilityEventsEmitter(),
-    );
     this.contentRootPath = prefs.contentRootPath;
     this.staticAssetsRootPath = prefs.staticAssetsRootPath;
     this.destRootPath = prefs.destRootPath;
@@ -133,6 +129,7 @@ export const isPublicationRouteEventsHandler = safety.typeGuard<
 >("prepareResourceRoute", "prepareResourceTreeNode");
 
 export interface PublicationState {
+  readonly observability: obs.Observability;
   readonly resourcesTree: govn.RouteTree;
   readonly resourcesIndex: r.UniversalResourcesIndex<unknown>;
   assetsMetrics?: am.AssetsMetricsResult;
@@ -309,21 +306,24 @@ export class TypicalPublication
     readonly ds = new PublicationDesignSystemArguments(config, routes),
   ) {
     this.state = {
+      observability: new obs.Observability(
+        new govn.ObservabilityEventsEmitter(),
+      ),
       resourcesTree: routes.resourcesTree,
       resourcesIndex: new r.UniversalResourcesIndex(),
     };
+    this.state.observability.events.emit("healthStatusSupplier", this);
   }
 
-  obsHealthStatus() {
+  *obsHealthStatus(): Generator<govn.ObservabilityHealthComponentStatus> {
     const time = new Date();
     const status = health.healthyComponent({
       componentId: this.namespaceURIs.join(", "),
       componentType: "component",
-      links: {},
+      links: { "module": import.meta.url },
       time,
     });
-    return {
-      identity: this.config.appName,
+    yield {
       category: "TypicalPublication",
       status,
     };
@@ -337,7 +337,7 @@ export class TypicalPublication
   async mirrorUnconsumedAssets() {
     await Promise.all([
       this.config.lightningDS.symlinkAssets(this.config.destRootPath),
-      persist.symlinkAssets(
+      persist.linkAssets(
         this.config.contentRootPath,
         this.config.destRootPath,
         {
@@ -445,7 +445,7 @@ export class TypicalPublication
     return this.routes.resourcesTreePopulatorSync();
   }
 
-  producersRefinery() {
+  persistersRefinery() {
     return r.pipelineUnitsRefineryUntyped(
       this.config.lightningDS.prettyUrlsHtmlProducer(
         this.config.destRootPath,
@@ -495,6 +495,12 @@ export class TypicalPublication
 
   async *resources<Resource>(refine: govn.ResourceRefinerySync<Resource>) {
     for await (const originator of this.originators()) {
+      if (obs.isObservabilityHealthComponentSupplier(originator)) {
+        this.state.observability.events.emitSync(
+          "healthStatusSupplier",
+          originator,
+        );
+      }
       yield* this.originate(originator, refine);
     }
   }
@@ -514,20 +520,22 @@ export class TypicalPublication
     const { fsRouteFactory, observabilityRoute } = this.config;
     const resourcesIndex = this.state.resourcesIndex;
     const originationRefinery = this.originationRefinery();
-    const persist = this.producersRefinery();
+    const persist = this.persistersRefinery();
     for await (
-      const resource of this.originate<govn.HtmlSupplier>(
+      const resource of this.originate(
         ldsObsC.observabilityPostProduceResources(
           observabilityRoute,
           fsRouteFactory,
           // before production assetsMetrics is undefined but by now it should
           // be constructed as part of urWatcher.on("afterProduce", ...) so we
           // do a type-assertion
-          this.state as { assetsMetrics: am.AssetsMetricsResult },
+          this.state as ldsObsC.ObservabilityState,
         ),
         originationRefinery,
       )
     ) {
+      // we need to persist these ourselves because by the time produceMetrics()
+      // is called, all other resources have already been persisted
       resourcesIndex.index(await persist(resource));
     }
   }
@@ -535,6 +543,9 @@ export class TypicalPublication
   async finalizeProduce() {
     // any files that were not consumed should "mirrored" to the destination
     await this.mirrorUnconsumedAssets();
+
+    // produce metrics after the assets are mirrored in case we're walking the
+    // destination path
     await this.produceMetrics();
   }
 
@@ -571,8 +582,8 @@ export class TypicalPublication
     }
 
     // now all resources, child resources, redirect pages, etc. have been
-    // so we can persist all pages
-    const persist = this.producersRefinery();
+    // created so we can persist all pages that are in our index
+    const persist = this.persistersRefinery();
     for (const resource of resourcesIndex.resources()) {
       await persist(resource);
     }

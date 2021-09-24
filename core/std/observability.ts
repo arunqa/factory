@@ -6,16 +6,9 @@ export const isObservabilityHealthComponentSupplier = safety.typeGuard<
 >("obsHealthStatus");
 
 export class Observability implements govn.ObservabilityEventsEmitterSupplier {
-  readonly suppliers: govn.ObservabilityHealthComponentStatus[] = [];
-  constructor(readonly observabilityEE: govn.ObservabilityEventsEmitter) {
-    observabilityEE.on(
-      "healthy",
-      (rf) => {
-        if (isObservabilityHealthComponentSupplier(rf)) {
-          this.suppliers.push(rf.obsHealthStatus());
-        }
-      },
-    );
+  readonly suppliers: govn.ObservabilityHealthComponentStatusSupplier[] = [];
+  constructor(readonly events: govn.ObservabilityEventsEmitter) {
+    events.on("healthStatusSupplier", (rf) => this.suppliers.push(rf));
   }
 
   serviceHealthComponentsDetails() {
@@ -32,12 +25,14 @@ export class Observability implements govn.ObservabilityEventsEmitterSupplier {
       }
     };
     for (const supplier of this.suppliers) {
-      if (Array.isArray(supplier.category)) {
-        for (const category of supplier.category) {
-          storeDetail(category, supplier.status);
+      for (const status of supplier.obsHealthStatus()) {
+        if (Array.isArray(status.category)) {
+          for (const category of status.category) {
+            storeDetail(category, status.status);
+          }
+        } else {
+          storeDetail(status.category, status.status);
         }
-      } else {
-        storeDetail(supplier.category, supplier.status);
       }
     }
     return details;

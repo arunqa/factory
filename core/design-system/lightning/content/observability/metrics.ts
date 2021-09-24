@@ -61,6 +61,7 @@ const metricsHTML: lds.LightningLayoutBodySupplier = (_layout) => `
 <h2>TODO: need to run assets metrics after final symlinks are done to include assets in <code>public</code></h2>
 <div>
     <a href="./assets-metrics.json">View <code>metrics.json</code></a><br>
+    <a href="./health.json">View <code>health.json</code></a><br>
     <a href="./metrics.txt">View Exported OpenMetrics (in Prometheus Exposition Format)</a>
 </div>
 

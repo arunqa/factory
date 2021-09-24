@@ -66,15 +66,14 @@ export class FileSysGlobsOriginatorEventEmitter<Resource>
     ): Promise<void>;
   }> {}
 
-export interface FileSysGlobsOriginatorOptions<Resource>
-  extends Partial<govn.ObservabilityEventsEmitterSupplier> {
+export interface FileSysGlobsOriginatorOptions<Resource> {
   readonly eventEmitter?: (
     fsrfs: FileSysGlobsOriginator<Resource>,
   ) => FileSysGlobsOriginatorEventEmitter<
     Resource
   >;
   readonly obsHealthStatusIdentity?:
-    govn.ObservabilityHealthComponentStatusIdentity;
+    govn.ObservabilityHealthComponentCategorySupplier;
 }
 
 export class FileSysGlobsOriginator<Resource>
@@ -83,7 +82,7 @@ export class FileSysGlobsOriginator<Resource>
     govn.ObservabilityHealthComponentStatusSupplier,
     govn.NamespacesSupplier {
   readonly namespaceURIs = ["FileSysGlobsOriginator<Resource>"];
-  readonly obsHealthIdentity: govn.ObservabilityHealthComponentStatusIdentity;
+  readonly obsHealthIdentity: govn.ObservabilityHealthComponentCategorySupplier;
   readonly fsee?: FileSysGlobsOriginatorEventEmitter<Resource>;
   readonly oee?: govn.ObservabilityEventsEmitter;
   constructor(
@@ -94,29 +93,37 @@ export class FileSysGlobsOriginator<Resource>
     if (options?.eventEmitter) {
       this.fsee = options?.eventEmitter(this);
     }
-    if (options?.observabilityEE) {
-      this.oee = options?.observabilityEE;
-    }
-    this.oee?.emitSync("healthy", this);
     this.obsHealthIdentity = options?.obsHealthStatusIdentity || {
-      identity: `FileSysGlobsOriginator: ${
-        topLevelLfsPaths.map((p) => p.humanFriendlyName).join(", ")
-      }`,
       category: `FileSysGlobsOriginator`,
     };
   }
 
-  obsHealthStatus() {
+  *obsHealthStatus(): Generator<govn.ObservabilityHealthComponentStatus> {
     const time = new Date();
-    const status = health.healthyComponent({
-      componentId: `${this.namespaceURIs.join(", ")} ${
-        this.topLevelLfsPaths.map((tlp) => tlp.ownerFileSysPath).join(", ")
-      }`,
-      componentType: "component",
-      links: {},
-      time,
-    });
-    return { ...this.obsHealthIdentity, status };
+    for (const topLevelPath of this.topLevelLfsPaths) {
+      for (const lfsPath of topLevelPath.lfsPaths) {
+        for (const glob of lfsPath.globs) {
+          const componentId =
+            `FileSysGlobsOriginator ${glob.humanFriendlyName ||
+              lfsPath.humanFriendlyName ||
+              topLevelPath.humanFriendlyName} ${glob.glob}`;
+          const status = health.healthyComponent({
+            componentId,
+            componentType: "component",
+            links: {
+              "module": import.meta.url,
+              "ownerFileSysPath": topLevelPath.ownerFileSysPath,
+              "fileSysPath": lfsPath.fileSysPath,
+            },
+            time,
+          });
+          yield {
+            category: this.obsHealthIdentity.category,
+            status,
+          };
+        }
+      }
+    }
   }
 
   async *resourcesFactories() {

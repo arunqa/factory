@@ -1,10 +1,13 @@
 import * as govn from "../../../../../governance/mod.ts";
 import * as rModule from "../../../../resource/module/module.ts";
 import * as am from "../../../../../lib/assets-metrics.ts";
+import * as nature from "../../../../std/nature.ts";
+import * as o from "../../../../std/observability.ts";
 import * as m from "./metrics.ts";
 
 export interface ObservabilityState {
   readonly assetsMetrics: am.AssetsMetricsResult;
+  readonly observability: o.Observability;
 }
 
 /**
@@ -42,6 +45,30 @@ export function observabilityPostProduceResources<
       for (const factory of m.metricsFactorySuppliers(parentRoute, rf, state)) {
         yield factory;
       }
+      yield {
+        // deno-lint-ignore require-await
+        resourceFactory: async () => {
+          const health = state.observability.serviceHealth();
+          const healthJSON = JSON.stringify(health, undefined, "  ");
+          const resource: govn.PersistableJsonResource & govn.RouteSupplier = {
+            nature: nature.jsonContentNature,
+            route: {
+              ...rf.childRoute(
+                { unit: "health", label: "Health JSON" },
+                parentRoute,
+                false,
+              ),
+              nature: nature.jsonContentNature,
+            },
+            jsonInstance: () => health,
+            jsonText: {
+              text: healthJSON,
+              textSync: healthJSON,
+            },
+          };
+          return resource;
+        },
+      };
     },
   };
 }

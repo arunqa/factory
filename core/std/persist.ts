@@ -159,13 +159,14 @@ export function persistFlexibleFileSyncCustom(
   return false;
 }
 
-export async function symlinkAssets(
+export async function linkAssets(
   originRootPath: string,
   destRootPath: string,
   ...globs: {
-    glob: string;
-    options?: fs.ExpandGlobOptions;
-    include?: (we: fs.WalkEntry) => boolean;
+    readonly glob: string;
+    readonly options?: fs.ExpandGlobOptions;
+    readonly include?: (we: fs.WalkEntry) => boolean;
+    readonly hardlink?: boolean;
   }[]
 ) {
   for (const g of globs) {
@@ -186,7 +187,11 @@ export async function symlinkAssets(
         );
         const dest = path.join(destRootPath, relPath);
         if (!fs.existsSync(dest)) {
-          await fs.ensureSymlink(a.path, path.join(destRootPath, relPath));
+          if (g.hardlink) {
+            await fs.ensureLink(a.path, dest);
+          } else {
+            await fs.ensureSymlink(a.path, dest);
+          }
         } else {
           console.warn(
             `unable to symlink ${a.path} to ${dest}: cannot overwrite destination`,
