@@ -32,18 +32,6 @@ const metricsHTML: lds.LightningLayoutBodySupplier = (_layout) => `
 
 <script type="text/javascript">
     $(function () {
-        Papa.parse("./analytics-extensions.csv", {
-            download: true,
-            skipEmptyLines: true,
-            complete: function (parsed) {
-                // "Date","Time",,"File Extension","Count of Files with Extension","Total Bytes in all Files with Extension","Build ID","Host"
-                $("#summaryPivotUI").pivotUI(parsed.data, {
-                    rows: ["Scope", "File Extension", "Count of Files with Extension", "Total Bytes in all Files with Extension"],
-                    cols: ["Date"],
-                    rendererOptions: { table: { rowTotals: false, colTotals: false, } },
-                });
-            }
-        });
         Papa.parse("./analytics-paths-extensions.csv", {
             download: true,
             skipEmptyLines: true,
@@ -60,15 +48,12 @@ const metricsHTML: lds.LightningLayoutBodySupplier = (_layout) => `
 </script>
 <p style="width: 800px"></p>
 <h1>Publication Results</h1>
-<h2>TODO: need to run assets metrics after final symlinks are done to include assets in <code>public</code></h2>
+<h2>TODO: assets metrics do not properly count contents of <code>public</code> because of symlinks instead of hardlinks</h2>
 <div>
     <a href="./assets-metrics.json">View <code>metrics.json</code></a><br>
     <a href="./health.json">View <code>health.json</code></a><br>
     <a href="./metrics.txt">View Exported OpenMetrics (in Prometheus Exposition Format)</a>
 </div>
-
-<h1>File counts and total bytes</h1>
-<div id="summaryPivotUI" style="margin: 30px;"></div>
 
 <h1>File counts and total bytes by type</h1>
 <div id="typesPivotUI" style="margin: 30px;"></div>`
