@@ -1,9 +1,11 @@
-import { govnSvcMetrics as gsm } from "../../../../../deps.ts";
+import {
+  govnSvcFsAnalytics as fsA,
+  govnSvcMetrics as gsm,
+} from "../../../../../deps.ts";
 import * as govn from "../../../../../governance/mod.ts";
 import * as nature from "../../../../std/nature.ts";
 import * as dtr from "../../../../render/delimited-text.ts";
 import * as tfr from "../../../../render/text.ts";
-import * as am from "../../../../../lib/assets-metrics.ts";
 import * as ds from "../../../../render/html/mod.ts";
 import * as lds from "../../mod.ts";
 import * as ldsL from "../../layout/mod.ts";
@@ -117,7 +119,7 @@ export function metricsHtmlFactorySupplier(
 }
 
 export interface MetricsFactorySuppliersState {
-  readonly assetsMetrics: am.AssetsMetricsResult;
+  readonly assetsMetrics: fsA.AssetsMetricsResult;
 }
 
 /**
@@ -167,37 +169,6 @@ export function metricsFactorySuppliers(
           route: {
             ...rf.childRoute(
               {
-                unit: "analytics-extensions",
-                label: "Analytics Extensions CSV",
-              },
-              parentRoute,
-              false,
-            ),
-            nature: dtr.csvContentNature,
-          },
-          isDelimitedTextSupplier: true,
-          header: state.assetsMetrics.summaryHeader.map((h) => `"${h}"`).join(
-            ",",
-          ),
-          rows: state.assetsMetrics.summaryRows.map((row) => row.join(",")),
-        };
-      return dts;
-    },
-  }, {
-    // deno-lint-ignore require-await
-    resourceFactory: async () => {
-      const dts:
-        & dtr.DelimitedTextSupplier<MetricsFactorySuppliersState>
-        & govn.NatureSupplier<
-          govn.MediaTypeNature<
-            dtr.DelimitedTextResource<MetricsFactorySuppliersState>
-          >
-        >
-        & govn.RouteSupplier = {
-          nature: dtr.csvContentNature,
-          route: {
-            ...rf.childRoute(
-              {
                 unit: "analytics-paths-extensions",
                 label: "Analytics Paths Extensions CSV",
               },
@@ -207,10 +178,14 @@ export function metricsFactorySuppliers(
             nature: dtr.csvContentNature,
           },
           isDelimitedTextSupplier: true,
-          header: state.assetsMetrics.pathsHeader.map((h) => `"${h}"`).join(
+          header: state.assetsMetrics.pathExtnsColumnHeaders.map((h) =>
+            `"${h}"`
+          ).join(
             ",",
           ),
-          rows: state.assetsMetrics.pathsCSV.map((row) => row.join(",")),
+          rows: state.assetsMetrics.pathExtnsColumns.map((row) =>
+            row.join(",")
+          ),
         };
       return dts;
     },
@@ -227,14 +202,22 @@ export function metricsFactorySuppliers(
           ),
           nature: nature.jsonContentNature,
         },
-        jsonInstance: () => state.assetsMetrics,
+        jsonInstance: () => state.assetsMetrics.metrics,
         jsonText: {
           // deno-lint-ignore require-await
           text: async () => {
-            return JSON.stringify(state.assetsMetrics, undefined, "  ");
+            return JSON.stringify(
+              state.assetsMetrics.metrics,
+              fsA.jsonMetricsReplacer,
+              "  ",
+            );
           },
           textSync: () => {
-            return JSON.stringify(state.assetsMetrics, undefined, "  ");
+            return JSON.stringify(
+              state.assetsMetrics.metrics,
+              fsA.jsonMetricsReplacer,
+              "  ",
+            );
           },
         },
       };

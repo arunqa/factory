@@ -1,5 +1,7 @@
 import {
   fs,
+  govnSvcFsAnalytics as fsA,
+  govnSvcFsTree as fsT,
   govnSvcHealth as health,
   govnSvcMetrics as gsm,
   govnSvcTelemetry as telem,
@@ -32,7 +34,6 @@ import * as ldsDiagC from "../core/design-system/lightning/content/diagnostic/mo
 import * as ldsObsC from "../core/design-system/lightning/content/observability/mod.ts";
 import * as sqlObsC from "../lib/db/observability.rf.ts";
 import * as mdr from "../core/render/markdown/mod.ts";
-import * as am from "../lib/assets-metrics.ts";
 
 export const assetMetricsWalkOptions: fs.WalkOptions = {
   skip: [/\.git/],
@@ -44,16 +45,16 @@ export interface Preferences {
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
-  readonly assetsMetricsArgs?: (config: Configuration) => Pick<
-    am.AssetsMetricsArguments,
-    "walkers"
-  >;
+  readonly assetsMetricsWalkers?: (
+    config: Configuration,
+  ) => fsT.FileSysAssetWalker[];
 }
 
-export class Configuration implements Omit<Preferences, "assetsMetricsArgs"> {
+export class Configuration
+  implements Omit<Preferences, "assetsMetricsWalkers"> {
   readonly telemetry: telem.Instrumentation = new telem.Telemetry();
   readonly metrics = new gsm.TypicalMetrics();
-  readonly assetsMetricsArgs: Pick<am.AssetsMetricsArguments, "walkers">;
+  readonly assetsMetricsWalkers: fsT.FileSysAssetWalker[];
   readonly git?: govn.GitExecutive;
   readonly fsRouteFactory = new route.FileSysRouteFactory();
   readonly extensionsManager = new e.CachedExtensions();
@@ -77,19 +78,19 @@ export class Configuration implements Omit<Preferences, "assetsMetricsArgs"> {
     this.logger = log.getLogger();
     this.observabilityRoute = cpC.observabilityRoute(this.fsRouteFactory);
     this.diagnosticsRoute = cpC.diagnosticsRoute(this.fsRouteFactory);
-    this.assetsMetricsArgs = prefs.assetsMetricsArgs
-      ? prefs.assetsMetricsArgs(this)
-      : {
-        walkers: [{
-          identity: "origin",
-          root: this.contentRootPath,
-          options: assetMetricsWalkOptions,
-        }, {
-          identity: "destination",
-          root: this.destRootPath,
-          options: assetMetricsWalkOptions,
-        }],
-      };
+    this.assetsMetricsWalkers = prefs.assetsMetricsWalkers
+      ? prefs.assetsMetricsWalkers(this)
+      : [{
+        identity: "origin",
+        root: this.contentRootPath,
+        rootIsAbsolute: path.isAbsolute(this.contentRootPath),
+        options: assetMetricsWalkOptions,
+      }, {
+        identity: "destination",
+        root: this.destRootPath,
+        rootIsAbsolute: path.isAbsolute(this.destRootPath),
+        options: assetMetricsWalkOptions,
+      }];
     this.rewriteMarkdownLink = prefs.rewriteMarkdownLink;
   }
 }
@@ -135,7 +136,7 @@ export interface PublicationState {
   readonly observability: obs.Observability;
   readonly resourcesTree: govn.RouteTree;
   readonly resourcesIndex: r.UniversalResourcesIndex<unknown>;
-  assetsMetrics?: am.AssetsMetricsResult;
+  assetsMetrics?: fsA.AssetsMetricsResult;
 }
 
 export class ResourcesTree extends rtree.TypicalRouteTree {
@@ -505,12 +506,12 @@ export class TypicalPublication
   }
 
   async produceMetrics() {
-    this.state.assetsMetrics = await am.assetsMetrics({
-      ...this.config.assetsMetricsArgs,
-      metricsSuppliers: [
-        am.assetNameMetrics(),
-        am.assetNameLintIssues(this.config.metrics),
-      ],
+    const assetsTree = new fsT.FileSysAssetsTree();
+    for (const walker of this.config.assetsMetricsWalkers) {
+      await assetsTree.consumeAssets(walker);
+    }
+    this.state.assetsMetrics = await fsA.fileSysAnalytics({
+      assetsTree,
       metrics: this.config.metrics,
       txID: "transactionID",
       txHost: Deno.hostname(),

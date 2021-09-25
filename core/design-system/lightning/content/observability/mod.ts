@@ -1,12 +1,12 @@
+import { govnSvcFsAnalytics as fsA } from "../../../../deps.ts";
 import * as govn from "../../../../../governance/mod.ts";
 import * as rModule from "../../../../resource/module/module.ts";
-import * as am from "../../../../../lib/assets-metrics.ts";
 import * as nature from "../../../../std/nature.ts";
 import * as o from "../../../../std/observability.ts";
 import * as m from "./metrics.ts";
 
 export interface ObservabilityState {
-  readonly assetsMetrics: am.AssetsMetricsResult;
+  readonly assetsMetrics: fsA.AssetsMetricsResult;
   readonly observability: o.Observability;
 }
 
