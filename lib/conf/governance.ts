@@ -14,14 +14,25 @@ export interface ConfigurationSyncSupplier<Configuration, Context> {
   ) => Configuration;
 }
 
-export type ConfigurablePropertyName<Configuration> = keyof Configuration | {
+export interface NamespacedConfigurablePropertyName<Configuration> {
+  readonly key: keyof Configuration;
+  readonly namespace: string;
+}
+
+export interface UntypedConfigurablePropertyName {
   readonly override: string;
-};
+  readonly namespace?: string;
+}
+
+export type ConfigurablePropertyName<Configuration> =
+  | keyof Configuration
+  | NamespacedConfigurablePropertyName<Configuration>
+  | UntypedConfigurablePropertyName;
 
 // TODO: allow "secrets" (e.g. encrypted values), see GSH Vault
 export interface ConfigurableProperty<Configuration, Value> {
   readonly name: ConfigurablePropertyName<Configuration>;
-  readonly namespace?: string;
+  readonly aliases?: ConfigurablePropertyName<Configuration>[];
   readonly valueGuard?: {
     readonly guard: safety.TypeGuard<Value>;
     readonly onGuardFailure: (supplied: unknown, exception?: Error) => Value;

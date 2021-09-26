@@ -22,13 +22,14 @@ interface TestConfig {
 interface TestContext {
 }
 
+const eventsVerbose = Deno.env.get("ENV_TEST_VERBOSE") ? true : false;
 const testConfiguredPropsCount = 3;
 function testConfigProperties(
   ec: mod.EnvConfiguration<TestConfig, TestContext>,
 ): mod.ConfigurableEnvVarPropertiesSupplier<TestConfig, TestContext> {
   return {
     properties: [
-      ec.textProperty("text"),
+      ec.textProperty("text", [{ override: "altText" }]),
       ec.numericProperty("number"),
       ec.jsonTextProperty<TestComplexConfigProperty>(
         "complexType",
@@ -47,7 +48,11 @@ export class TestEnvConfiguration
   > = [];
 
   constructor() {
-    super(testConfigProperties, mod.namespacedEnvVarNameUppercase("CFGTEST_"));
+    super(
+      testConfigProperties,
+      mod.namespacedEnvVarNameUppercase("CFGTEST_"),
+      mod.consoleEnvConfigurationEventsEmitter(eventsVerbose),
+    );
   }
 
   constructSync(_ctx: TestContext): TestConfig {
@@ -65,8 +70,6 @@ export class TestEnvConfiguration
     p: mod.ConfigurableEnvVarProperty<TestConfig, TestContext, unknown>,
     _ctx: TestContext,
     _config: TestConfig,
-    _envVarName: string,
-    _envVarValue?: string,
   ): unknown {
     this.unhandled.push(p);
     return undefined;
@@ -81,7 +84,11 @@ export class TestAsyncEnvConfiguration
   > = [];
 
   constructor() {
-    super(testConfigProperties, mod.namespacedEnvVarNameUppercase("CFGTEST_"));
+    super(
+      testConfigProperties,
+      mod.namespacedEnvVarNameUppercase("CFGTEST_"),
+      mod.consoleEnvConfigurationEventsEmitter(eventsVerbose),
+    );
   }
 
   constructSync(_ctx: TestContext): TestConfig {
@@ -100,8 +107,6 @@ export class TestAsyncEnvConfiguration
     p: mod.ConfigurableEnvVarProperty<TestConfig, TestContext, any>,
     _ctx: TestContext,
     _config: TestConfig,
-    _envVarName: string,
-    _envVarValue?: string,
   ): unknown {
     this.unhandled.push(p);
     return undefined;
@@ -113,6 +118,7 @@ Deno.test(`EnvConfiguration with unhandled number and complex type`, () => {
   Deno.env.set("CFGTEST_TEXT", testTextPropValue);
   const envConfig = new TestAsyncEnvConfiguration();
   const config = envConfig.configureSync({});
+  Deno.env.delete("CFGTEST_TEXT");
   ta.assertEquals(
     envConfig.ps.properties.length,
     testConfiguredPropsCount,
@@ -120,8 +126,17 @@ Deno.test(`EnvConfiguration with unhandled number and complex type`, () => {
   ta.assert(config);
   ta.assertEquals(config.text, testTextPropValue);
 
-  // no "CFGTEST_NUMBER" or "CFGTEST_COMPLEX" are provided, catch them
+  // neither "CFGTEST_NUMBER" nor "CFGTEST_COMPLEX" are provided, catch them
   ta.assertEquals(envConfig.unhandled.length, 2);
+});
+
+Deno.test(`EnvConfiguration with aliases`, () => {
+  const testTextPropValue = "altTextTest";
+  Deno.env.set("CFGTEST_ALT_TEXT", testTextPropValue);
+  const envConfig = new TestAsyncEnvConfiguration();
+  const config = envConfig.configureSync({});
+  Deno.env.delete("CFGTEST_ALT_TEXT");
+  ta.assertEquals(config.text, testTextPropValue);
 });
 
 Deno.test(`AsyncEnvConfiguration with unhandled complex type`, async () => {
@@ -131,6 +146,8 @@ Deno.test(`AsyncEnvConfiguration with unhandled complex type`, async () => {
   Deno.env.set("CFGTEST_NUMBER", testNumberPropValue.toString());
   const envConfig = new TestAsyncEnvConfiguration();
   const config = await envConfig.configure({});
+  Deno.env.delete("CFGTEST_TEXT");
+  Deno.env.delete("CFGTEST_NUMBER");
   ta.assertEquals(
     envConfig.ps.properties.length,
     testConfiguredPropsCount,
@@ -139,7 +156,7 @@ Deno.test(`AsyncEnvConfiguration with unhandled complex type`, async () => {
   ta.assertEquals(config.text, testTextPropValue);
   ta.assertEquals(config.number, testNumberPropValue);
 
-  // no "CFGTEST_COMPLEX_TYPE" is provided so be sure we catch it
+  // "CFGTEST_COMPLEX_TYPE" is not supplied so be sure we catch it
   ta.assertEquals(envConfig.unhandled.length, 1);
 });
 
@@ -152,6 +169,9 @@ Deno.test(`AsyncEnvConfiguration with no unhandled types`, async () => {
   Deno.env.set("CFGTEST_COMPLEX_TYPE", JSON.stringify(testComplexValue));
   const envConfig = new TestAsyncEnvConfiguration();
   const config = await envConfig.configure({});
+  Deno.env.delete("CFGTEST_TEXT");
+  Deno.env.delete("CFGTEST_NUMBER");
+  Deno.env.delete("CFGTEST_COMPLEX_TYPE");
   ta.assertEquals(
     envConfig.ps.properties.length,
     testConfiguredPropsCount,
@@ -168,6 +188,8 @@ Deno.test(`AsyncEnvConfiguration with failed guards`, async () => {
   Deno.env.set("CFGTEST_COMPLEX_TYPE", `{ badText: "complex" }`);
   const envConfig = new TestAsyncEnvConfiguration();
   const config = await envConfig.configure({});
+  Deno.env.delete("CFGTEST_NUMBER");
+  Deno.env.delete("CFGTEST_COMPLEX_TYPE");
   ta.assertEquals(
     envConfig.ps.properties.length,
     testConfiguredPropsCount,
@@ -176,5 +198,7 @@ Deno.test(`AsyncEnvConfiguration with failed guards`, async () => {
   // the guard failure condition replaces complexType with something useful
   ta.assertEquals(config.number, NaN);
   ta.assertEquals(config.complexType, { innerNumber: -1, innerText: "bad" });
-  ta.assertEquals(envConfig.unhandled.length, 0);
+
+  // "CFGTEST_TEXT" is not provided so be sure we catch it
+  ta.assertEquals(envConfig.unhandled.length, 1);
 });
