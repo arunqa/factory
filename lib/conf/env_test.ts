@@ -51,7 +51,7 @@ export class TestEnvConfiguration
     super(
       testConfigProperties,
       mod.namespacedEnvVarNameUppercase("CFGTEST_"),
-      mod.consoleEnvConfigurationEventsEmitter(eventsVerbose),
+      mod.envConfigurationEventsConsoleEmitter(eventsVerbose),
     );
   }
 
@@ -87,7 +87,7 @@ export class TestAsyncEnvConfiguration
     super(
       testConfigProperties,
       mod.namespacedEnvVarNameUppercase("CFGTEST_"),
-      mod.consoleEnvConfigurationEventsEmitter(eventsVerbose),
+      mod.envConfigurationEventsConsoleEmitter(eventsVerbose),
     );
   }
 

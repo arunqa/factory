@@ -16,7 +16,7 @@ export class EnvConfigurationEventsEmitter<Configuration, Context>
     ): void;
   }> {}
 
-export function consoleEnvConfigurationEventsEmitter<
+export function envConfigurationEventsConsoleEmitter<
   Configuration,
   Context,
 >(verbose = true): EnvConfigurationEventsEmitter<Configuration, Context> {
