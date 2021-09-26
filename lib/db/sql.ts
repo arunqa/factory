@@ -2,6 +2,7 @@ import { colors, safety } from "../../deps.ts";
 import { pg, pgQuery as pgq } from "./deps.ts";
 import * as stdCache from "../../core/std/cache.ts";
 import * as redisCache from "./cache.ts";
+import * as conf from "./conf.ts";
 
 declare global {
   interface Window {
@@ -11,7 +12,7 @@ declare global {
     postgresSqlDbConnSpecValidity: (
       name: string,
       envVarNamesPrefix?: string,
-    ) => EnvVarsDatabaseConnectionOptionsValidationResult;
+    ) => conf.DatabaseConnectionArguments;
     acquirePostgresSqlDbConn: (
       name: string,
       envVarNamesPrefix?: string,
@@ -46,16 +47,18 @@ export async function preparePostgreSqlGlobals() {
   await configureSqlGlobals();
 
   window.postgresSqlDbConnSpecValidity = (identity, envVarNamesPrefix) => {
-    return isPostgreSqlConnectionEnvOptionsValid(
-      envPostgreSqlConnectionOptions(identity, envVarNamesPrefix),
-    );
+    return conf.envConfiguredDatabaseConnection(identity, envVarNamesPrefix);
   };
 
   window.acquirePostgresSqlDbConn = (identity, envVarNamesPrefix) => {
     let conn = window.globalSqlDbConns.get(identity);
     if (!conn) {
+      const dbc = conf.envConfiguredDatabaseConnection(
+        identity,
+        envVarNamesPrefix,
+      );
       conn = new TypicalDatabaseConnection({
-        ...envPostgreSqlConnectionOptions(identity, envVarNamesPrefix),
+        ...dbc,
         resultsCache: window.globalSqlResultsCache,
       });
       window.globalSqlDbConns.set(identity, conn);
@@ -110,83 +113,6 @@ export function isTransformableResult<T>(
 
 export type ResultsCache = stdCache.TextKeyCache<SqlResultSupplier<unknown>>;
 
-export interface DatabaseConnectionOptions extends pg.ClientOptions {
-  readonly identity: string;
-  readonly dbConnPoolCount: number;
-  readonly connAcquisitionSource: string;
-}
-
-export interface EnvVarsDatabaseConnectionOptions
-  extends DatabaseConnectionOptions {
-  readonly envVarNamesPrefix: string;
-}
-
-export function envPostgreSqlConnectionOptions(
-  identity: string,
-  envVarNamesPrefix = "",
-): EnvVarsDatabaseConnectionOptions {
-  const dbHostFromEnv = Deno.env.get(`${envVarNamesPrefix}PGHOST`);
-  const dbHostOrAddr = dbHostFromEnv
-    ? dbHostFromEnv
-    : (Deno.env.get(`${envVarNamesPrefix}PGHOSTADDR`));
-  const dbConnPoolCountFromEnv = Deno.env.get(
-    `${envVarNamesPrefix}PGCONNPOOL_COUNT`,
-  );
-  return {
-    identity,
-    envVarNamesPrefix,
-    database: Deno.env.get(`${envVarNamesPrefix}PGDATABASE`),
-    hostname: dbHostOrAddr,
-    port: Deno.env.get(`${envVarNamesPrefix}PGPORT`),
-    user: Deno.env.get(`${envVarNamesPrefix}PGUSER`),
-    password: Deno.env.get(`${envVarNamesPrefix}PGPASSWORD`),
-    applicationName: Deno.env.get(`${envVarNamesPrefix}PGAPPNAME`),
-    tls: {
-      enforce: Deno.env.get(`${envVarNamesPrefix}PGSSLMODE`) == "require"
-        ? true
-        : false,
-    },
-    dbConnPoolCount: dbConnPoolCountFromEnv
-      ? Number.parseInt(dbConnPoolCountFromEnv)
-      : 20,
-    connAcquisitionSource:
-      `environment variables (prefix = "${envVarNamesPrefix}")`,
-  };
-}
-
-export interface EnvVarsDatabaseConnectionOptionsValidationResult {
-  readonly isValid: boolean;
-  readonly connOptions: EnvVarsDatabaseConnectionOptions;
-  readonly envVarsMissing: string[];
-}
-
-export function isPostgreSqlConnectionEnvOptionsValid(
-  connOptions: EnvVarsDatabaseConnectionOptions,
-): EnvVarsDatabaseConnectionOptionsValidationResult {
-  const envVarsMissing = [{
-    value: connOptions.database,
-    varName: `${connOptions.envVarNamesPrefix}PGDATABASE`,
-  }, {
-    value: connOptions.hostname,
-    varName:
-      `${connOptions.envVarNamesPrefix}PGHOST | ${connOptions.envVarNamesPrefix}PGHOSTADDR`,
-  }, {
-    value: connOptions.port,
-    varName: `${connOptions.envVarNamesPrefix}PGPORT`,
-  }, {
-    value: connOptions.user,
-    varName: `${connOptions.envVarNamesPrefix}PGUSER`,
-  }, {
-    value: connOptions.password,
-    varName: `${connOptions.envVarNamesPrefix}PGPASSWORD`,
-  }].filter((spec) => spec.value ? false : true).map((spec) => spec.varName);
-  return {
-    isValid: envVarsMissing.length == 0,
-    connOptions,
-    envVarsMissing,
-  };
-}
-
 export type DatabaseQuery<T> =
   | string
   | SqlSupplier
@@ -215,10 +141,9 @@ export class TypicalDatabaseConnection implements DatabaseConnection {
   readonly resultsCache: ResultsCache;
   readonly dbName?: string;
   readonly dbUserName?: string;
-  readonly connAcquisitionSource: string;
 
   constructor(
-    options: DatabaseConnectionOptions & {
+    options: conf.DatabaseConnectionArguments & {
       resultsCache: ResultsCache;
     },
   ) {
@@ -231,7 +156,6 @@ export class TypicalDatabaseConnection implements DatabaseConnection {
     this.resultsCache = options.resultsCache;
     this.dbName = options.database;
     this.dbUserName = options.user;
-    this.connAcquisitionSource = options.connAcquisitionSource;
   }
 
   async close() {

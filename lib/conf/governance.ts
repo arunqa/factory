@@ -26,12 +26,14 @@ export type ConfigurablePropertyName<Configuration> =
 export interface ConfigurablePropertyPopulate<Configuration, Value, Context> {
   readonly config: Configuration;
   readonly property: ConfigurableProperty<Configuration, Value, Context>;
+  readonly propertyName: ConfigurablePropertyName<Configuration>;
   readonly ctx?: Context;
 }
 
-// TODO: allow "secrets" (e.g. encrypted values), see GSH Vault
 export interface ConfigurableProperty<Configuration, Value, Context> {
   readonly name: ConfigurablePropertyName<Configuration>;
+  readonly isNameSensitive?: boolean;
+  readonly isValueSecret?: boolean;
   readonly aliases?: ConfigurablePropertyName<Configuration>[];
   readonly valueGuard?: {
     readonly guard: safety.TypeGuard<Value>;
@@ -55,4 +57,18 @@ export type ConfigurableProperties<Configuration, Context> =
 
 export interface ConfigurablePropertiesSupplier<Configuration, Context> {
   readonly properties: ConfigurableProperties<Configuration, Context>;
+}
+
+export interface ErrorSupplier {
+  (error: Error): void;
+}
+
+export interface DiagnosableConfigurationGuard<Configuration> {
+  readonly isConfiguration: (o: unknown) => o is Configuration;
+  readonly registerError: ErrorSupplier;
+}
+
+export interface DiagnosableConfiguration {
+  readonly isValid: () => boolean;
+  readonly diagnostics?: Error[];
 }

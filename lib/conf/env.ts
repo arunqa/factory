@@ -5,66 +5,118 @@ export class EnvConfigurationEventsEmitter<Configuration, Context>
   extends events.EventEmitter<{
     searchEnvForProperty(
       handled: boolean,
-      // this event handler can get both handled and unhandled properties so
-      // cevpp has optional envVarValue since it may not be available
       cevpp:
-        & Omit<
+        | ConfigurableEnvVarPropertyPopulate<
+          Configuration,
           // deno-lint-ignore no-explicit-any
-          ConfigurableEnvVarPropertyPopulate<Configuration, any, Context>,
-          "envVarValue"
+          any,
+          Context
         >
-        & Partial<
-          Pick<
-            // deno-lint-ignore no-explicit-any
-            ConfigurableEnvVarPropertyPopulate<Configuration, any, Context>,
-            "envVarValue"
-          >
+        | ConfigurableEnvVarPropertyPopulateAttempt<
+          Configuration,
+          // deno-lint-ignore no-explicit-any
+          any,
+          Context
         >,
       cpn: govn.ConfigurablePropertyName<Configuration>,
       value: unknown,
     ): void;
+    searchEnvPropertyAttempts(
+      attempts: ConfigurableEnvVarPropertyPopulateAttempt<
+        Configuration,
+        // deno-lint-ignore no-explicit-any
+        any,
+        Context
+      >[],
+      handled: boolean,
+      defaulted: boolean,
+      value: unknown,
+    ): void;
     envPropertyNotHandled(
+      attempts: ConfigurableEnvVarPropertyPopulateAttempt<
+        Configuration,
+        // deno-lint-ignore no-explicit-any
+        any,
+        Context
+      >[],
       p: ConfigurableEnvVarProperty<Configuration, unknown, Context>,
       config: Configuration,
       ps: ConfigurableEnvVarPropertiesSupplier<Configuration, Context>,
       ctx?: Context,
     ): void;
-  }> {}
+  }> {
+  public isVerbose = false;
+
+  constructor(verboseArg: string | boolean) {
+    super();
+    if (typeof verboseArg === "string") {
+      let verboseEnvVarValue = Deno.env.get(verboseArg);
+      if (verboseEnvVarValue) {
+        verboseEnvVarValue = verboseEnvVarValue.toLocaleUpperCase();
+        if (
+          ["YES", "1", "TRUE", "ON"].find((arg) => arg == verboseEnvVarValue)
+        ) {
+          this.isVerbose = true;
+        }
+      }
+    } else {
+      this.isVerbose = verboseArg;
+    }
+  }
+}
 
 export function envConfigurationEventsConsoleEmitter<
   Configuration,
   Context,
->(verbose = true): EnvConfigurationEventsEmitter<Configuration, Context> {
-  const result = new EnvConfigurationEventsEmitter<Configuration, Context>();
-  if (verbose) {
-    result.on(
-      "searchEnvForProperty",
-      (handled, { envVarName, envVarValue }, cpn, value) => {
-        const [name, namespace] = propertyName(cpn);
-        console.info(
-          `Looking for ${envVarName} for property name ${name} (namespace: '${namespace ||
-            ""}'): ${
-            handled
-              ? `found '${envVarValue}' (assigned: ${
-                JSON.stringify(value)
-              }, type: ${typeof value})`
-              : "not found"
-          }`,
-        );
-      },
-    );
+>(
+  verboseArg: string | boolean,
+): EnvConfigurationEventsEmitter<Configuration, Context> {
+  const result = new EnvConfigurationEventsEmitter<Configuration, Context>(
+    verboseArg,
+  );
+  result.on(
+    "searchEnvPropertyAttempts",
+    (attempts, handled, defaulted, value) => {
+      if (result.isVerbose) {
+        if (attempts && attempts.length > 0) {
+          const terminal = attempts[attempts.length - 1];
+          const property = terminal.property;
+          const [name, namespace] = propertyName(property.name);
+          const envVarValue = property.isValueSecret
+            ? "******"
+            : terminal.envVarValue;
+          const typedValue = `${
+            property.isValueSecret ? "******" : JSON.stringify(value)
+          }, type: ${typeof value}, isValueSecret: ${property
+            .isValueSecret || "no"}`;
+          console.info(
+            `Searched environment for property '${name}' ${
+              namespace ? `(namespace '${namespace || ""}') ` : ""
+            }in ${attempts.map((a) => a.envVarName).join(", ")} [${
+              handled
+                ? `found envVarName: ${terminal.envVarName}, envVarValue: '${envVarValue}', value: ${typedValue}`
+                : (defaulted
+                  ? `not found, defaulted to value: ${typedValue}`
+                  : `not found, no default`)
+            }]`,
+          );
+        }
+      }
+    },
+  );
 
-    result.on(
-      "envPropertyNotHandled",
-      (property, _ps, _config, _ctx) => {
+  result.on(
+    "envPropertyNotHandled",
+    (attempts, property, _ps, _config, _ctx) => {
+      if (result.isVerbose) {
         const [name, namespace] = propertyName(property.name);
         console.info(
           // deno-fmt-ignore
-          `Property name ${name} (namespace: '${namespace || ""}') was not handled`,
+          `Property name ${name} (namespace: '${namespace || ""}') was not handled (attempt(s): ${attempts.length}, ${attempts.map(a => a.envVarName).join(', ')})`,
         );
-      },
-    );
-  }
+      }
+    },
+  );
   return result;
 }
 
@@ -78,6 +130,22 @@ export interface ConfigurableEnvVarPropertyPopulate<
   readonly envVarValue: string;
   readonly ps: ConfigurableEnvVarPropertiesSupplier<Configuration, Context>;
 }
+
+export type ConfigurableEnvVarPropertyPopulateAttempt<
+  Configuration,
+  Value,
+  Context,
+> =
+  & Omit<
+    ConfigurableEnvVarPropertyPopulate<Configuration, Value, Context>,
+    "envVarValue"
+  >
+  & Partial<
+    Pick<
+      ConfigurableEnvVarPropertyPopulate<Configuration, Value, Context>,
+      "envVarValue"
+    >
+  >;
 
 export interface ConfigurableEnvVarProperty<Configuration, Value, Context>
   extends govn.ConfigurableProperty<Configuration, Value, Context> {
@@ -122,13 +190,34 @@ export interface ConfigurablePropEnvVarNameStrategy<Configuration, Context> {
   ): string;
 }
 
-export interface EnvConfigurationContext {
-  readonly envVarName: string;
-  readonly envVarValue?: string;
+export interface ConfigurablePropEnvVarNameStrategySupplier<
+  Configuration,
+  Context,
+> {
+  readonly envVarName: ConfigurablePropEnvVarNameStrategy<
+    Configuration,
+    Context
+  >;
 }
 
-const camelToSnakeCase = (text: string) =>
-  text.replace(/[A-Z]/g, (letter: string) => `_${letter.toUpperCase()}`);
+export function isConfigurablePropEnvVarNameStrategySupplier<
+  Configuration,
+  Context,
+>(
+  o: unknown,
+): o is ConfigurablePropEnvVarNameStrategySupplier<Configuration, Context> {
+  const isType = safety.typeGuard<
+    ConfigurablePropEnvVarNameStrategySupplier<
+      Configuration,
+      Context
+    >
+  >("envVarName");
+  return isType(o);
+}
+
+export const camelCaseToEnvVarName = (text: string) =>
+  text.replace(/[A-Z]/g, (letter: string) => `_${letter.toUpperCase()}`)
+    .toLocaleUpperCase();
 
 export function propertyName<Configuration>(
   cpn: govn.ConfigurablePropertyName<Configuration>,
@@ -163,10 +252,8 @@ export function namespacedEnvVarNameUppercase<
   return (propName) => {
     const [name, namespace] = propertyName(propName);
     return `${
-      namespace
-        ? `${camelToSnakeCase(namespace).toLocaleUpperCase()}_`
-        : defaultPrefix
-    }${camelToSnakeCase(name).toLocaleUpperCase()}`;
+      namespace ? `${camelCaseToEnvVarName(namespace)}_` : defaultPrefix
+    }${camelCaseToEnvVarName(name)}`;
   };
 }
 
@@ -191,6 +278,12 @@ export abstract class EnvConfiguration<Configuration, Context>
 
   abstract constructSync(ctx?: Context): Configuration;
   abstract unhandledPropertySync(
+    attempts: ConfigurableEnvVarPropertyPopulateAttempt<
+      Configuration,
+      // deno-lint-ignore no-explicit-any
+      any,
+      Context
+    >[],
     p: ConfigurableEnvVarProperty<Configuration, unknown, Context>,
     config: Configuration,
     ctx?: Context,
@@ -347,37 +440,44 @@ export abstract class EnvConfiguration<Configuration, Context>
         ? [property.name, ...property.aliases]
         : [property.name];
       let handled = false;
+      let defaulted = false;
       let value: unknown | undefined;
+      const attempts = [];
+      const envVarNameSupplier =
+        isConfigurablePropEnvVarNameStrategySupplier<Configuration, Context>(
+            ctx,
+          )
+          ? ctx.envVarName
+          : this.envVarName;
       for (const tryName of tryNames) {
-        const envVarName = this.envVarName(tryName, property, config, ctx);
+        const envVarName = envVarNameSupplier(tryName, property, config, ctx);
         const envVarValue = Deno.env.get(envVarName);
-        ctx = typeof ctx === "object"
-          ? { ...ctx, envVarName, envVarValue }
-          : ctx;
-        const cevpp: Omit<
-          ConfigurableEnvVarPropertyPopulate<
-            Configuration,
-            // deno-lint-ignore no-explicit-any
-            any,
-            Context
-          >,
-          "envVarValue"
+        const attempt: ConfigurableEnvVarPropertyPopulateAttempt<
+          Configuration,
+          // deno-lint-ignore no-explicit-any
+          any,
+          Context
         > = {
           property,
+          propertyName: tryName,
           envVarName,
           config,
           ctx,
           ps: this.ps,
         };
+        attempts.push(attempt);
         if (envVarValue) {
-          value = property.populateEnvVarValueSync({ ...cevpp, envVarValue });
+          value = property.populateEnvVarValueSync({ ...attempt, envVarValue });
           handled = true;
+          // forceably inject envVarValue so event emitters properly emit value
+          // deno-lint-ignore no-explicit-any
+          (attempt as any).envVarValue = envVarValue;
         }
         if (this.ecee) {
           this.ecee.emitSync(
             "searchEnvForProperty",
             handled,
-            cevpp,
+            attempt,
             tryName,
             value,
           );
@@ -386,19 +486,35 @@ export abstract class EnvConfiguration<Configuration, Context>
       }
       if (!handled) {
         if (property.populateDefaultSync) {
-          property.populateDefaultSync({ config, property, ctx });
+          value = property.populateDefaultSync({
+            config,
+            property,
+            propertyName: property.name,
+            ctx,
+          });
+          defaulted = true;
         } else {
           if (this.ecee) {
             this.ecee.emitSync(
               "envPropertyNotHandled",
+              attempts,
               property,
               config,
               this.ps,
               ctx,
             );
           }
-          this.unhandledPropertySync(property, config, ctx);
+          this.unhandledPropertySync(attempts, property, config, ctx);
         }
+      }
+      if (this.ecee) {
+        this.ecee.emitSync(
+          "searchEnvPropertyAttempts",
+          attempts,
+          handled,
+          defaulted,
+          value,
+        );
       }
     }
     if (this.ps.configGuard) {
@@ -420,11 +536,17 @@ export abstract class AsyncEnvConfiguration<Configuration, Context>
 
   // deno-lint-ignore require-await
   async unhandledProperty(
+    attempts: ConfigurableEnvVarPropertyPopulateAttempt<
+      Configuration,
+      // deno-lint-ignore no-explicit-any
+      any,
+      Context
+    >[],
     p: ConfigurableEnvVarProperty<Configuration, unknown, Context>,
     config: Configuration,
     ctx?: Context,
   ): Promise<unknown> {
-    return this.unhandledPropertySync(p, config, ctx);
+    return this.unhandledPropertySync(attempts, p, config, ctx);
   }
 
   async configure(ctx?: Context): Promise<Configuration> {
@@ -434,44 +556,54 @@ export abstract class AsyncEnvConfiguration<Configuration, Context>
         ? [property.name, ...property.aliases]
         : [property.name];
       let handled = false;
+      let defaulted = false;
       let value: unknown | undefined;
+      const attempts = [];
+      const envVarNameSupplier =
+        isConfigurablePropEnvVarNameStrategySupplier<Configuration, Context>(
+            ctx,
+          )
+          ? ctx.envVarName
+          : this.envVarName;
       for (const tryName of tryNames) {
-        const envVarName = this.envVarName(tryName, property, config, ctx);
+        const envVarName = envVarNameSupplier(tryName, property, config, ctx);
         const envVarValue = Deno.env.get(envVarName);
-        ctx = typeof ctx === "object"
-          ? { ...ctx, envVarName, envVarValue }
-          : ctx;
-        const cevpp: Omit<
-          ConfigurableEnvVarPropertyPopulate<
-            Configuration,
-            // deno-lint-ignore no-explicit-any
-            any,
-            Context
-          >,
-          "envVarValue"
+        const attempt: ConfigurableEnvVarPropertyPopulateAttempt<
+          Configuration,
+          // deno-lint-ignore no-explicit-any
+          any,
+          Context
         > = {
           config,
           property,
+          propertyName: tryName,
           envVarName,
           ctx,
           ps: this.ps,
         };
+        attempts.push(attempt);
         if (envVarValue) {
           if (property.populateEnvVarValue) {
             value = await property.populateEnvVarValue({
-              ...cevpp,
+              ...attempt,
               envVarValue,
             });
           } else {
-            value = property.populateEnvVarValueSync({ ...cevpp, envVarValue });
+            value = property.populateEnvVarValueSync({
+              ...attempt,
+              envVarValue,
+            });
           }
           handled = true;
+          // forceably inject envVarValue so event emitters properly emit value
+          // deno-lint-ignore no-explicit-any
+          (attempt as any).envVarValue = envVarValue;
         }
         if (this.ecee) {
           await this.ecee.emit(
             "searchEnvForProperty",
             handled,
-            cevpp,
+            attempt,
             tryName,
             value,
           );
@@ -480,21 +612,43 @@ export abstract class AsyncEnvConfiguration<Configuration, Context>
       }
       if (!handled) {
         if (property.populateDefault) {
-          await property.populateDefault({ config, property, ctx });
+          value = await property.populateDefault({
+            config,
+            property,
+            propertyName: property.name,
+            ctx,
+          });
+          defaulted = true;
         } else if (property.populateDefaultSync) {
-          property.populateDefaultSync({ config, property, ctx });
+          value = property.populateDefaultSync({
+            config,
+            property,
+            propertyName: property.name,
+            ctx,
+          });
+          defaulted = true;
         } else {
           if (this.ecee) {
             await this.ecee.emit(
               "envPropertyNotHandled",
+              attempts,
               property,
               config,
               this.ps,
               ctx,
             );
           }
-          await this.unhandledProperty(property, config, ctx);
+          await this.unhandledProperty(attempts, property, config, ctx);
         }
+      }
+      if (this.ecee) {
+        await this.ecee.emit(
+          "searchEnvPropertyAttempts",
+          attempts,
+          handled,
+          defaulted,
+          value,
+        );
       }
     }
     if (this.ps.configGuard) {

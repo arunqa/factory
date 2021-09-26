@@ -1,11 +1,47 @@
+import { safety } from "../../deps.ts";
 import * as govn from "./governance.ts";
 
+declare global {
+  interface Window {
+    // deno-lint-ignore no-explicit-any
+    configurationsCache: Map<string, ConfigurationCache<any, any>>;
+  }
+}
+
+if (!window.configurationsCache) {
+  window.configurationsCache = new Map();
+}
+
 export type ConfigurationCacheKey = string;
+
+export interface CacheableConfiguration {
+  readonly configCacheKey: ConfigurationCacheKey;
+}
+
+export interface CacheExpirationSupplier<Configuration, Context> {
+  readonly cacheExpired: ConfigurationCacheExpirationStrategy<
+    Configuration,
+    Context
+  >;
+}
+
+export const isCacheableConfiguration = safety.typeGuard<
+  CacheableConfiguration
+>("configCacheKey");
+
+export function isCacheExpirationSupplier<Configuration, Context>(
+  o: unknown,
+): o is CacheExpirationSupplier<Configuration, Context> {
+  const isType = safety.typeGuard<
+    CacheExpirationSupplier<Configuration, Context>
+  >("cacheExpired");
+  return isType(o);
+}
 
 export interface ConfigurationCacheExpirationStrategy<Configuration, Context> {
   (
     cached: ConfigurationCache<Configuration, Context>,
-    ctx: Context,
+    ctx?: Context,
   ): boolean;
 }
 
@@ -36,9 +72,8 @@ export class CacheableConfigurationSupplier<Configuration, Context>
   implements
     govn.ConfigurationSupplier<Configuration, Context>,
     govn.ConfigurationSyncSupplier<Configuration, Context> {
-  protected cached?: ConfigurationCache<Configuration, Context>;
-
   constructor(
+    readonly identity: string,
     readonly proxy:
       & govn.ConfigurationSupplier<Configuration, Context>
       & govn.ConfigurationSyncSupplier<Configuration, Context>,
@@ -50,38 +85,62 @@ export class CacheableConfigurationSupplier<Configuration, Context>
   }
 
   async configure(ctx?: Context): Promise<Configuration> {
-    if (this.cached) {
-      if (
-        !this.cacheExpired ||
-        (this.cacheExpired && !this.cacheExpired(this.cached, ctx))
-      ) {
-        return this.cached.config;
+    if (isCacheableConfiguration(ctx)) {
+      const key = `${this.identity}:${ctx.configCacheKey}`;
+      const found = window.configurationsCache.get(key);
+      let cacheExpired = this.cacheExpired;
+      if (isCacheExpirationSupplier<Configuration, Context>(ctx)) {
+        cacheExpired = ctx.cacheExpired;
       }
+      if (found) {
+        if (isCacheExpirationSupplier<Configuration, Context>(found)) {
+          cacheExpired = found.cacheExpired;
+        }
+        if (!cacheExpired || (cacheExpired && !cacheExpired(found, ctx))) {
+          return found.config;
+        }
+      }
+      const result = await this.proxy.configure(ctx);
+      const cached = {
+        config: result,
+        cachedAt: new Date(),
+        cacheExpired: isCacheExpirationSupplier<Configuration, Context>(result)
+          ? result.cacheExpired
+          : cacheExpired,
+      };
+      window.configurationsCache.set(key, cached);
+      return result;
     }
-    const result = await this.proxy.configure(ctx);
-    this.cached = {
-      config: result,
-      cachedAt: new Date(),
-      cacheExpired: this.cacheExpired,
-    };
-    return result;
+    return await this.proxy.configure(ctx);
   }
 
   configureSync(ctx?: Context): Configuration {
-    if (this.cached) {
-      if (
-        !this.cacheExpired ||
-        (this.cacheExpired && !this.cacheExpired(this.cached, ctx))
-      ) {
-        return this.cached.config;
+    if (isCacheableConfiguration(ctx)) {
+      const key = `${this.identity}:${ctx.configCacheKey}`;
+      const found = window.configurationsCache.get(key);
+      let cacheExpired = this.cacheExpired;
+      if (isCacheExpirationSupplier<Configuration, Context>(ctx)) {
+        cacheExpired = ctx.cacheExpired;
       }
+      if (found) {
+        if (isCacheExpirationSupplier<Configuration, Context>(found)) {
+          cacheExpired = found.cacheExpired;
+        }
+        if (!cacheExpired || (cacheExpired && !cacheExpired(found, ctx))) {
+          return found.config;
+        }
+      }
+      const result = this.proxy.configureSync(ctx);
+      const cached = {
+        config: result,
+        cachedAt: new Date(),
+        cacheExpired: isCacheExpirationSupplier<Configuration, Context>(result)
+          ? result.cacheExpired
+          : cacheExpired,
+      };
+      window.configurationsCache.set(key, cached);
+      return result;
     }
-    const result = this.proxy.configureSync(ctx);
-    this.cached = {
-      config: result,
-      cachedAt: new Date(),
-      cacheExpired: this.cacheExpired,
-    };
-    return result;
+    return this.proxy.configureSync(ctx);
   }
 }

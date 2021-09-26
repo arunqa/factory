@@ -22,7 +22,6 @@ interface TestConfig {
 interface TestContext {
 }
 
-const eventsVerbose = Deno.env.get("ENV_TEST_VERBOSE") ? true : false;
 const testConfiguredPropsCount = 3;
 function testConfigProperties(
   ec: mod.EnvConfiguration<TestConfig, TestContext>,
@@ -51,7 +50,7 @@ export class TestEnvConfiguration
     super(
       testConfigProperties,
       mod.namespacedEnvVarNameUppercase("CFGTEST_"),
-      mod.envConfigurationEventsConsoleEmitter(eventsVerbose),
+      mod.envConfigurationEventsConsoleEmitter("ENV_TEST_VERBOSE"),
     );
   }
 
@@ -67,6 +66,12 @@ export class TestEnvConfiguration
   }
 
   unhandledPropertySync(
+    _attempts: mod.ConfigurableEnvVarPropertyPopulateAttempt<
+      TestConfig,
+      // deno-lint-ignore no-explicit-any
+      any,
+      TestContext
+    >[],
     p: mod.ConfigurableEnvVarProperty<TestConfig, unknown, TestContext>,
     _ctx: TestContext,
     _config: TestConfig,
@@ -87,7 +92,7 @@ export class TestAsyncEnvConfiguration
     super(
       testConfigProperties,
       mod.namespacedEnvVarNameUppercase("CFGTEST_"),
-      mod.envConfigurationEventsConsoleEmitter(eventsVerbose),
+      mod.envConfigurationEventsConsoleEmitter("ENV_TEST_VERBOSE"),
     );
   }
 
@@ -103,6 +108,12 @@ export class TestAsyncEnvConfiguration
   }
 
   unhandledPropertySync(
+    _attempts: mod.ConfigurableEnvVarPropertyPopulateAttempt<
+      TestConfig,
+      // deno-lint-ignore no-explicit-any
+      any,
+      TestContext
+    >[],
     // deno-lint-ignore no-explicit-any
     p: mod.ConfigurableEnvVarProperty<TestConfig, any, TestContext>,
     _ctx: TestContext,
@@ -117,7 +128,7 @@ Deno.test(`EnvConfiguration with unhandled number and complex type`, () => {
   const testTextPropValue = "test";
   Deno.env.set("CFGTEST_TEXT", testTextPropValue);
   const proxy = new TestAsyncEnvConfiguration();
-  const envConfig = new mod.CacheableConfigurationSupplier(proxy);
+  const envConfig = new mod.CacheableConfigurationSupplier("TEST", proxy);
   const config = envConfig.configureSync({});
   Deno.env.delete("CFGTEST_TEXT");
   ta.assertEquals(
@@ -169,7 +180,7 @@ Deno.test(`AsyncEnvConfiguration, cached, with no unhandled types`, async () => 
   Deno.env.set("CFGTEST_NUMBER", testNumberPropValue.toString());
   Deno.env.set("CFGTEST_COMPLEX_TYPE", JSON.stringify(testComplexValue));
   const proxy = new TestAsyncEnvConfiguration();
-  const envConfig = new mod.CacheableConfigurationSupplier(proxy);
+  const envConfig = new mod.CacheableConfigurationSupplier("TEST", proxy);
   const config = await envConfig.configure({});
   Deno.env.delete("CFGTEST_TEXT");
   Deno.env.delete("CFGTEST_NUMBER");
