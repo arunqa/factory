@@ -184,8 +184,9 @@ export abstract class EnvConfiguration<Configuration, Context>
       aliases,
       populateSync: populate ||
         ((envVarValue, config) => {
+          const [mutate] = propertyName(name);
           // deno-lint-ignore no-explicit-any
-          (config as any)[name] = envVarValue;
+          (config as any)[mutate] = envVarValue;
           return envVarValue;
         }),
     };
@@ -209,15 +210,16 @@ export abstract class EnvConfiguration<Configuration, Context>
       aliases,
       populateSync: populate ||
         ((envVarValue, config) => {
+          const [mutate] = propertyName(name);
           const value = parseFloat(envVarValue);
           if (valueGuard.guard(value)) {
             // deno-lint-ignore no-explicit-any
-            (config as any)[name] = value;
+            (config as any)[mutate] = value;
             return value;
           }
           const onFailedValue = valueGuard.onGuardFailure(envVarValue);
           // deno-lint-ignore no-explicit-any
-          (config as any)[name] = onFailedValue;
+          (config as any)[mutate] = onFailedValue;
           return onFailedValue;
         }),
       valueGuard,
@@ -240,21 +242,22 @@ export abstract class EnvConfiguration<Configuration, Context>
       aliases,
       populateSync: populate ||
         ((envVarValue, config) => {
+          const [mutate] = propertyName(name);
           try {
             const value = JSON.parse(envVarValue);
             if (guard(value)) {
               // deno-lint-ignore no-explicit-any
-              (config as any)[name] = value;
+              (config as any)[mutate] = value;
               return value;
             }
             const onFailedValue = valueGuard.onGuardFailure(envVarValue);
             // deno-lint-ignore no-explicit-any
-            (config as any)[name] = onFailedValue;
+            (config as any)[mutate] = onFailedValue;
             return onFailedValue;
           } catch (err) {
             const onFailedValue = valueGuard.onGuardFailure(envVarValue, err);
             // deno-lint-ignore no-explicit-any
-            (config as any)[name] = onFailedValue;
+            (config as any)[mutate] = onFailedValue;
             return onFailedValue;
           }
         }),
