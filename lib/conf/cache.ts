@@ -44,15 +44,12 @@ export class CacheableConfigurationSupplier<Configuration, Context>
       & govn.ConfigurationSyncSupplier<Configuration, Context>,
     readonly cacheExpired?: (
       cached: ConfigurationCache<Configuration, Context>,
-      ctx: Context,
+      ctx?: Context,
     ) => boolean,
   ) {
   }
 
-  async configure(
-    ctx: Context,
-    config?: Configuration,
-  ): Promise<Configuration> {
+  async configure(ctx?: Context): Promise<Configuration> {
     if (this.cached) {
       if (
         !this.cacheExpired ||
@@ -61,7 +58,7 @@ export class CacheableConfigurationSupplier<Configuration, Context>
         return this.cached.config;
       }
     }
-    const result = await this.proxy.configure(ctx, config);
+    const result = await this.proxy.configure(ctx);
     this.cached = {
       config: result,
       cachedAt: new Date(),
@@ -70,10 +67,7 @@ export class CacheableConfigurationSupplier<Configuration, Context>
     return result;
   }
 
-  configureSync(
-    ctx: Context,
-    config?: Configuration,
-  ): Configuration {
+  configureSync(ctx?: Context): Configuration {
     if (this.cached) {
       if (
         !this.cacheExpired ||
@@ -82,7 +76,7 @@ export class CacheableConfigurationSupplier<Configuration, Context>
         return this.cached.config;
       }
     }
-    const result = this.proxy.configureSync(ctx, config);
+    const result = this.proxy.configureSync(ctx);
     this.cached = {
       config: result,
       cachedAt: new Date(),

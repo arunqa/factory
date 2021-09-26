@@ -4,15 +4,30 @@ import * as govn from "./governance.ts";
 export class EnvConfigurationEventsEmitter<Configuration, Context>
   extends events.EventEmitter<{
     searchEnvForProperty(
-      // deno-lint-ignore no-explicit-any
-      property: ConfigurableEnvVarProperty<Configuration, Context, any>,
       handled: boolean,
-      value: unknown,
-      envVarName: string,
-      envVarValue: string | undefined,
+      // this event handler can get both handled and unhandled properties so
+      // cevpp has optional envVarValue since it may not be available
+      cevpp:
+        & Omit<
+          // deno-lint-ignore no-explicit-any
+          ConfigurableEnvVarPropertyPopulate<Configuration, any, Context>,
+          "envVarValue"
+        >
+        & Partial<
+          Pick<
+            // deno-lint-ignore no-explicit-any
+            ConfigurableEnvVarPropertyPopulate<Configuration, any, Context>,
+            "envVarValue"
+          >
+        >,
       cpn: govn.ConfigurablePropertyName<Configuration>,
+      value: unknown,
+    ): void;
+    envPropertyNotHandled(
+      p: ConfigurableEnvVarProperty<Configuration, unknown, Context>,
       config: Configuration,
-      ctx: Context,
+      ps: ConfigurableEnvVarPropertiesSupplier<Configuration, Context>,
+      ctx?: Context,
     ): void;
   }> {}
 
@@ -24,7 +39,7 @@ export function envConfigurationEventsConsoleEmitter<
   if (verbose) {
     result.on(
       "searchEnvForProperty",
-      (_property, handled, value, envVarName, envVarValue, cpn) => {
+      (handled, { envVarName, envVarValue }, cpn, value) => {
         const [name, namespace] = propertyName(cpn);
         console.info(
           `Looking for ${envVarName} for property name ${name} (namespace: '${namespace ||
@@ -38,46 +53,53 @@ export function envConfigurationEventsConsoleEmitter<
         );
       },
     );
+
+    result.on(
+      "envPropertyNotHandled",
+      (property, _ps, _config, _ctx) => {
+        const [name, namespace] = propertyName(property.name);
+        console.info(
+          // deno-fmt-ignore
+          `Property name ${name} (namespace: '${namespace || ""}') was not handled`,
+        );
+      },
+    );
   }
   return result;
 }
 
-export interface ConfigurableEnvVarProperty<Configuration, Context, Value>
-  extends govn.ConfigurableProperty<Configuration, Value> {
-  readonly populateSync: (
-    envVarValue: string,
-    c: Configuration,
-    ctx: Context,
-    ...args: unknown[]
+export interface ConfigurableEnvVarPropertyPopulate<
+  Configuration,
+  Value,
+  Context,
+> extends govn.ConfigurablePropertyPopulate<Configuration, Value, Context> {
+  readonly property: ConfigurableEnvVarProperty<Configuration, Value, Context>;
+  readonly envVarName: string;
+  readonly envVarValue: string;
+  readonly ps: ConfigurableEnvVarPropertiesSupplier<Configuration, Context>;
+}
+
+export interface ConfigurableEnvVarProperty<Configuration, Value, Context>
+  extends govn.ConfigurableProperty<Configuration, Value, Context> {
+  readonly isRequired?: boolean;
+  readonly populateEnvVarValueSync: (
+    cevpp: ConfigurableEnvVarPropertyPopulate<Configuration, Value, Context>,
   ) => Value;
-  readonly populateDefaultSync?: (
-    c: Configuration,
-    ctx: Context,
-    ...args: unknown[]
-  ) => Value;
-  readonly populate?: (
-    envVarValue: string,
-    c: Configuration,
-    ctx: Context,
-    ...args: unknown[]
-  ) => Promise<Value>;
-  readonly populateDefault?: (
-    c: Configuration,
-    ctx: Context,
-    ...args: unknown[]
+  readonly populateEnvVarValue?: (
+    cevpp: ConfigurableEnvVarPropertyPopulate<Configuration, Value, Context>,
   ) => Promise<Value>;
 }
 
 export type ConfigurableEnvVarProperties<Configuration, Context> =
   ConfigurableEnvVarProperty<
     Configuration,
-    Context,
     // deno-lint-ignore no-explicit-any
-    any
+    any,
+    Context
   >[];
 
 export interface ConfigurableEnvVarPropertiesSupplier<Configuration, Context>
-  extends govn.ConfigurablePropertiesSupplier<Configuration> {
+  extends govn.ConfigurablePropertiesSupplier<Configuration, Context> {
   readonly properties: ConfigurableEnvVarProperties<Configuration, Context>;
   readonly configGuard?: {
     readonly guard: safety.TypeGuard<Configuration>;
@@ -94,9 +116,9 @@ export interface ConfigurablePropEnvVarNameStrategy<Configuration, Context> {
   (
     name: govn.ConfigurablePropertyName<Configuration>,
     // deno-lint-ignore no-explicit-any
-    property: ConfigurableEnvVarProperty<Configuration, Context, any>,
+    property: ConfigurableEnvVarProperty<Configuration, any, Context>,
     config: Configuration,
-    ctx: Context,
+    ctx?: Context,
   ): string;
 }
 
@@ -167,23 +189,25 @@ export abstract class EnvConfiguration<Configuration, Context>
     this.ps = properties(this);
   }
 
-  abstract constructSync(ctx: Context): Configuration;
+  abstract constructSync(ctx?: Context): Configuration;
   abstract unhandledPropertySync(
-    p: ConfigurableEnvVarProperty<Configuration, Context, unknown>,
-    ctx: Context,
+    p: ConfigurableEnvVarProperty<Configuration, unknown, Context>,
     config: Configuration,
+    ctx?: Context,
   ): unknown;
 
   textProperty(
     name: govn.ConfigurablePropertyName<Configuration>,
     aliases?: govn.ConfigurablePropertyName<Configuration>[],
-    populate?: (envVarValue: string, config: Configuration) => string,
-  ): ConfigurableEnvVarProperty<Configuration, Context, string> {
+    populate?: (
+      cevpp: ConfigurableEnvVarPropertyPopulate<Configuration, string, Context>,
+    ) => string,
+  ): ConfigurableEnvVarProperty<Configuration, string, Context> {
     return {
       name,
       aliases,
-      populateSync: populate ||
-        ((envVarValue, config) => {
+      populateEnvVarValueSync: populate ||
+        (({ envVarValue, config }) => {
           const [mutate] = propertyName(name);
           // deno-lint-ignore no-explicit-any
           (config as any)[mutate] = envVarValue;
@@ -192,12 +216,24 @@ export abstract class EnvConfiguration<Configuration, Context>
     };
   }
 
+  requiredTextProperty(
+    name: govn.ConfigurablePropertyName<Configuration>,
+    aliases?: govn.ConfigurablePropertyName<Configuration>[],
+    populate?: (
+      cevpp: ConfigurableEnvVarPropertyPopulate<Configuration, string, Context>,
+    ) => string,
+  ): ConfigurableEnvVarProperty<Configuration, string, Context> {
+    return { ...this.textProperty(name, aliases, populate), isRequired: true };
+  }
+
   numericProperty(
     name: govn.ConfigurablePropertyName<Configuration>,
     aliases?: govn.ConfigurablePropertyName<Configuration>[],
     onGuardFailure?: (o: unknown) => number,
-    populate?: (envVarValue: string, config: Configuration) => number,
-  ): ConfigurableEnvVarProperty<Configuration, Context, number> {
+    populate?: (
+      cevpp: ConfigurableEnvVarPropertyPopulate<Configuration, number, Context>,
+    ) => number,
+  ): ConfigurableEnvVarProperty<Configuration, number, Context> {
     const valueGuard = {
       guard: (o: unknown): o is number => {
         if (o && typeof o === "number") return true;
@@ -208,8 +244,8 @@ export abstract class EnvConfiguration<Configuration, Context>
     return {
       name,
       aliases,
-      populateSync: populate ||
-        ((envVarValue, config) => {
+      populateEnvVarValueSync: populate ||
+        (({ envVarValue, config }) => {
           const [mutate] = propertyName(name);
           const value = parseFloat(envVarValue);
           if (valueGuard.guard(value)) {
@@ -226,13 +262,33 @@ export abstract class EnvConfiguration<Configuration, Context>
     };
   }
 
+  requiredNumericProperty(
+    name: govn.ConfigurablePropertyName<Configuration>,
+    aliases?: govn.ConfigurablePropertyName<Configuration>[],
+    onGuardFailure?: (o: unknown) => number,
+    populate?: (
+      cevpp: ConfigurableEnvVarPropertyPopulate<Configuration, number, Context>,
+    ) => number,
+  ): ConfigurableEnvVarProperty<Configuration, number, Context> {
+    return {
+      ...this.numericProperty(name, aliases, onGuardFailure, populate),
+      isRequired: true,
+    };
+  }
+
   jsonTextProperty<Type>(
     name: govn.ConfigurablePropertyName<Configuration>,
     guard: safety.TypeGuard<Type>,
     onGuardFailure: (o: unknown, err?: Error) => Type | undefined,
     aliases?: govn.ConfigurablePropertyName<Configuration>[],
-    populate?: (envVarValue: string, config: Configuration) => Type | undefined,
-  ): ConfigurableEnvVarProperty<Configuration, Context, Type | undefined> {
+    populate?: (
+      cevpp: ConfigurableEnvVarPropertyPopulate<
+        Configuration,
+        Type | undefined,
+        Context
+      >,
+    ) => Type | undefined,
+  ): ConfigurableEnvVarProperty<Configuration, Type | undefined, Context> {
     const valueGuard = {
       guard,
       onGuardFailure: onGuardFailure || ((_: unknown) => undefined),
@@ -240,8 +296,8 @@ export abstract class EnvConfiguration<Configuration, Context>
     return {
       name,
       aliases,
-      populateSync: populate ||
-        ((envVarValue, config) => {
+      populateEnvVarValueSync: populate ||
+        (({ envVarValue, config }) => {
           const [mutate] = propertyName(name);
           try {
             const value = JSON.parse(envVarValue);
@@ -265,51 +321,92 @@ export abstract class EnvConfiguration<Configuration, Context>
     };
   }
 
-  configureSync(ctx: Context, config?: Configuration): Configuration {
-    let result = config || this.constructSync(ctx);
-    for (const p of this.ps.properties) {
-      const tryNames = p.aliases ? [p.name, ...p.aliases] : [p.name];
+  requiredJsonTextProperty<Type>(
+    name: govn.ConfigurablePropertyName<Configuration>,
+    guard: safety.TypeGuard<Type>,
+    onGuardFailure: (o: unknown, err?: Error) => Type | undefined,
+    aliases?: govn.ConfigurablePropertyName<Configuration>[],
+    populate?: (
+      cevpp: ConfigurableEnvVarPropertyPopulate<
+        Configuration,
+        Type | undefined,
+        Context
+      >,
+    ) => Type | undefined,
+  ): ConfigurableEnvVarProperty<Configuration, Type | undefined, Context> {
+    return {
+      ...this.jsonTextProperty(name, guard, onGuardFailure, aliases, populate),
+      isRequired: true,
+    };
+  }
+
+  configureSync(ctx?: Context): Configuration {
+    let config = this.constructSync(ctx);
+    for (const property of this.ps.properties) {
+      const tryNames = property.aliases
+        ? [property.name, ...property.aliases]
+        : [property.name];
       let handled = false;
       let value: unknown | undefined;
       for (const tryName of tryNames) {
-        const envVarName = this.envVarName(tryName, p, result, ctx);
+        const envVarName = this.envVarName(tryName, property, config, ctx);
         const envVarValue = Deno.env.get(envVarName);
         ctx = typeof ctx === "object"
           ? { ...ctx, envVarName, envVarValue }
           : ctx;
+        const cevpp: Omit<
+          ConfigurableEnvVarPropertyPopulate<
+            Configuration,
+            // deno-lint-ignore no-explicit-any
+            any,
+            Context
+          >,
+          "envVarValue"
+        > = {
+          property,
+          envVarName,
+          config,
+          ctx,
+          ps: this.ps,
+        };
         if (envVarValue) {
-          value = p.populateSync(envVarValue, result, ctx, envVarName);
+          value = property.populateEnvVarValueSync({ ...cevpp, envVarValue });
           handled = true;
         }
         if (this.ecee) {
           this.ecee.emitSync(
             "searchEnvForProperty",
-            p,
             handled,
-            value,
-            envVarName,
-            envVarValue,
+            cevpp,
             tryName,
-            result,
-            ctx,
+            value,
           );
         }
         if (handled) break;
       }
       if (!handled) {
-        if (p.populateDefaultSync) {
-          p.populateDefaultSync(result, ctx);
+        if (property.populateDefaultSync) {
+          property.populateDefaultSync({ config, property, ctx });
         } else {
-          this.unhandledPropertySync(p, ctx, result);
+          if (this.ecee) {
+            this.ecee.emitSync(
+              "envPropertyNotHandled",
+              property,
+              config,
+              this.ps,
+              ctx,
+            );
+          }
+          this.unhandledPropertySync(property, config, ctx);
         }
       }
     }
     if (this.ps.configGuard) {
-      if (!this.ps.configGuard.guard(result)) {
-        result = this.ps.configGuard.onGuardFailureSync(result);
+      if (!this.ps.configGuard.guard(config)) {
+        config = this.ps.configGuard.onGuardFailureSync(config);
       }
     }
-    return result;
+    return config;
   }
 }
 
@@ -317,76 +414,98 @@ export abstract class AsyncEnvConfiguration<Configuration, Context>
   extends EnvConfiguration<Configuration, Context>
   implements govn.ConfigurationSupplier<Configuration, Context> {
   // deno-lint-ignore require-await
-  async construct(ctx: Context): Promise<Configuration> {
+  async construct(ctx?: Context): Promise<Configuration> {
     return this.constructSync(ctx);
   }
 
   // deno-lint-ignore require-await
   async unhandledProperty(
-    p: ConfigurableEnvVarProperty<Configuration, Context, unknown>,
-    ctx: Context,
+    p: ConfigurableEnvVarProperty<Configuration, unknown, Context>,
     config: Configuration,
+    ctx?: Context,
   ): Promise<unknown> {
-    return this.unhandledPropertySync(p, ctx, config);
+    return this.unhandledPropertySync(p, config, ctx);
   }
 
-  async configure(
-    ctx: Context,
-    config?: Configuration,
-  ): Promise<Configuration> {
-    let result = config || await this.construct(ctx);
-    for (const p of this.ps.properties) {
-      const tryNames = p.aliases ? [p.name, ...p.aliases] : [p.name];
+  async configure(ctx?: Context): Promise<Configuration> {
+    let config = await this.construct(ctx);
+    for (const property of this.ps.properties) {
+      const tryNames = property.aliases
+        ? [property.name, ...property.aliases]
+        : [property.name];
       let handled = false;
       let value: unknown | undefined;
       for (const tryName of tryNames) {
-        const envVarName = this.envVarName(tryName, p, result, ctx);
+        const envVarName = this.envVarName(tryName, property, config, ctx);
         const envVarValue = Deno.env.get(envVarName);
         ctx = typeof ctx === "object"
           ? { ...ctx, envVarName, envVarValue }
           : ctx;
+        const cevpp: Omit<
+          ConfigurableEnvVarPropertyPopulate<
+            Configuration,
+            // deno-lint-ignore no-explicit-any
+            any,
+            Context
+          >,
+          "envVarValue"
+        > = {
+          config,
+          property,
+          envVarName,
+          ctx,
+          ps: this.ps,
+        };
         if (envVarValue) {
-          if (p.populate) {
-            value = await p.populate(envVarValue, result, ctx);
+          if (property.populateEnvVarValue) {
+            value = await property.populateEnvVarValue({
+              ...cevpp,
+              envVarValue,
+            });
           } else {
-            value = p.populateSync(envVarValue, result, ctx);
+            value = property.populateEnvVarValueSync({ ...cevpp, envVarValue });
           }
           handled = true;
         }
         if (this.ecee) {
-          this.ecee.emitSync(
+          await this.ecee.emit(
             "searchEnvForProperty",
-            p,
             handled,
-            value,
-            envVarName,
-            envVarValue,
+            cevpp,
             tryName,
-            result,
-            ctx,
+            value,
           );
         }
         if (handled) break;
       }
       if (!handled) {
-        if (p.populateDefault) {
-          await p.populateDefault(result, ctx);
-        } else if (p.populateDefaultSync) {
-          p.populateDefaultSync(result, ctx);
+        if (property.populateDefault) {
+          await property.populateDefault({ config, property, ctx });
+        } else if (property.populateDefaultSync) {
+          property.populateDefaultSync({ config, property, ctx });
         } else {
-          await this.unhandledProperty(p, ctx, result);
+          if (this.ecee) {
+            await this.ecee.emit(
+              "envPropertyNotHandled",
+              property,
+              config,
+              this.ps,
+              ctx,
+            );
+          }
+          await this.unhandledProperty(property, config, ctx);
         }
       }
     }
     if (this.ps.configGuard) {
-      if (!this.ps.configGuard.guard(result)) {
+      if (!this.ps.configGuard.guard(config)) {
         if (this.ps.configGuard.onGuardFailure) {
-          result = await this.ps.configGuard.onGuardFailure(result);
+          config = await this.ps.configGuard.onGuardFailure(config);
         } else {
-          result = this.ps.configGuard.onGuardFailureSync(result);
+          config = this.ps.configGuard.onGuardFailureSync(config);
         }
       }
     }
-    return result;
+    return config;
   }
 }

@@ -1,17 +1,11 @@
 import { safety } from "../../deps.ts";
 
 export interface ConfigurationSupplier<Configuration, Context> {
-  readonly configure: (
-    ctx: Context,
-    config?: Configuration,
-  ) => Promise<Configuration>;
+  readonly configure: (ctx?: Context) => Promise<Configuration>;
 }
 
 export interface ConfigurationSyncSupplier<Configuration, Context> {
-  readonly configureSync: (
-    ctx: Context,
-    config?: Configuration,
-  ) => Configuration;
+  readonly configureSync: (ctx?: Context) => Configuration;
 }
 
 export interface NamespacedConfigurablePropertyName<Configuration> {
@@ -29,22 +23,36 @@ export type ConfigurablePropertyName<Configuration> =
   | NamespacedConfigurablePropertyName<Configuration>
   | UntypedConfigurablePropertyName;
 
+export interface ConfigurablePropertyPopulate<Configuration, Value, Context> {
+  readonly config: Configuration;
+  readonly property: ConfigurableProperty<Configuration, Value, Context>;
+  readonly ctx?: Context;
+}
+
 // TODO: allow "secrets" (e.g. encrypted values), see GSH Vault
-export interface ConfigurableProperty<Configuration, Value> {
+export interface ConfigurableProperty<Configuration, Value, Context> {
   readonly name: ConfigurablePropertyName<Configuration>;
   readonly aliases?: ConfigurablePropertyName<Configuration>[];
   readonly valueGuard?: {
     readonly guard: safety.TypeGuard<Value>;
     readonly onGuardFailure: (supplied: unknown, exception?: Error) => Value;
   };
+  readonly populateDefaultSync?: (
+    cpp: ConfigurablePropertyPopulate<Configuration, Value, Context>,
+  ) => Value;
+  readonly populateDefault?: (
+    cpp: ConfigurablePropertyPopulate<Configuration, Value, Context>,
+  ) => Promise<Value>;
 }
 
-export type ConfigurableProperties<Configuration> = ConfigurableProperty<
-  Configuration,
-  // deno-lint-ignore no-explicit-any
-  any
->[];
+export type ConfigurableProperties<Configuration, Context> =
+  ConfigurableProperty<
+    Configuration,
+    // deno-lint-ignore no-explicit-any
+    any,
+    Context
+  >[];
 
-export interface ConfigurablePropertiesSupplier<Configuration> {
-  readonly properties: ConfigurableProperties<Configuration>;
+export interface ConfigurablePropertiesSupplier<Configuration, Context> {
+  readonly properties: ConfigurableProperties<Configuration, Context>;
 }

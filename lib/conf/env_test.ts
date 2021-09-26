@@ -55,7 +55,7 @@ export class TestEnvConfiguration
     );
   }
 
-  constructSync(_ctx: TestContext): TestConfig {
+  constructSync(): TestConfig {
     return {
       text: "",
       number: 0,
@@ -67,7 +67,7 @@ export class TestEnvConfiguration
   }
 
   unhandledPropertySync(
-    p: mod.ConfigurableEnvVarProperty<TestConfig, TestContext, unknown>,
+    p: mod.ConfigurableEnvVarProperty<TestConfig, unknown, TestContext>,
     _ctx: TestContext,
     _config: TestConfig,
   ): unknown {
@@ -91,7 +91,7 @@ export class TestAsyncEnvConfiguration
     );
   }
 
-  constructSync(_ctx: TestContext): TestConfig {
+  constructSync(): TestConfig {
     return {
       text: "",
       number: 0,
@@ -104,7 +104,7 @@ export class TestAsyncEnvConfiguration
 
   unhandledPropertySync(
     // deno-lint-ignore no-explicit-any
-    p: mod.ConfigurableEnvVarProperty<TestConfig, TestContext, any>,
+    p: mod.ConfigurableEnvVarProperty<TestConfig, any, TestContext>,
     _ctx: TestContext,
     _config: TestConfig,
   ): unknown {
