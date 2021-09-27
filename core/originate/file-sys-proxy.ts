@@ -1,5 +1,6 @@
 import { events, fs, path } from "../deps.ts";
 import * as govn from "../../governance/mod.ts";
+import * as conf from "../../lib/conf/mod.ts";
 
 export class FileSysResourceProxyEventsEmitter extends events.EventEmitter<{
   proxyStrategyResult(psr: FileSysResourceProxyStrategyResult): void;
@@ -20,6 +21,46 @@ export class FileSysResourceProxyEventsEmitter extends events.EventEmitter<{
     destFile: string,
   ): void;
 }> {}
+
+export interface FileSysResourceAgeProxyArguments {
+  readonly maxAgeInMS: number;
+}
+
+export class FileSysResourceAgeProxyEnvArgumentsConfiguration
+  extends conf.AsyncEnvConfiguration<FileSysResourceAgeProxyArguments, never> {
+  static readonly ageOneSecondMS = 1000;
+  static readonly ageOneMinuteMS = this.ageOneSecondMS * 60;
+  static readonly ageOneHourMS = this.ageOneMinuteMS * 60;
+  static readonly ageOneDayMS = this.ageOneHourMS * 24;
+
+  constructor(
+    envVarNamesPrefix?: string,
+    readonly maxAgeInMS =
+      FileSysResourceAgeProxyEnvArgumentsConfiguration.ageOneHourMS,
+  ) {
+    super(
+      (ec) => ({
+        properties: [
+          ec.numericProperty("maxAgeInMS"),
+        ],
+      }),
+      (propName) => {
+        const [name] = conf.propertyName(propName);
+        return `${envVarNamesPrefix || ""}${conf.camelCaseToEnvVarName(name)}`;
+      },
+      // setting RF_ENVCONFIGEE_FSR_PROXY_VERBOSE=true will allow debugging
+      conf.envConfigurationEventsConsoleEmitter(
+        "RF_ENVCONFIGEE_FSR_PROXY_VERBOSE",
+      ),
+    );
+  }
+
+  constructSync(): FileSysResourceAgeProxyArguments {
+    return {
+      maxAgeInMS: this.maxAgeInMS,
+    };
+  }
+}
 
 export interface ProxiedFileSysResource extends govn.ProxiedResource {
   readonly proxyStrategyResult: FileSysResourceProxyStrategyResult;
@@ -52,11 +93,6 @@ export const fileSysResourceNeverProxyStrategy: FileSysResourceProxyStrategy =
         `fileSysResourceNeverProxyStrategy always ignores proxies`,
     };
   };
-
-export const ageOneSecondMS = 1000;
-export const ageOneMinuteMS = ageOneSecondMS * 60;
-export const ageOneHourMS = ageOneMinuteMS * 60;
-export const ageOneDayMS = ageOneHourMS * 24;
 
 export function fileSysResourceAgeProxyStrategy(
   maxAgeInMS: number,
@@ -99,51 +135,6 @@ export function fileSysResourceAgeProxyStrategy(
       };
     }
   };
-}
-
-export interface FileSysResourceAgeOrEnvVarProxyOptions {
-  readonly maxAgeInMS: number;
-  readonly identity: string;
-  readonly envVarNameMutator?: (suggested: string) => string;
-  readonly report?: (message: string) => void;
-}
-
-export function fileSysResourceAgeOrEnvVarProxyStrategy(
-  options: FileSysResourceAgeOrEnvVarProxyOptions,
-  ...envVarNames: string[]
-): FileSysResourceProxyStrategy {
-  const { maxAgeInMS, identity, envVarNameMutator, report } = options;
-  if (envVarNames && envVarNames.length > 0) {
-    for (const varName of envVarNames) {
-      const envVarName = envVarNameMutator
-        ? envVarNameMutator(varName)
-        : varName;
-      const envVarValue = Deno.env.get(envVarName);
-      if (typeof envVarValue === "string") {
-        const envVarMaxAgeInMS = Number.parseInt(envVarValue);
-        if (identity) {
-          if (envVarMaxAgeInMS) {
-            if (report) {
-              report(
-                `Proxying ${identity} using age ${envVarMaxAgeInMS} ms using ${envVarName} = ${envVarMaxAgeInMS}`,
-              );
-            }
-            return fileSysResourceAgeProxyStrategy(
-              Number.parseInt(envVarValue),
-            );
-          } else {
-            if (report) {
-              report(
-                `Proxies for ${identity} disabled using ${envVarName} = ${envVarMaxAgeInMS}`,
-              );
-            }
-            return fileSysResourceNeverProxyStrategy;
-          }
-        }
-      }
-    }
-  }
-  return fileSysResourceAgeProxyStrategy(maxAgeInMS);
 }
 
 export abstract class ProxyableFileSysResource<Resource, OriginContext>
@@ -301,51 +292,6 @@ export function fileSysDirectoryAgeProxyStrategy(
       };
     }
   };
-}
-
-export interface FileSysDirectoryAgeOrEnvVarProxyOptions {
-  readonly maxAgeInMS: number;
-  readonly identity: string;
-  readonly envVarNameMutator?: (suggested: string) => string;
-  readonly report?: (message: string) => void;
-}
-
-export function fileSysDirectoryAgeOrEnvVarProxyStrategy(
-  options: FileSysDirectoryAgeOrEnvVarProxyOptions,
-  ...envVarNames: string[]
-): FileSysDirectoryProxyStrategy {
-  const { maxAgeInMS, identity, envVarNameMutator, report } = options;
-  if (envVarNames && envVarNames.length > 0) {
-    for (const varName of envVarNames) {
-      const envVarName = envVarNameMutator
-        ? envVarNameMutator(varName)
-        : varName;
-      const envVarValue = Deno.env.get(envVarName);
-      if (typeof envVarValue === "string") {
-        const envVarMaxAgeInMS = Number.parseInt(envVarValue);
-        if (identity) {
-          if (envVarMaxAgeInMS) {
-            if (report) {
-              report(
-                `Proxying ${identity} using age ${envVarMaxAgeInMS} ms using ${envVarName} = ${envVarMaxAgeInMS}`,
-              );
-            }
-            return fileSysDirectoryAgeProxyStrategy(
-              Number.parseInt(envVarValue),
-            );
-          } else {
-            if (report) {
-              report(
-                `Proxies for ${identity} disabled using ${envVarName} = ${envVarMaxAgeInMS}`,
-              );
-            }
-            return fileSysDirectoryNeverProxyStrategy;
-          }
-        }
-      }
-    }
-  }
-  return fileSysDirectoryAgeProxyStrategy(maxAgeInMS);
 }
 
 export abstract class ProxyableFileSysDirectory<OriginContext> {

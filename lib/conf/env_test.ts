@@ -15,6 +15,8 @@ const isTestComplexConfigProperty = safety.typeGuard<TestComplexConfigProperty>(
 interface TestConfig {
   text: string;
   number: number;
+  maxAgeInMS: number;
+  bool: boolean;
   complexType: TestComplexConfigProperty;
 }
 
@@ -22,7 +24,7 @@ interface TestConfig {
 interface TestContext {
 }
 
-const testConfiguredPropsCount = 3;
+const testConfiguredPropsCount = 5;
 function testConfigProperties(
   ec: mod.EnvConfiguration<TestConfig, TestContext>,
 ): mod.ConfigurableEnvVarPropertiesSupplier<TestConfig, TestContext> {
@@ -30,6 +32,8 @@ function testConfigProperties(
     properties: [
       ec.textProperty("text", [{ override: "altText" }]),
       ec.numericProperty("number"),
+      ec.numericProperty("maxAgeInMS"),
+      ec.booleanProperty("bool"),
       ec.jsonTextProperty<TestComplexConfigProperty>(
         "complexType",
         isTestComplexConfigProperty,
@@ -58,6 +62,8 @@ export class TestEnvConfiguration
     return {
       text: "",
       number: 0,
+      maxAgeInMS: 0,
+      bool: false,
       complexType: {
         innerText: "",
         innerNumber: 0,
@@ -100,6 +106,8 @@ export class TestAsyncEnvConfiguration
     return {
       text: "",
       number: 0,
+      maxAgeInMS: 0,
+      bool: false,
       complexType: {
         innerText: "",
         innerNumber: 0,
@@ -124,7 +132,7 @@ export class TestAsyncEnvConfiguration
   }
 }
 
-Deno.test(`EnvConfiguration with unhandled number and complex type`, () => {
+Deno.test(`EnvConfiguration with unhandled number, bool, complex type`, () => {
   const testTextPropValue = "test";
   Deno.env.set("CFGTEST_TEXT", testTextPropValue);
   const proxy = new TestAsyncEnvConfiguration();
@@ -138,8 +146,8 @@ Deno.test(`EnvConfiguration with unhandled number and complex type`, () => {
   ta.assert(config);
   ta.assertEquals(config.text, testTextPropValue);
 
-  // neither "CFGTEST_NUMBER" nor "CFGTEST_COMPLEX" are provided, catch them
-  ta.assertEquals(proxy.unhandled.length, 2);
+  // others should remain unhandled
+  ta.assertEquals(proxy.unhandled.length, 4);
 });
 
 Deno.test(`EnvConfiguration with aliases`, () => {
@@ -149,6 +157,15 @@ Deno.test(`EnvConfiguration with aliases`, () => {
   const config = envConfig.configureSync({});
   Deno.env.delete("CFGTEST_ALT_TEXT");
   ta.assertEquals(config.text, testTextPropValue);
+});
+
+Deno.test(`EnvConfiguration with complex property name`, () => {
+  const maxAgeInMS = 1001;
+  Deno.env.set("CFGTEST_MAX_AGE_IN_MS", String(maxAgeInMS));
+  const envConfig = new TestAsyncEnvConfiguration();
+  const config = envConfig.configureSync({});
+  Deno.env.delete("CFGTEST_MAX_AGE_IN_MS");
+  ta.assertEquals(config.maxAgeInMS, maxAgeInMS);
 });
 
 Deno.test(`AsyncEnvConfiguration with unhandled complex type`, async () => {
@@ -168,23 +185,29 @@ Deno.test(`AsyncEnvConfiguration with unhandled complex type`, async () => {
   ta.assertEquals(config.text, testTextPropValue);
   ta.assertEquals(config.number, testNumberPropValue);
 
-  // "CFGTEST_COMPLEX_TYPE" is not supplied so be sure we catch it
-  ta.assertEquals(envConfig.unhandled.length, 1);
+  // others should remain unhandled
+  ta.assertEquals(envConfig.unhandled.length, 3);
 });
 
 Deno.test(`AsyncEnvConfiguration, cached, with no unhandled types`, async () => {
   const testTextPropValue = "test";
   const testNumberPropValue = 100;
   const testComplexValue = { innerText: "complex", innerNumber: -1 };
+  const testMaxAgeInMS = 1001;
+  const testBool = true;
   Deno.env.set("CFGTEST_TEXT", testTextPropValue);
   Deno.env.set("CFGTEST_NUMBER", testNumberPropValue.toString());
   Deno.env.set("CFGTEST_COMPLEX_TYPE", JSON.stringify(testComplexValue));
+  Deno.env.set("CFGTEST_MAX_AGE_IN_MS", JSON.stringify(testMaxAgeInMS));
+  Deno.env.set("CFGTEST_BOOL", JSON.stringify(testBool));
   const proxy = new TestAsyncEnvConfiguration();
   const envConfig = new mod.CacheableConfigurationSupplier("TEST", proxy);
   const config = await envConfig.configure({});
   Deno.env.delete("CFGTEST_TEXT");
   Deno.env.delete("CFGTEST_NUMBER");
   Deno.env.delete("CFGTEST_COMPLEX_TYPE");
+  Deno.env.delete("CFGTEST_MAX_AGE_IN_MS");
+  Deno.env.delete("CFGTEST_BOOL");
   ta.assertEquals(
     proxy.ps.properties.length,
     testConfiguredPropsCount,
@@ -192,6 +215,8 @@ Deno.test(`AsyncEnvConfiguration, cached, with no unhandled types`, async () => 
   ta.assert(config);
   ta.assertEquals(config.text, testTextPropValue);
   ta.assertEquals(config.number, testNumberPropValue);
+  ta.assertEquals(config.maxAgeInMS, testMaxAgeInMS);
+  ta.assertEquals(config.bool, testBool);
   ta.assertEquals(config.complexType, testComplexValue);
   ta.assertEquals(proxy.unhandled.length, 0);
 });
@@ -212,6 +237,6 @@ Deno.test(`AsyncEnvConfiguration with failed guards`, async () => {
   ta.assertEquals(config.number, NaN);
   ta.assertEquals(config.complexType, { innerNumber: -1, innerText: "bad" });
 
-  // "CFGTEST_TEXT" is not provided so be sure we catch it
-  ta.assertEquals(envConfig.unhandled.length, 1);
+  // others should remain unhandled
+  ta.assertEquals(envConfig.unhandled.length, 3);
 });

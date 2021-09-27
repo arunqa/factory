@@ -215,8 +215,13 @@ export function isConfigurablePropEnvVarNameStrategySupplier<
   return isType(o);
 }
 
+export const freeTextToEnvVarName = (text: string) =>
+  // change whitespace/dashes/dots to underscores, remove anything not alphanumeric or underscore
+  text.replace(/[-\.\s]+/g, "_").replace(/[^\w]+/g, "").toLocaleUpperCase();
+
 export const camelCaseToEnvVarName = (text: string) =>
-  text.replace(/[A-Z]/g, (letter: string) => `_${letter.toUpperCase()}`)
+  // find one or more uppercase characters and separate with _
+  text.replace(/[A-Z]+/g, (match: string) => `_${match}`)
     .toLocaleUpperCase();
 
 export function propertyName<Configuration>(
@@ -257,7 +262,7 @@ export function namespacedEnvVarNameUppercase<
   };
 }
 
-export abstract class EnvConfiguration<Configuration, Context>
+export abstract class EnvConfiguration<Configuration, Context = never>
   implements govn.ConfigurationSyncSupplier<Configuration, Context> {
   readonly ps: ConfigurableEnvVarPropertiesSupplier<
     Configuration,
@@ -277,7 +282,8 @@ export abstract class EnvConfiguration<Configuration, Context>
   }
 
   abstract constructSync(ctx?: Context): Configuration;
-  abstract unhandledPropertySync(
+
+  unhandledPropertySync(
     attempts: ConfigurableEnvVarPropertyPopulateAttempt<
       Configuration,
       // deno-lint-ignore no-explicit-any
@@ -285,9 +291,19 @@ export abstract class EnvConfiguration<Configuration, Context>
       Context
     >[],
     p: ConfigurableEnvVarProperty<Configuration, unknown, Context>,
-    config: Configuration,
-    ctx?: Context,
-  ): unknown;
+    _config: Configuration,
+    _ctx?: Context,
+  ): unknown {
+    const [name] = propertyName(p.name);
+    if (p.isRequired) {
+      throw Error(
+        `Property ${name} is required but no handler or default supplied. Searched: ${
+          attempts.map((a) => a.envVarName).join(", ")
+        }`,
+      );
+    }
+    return undefined;
+  }
 
   textProperty(
     name: govn.ConfigurablePropertyName<Configuration>,
@@ -317,6 +333,52 @@ export abstract class EnvConfiguration<Configuration, Context>
     ) => string,
   ): ConfigurableEnvVarProperty<Configuration, string, Context> {
     return { ...this.textProperty(name, aliases, populate), isRequired: true };
+  }
+
+  booleanProperty(
+    name: govn.ConfigurablePropertyName<Configuration>,
+    aliases?: govn.ConfigurablePropertyName<Configuration>[],
+    populate?: (
+      cevpp: ConfigurableEnvVarPropertyPopulate<
+        Configuration,
+        boolean,
+        Context
+      >,
+    ) => boolean,
+  ): ConfigurableEnvVarProperty<Configuration, boolean, Context> {
+    return {
+      name,
+      aliases,
+      populateEnvVarValueSync: populate ||
+        (({ envVarValue, config }) => {
+          const [mutate] = propertyName(name);
+          const flagText = envVarValue.toLocaleUpperCase();
+          const flag = (envVarValue &&
+              (["YES", "1", "TRUE", "ON"].find((v) => flagText == v))
+            ? true
+            : false);
+          // deno-lint-ignore no-explicit-any
+          (config as any)[mutate] = flag;
+          return flag;
+        }),
+    };
+  }
+
+  requiredBooleanProperty(
+    name: govn.ConfigurablePropertyName<Configuration>,
+    aliases?: govn.ConfigurablePropertyName<Configuration>[],
+    populate?: (
+      cevpp: ConfigurableEnvVarPropertyPopulate<
+        Configuration,
+        boolean,
+        Context
+      >,
+    ) => boolean,
+  ): ConfigurableEnvVarProperty<Configuration, boolean, Context> {
+    return {
+      ...this.booleanProperty(name, aliases, populate),
+      isRequired: true,
+    };
   }
 
   numericProperty(
@@ -526,7 +588,7 @@ export abstract class EnvConfiguration<Configuration, Context>
   }
 }
 
-export abstract class AsyncEnvConfiguration<Configuration, Context>
+export abstract class AsyncEnvConfiguration<Configuration, Context = never>
   extends EnvConfiguration<Configuration, Context>
   implements govn.ConfigurationSupplier<Configuration, Context> {
   // deno-lint-ignore require-await
@@ -661,5 +723,31 @@ export abstract class AsyncEnvConfiguration<Configuration, Context>
       }
     }
     return config;
+  }
+}
+
+export class TypicalEnvArgumentsConfiguration<Configuration>
+  extends AsyncEnvConfiguration<Configuration, never> {
+  constructor(
+    readonly base: () => Configuration,
+    properties: (
+      ec: EnvConfiguration<Configuration, never>,
+    ) => ConfigurableEnvVarPropertiesSupplier<Configuration, never>,
+    envVarNamesPrefix?: string,
+    consoleEmitterVerboseEnvVarName = "RF_ENVCONFIGEE_TYPICAL_VERBOSE",
+  ) {
+    super(
+      properties,
+      (propName) => {
+        const [name] = propertyName(propName);
+        return `${envVarNamesPrefix || ""}${camelCaseToEnvVarName(name)}`;
+      },
+      // setting RF_ENVCONFIGEE_TYPICAL_VERBOSE=true will allow debugging
+      envConfigurationEventsConsoleEmitter(consoleEmitterVerboseEnvVarName),
+    );
+  }
+
+  constructSync(): Configuration {
+    return this.base();
   }
 }

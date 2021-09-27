@@ -98,9 +98,9 @@ export class DatabaseConnectionEnvConfiguration
     super(
       databaseConnConfigProperties,
       conf.namespacedEnvVarNameUppercase(envVarNamesPrefix),
-      // setting RF_DB_CONN_ENV_CONFIG_VERBOSE=true will allow debugging
+      // setting RF_ENVCONFIGEE_DB_CONN_VERBOSE=true will allow debugging
       conf.envConfigurationEventsConsoleEmitter(
-        "RF_DB_CONN_ENV_CONFIG_VERBOSE",
+        "RF_ENVCONFIGEE_DB_CONN_VERBOSE",
       ),
     );
   }
