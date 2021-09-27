@@ -751,3 +751,37 @@ export class TypicalEnvArgumentsConfiguration<Configuration>
     return this.base();
   }
 }
+
+export class OmnibusEnvJsonArgConfiguration<Configuration, Context>
+  implements
+    govn.ConfigurationSyncSupplier<Configuration, Context>,
+    govn.ConfigurationSupplier<Configuration, Context> {
+  constructor(
+    readonly envVarName: string,
+    readonly factory: (ctx?: Context) => Configuration,
+    readonly guard: safety.TypeGuard<Configuration>,
+    readonly onGuardFailure: (
+      o: unknown,
+      err?: Error,
+    ) => Configuration,
+  ) {
+  }
+
+  // deno-lint-ignore require-await
+  async configure(ctx?: Context): Promise<Configuration> {
+    return this.configureSync(ctx);
+  }
+
+  configureSync(_ctx?: Context): Configuration {
+    const envVarValue = Deno.env.get(this.envVarName);
+    if (envVarValue) {
+      const jsonValue = JSON.parse(envVarValue);
+      if (this.guard(jsonValue)) {
+        return jsonValue;
+      } else {
+        return this.onGuardFailure(jsonValue);
+      }
+    }
+    return this.factory();
+  }
+}

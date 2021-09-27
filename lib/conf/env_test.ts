@@ -240,3 +240,42 @@ Deno.test(`AsyncEnvConfiguration with failed guards`, async () => {
   // others should remain unhandled
   ta.assertEquals(envConfig.unhandled.length, 3);
 });
+
+Deno.test(`Omnibus JSON Configuration (single env var as JSON text)`, async () => {
+  const factoryDefault = {
+    text: "",
+    number: 0,
+    maxAgeInMS: 0,
+    bool: false,
+    complexType: {
+      innerText: "",
+      innerNumber: 0,
+    },
+  };
+  const omnibusTestValue = {
+    text: "test",
+    number: 1001,
+    maxAgeInMS: 100,
+    bool: true,
+    complexType: {
+      innerText: "inner test",
+      innerNumber: -1,
+    },
+  };
+  const omnibusEnvVarName = "OMNIBUS_TEST";
+  Deno.env.set(omnibusEnvVarName, JSON.stringify(omnibusTestValue));
+  const testConfigGuard = safety.typeGuard<TestConfig>("text", "number");
+  const envConfig = new mod.OmnibusEnvJsonArgConfiguration<TestConfig, never>(
+    omnibusEnvVarName,
+    () => factoryDefault,
+    testConfigGuard,
+    () => factoryDefault,
+  );
+  const syncConfig = envConfig.configureSync();
+  ta.assertEquals(syncConfig, omnibusTestValue);
+
+  const asyncConfig = await envConfig.configure();
+  ta.assertEquals(asyncConfig, omnibusTestValue);
+
+  Deno.env.delete(omnibusEnvVarName);
+});
