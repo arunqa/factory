@@ -1,4 +1,4 @@
-import { events, json5, safety } from "../../deps.ts";
+import { colors, events, json5, safety } from "../../deps.ts";
 import * as govn from "./governance.ts";
 
 export class EnvConfigurationEventsEmitter<Configuration, Context>
@@ -89,17 +89,21 @@ export function envConfigurationEventsConsoleEmitter<
             property.isValueSecret ? "******" : JSON.stringify(value)
           }, type: ${typeof value}, isValueSecret: ${property
             .isValueSecret || "no"}`;
-          console.info(
+          console.info(colors.brightBlue(
             `Searched environment for property '${name}' ${
               namespace ? `(namespace '${namespace || ""}') ` : ""
             }in ${attempts.map((a) => a.envVarName).join(", ")} [${
               handled
-                ? `found envVarName: ${terminal.envVarName}, envVarValue: '${envVarValue}', value: ${typedValue}`
-                : (defaulted
-                  ? `not found, defaulted to value: ${typedValue}`
-                  : `not found, no default`)
+                ? colors.brightGreen(
+                  `found envVarName: ${terminal.envVarName}, envVarValue: '${envVarValue}', value: ${typedValue}`,
+                )
+                : colors.brightMagenta(
+                  (defaulted
+                    ? `not found, defaulted to value: ${typedValue}`
+                    : `not found, no default`),
+                )
             }]`,
-          );
+          ));
         }
       }
     },
@@ -111,8 +115,16 @@ export function envConfigurationEventsConsoleEmitter<
       if (result.isVerbose) {
         const [name, namespace] = propertyName(property.name);
         console.info(
-          // deno-fmt-ignore
-          `Property name ${name} (namespace: '${namespace || ""}') was not handled (attempt(s): ${attempts.length}, ${attempts.map(a => a.envVarName).join(', ')})`,
+          colors.brightBlue(
+            `Property name ${name}${
+              namespace
+                ? `(namespace: '${namespace ||
+                  ""})`
+                : ""
+            } was not handled (attempt(s): ${attempts.length}, ${
+              attempts.map((a) => a.envVarName).join(", ")
+            })`,
+          ),
         );
       }
     },
@@ -807,14 +819,18 @@ export function omnibusEnvJsonArgConfigurationEventsConsoleEmitter<
         if (attempts && attempts.length > 0) {
           const terminal = attempts[attempts.length - 1];
           console.info(
-            `Searched environment for omnibus JSON configuration in ${
-              attempts.map((a) => a.envVarName).join(", ")
-            } [${
-              value
-                ? `found envVarName: ${terminal.envVarName}, type ${typeof value}, guard passed: ${!terminal
-                  .guardFailure}`
-                : `not found, using factory`
-            }]`,
+            colors.brightBlue(
+              `Searched environment for omnibus JSON configuration in ${
+                attempts.map((a) => a.envVarName).join(", ")
+              } [${
+                value
+                  ? colors.brightGreen(
+                    `found envVarName: ${terminal.envVarName}, type ${typeof value}, guard passed: ${!terminal
+                      .guardFailure}`,
+                  )
+                  : colors.brightMagenta(`not found, using factory`)
+              }]`,
+            ),
           );
         }
       }
