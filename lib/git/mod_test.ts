@@ -1,6 +1,6 @@
 import { path } from "../../deps.ts";
 import { testingAsserts as ta } from "../../deps-test.ts";
-import * as mod from "./git.ts";
+import * as mod from "./mod.ts";
 
 const testPath = path.relative(
   Deno.cwd(),

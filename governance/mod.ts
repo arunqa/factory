@@ -3,7 +3,6 @@ export * from "./extension.ts";
 export * from "./directive.ts";
 export * from "./frontmatter.ts";
 export * from "./fsm.ts";
-export * from "./git.ts";
 export * from "./model.ts";
 export * from "./module.ts";
 export * from "./namespace.ts";

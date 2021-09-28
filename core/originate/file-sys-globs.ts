@@ -1,5 +1,6 @@
 import { events, fs, govnSvcHealth as health, log, path } from "../../deps.ts";
 import * as govn from "../../governance/mod.ts";
+import * as g from "../../lib/git/mod.ts";
 import * as r from "../std/route.ts";
 
 export type FileSysPathText = string;
@@ -33,7 +34,7 @@ export interface FileSysPath<Resource>
     Partial<r.FileSysRouteOptions> {
   readonly humanFriendlyName: string;
   readonly fileSysPath: FileSysPathText;
-  readonly fileSysGitPaths: false | govn.GitPathsSupplier;
+  readonly fileSysGitPaths: false | g.GitPathsSupplier;
   readonly globs: Iterable<FileSysPathGlob<Resource>>;
 }
 

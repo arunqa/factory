@@ -6,7 +6,7 @@ import * as fsg from "../core/originate/file-sys-globs.ts";
 import * as publ from "./publication.ts";
 import * as rt from "../core/std/route.ts";
 import * as fm from "../core/std/frontmatter.ts";
-import * as g from "../core/std/git.ts";
+import * as g from "../lib/git/mod.ts";
 import * as md from "../core/resource/markdown.ts";
 import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
 import * as lds from "../core/design-system/lightning/mod.ts";

@@ -1,4 +1,4 @@
-import * as govn from "../../governance/mod.ts";
+import * as govn from "./governance.ts";
 
 // Forked from https://github.com/domharrington/node-gitlog/blob/master/src/index.ts
 // Version ac30a135f71337992806b5959c811af5c184c3cd
@@ -56,7 +56,7 @@ export interface GitlogOptions<Fields extends string = DefaultField> {
   /**
    * The number of commits to return
    *
-   * @default 10
+   * @default 50
    */
   number?: number;
   /** An array of fields to return from the log */
@@ -95,7 +95,7 @@ export interface GitlogOptions<Fields extends string = DefaultField> {
 }
 
 const defaultOptions = {
-  number: 10,
+  number: 50,
   fields: defaultFields,
   nameStatus: true,
   includeMergeCommitFiles: false,

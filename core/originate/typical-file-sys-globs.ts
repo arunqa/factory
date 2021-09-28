@@ -8,7 +8,7 @@ import * as html from "../resource/html.ts";
 import * as module from "../resource/module/module.ts";
 import * as jsonM from "../resource/module/json.ts";
 import * as mdDS from "../render/markdown/mod.ts";
-import * as g from "../std/git.ts";
+import * as g from "../../lib/git/mod.ts";
 
 export function markdownFileSysGlob(
   mdrs: mdDS.MarkdownRenderStrategy,

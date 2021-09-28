@@ -1,17 +1,39 @@
 import { fs, path, safety } from "../../deps.ts";
-import * as govn from "../../governance/mod.ts";
+import * as govn from "./governance.ts";
 import * as gl from "./git-log.ts";
 
-// deno-lint-ignore no-empty-interface
+declare global {
+  interface Window {
+    discoverGitWorkTreeResults: Map<string, GitWorkTreeDiscoveryResult>;
+    cachedGitExecutives: Map<string, CachedGitExecutive>;
+  }
+}
+
+if (!window.discoverGitWorkTreeResults) {
+  window.discoverGitWorkTreeResults = new Map();
+}
+if (!window.cachedGitExecutives) {
+  window.cachedGitExecutives = new Map();
+}
+
 export interface GitWorkTreeDiscoveryResult extends govn.GitPathsSupplier {
+  readonly cachedAt: Date;
 }
 
 export function discoverGitWorkTree(
   fileSysPath: string,
+  cacheExpired?: (gwtdr: GitWorkTreeDiscoveryResult) => boolean,
 ): false | GitWorkTreeDiscoveryResult {
   let current = path.isAbsolute(fileSysPath)
     ? fileSysPath
     : path.join(Deno.cwd(), fileSysPath);
+
+  const cacheKey = current;
+  const cached = window.discoverGitWorkTreeResults.get(cacheKey);
+  if (cached && (!cacheExpired || !cacheExpired(cached))) {
+    return cached;
+  }
+
   let parent = path.join(current, "..");
 
   function gitWorkTreeResult(): false | GitWorkTreeDiscoveryResult {
@@ -20,6 +42,7 @@ export function discoverGitWorkTree(
       return {
         workTreePath: current,
         gitDir,
+        cachedAt: new Date(),
       };
     }
     return false;
@@ -31,7 +54,81 @@ export function discoverGitWorkTree(
     current = parent;
   }
 
-  return gitWorkTreeResult();
+  const result = gitWorkTreeResult();
+  if (result) {
+    window.discoverGitWorkTreeResults.set(cacheKey, result);
+  }
+  return result;
+}
+
+export interface CachedGitExecutive {
+  readonly gitPaths: GitWorkTreeDiscoveryResult;
+  readonly executive: govn.GitExecutive;
+}
+
+export function discoverGitWorktreeExecutiveSync(
+  fileSysPath: string,
+  factory: (
+    gitPaths: GitWorkTreeDiscoveryResult,
+  ) => govn.GitExecutive | undefined,
+  options?: {
+    readonly geCacheExpired?: (cge: CachedGitExecutive) => boolean;
+    readonly gwtdrCacheExpired?: (gwtdr: GitWorkTreeDiscoveryResult) => boolean;
+  },
+): govn.GitExecutive | undefined {
+  const gitPaths = discoverGitWorkTree(fileSysPath, options?.gwtdrCacheExpired);
+  if (!gitPaths) return undefined;
+
+  const cacheKey = gitPaths.workTreePath;
+  const cached = window.cachedGitExecutives.get(cacheKey);
+  if (
+    cached && (!options?.geCacheExpired || !options?.geCacheExpired(cached))
+  ) {
+    return cached.executive;
+  }
+
+  const executive = factory(gitPaths);
+  if (executive) {
+    window.cachedGitExecutives.set(cacheKey, { gitPaths, executive });
+  }
+  return executive;
+}
+
+export async function discoverGitWorktreeExecutive(
+  fileSysPath: string,
+  options?: {
+    readonly factory?: (
+      fsp: string,
+    ) => Promise<govn.GitExecutive | undefined> | govn.GitExecutive | undefined;
+    readonly geCacheExpired?: (cge: CachedGitExecutive) => boolean;
+    readonly gwtdrCacheExpired?: (gwtdr: GitWorkTreeDiscoveryResult) => boolean;
+  },
+): Promise<govn.GitExecutive | undefined> {
+  const gitPaths = discoverGitWorkTree(fileSysPath, options?.gwtdrCacheExpired);
+  if (!gitPaths) return undefined;
+
+  const cacheKey = gitPaths.workTreePath;
+  const cached = window.cachedGitExecutives.get(cacheKey);
+  if (
+    cached && (!options?.geCacheExpired || !options?.geCacheExpired(cached))
+  ) {
+    // if we constructed synchronously but not init yet, do so now just in case;
+    // TypicalGit.init() is idempotent
+    if (cached.executive instanceof TypicalGit) await cached.executive.init();
+    return cached.executive;
+  }
+
+  let executive: govn.GitExecutive | undefined;
+  if (!options?.factory) {
+    executive = new TypicalGit(gitPaths);
+    await (executive as TypicalGit).init();
+  } else {
+    executive = await options?.factory(fileSysPath);
+  }
+  if (executive) {
+    window.cachedGitExecutives.set(cacheKey, { gitPaths, executive });
+  }
+  return executive;
 }
 
 export function gitStatusCmd(
@@ -130,6 +227,7 @@ export class TypicalGit implements govn.GitExecutive {
   }
 
   async init(): Promise<void> {
+    if (this.#initialized) return;
     this.#cached = {
       gitDir: this.gitDir,
       workTreePath: this.workTreePath,

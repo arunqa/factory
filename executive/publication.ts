@@ -14,7 +14,7 @@ import * as e from "../core/std/extension.ts";
 import * as obs from "../core/std/observability.ts";
 import * as r from "../core/std/resource.ts";
 import * as n from "../core/std/nature.ts";
-import * as g from "../core/std/git.ts";
+import * as git from "../lib/git/mod.ts";
 import * as fm from "../core/std/frontmatter.ts";
 import * as m from "../core/std/model.ts";
 import * as route from "../core/std/route.ts";
@@ -57,7 +57,7 @@ export class Configuration
   readonly metrics = new gsm.TypicalMetrics();
   readonly envVarNamesPrefix: string;
   readonly assetsMetricsWalkers: fsT.FileSysAssetWalker[];
-  readonly git?: govn.GitExecutive;
+  readonly git?: git.GitExecutive;
   readonly fsRouteFactory = new route.FileSysRouteFactory();
   readonly extensionsManager = new e.CachedExtensions();
   readonly observabilityRoute: govn.Route;
@@ -71,8 +71,10 @@ export class Configuration
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
 
   constructor(prefs: Preferences) {
-    const gitPaths = g.discoverGitWorkTree(prefs.contentRootPath);
-    if (gitPaths) this.git = new g.TypicalGit(gitPaths);
+    this.git = git.discoverGitWorktreeExecutiveSync(
+      prefs.contentRootPath,
+      (gp) => new git.TypicalGit(gp),
+    );
     this.contentRootPath = prefs.contentRootPath;
     this.staticAssetsRootPath = prefs.staticAssetsRootPath;
     this.destRootPath = prefs.destRootPath;
@@ -284,7 +286,7 @@ export class PublicationRoutes {
 
 export class PublicationDesignSystemArguments
   implements lds.LightingDesignSystemArguments {
-  readonly git?: govn.GitExecutive;
+  readonly git?: git.GitExecutive;
   readonly layoutText: lds.LightingDesignSystemText;
   readonly navigation: lds.LightingDesignSystemNavigation;
   readonly assets: lds.AssetLocations;
@@ -514,7 +516,7 @@ export class TypicalPublication
 
   async initProduce() {
     // setup the cache and any other git-specific initialization
-    if (this.ds.git instanceof g.TypicalGit) await this.ds.git.init();
+    if (this.ds.git instanceof git.TypicalGit) await this.ds.git.init();
   }
 
   async *originate<Resource>(

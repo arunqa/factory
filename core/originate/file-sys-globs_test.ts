@@ -4,7 +4,7 @@ import * as govn from "../../governance/mod.ts";
 import * as obs from "../../core/std/observability.ts";
 import * as e from "../../core/std/extension.ts";
 import * as r from "../../core/std/route.ts";
-import * as g from "../../core/std/git.ts";
+import * as g from "../../lib/git/mod.ts";
 import * as mod from "./file-sys-globs.ts";
 
 const testPath = path.relative(

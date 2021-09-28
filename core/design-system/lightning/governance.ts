@@ -1,4 +1,5 @@
 import * as govn from "../../../governance/mod.ts";
+import * as git from "../../../lib/git/mod.ts";
 import * as html from "../../render/html/mod.ts";
 
 export const indexUnitName = "index";
@@ -104,8 +105,7 @@ export interface LightningLayoutText
 }
 
 export interface LightingDesignSystemArguments {
-  readonly git?: govn.GitExecutive;
-  readonly gitCache?: govn.GitExecutive;
+  readonly git?: git.GitExecutive;
   readonly layoutText: LightningLayoutText;
   readonly navigation: LightningNavigation;
   readonly assets: AssetLocations;
