@@ -752,18 +752,108 @@ export class TypicalEnvArgumentsConfiguration<Configuration>
   }
 }
 
+export interface OmnibusEnvJsonArgConfigurationPopulateAttempt<Context> {
+  readonly envVarName: string;
+  readonly envVarValue?: string;
+  readonly guardFailure: boolean;
+  readonly ctx?: Context;
+}
+
+export class OmnibusEnvJsonArgConfigurationEventsEmitter<Configuration, Context>
+  extends events.EventEmitter<{
+    searchEnvAttempts(
+      attempts: OmnibusEnvJsonArgConfigurationPopulateAttempt<Context>[],
+      value: unknown,
+    ): void;
+    envVarNotHandled(
+      attempts: OmnibusEnvJsonArgConfigurationPopulateAttempt<Context>[],
+      result: Configuration,
+      ctx?: Context,
+    ): void;
+  }> {
+  public isVerbose = false;
+
+  constructor(verboseArg: string | boolean) {
+    super();
+    if (typeof verboseArg === "string") {
+      let verboseEnvVarValue = Deno.env.get(verboseArg);
+      if (verboseEnvVarValue) {
+        verboseEnvVarValue = verboseEnvVarValue.toLocaleUpperCase();
+        if (
+          ["YES", "1", "TRUE", "ON"].find((arg) => arg == verboseEnvVarValue)
+        ) {
+          this.isVerbose = true;
+        }
+      }
+    } else {
+      this.isVerbose = verboseArg;
+    }
+  }
+}
+
+export function omnibusEnvJsonArgConfigurationEventsConsoleEmitter<
+  Configuration,
+  Context,
+>(
+  verboseArg: string | boolean,
+): OmnibusEnvJsonArgConfigurationEventsEmitter<Configuration, Context> {
+  const result = new OmnibusEnvJsonArgConfigurationEventsEmitter(
+    verboseArg,
+  );
+  result.on(
+    "searchEnvAttempts",
+    (attempts, value) => {
+      if (result.isVerbose) {
+        if (attempts && attempts.length > 0) {
+          const terminal = attempts[attempts.length - 1];
+          console.info(
+            `Searched environment for omnibus JSON configuration in ${
+              attempts.map((a) => a.envVarName).join(", ")
+            } [${
+              value
+                ? `found envVarName: ${terminal.envVarName}, type ${typeof value}, guard passed: ${!terminal
+                  .guardFailure}`
+                : `not found, using factory`
+            }]`,
+          );
+        }
+      }
+    },
+  );
+
+  result.on(
+    "envVarNotHandled",
+    (attempts) => {
+      if (result.isVerbose) {
+        console.info(
+          // deno-fmt-ignore
+          `Omnibus JSON env text was not handled (attempt(s): ${attempts.length}, ${attempts.map(a => a.envVarName).join(', ')})`,
+        );
+      }
+    },
+  );
+
+  return result;
+}
+
 export class OmnibusEnvJsonArgConfiguration<Configuration, Context>
   implements
     govn.ConfigurationSyncSupplier<Configuration, Context>,
     govn.ConfigurationSupplier<Configuration, Context> {
   constructor(
-    readonly envVarName: string,
+    readonly envVarName: string | string[],
     readonly factory: (ctx?: Context) => Configuration,
     readonly guard: safety.TypeGuard<Configuration>,
     readonly onGuardFailure: (
       o: unknown,
       err?: Error,
     ) => Configuration,
+    readonly ecee: OmnibusEnvJsonArgConfigurationEventsEmitter<
+      Configuration,
+      Context
+    > = omnibusEnvJsonArgConfigurationEventsConsoleEmitter(
+      "RF_ENVCONFIGEE_OMNIBUS_JSON_VERBOSE",
+    ),
   ) {
   }
 
@@ -772,16 +862,43 @@ export class OmnibusEnvJsonArgConfiguration<Configuration, Context>
     return this.configureSync(ctx);
   }
 
-  configureSync(_ctx?: Context): Configuration {
-    const envVarValue = Deno.env.get(this.envVarName);
-    if (envVarValue) {
-      const jsonValue = JSON.parse(envVarValue);
-      if (this.guard(jsonValue)) {
-        return jsonValue;
-      } else {
-        return this.onGuardFailure(jsonValue);
+  configureSync(ctx?: Context): Configuration {
+    const envVarNames = typeof this.envVarName === "string"
+      ? [this.envVarName]
+      : this.envVarName;
+    const attempts: OmnibusEnvJsonArgConfigurationPopulateAttempt<Context>[] =
+      [];
+    let result: Configuration | undefined;
+    let guardFailure = false;
+    for (const envVarName of envVarNames) {
+      const envVarValue = Deno.env.get(envVarName);
+      if (envVarValue) {
+        const jsonValue = JSON.parse(envVarValue);
+        if (this.guard(jsonValue)) {
+          result = jsonValue;
+        } else {
+          result = this.onGuardFailure(jsonValue);
+          guardFailure = true;
+        }
+      }
+      const attempt = {
+        envVarName: envVarName,
+        envVarValue,
+        guardFailure,
+        ctx,
+      };
+      attempts.push(attempt);
+      if (envVarValue && result) break;
+    }
+    if (this.ecee) {
+      this.ecee.emitSync("searchEnvAttempts", attempts, result);
+    }
+    if (!result) {
+      result = this.factory();
+      if (this.ecee) {
+        this.ecee.emitSync("envVarNotHandled", attempts, result, ctx);
       }
     }
-    return this.factory();
+    return result;
   }
 }

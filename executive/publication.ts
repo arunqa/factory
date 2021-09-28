@@ -29,9 +29,9 @@ import * as dtr from "../core/render/delimited-text.ts";
 import * as persist from "../core/std/persist.ts";
 import * as render from "../core/std/render.ts";
 import * as cpC from "../core/content/control-panel.ts";
+import * as conf from "../lib/conf/mod.ts";
 import * as redirectC from "../core/design-system/lightning/content/redirects.rf.ts";
 import * as ldsDiagC from "../core/design-system/lightning/content/diagnostic/mod.ts";
-import * as ldsObsC from "../core/design-system/lightning/content/observability/mod.ts";
 import * as sqlObsC from "../lib/db/observability.rf.ts";
 import * as mdr from "../core/render/markdown/mod.ts";
 
@@ -44,6 +44,7 @@ export interface Preferences {
   readonly staticAssetsRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
+  readonly envVarNamesPrefix: string;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
   readonly assetsMetricsWalkers?: (
     config: Configuration,
@@ -54,6 +55,7 @@ export class Configuration
   implements Omit<Preferences, "assetsMetricsWalkers"> {
   readonly telemetry: telem.Instrumentation = new telem.Telemetry();
   readonly metrics = new gsm.TypicalMetrics();
+  readonly envVarNamesPrefix: string;
   readonly assetsMetricsWalkers: fsT.FileSysAssetWalker[];
   readonly git?: govn.GitExecutive;
   readonly fsRouteFactory = new route.FileSysRouteFactory();
@@ -78,6 +80,7 @@ export class Configuration
     this.logger = log.getLogger();
     this.observabilityRoute = cpC.observabilityRoute(this.fsRouteFactory);
     this.diagnosticsRoute = cpC.diagnosticsRoute(this.fsRouteFactory);
+    this.envVarNamesPrefix = prefs.envVarNamesPrefix;
     this.assetsMetricsWalkers = prefs.assetsMetricsWalkers
       ? prefs.assetsMetricsWalkers(this)
       : [{
@@ -132,10 +135,21 @@ export const isPublicationRouteEventsHandler = safety.typeGuard<
   PublicationRouteEventsHandler<any>
 >("prepareResourceRoute", "prepareResourceTreeNode");
 
+export interface DiagnosticsOptionsSupplier {
+  readonly metrics: { readonly assets: boolean };
+  readonly renderers: boolean;
+  readonly routes: boolean;
+}
+
+export const isDiagnosticsOptionsSupplier = safety.typeGuard<
+  DiagnosticsOptionsSupplier
+>("metrics", "renderers", "routes");
+
 export interface PublicationState {
   readonly observability: obs.Observability;
   readonly resourcesTree: govn.RouteTree;
   readonly resourcesIndex: r.UniversalResourcesIndex<unknown>;
+  readonly diagnostics: () => ldsDiagC.DiagnosticsResourcesState;
   assetsMetrics?: fsA.AssetsMetricsResult;
 }
 
@@ -303,18 +317,44 @@ export class TypicalPublication
   readonly namespaceURIs = ["TypicalPublication<Resource>"];
   readonly state: PublicationState;
   readonly consumedFileSysWalkPaths = new Set<string>();
+  readonly diagsOptions: DiagnosticsOptionsSupplier;
 
   constructor(
     readonly config: Configuration,
     readonly routes = new PublicationRoutes(config.fsRouteFactory),
     readonly ds = new PublicationDesignSystemArguments(config, routes),
   ) {
+    const defaultDiagsOptions: DiagnosticsOptionsSupplier = {
+      routes: true,
+      metrics: { assets: true },
+      renderers: true,
+    };
+    const diagsConfig = new conf.OmnibusEnvJsonArgConfiguration<
+      DiagnosticsOptionsSupplier,
+      never
+    >(
+      // export PUBCTL_DIAGNOSTICS=""
+      `${this.config.envVarNamesPrefix}DIAGNOSTICS`,
+      () => defaultDiagsOptions,
+      isDiagnosticsOptionsSupplier,
+      () => defaultDiagsOptions,
+    );
+    this.diagsOptions = diagsConfig.configureSync();
     this.state = {
       observability: new obs.Observability(
         new govn.ObservabilityEventsEmitter(),
       ),
       resourcesTree: routes.resourcesTree,
       resourcesIndex: new r.UniversalResourcesIndex(),
+      diagnostics: () => ({
+        routes: {
+          resourcesTree: routes.resourcesTree,
+          emitResources: () => this.diagsOptions.routes,
+        },
+        renderers: {
+          emitResources: () => this.diagsOptions.renderers,
+        },
+      }),
     };
     this.state.observability.events.emit("healthStatusSupplier", this);
   }
@@ -390,15 +430,22 @@ export class TypicalPublication
   controlPanelOriginators() {
     const { fsRouteFactory, diagnosticsRoute, observabilityRoute } =
       this.config;
+    const diagnostics = this.state.diagnostics();
     return [
       ldsDiagC.diagnosticsResources(
         diagnosticsRoute,
         fsRouteFactory,
-        this.state,
+        diagnostics,
       ),
-      ldsObsC.observabilityPreProduceResources(
+      ldsDiagC.observabilityPreProduceResources(
         observabilityRoute,
         fsRouteFactory,
+        {
+          metrics: {
+            assets: { emitResources: () => this.diagsOptions.metrics.assets },
+          },
+          observability: this.state.observability,
+        },
       ),
       sqlObsC.observabilityResources(diagnosticsRoute, fsRouteFactory),
     ];
@@ -523,13 +570,22 @@ export class TypicalPublication
     const persist = this.persistersRefinery();
     for await (
       const resource of this.originate(
-        ldsObsC.observabilityPostProduceResources(
+        ldsDiagC.observabilityPostProduceResources(
           observabilityRoute,
           fsRouteFactory,
           // before production assetsMetrics is undefined but by now it should
           // be constructed as part of urWatcher.on("afterProduce", ...) so we
           // do a type-assertion
-          this.state as ldsObsC.ObservabilityState,
+          {
+            health: { emitResources: () => true },
+            metrics: {
+              assets: {
+                collected: this.state.assetsMetrics,
+                emitResources: () => this.diagsOptions.metrics.assets,
+              },
+            },
+            observability: this.state.observability,
+          },
         ),
         originationRefinery,
       )

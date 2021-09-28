@@ -11,6 +11,7 @@ const config = new mod.Configuration({
   staticAssetsRootPath: path.join(testPath, "../", "docs", "static"),
   destRootPath: path.join(testPath, "../", "docs", "public"),
   appName: "Publication Test",
+  envVarNamesPrefix: "PUBCTL_",
 });
 const executive = new mod.Executive([new mod.TypicalPublication(config)]);
 

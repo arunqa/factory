@@ -3,6 +3,7 @@ import {
   govnSvcMetrics as gsm,
 } from "../../../../../deps.ts";
 import * as govn from "../../../../../governance/mod.ts";
+import * as dGovn from "./governance.ts";
 import * as nature from "../../../../std/nature.ts";
 import * as dtr from "../../../../render/delimited-text.ts";
 import * as tfr from "../../../../render/text.ts";
@@ -66,6 +67,7 @@ const metricsHTML: lds.LightningLayoutBodySupplier = (_layout) => `
 export function metricsHtmlFactorySupplier(
   parentRoute: govn.Route,
   rf: govn.RouteFactory,
+  _state: dGovn.PreProduceObservabilityState,
 ): govn.ResourceFactorySupplier<govn.HtmlResource> {
   return {
     // deno-lint-ignore require-await
@@ -103,10 +105,6 @@ export function metricsHtmlFactorySupplier(
   };
 }
 
-export interface MetricsFactorySuppliersState {
-  readonly assetsMetrics: fsA.AssetsMetricsResult;
-}
-
 /**
  * Use metricsFactorySuppliers as originators within any parent route.
  * @param parentRoute Where you want the resources generated
@@ -115,14 +113,15 @@ export interface MetricsFactorySuppliersState {
 export function metricsFactorySuppliers(
   parentRoute: govn.Route,
   rf: govn.RouteFactory,
-  state: MetricsFactorySuppliersState,
+  state: dGovn.PostProduceObservabilityState,
   // deno-lint-ignore no-explicit-any
 ): govn.ResourceFactorySupplier<any>[] {
   return [{
     // deno-lint-ignore require-await
     resourceFactory: async () => {
       const pm = gsm.prometheusDialect();
-      const text = pm.export(state.assetsMetrics.metrics.instances).join("\n");
+      const text = pm.export(state.metrics.assets.collected.metrics.instances)
+        .join("\n");
       const metricsPEF: tfr.TextFileResource & govn.RouteSupplier = {
         nature: nature.textContentNature,
         route: {
@@ -143,10 +142,10 @@ export function metricsFactorySuppliers(
     // deno-lint-ignore require-await
     resourceFactory: async () => {
       const dts:
-        & dtr.DelimitedTextSupplier<MetricsFactorySuppliersState>
+        & dtr.DelimitedTextSupplier<dGovn.PostProduceMetricsResourcesState>
         & govn.NatureSupplier<
           govn.MediaTypeNature<
-            dtr.DelimitedTextResource<MetricsFactorySuppliersState>
+            dtr.DelimitedTextResource<dGovn.PostProduceMetricsResourcesState>
           >
         >
         & govn.RouteSupplier = {
@@ -163,12 +162,12 @@ export function metricsFactorySuppliers(
             nature: dtr.csvContentNature,
           },
           isDelimitedTextSupplier: true,
-          header: state.assetsMetrics.pathExtnsColumnHeaders.map((h) =>
-            `"${h}"`
-          ).join(
+          header: state.metrics.assets.collected.pathExtnsColumnHeaders.map((
+            h,
+          ) => `"${h}"`).join(
             ",",
           ),
-          rows: state.assetsMetrics.pathExtnsColumns.map((row) =>
+          rows: state.metrics.assets.collected.pathExtnsColumns.map((row) =>
             row.join(",")
           ),
         };
@@ -187,19 +186,19 @@ export function metricsFactorySuppliers(
           ),
           nature: nature.jsonContentNature,
         },
-        jsonInstance: () => state.assetsMetrics.metrics,
+        jsonInstance: () => state.metrics.assets.collected.metrics,
         jsonText: {
           // deno-lint-ignore require-await
           text: async () => {
             return JSON.stringify(
-              state.assetsMetrics.metrics,
+              state.metrics.assets.collected.metrics,
               fsA.jsonMetricsReplacer,
               "  ",
             );
           },
           textSync: () => {
             return JSON.stringify(
-              state.assetsMetrics.metrics,
+              state.metrics.assets.collected.metrics,
               fsA.jsonMetricsReplacer,
               "  ",
             );

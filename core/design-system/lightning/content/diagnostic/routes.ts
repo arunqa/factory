@@ -1,14 +1,11 @@
 import * as govn from "../../../../../governance/mod.ts";
+import * as dGovn from "./governance.ts";
 import * as nature from "../../../../std/nature.ts";
 import * as rJSON from "../../../../content/routes.json.ts";
 import * as lds from "../../mod.ts";
 
-export interface RoutesDiagnosticsState {
-  resourcesTree: govn.RouteTree;
-}
-
 function routesHTML(
-  _state: RoutesDiagnosticsState,
+  _state: dGovn.DiagnosticsResourcesState,
 ): lds.LightningLayoutBodySupplier {
   // deno-fmt-ignore
   return (_layout) => `
@@ -175,7 +172,7 @@ function routesHTML(
 export function routesHtmlFactorySupplier(
   parentRoute: govn.Route,
   rf: govn.RouteFactory,
-  state: RoutesDiagnosticsState,
+  state: dGovn.DiagnosticsResourcesState,
 ): govn.ResourceFactorySupplier<govn.HtmlResource> {
   return {
     // deno-lint-ignore require-await
@@ -210,7 +207,7 @@ export function routesHtmlFactorySupplier(
 export function routesJsonFactorySupplier(
   parentRoute: govn.Route,
   rf: govn.RouteFactory,
-  state: RoutesDiagnosticsState,
+  state: dGovn.DiagnosticsResourcesState,
 ): govn.ResourceFactorySupplier<govn.JsonInstanceSupplier> {
   return {
     // deno-lint-ignore require-await
@@ -225,19 +222,19 @@ export function routesJsonFactorySupplier(
           ),
           nature: nature.jsonContentNature,
         },
-        jsonInstance: () => state.resourcesTree,
+        jsonInstance: () => state.routes.resourcesTree,
         jsonText: {
           // deno-lint-ignore require-await
           text: async () => {
             return JSON.stringify(
-              state.resourcesTree,
+              state.routes.resourcesTree,
               rJSON.routeTreeJsonReplacer,
               "  ",
             );
           },
           textSync: () => {
             return JSON.stringify(
-              state.resourcesTree,
+              state.routes.resourcesTree,
               rJSON.routeTreeJsonReplacer,
               "  ",
             );

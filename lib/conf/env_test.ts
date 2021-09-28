@@ -270,6 +270,7 @@ Deno.test(`Omnibus JSON Configuration (single env var as JSON text)`, async () =
     () => factoryDefault,
     testConfigGuard,
     () => factoryDefault,
+    mod.omnibusEnvJsonArgConfigurationEventsConsoleEmitter("ENV_TEST_VERBOSE"),
   );
   const syncConfig = envConfig.configureSync();
   ta.assertEquals(syncConfig, omnibusTestValue);
