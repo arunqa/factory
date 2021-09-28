@@ -73,8 +73,10 @@ export function fileSysResourceProxyEventsConsoleEmitter(
     result.on("proxyStrategyResult", (psr) => {
       if (result.isVerbose) {
         if (psr.isConstructFromOrigin) {
-          console.info(colors.brightRed(
-            `Acquiring ${psr.proxyFilePathAndName} from origin: ${psr.constructFromOriginReason}`,
+          console.info(colors.red(
+            `Acquiring ${
+              colors.brightRed(psr.proxyFilePathAndName)
+            } from origin: ${psr.constructFromOriginReason}`,
           ));
         } else {
           console.info(colors.gray(
@@ -333,8 +335,10 @@ export function fileSysDirectoryProxyEventsConsoleEmitter(
     window.fsdProxyEventsEmitters.set(cacheKey, result);
     result.on("proxyStrategyResult", (psr) => {
       if (psr.isConstructFromOrigin) {
-        console.info(colors.brightRed(
-          `Acquiring path ${psr.proxyPath} from origin: ${psr.constructFromOriginReason}`,
+        console.info(colors.red(
+          `Acquiring path ${
+            colors.brightRed(psr.proxyPath)
+          } from origin: ${psr.constructFromOriginReason}`,
         ));
       } else {
         console.info(colors.gray(
