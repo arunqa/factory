@@ -1,6 +1,20 @@
-import { events, fs, path } from "../deps.ts";
+import { colors, events, fs, path } from "../deps.ts";
 import * as govn from "../../governance/mod.ts";
 import * as conf from "../../lib/conf/mod.ts";
+
+declare global {
+  interface Window {
+    fsrProxyEventsEmitters: Map<string, FileSysResourceProxyEventsEmitter>;
+    fsdProxyEventsEmitters: Map<string, FileSysDirectoryProxyEventsEmitter>;
+  }
+}
+
+if (!window.fsrProxyEventsEmitters) {
+  window.fsrProxyEventsEmitters = new Map();
+}
+if (!window.fsdProxyEventsEmitters) {
+  window.fsdProxyEventsEmitters = new Map();
+}
 
 export class FileSysResourceProxyEventsEmitter extends events.EventEmitter<{
   proxyStrategyResult(psr: FileSysResourceProxyStrategyResult): void;
@@ -20,7 +34,60 @@ export class FileSysResourceProxyEventsEmitter extends events.EventEmitter<{
     resource: Resource,
     destFile: string,
   ): void;
-}> {}
+}> {
+  isVerbose: boolean;
+  constructor(isVerbose: boolean) {
+    super();
+    this.isVerbose = isVerbose;
+  }
+}
+
+export function fileSysResourceProxyEventsConsoleEmitter(
+  cacheKey: string,
+  envVarsPrefix: string,
+): FileSysResourceProxyEventsEmitter {
+  const config = new conf.TypicalEnvArgumentsConfiguration<
+    { verbose: boolean }
+  >(
+    () => ({ verbose: false }),
+    (ec) => ({ properties: [ec.booleanProperty("verbose")] }),
+    envVarsPrefix,
+  );
+  const envVars = config.configureSync();
+  let result: FileSysResourceProxyEventsEmitter;
+  const cachedEE = window.fsrProxyEventsEmitters.get(cacheKey);
+  if (!cachedEE) {
+    if (envVars.verbose) {
+      console.log(
+        colors.brightBlue(
+          `${cacheKey}: verbose ${
+            colors.gray(
+              `(${envVarsPrefix}VERBOSE FileSysResourceProxyEventsEmitter)`,
+            )
+          }`,
+        ),
+      );
+    }
+    result = new FileSysResourceProxyEventsEmitter(envVars.verbose);
+    window.fsrProxyEventsEmitters.set(cacheKey, result);
+    result.on("proxyStrategyResult", (psr) => {
+      if (result.isVerbose) {
+        if (psr.isConstructFromOrigin) {
+          console.info(colors.brightRed(
+            `Acquiring ${psr.proxyFilePathAndName} from origin: ${psr.constructFromOriginReason}`,
+          ));
+        } else {
+          console.info(colors.gray(
+            `Using cached content: ${psr.proxyFilePathAndName}`,
+          ));
+        }
+      }
+    });
+  } else {
+    result = cachedEE;
+  }
+  return result;
+}
 
 export interface FileSysResourceAgeProxyArguments {
   readonly maxAgeInMS: number;
@@ -228,7 +295,58 @@ export class FileSysDirectoryProxyEventsEmitter extends events.EventEmitter<{
     error: Error,
   ): void;
   notADirectoryError(proxyPath: string): void;
-}> {}
+}> {
+  isVerbose: boolean;
+  constructor(isVerbose: boolean) {
+    super();
+    this.isVerbose = isVerbose;
+  }
+}
+
+export function fileSysDirectoryProxyEventsConsoleEmitter(
+  cacheKey: string,
+  envVarsPrefix: string,
+): FileSysDirectoryProxyEventsEmitter {
+  const config = new conf.TypicalEnvArgumentsConfiguration<
+    { verbose: boolean }
+  >(
+    () => ({ verbose: false }),
+    (ec) => ({ properties: [ec.booleanProperty("verbose")] }),
+    envVarsPrefix,
+  );
+  const envVars = config.configureSync();
+  let result: FileSysDirectoryProxyEventsEmitter;
+  const cachedEE = window.fsdProxyEventsEmitters.get(cacheKey);
+  if (!cachedEE) {
+    if (envVars.verbose) {
+      console.log(
+        colors.brightBlue(
+          `${cacheKey}: verbose ${
+            colors.gray(
+              `(${envVarsPrefix}VERBOSE FileSysDirectoryProxyEventsEmitter)`,
+            )
+          }`,
+        ),
+      );
+    }
+    result = new FileSysDirectoryProxyEventsEmitter(envVars.verbose);
+    window.fsdProxyEventsEmitters.set(cacheKey, result);
+    result.on("proxyStrategyResult", (psr) => {
+      if (psr.isConstructFromOrigin) {
+        console.info(colors.brightRed(
+          `Acquiring path ${psr.proxyPath} from origin: ${psr.constructFromOriginReason}`,
+        ));
+      } else {
+        console.info(colors.gray(
+          `Using cached path: ${psr.proxyPath}`,
+        ));
+      }
+    });
+  } else {
+    result = cachedEE;
+  }
+  return result;
+}
 
 export interface FileSysDirectoryProxyStrategyResult
   extends govn.ResourceProxyStrategyResult {
