@@ -1,4 +1,4 @@
-import { events, safety } from "../../deps.ts";
+import { events, json5, safety } from "../../deps.ts";
 import * as govn from "./governance.ts";
 
 export class EnvConfigurationEventsEmitter<Configuration, Context>
@@ -455,7 +455,7 @@ export abstract class EnvConfiguration<Configuration, Context = never>
         (({ envVarValue, config }) => {
           const [mutate] = propertyName(name);
           try {
-            const value = JSON.parse(envVarValue);
+            const value = json5.default.parse(envVarValue);
             if (guard(value)) {
               // deno-lint-ignore no-explicit-any
               (config as any)[mutate] = value;
@@ -873,7 +873,7 @@ export class OmnibusEnvJsonArgConfiguration<Configuration, Context>
     for (const envVarName of envVarNames) {
       const envVarValue = Deno.env.get(envVarName);
       if (envVarValue) {
-        const jsonValue = JSON.parse(envVarValue);
+        const jsonValue = json5.default.parse(envVarValue);
         if (this.guard(jsonValue)) {
           result = jsonValue;
         } else {
