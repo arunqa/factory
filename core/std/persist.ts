@@ -10,6 +10,7 @@ export interface PersistOptions {
   readonly unhandledSync?: govn.FlexibleContentSync;
   readonly unhandled?: govn.FlexibleContent;
   readonly functionArgs?: unknown[];
+  readonly eventsEmitter?: govn.FileSysPersistenceEventsEmitter;
 }
 
 export interface LocalFileSystemNamingStrategy<Resource> {
@@ -67,12 +68,21 @@ export async function persistFlexibleFileCustom(
   destFileName: LocalFileSystemDestination,
   options?: PersistOptions,
 ): Promise<false | "string" | "text" | "uint8array" | "writer"> {
+  const fspEE = options?.eventsEmitter;
   // always ensure in sync mode, never async
   if (options?.ensureDirSync) {
     options?.ensureDirSync(path.dirname(destFileName));
   }
   if (typeof contributor === "string") {
     await Deno.writeTextFile(destFileName, contributor);
+    if (fspEE) {
+      await fspEE.emit(
+        "afterPersistFlexibleFile",
+        destFileName,
+        contributor,
+        "string",
+      );
+    }
     return "string";
   }
   if (c.isTextSupplier(contributor)) {
@@ -82,6 +92,14 @@ export async function persistFlexibleFileCustom(
         ? contributor.text
         : await contributor.text(...(options?.functionArgs || [])),
     );
+    if (fspEE) {
+      await fspEE.emit(
+        "afterPersistFlexibleFile",
+        destFileName,
+        contributor,
+        "text",
+      );
+    }
     return "text";
   }
   if (c.isUint8ArraySupplier(contributor)) {
@@ -91,12 +109,28 @@ export async function persistFlexibleFileCustom(
         ? await contributor.uint8Array(...(options?.functionArgs || []))
         : contributor.uint8Array,
     );
+    if (fspEE) {
+      await fspEE.emit(
+        "afterPersistFlexibleFile",
+        destFileName,
+        contributor,
+        "uint8array",
+      );
+    }
     return "uint8array";
   }
   if (c.isContentSupplier(contributor)) {
     const file = await Deno.open(destFileName, { write: true, create: true });
     await contributor.content(file);
     file.close();
+    if (fspEE) {
+      await fspEE.emit(
+        "afterPersistFlexibleFile",
+        destFileName,
+        contributor,
+        "writer",
+      );
+    }
     return "writer";
   }
   const syncResult = persistFlexibleFileSyncCustom(
@@ -106,10 +140,24 @@ export async function persistFlexibleFileCustom(
   );
   if (syncResult) return syncResult;
   if (options?.unhandled) {
-    return await persistFlexibleFileCustom(options?.unhandled, destFileName, {
-      ...options,
-      unhandled: undefined,
-    });
+    const recursed = await persistFlexibleFileCustom(
+      options?.unhandled,
+      destFileName,
+      {
+        ...options,
+        unhandled: undefined,
+      },
+    );
+    if (recursed && fspEE) {
+      await fspEE.emit(
+        "afterPersistFlexibleFile",
+        destFileName,
+        contributor,
+        recursed,
+        true,
+      );
+    }
+    return recursed;
   }
   return false;
 }
@@ -119,11 +167,20 @@ export function persistFlexibleFileSyncCustom(
   destFileName: LocalFileSystemDestination,
   options?: PersistOptions,
 ): false | "string" | "text" | "uint8array" | "writer" {
+  const fspEE = options?.eventsEmitter;
   if (options?.ensureDirSync) {
     options?.ensureDirSync(path.dirname(destFileName));
   }
   if (typeof contributor === "string") {
     Deno.writeTextFileSync(destFileName, contributor);
+    if (fspEE) {
+      fspEE.emitSync(
+        "afterPersistFlexibleFileSync",
+        destFileName,
+        contributor,
+        "string",
+      );
+    }
     return "string";
   }
   if (c.isTextSyncSupplier(contributor)) {
@@ -133,6 +190,14 @@ export function persistFlexibleFileSyncCustom(
         ? contributor.textSync
         : contributor.textSync(...(options?.functionArgs || [])),
     );
+    if (fspEE) {
+      fspEE.emitSync(
+        "afterPersistFlexibleFileSync",
+        destFileName,
+        contributor,
+        "text",
+      );
+    }
     return "text";
   }
   if (c.isUint8ArraySyncSupplier(contributor)) {
@@ -142,19 +207,49 @@ export function persistFlexibleFileSyncCustom(
         ? contributor.uint8ArraySync(...(options?.functionArgs || []))
         : contributor.uint8ArraySync,
     );
+    if (fspEE) {
+      fspEE.emitSync(
+        "afterPersistFlexibleFileSync",
+        destFileName,
+        contributor,
+        "uint8array",
+      );
+    }
     return "uint8array";
   }
   if (c.isContentSyncSupplier(contributor)) {
     const file = Deno.openSync(destFileName, { write: true, create: true });
     contributor.contentSync(file);
     file.close();
+    if (fspEE) {
+      fspEE.emitSync(
+        "afterPersistFlexibleFileSync",
+        destFileName,
+        contributor,
+        "writer",
+      );
+    }
     return "writer";
   }
   if (options?.unhandledSync) {
-    return persistFlexibleFileSyncCustom(options.unhandledSync, destFileName, {
-      ...options,
-      unhandledSync: undefined,
-    });
+    const recursed = persistFlexibleFileSyncCustom(
+      options.unhandledSync,
+      destFileName,
+      {
+        ...options,
+        unhandledSync: undefined,
+      },
+    );
+    if (recursed && fspEE) {
+      fspEE.emitSync(
+        "afterPersistFlexibleFileSync",
+        destFileName,
+        contributor,
+        "writer",
+        true,
+      );
+    }
+    return recursed;
   }
   return false;
 }
@@ -162,6 +257,9 @@ export function persistFlexibleFileSyncCustom(
 export async function linkAssets(
   originRootPath: string,
   destRootPath: string,
+  options: {
+    readonly destExistsHandler?: (src: fs.WalkEntry, dest: string) => void;
+  },
   ...globs: {
     readonly glob: string;
     readonly options?: fs.ExpandGlobOptions;
@@ -169,6 +267,11 @@ export async function linkAssets(
     readonly hardlink?: boolean;
   }[]
 ) {
+  const handleDestExists = options.destExistsHandler ||
+    ((src, dest) =>
+      console.warn(colors.red(
+        `unable to symlink ${src.path} to ${dest}: cannot overwrite destination`,
+      )));
   for (const g of globs) {
     const options: fs.ExpandGlobOptions = {
       root: originRootPath,
@@ -193,9 +296,7 @@ export async function linkAssets(
             await fs.ensureSymlink(a.path, dest);
           }
         } else {
-          console.warn(
-            `unable to symlink ${a.path} to ${dest}: cannot overwrite destination`,
-          );
+          handleDestExists(a, dest);
         }
       }
     }

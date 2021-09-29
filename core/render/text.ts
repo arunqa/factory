@@ -16,9 +16,16 @@ export const isTextFileResource = safety.typeGuard<TextFileResource>(
 export function textFileProducer<State>(
   destRootPath: string,
   state: State,
-  namingStrategy = persist.routePersistForceExtnNamingStrategy(".txt"),
+  options?: {
+    readonly namingStrategy?: persist.LocalFileSystemNamingStrategy<
+      govn.RouteSupplier<govn.RouteNode>
+    >;
+    readonly eventsEmitter?: govn.FileSysPersistenceEventsEmitter;
+  },
   // deno-lint-ignore no-explicit-any
 ): govn.ResourceRefinery<any> {
+  const namingStrategy = options?.namingStrategy ||
+    persist.routePersistForceExtnNamingStrategy(".txt");
   return async (resource) => {
     if (isTextFileResource(resource)) {
       await persist.persistFlexibleFileCustom(
@@ -27,7 +34,11 @@ export function textFileProducer<State>(
           resource as unknown as govn.RouteSupplier<govn.RouteNode>,
           destRootPath,
         ),
-        { ensureDirSync: fs.ensureDirSync, functionArgs: [state] },
+        {
+          ensureDirSync: fs.ensureDirSync,
+          functionArgs: [state],
+          eventsEmitter: options?.eventsEmitter,
+        },
       );
     }
     return resource;

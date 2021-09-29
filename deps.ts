@@ -12,8 +12,8 @@ export * as json5 from "https://cdn.skypack.dev/json5@v2.2.0";
 export * as mediaTypes from "https://denopkg.com/oakserver/media_types@v2.10.2/mod.ts";
 
 export * as safety from "https://denopkg.com/shah/ts-safety@v1.0.2/mod.ts";
-export * as govnSvcHealth from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.2/health.ts";
-export * as govnSvcTelemetry from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.2/telemetry.ts";
-export * as govnSvcMetrics from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.2/metrics.ts";
-export * as govnSvcFsTree from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.2/fs-tree.ts";
-export * as govnSvcFsAnalytics from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.2/fs-analytics.ts";
+export * as govnSvcHealth from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.3/health.ts";
+export * as govnSvcTelemetry from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.3/telemetry.ts";
+export * as govnSvcMetrics from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.3/metrics.ts";
+export * as govnSvcFsTree from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.3/fs-tree.ts";
+export * as govnSvcFsAnalytics from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.3/fs-analytics.ts";

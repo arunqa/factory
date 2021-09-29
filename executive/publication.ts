@@ -1,4 +1,5 @@
 import {
+  colors,
   fs,
   govnSvcFsAnalytics as fsA,
   govnSvcFsTree as fsT,
@@ -319,6 +320,8 @@ export class TypicalPublication
   readonly namespaceURIs = ["TypicalPublication<Resource>"];
   readonly state: PublicationState;
   readonly consumedFileSysWalkPaths = new Set<string>();
+  readonly persistedDestFiles = new Set<string>();
+  readonly fspEventsEmitter = new govn.FileSysPersistenceEventsEmitter();
   readonly diagsOptions: DiagnosticsOptionsSupplier;
 
   constructor(
@@ -359,6 +362,18 @@ export class TypicalPublication
       }),
     };
     this.state.observability.events.emit("healthStatusSupplier", this);
+    this.fspEventsEmitter.on(
+      "afterPersistFlexibleFile",
+      // deno-lint-ignore require-await
+      async (destFileName) => {
+        // TODO: warn if file written more than once either here or directly in persist
+        this.persistedDestFiles.add(destFileName);
+      },
+    );
+    this.fspEventsEmitter.on("afterPersistFlexibleFileSync", (destFileName) => {
+      // TODO: warn if file written more than once either here or directly in persist
+      this.persistedDestFiles.add(destFileName);
+    });
   }
 
   *obsHealthStatus(): Generator<govn.ObservabilityHealthComponentStatus> {
@@ -386,6 +401,18 @@ export class TypicalPublication
       persist.linkAssets(
         this.config.contentRootPath,
         this.config.destRootPath,
+        {
+          destExistsHandler: (src, dest) => {
+            // if we wrote the file ourselves, don't warn - otherwise, warn and skip
+            if (!this.persistedDestFiles.has(dest)) {
+              console.warn(
+                colors.red(
+                  `unable to symlink ${src.path} to ${dest}: cannot overwrite destination`,
+                ),
+              );
+            }
+          },
+        },
         {
           glob: "**/*",
           options: { exclude: ["**/*.ts"] },
@@ -499,17 +526,22 @@ export class TypicalPublication
       this.config.lightningDS.prettyUrlsHtmlProducer(
         this.config.destRootPath,
         this.ds,
+        this.fspEventsEmitter,
       ),
       jrs.jsonProducer(this.config.destRootPath, {
         routeTree: this.routes.resourcesTree,
-      }),
+      }, this.fspEventsEmitter),
       dtr.csvProducer<PublicationState>(
         this.config.destRootPath,
         this.state,
+        this.fspEventsEmitter,
       ),
       tfr.textFileProducer<PublicationState>(
         this.config.destRootPath,
         this.state,
+        {
+          eventsEmitter: this.fspEventsEmitter,
+        },
       ),
     );
   }

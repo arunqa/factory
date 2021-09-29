@@ -33,6 +33,7 @@ export interface JsonTextProducer<Resource> {
 export function jsonProducer(
   destRootPath: string,
   context: JsonRenderContext,
+  fspEE?: govn.FileSysPersistenceEventsEmitter,
 ): govn.ResourceRefinery<govn.JsonTextSupplier> {
   const ns = persist.routePersistForceExtnNamingStrategy(".json");
   const producer = r.pipelineUnitsRefineryUntyped(
@@ -84,7 +85,11 @@ export function jsonProducer(
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,
             destRootPath,
           ),
-          { ensureDirSync: fs.ensureDirSync, functionArgs: [layout] },
+          {
+            ensureDirSync: fs.ensureDirSync,
+            functionArgs: [layout],
+            eventsEmitter: fspEE,
+          },
         );
       }
       return resource;

@@ -284,6 +284,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   prettyUrlsHtmlProducer(
     destRootPath: string,
     dsArgs: ldsGovn.LightingDesignSystemArguments,
+    fspEE?: govn.FileSysPersistenceEventsEmitter,
   ): govn.ResourceRefinery<govn.HtmlSupplier> {
     const producer = r.pipelineUnitsRefineryUntyped(
       this.pageRenderer(dsArgs),
@@ -292,6 +293,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
         persist.routePersistPrettyUrlHtmlNamingStrategy((ru) =>
           ru.unit === ldsGovn.indexUnitName
         ),
+        fspEE,
       ),
     );
 

@@ -51,24 +51,29 @@ export const markdownContentNature:
     prepareText: nature.prepareText,
     prepareHTML: nature.prepareHTML,
     renderTargets: [n.htmlContentNature],
-    persistFileSysRefinery: (rootPath, namingStrategy) => {
+    persistFileSysRefinery: (rootPath, namingStrategy, eventsEmitter) => {
       return async (resource) => {
         if (c.isHtmlSupplier(resource)) {
           await p.persistFlexibleFileCustom(
             resource.html,
             namingStrategy(resource, rootPath),
-            { ensureDirSync: fs.ensureDirSync },
+            { ensureDirSync: fs.ensureDirSync, eventsEmitter },
           );
         }
         return resource;
       };
     },
-    persistFileSys: async (resource, rootPath, namingStrategy) => {
+    persistFileSys: async (
+      resource,
+      rootPath,
+      namingStrategy,
+      eventsEmitter,
+    ) => {
       if (c.isHtmlSupplier(resource)) {
         await p.persistFlexibleFileCustom(
           resource.html,
           namingStrategy(resource, rootPath),
-          { ensureDirSync: fs.ensureDirSync },
+          { ensureDirSync: fs.ensureDirSync, eventsEmitter },
         );
       }
     },

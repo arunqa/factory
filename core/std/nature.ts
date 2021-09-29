@@ -98,7 +98,12 @@ export const textContentNature:
     guard: textMediaTypeNature.guard,
     prepareText,
     prepareHTML,
-    persistFileSysRefinery: (rootPath, namingStrategy, ...functionArgs) => {
+    persistFileSysRefinery: (
+      rootPath,
+      namingStrategy,
+      eventsEmitter,
+      ...functionArgs
+    ) => {
       return async (resource) => {
         if (c.isTextSupplier(resource)) {
           await p.persistFlexibleFileCustom(
@@ -107,7 +112,11 @@ export const textContentNature:
               resource as unknown as govn.RouteSupplier<govn.RouteNode>,
               rootPath,
             ),
-            { ensureDirSync: fs.ensureDirSync, functionArgs },
+            {
+              ensureDirSync: fs.ensureDirSync,
+              functionArgs,
+              eventsEmitter,
+            },
           );
         }
         return resource;
@@ -117,6 +126,7 @@ export const textContentNature:
       resource,
       rootPath,
       namingStrategy,
+      eventsEmitter,
       ...functionArgs
     ) => {
       if (c.isTextSupplier(resource)) {
@@ -126,7 +136,7 @@ export const textContentNature:
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,
             rootPath,
           ),
-          { ensureDirSync: fs.ensureDirSync, functionArgs },
+          { ensureDirSync: fs.ensureDirSync, functionArgs, eventsEmitter },
         );
       }
     },
@@ -139,7 +149,12 @@ export const htmlContentNature:
     mediaType: htmlMediaTypeNature.mediaType,
     guard: htmlMediaTypeNature.guard,
     prepareHTML,
-    persistFileSysRefinery: (rootPath, namingStrategy, ...functionArgs) => {
+    persistFileSysRefinery: (
+      rootPath,
+      namingStrategy,
+      eventsEmitter,
+      ...functionArgs
+    ) => {
       return async (resource) => {
         if (c.isHtmlSupplier(resource)) {
           await p.persistFlexibleFileCustom(
@@ -148,7 +163,7 @@ export const htmlContentNature:
               resource as unknown as govn.RouteSupplier<govn.RouteNode>,
               rootPath,
             ),
-            { ensureDirSync: fs.ensureDirSync, functionArgs },
+            { ensureDirSync: fs.ensureDirSync, functionArgs, eventsEmitter },
           );
         }
         return resource;
@@ -158,6 +173,7 @@ export const htmlContentNature:
       resource,
       rootPath,
       namingStrategy,
+      eventsEmitter,
       ...functionArgs
     ) => {
       if (c.isHtmlSupplier(resource)) {
@@ -167,7 +183,7 @@ export const htmlContentNature:
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,
             rootPath,
           ),
-          { ensureDirSync: fs.ensureDirSync, functionArgs },
+          { ensureDirSync: fs.ensureDirSync, functionArgs, eventsEmitter },
         );
       }
     },
@@ -180,7 +196,12 @@ export const jsonContentNature:
     mediaType: jsonMediaTypeNature.mediaType,
     guard: jsonMediaTypeNature.guard,
     prepareJSON,
-    persistFileSysRefinery: (rootPath, namingStrategy, ...functionArgs) => {
+    persistFileSysRefinery: (
+      rootPath,
+      namingStrategy,
+      eventsEmitter,
+      ...functionArgs
+    ) => {
       return async (resource) => {
         if (c.isJsonTextSupplier(resource)) {
           await p.persistFlexibleFileCustom(
@@ -189,7 +210,7 @@ export const jsonContentNature:
               resource as unknown as govn.RouteSupplier<govn.RouteNode>,
               rootPath,
             ),
-            { ensureDirSync: fs.ensureDirSync, functionArgs },
+            { ensureDirSync: fs.ensureDirSync, eventsEmitter, functionArgs },
           );
         }
         return resource;
@@ -199,6 +220,7 @@ export const jsonContentNature:
       resource,
       rootPath,
       namingStrategy,
+      eventsEmitter,
       ...functionArgs
     ) => {
       if (c.isJsonTextSupplier(resource)) {
@@ -208,7 +230,7 @@ export const jsonContentNature:
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,
             rootPath,
           ),
-          { ensureDirSync: fs.ensureDirSync, functionArgs },
+          { ensureDirSync: fs.ensureDirSync, eventsEmitter, functionArgs },
         );
       }
     },

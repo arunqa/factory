@@ -43,6 +43,7 @@ export interface DelimitedTextProducerArguments<State> {
   readonly rowRenderer: (row: string[], state: State) => string;
   readonly headerRenderer?: (header: string[], state: State) => string;
   readonly rowsDelim: string;
+  readonly eventsEmitter?: govn.FileSysPersistenceEventsEmitter;
 }
 
 export function delimitedTextProducer<State>(
@@ -54,6 +55,7 @@ export function delimitedTextProducer<State>(
     rowRenderer,
     headerRenderer,
     rowsDelim,
+    eventsEmitter,
   }: DelimitedTextProducerArguments<State>,
   // deno-lint-ignore no-explicit-any
 ): govn.ResourceRefinery<any> {
@@ -94,7 +96,11 @@ export function delimitedTextProducer<State>(
           csvResource as unknown as govn.RouteSupplier<govn.RouteNode>,
           destRootPath,
         ),
-        { ensureDirSync: fs.ensureDirSync, functionArgs: [state] },
+        {
+          ensureDirSync: fs.ensureDirSync,
+          functionArgs: [state],
+          eventsEmitter,
+        },
       );
       return csvResource;
     }
@@ -126,7 +132,12 @@ export const csvContentNature:
     mediaType: csvMediaTypeNature.mediaType,
     guard: csvMediaTypeNature.guard,
     prepareText: n.prepareText,
-    persistFileSysRefinery: (rootPath, namingStrategy, ...functionArgs) => {
+    persistFileSysRefinery: (
+      rootPath,
+      namingStrategy,
+      eventsEmitter,
+      ...functionArgs
+    ) => {
       return async (resource) => {
         if (c.isTextSupplier(resource)) {
           await persist.persistFlexibleFileCustom(
@@ -135,7 +146,7 @@ export const csvContentNature:
               resource as unknown as govn.RouteSupplier<govn.RouteNode>,
               rootPath,
             ),
-            { ensureDirSync: fs.ensureDirSync, functionArgs },
+            { ensureDirSync: fs.ensureDirSync, eventsEmitter, functionArgs },
           );
         }
         return resource;
@@ -145,6 +156,7 @@ export const csvContentNature:
       resource,
       rootPath,
       namingStrategy,
+      eventsEmitter,
       ...functionArgs
     ) => {
       if (c.isTextSupplier(resource)) {
@@ -154,7 +166,7 @@ export const csvContentNature:
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,
             rootPath,
           ),
-          { ensureDirSync: fs.ensureDirSync, functionArgs },
+          { ensureDirSync: fs.ensureDirSync, eventsEmitter, functionArgs },
         );
       }
     },
@@ -163,6 +175,7 @@ export const csvContentNature:
 export function csvProducer<State>(
   destRootPath: string,
   state: State,
+  eventsEmitter?: govn.FileSysPersistenceEventsEmitter,
 ): govn.ResourceRefinery<DelimitedTextResource<State>> {
   return delimitedTextProducer({
     destRootPath,
@@ -172,5 +185,6 @@ export function csvProducer<State>(
     rowRenderer: () => "",
     headerRenderer: () => "",
     rowsDelim: "\n",
+    eventsEmitter,
   });
 }
