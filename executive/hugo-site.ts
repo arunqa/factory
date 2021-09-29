@@ -94,7 +94,7 @@ export class HugoRoutes extends publ.PublicationRoutes {
           ? true
           : false;
       },
-      orderByWeight,
+      { order: orderByWeight },
     );
   }
 }

@@ -110,6 +110,14 @@ export function flatFilterNodes(
   }
 }
 
+export interface RouteTreeNodeExists {
+  (
+    prospect: govn.RouteNode,
+    siblings: govn.RouteTreeNode[],
+    rs: govn.RouteSupplier | govn.Route,
+  ): govn.RouteTreeNode | undefined;
+}
+
 export class TypicalRouteTree implements govn.RouteTree {
   readonly locations = new Map<govn.RouteLocation, govn.RouteTreeNode>();
   readonly items: govn.RouteTreeNode[] = [];
@@ -132,7 +140,10 @@ export class TypicalRouteTree implements govn.RouteTree {
     govn.Route[]
   >();
 
-  constructor(readonly routeFactory: govn.RouteFactory) {
+  constructor(
+    readonly routeFactory: govn.RouteFactory,
+    readonly nodeExists?: RouteTreeNodeExists,
+  ) {
   }
 
   targetableRouteNode(
@@ -197,7 +208,10 @@ export class TypicalRouteTree implements govn.RouteTree {
 
   consumeRoute(
     rs: govn.RouteSupplier | govn.Route,
+    options?: { readonly nodeExists?: RouteTreeNodeExists },
   ): govn.RouteTreeNode | undefined {
+    const nodeExists = options?.nodeExists || this.nodeExists ||
+      ((node, collection) => collection.find((cn) => cn.unit == node.unit));
     const route = r.isRouteSupplier(rs) ? rs.route : rs;
     this.registerTargetableRoute(route);
     const units = route.units;
@@ -209,7 +223,7 @@ export class TypicalRouteTree implements govn.RouteTree {
     ) => {
       // the first ancestor is the parent, second is grandparent, etc.
       const routeNode = units[unitIndex];
-      let result = collection.find((p) => p.unit == routeNode.unit);
+      let result = nodeExists(routeNode, collection, rs);
       if (!result) {
         const isTerminal = unitIndex == terminalIndex;
         const parent = ancestors.length > 0 ? ancestors[0] : undefined;
@@ -305,11 +319,15 @@ export class TypicalRouteTree implements govn.RouteTree {
   consumeTree(
     source: govn.RouteTree,
     filter: (n: govn.RouteTreeNode) => boolean,
-    order?: (a: govn.RouteTreeNode, b: govn.RouteTreeNode) => number,
+    options?: {
+      readonly nodeExists?: RouteTreeNodeExists;
+      readonly order?: (a: govn.RouteTreeNode, b: govn.RouteTreeNode) => number;
+    },
   ): void {
+    const order = options?.order;
     inspectNodes(source.items, (node) => {
       if (node.route && filter(node)) {
-        this.consumeRoute(node.route);
+        this.consumeRoute(node.route, options);
       }
       return true;
     });
