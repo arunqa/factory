@@ -72,15 +72,20 @@ export function fileSysResourceProxyEventsConsoleEmitter(
     window.fsrProxyEventsEmitters.set(cacheKey, result);
     result.on("proxyStrategyResult", (psr) => {
       if (result.isVerbose) {
+        const relFilePath = path.isAbsolute(psr.proxyFilePathAndName)
+          ? path.relative(Deno.cwd(), psr.proxyFilePathAndName)
+          : psr.proxyFilePathAndName;
         if (psr.isConstructFromOrigin) {
-          console.info(colors.red(
-            `Acquiring ${
-              colors.brightRed(psr.proxyFilePathAndName)
-            } from origin: ${psr.constructFromOriginReason}`,
-          ));
+          console.info(
+            colors.cyan(
+              `Acquiring ${
+                colors.brightCyan(relFilePath)
+              } from origin: ${psr.constructFromOriginReason}`,
+            ),
+          );
         } else {
           console.info(colors.gray(
-            `Using cached content: ${psr.proxyFilePathAndName}`,
+            `Using cached content: ${relFilePath}`,
           ));
         }
       }
@@ -167,6 +172,9 @@ export function fileSysResourceAgeProxyStrategy(
   maxAgeInMS: number,
 ): FileSysResourceProxyStrategy {
   return async (proxyFilePathAndName) => {
+    const relFilePath = path.isAbsolute(proxyFilePathAndName)
+      ? path.relative(Deno.cwd(), proxyFilePathAndName)
+      : proxyFilePathAndName;
     if (fs.existsSync(proxyFilePathAndName)) {
       const proxyFileInfo = await Deno.stat(proxyFilePathAndName);
       if (proxyFileInfo && proxyFileInfo.mtime) {
@@ -177,7 +185,7 @@ export function fileSysResourceAgeProxyStrategy(
             isConstructFromOrigin: true,
             proxyFileInfo,
             constructFromOriginReason:
-              `${proxyFilePathAndName} age (${proxyAgeMS} ms) is older than max age (${maxAgeInMS} ms)`,
+              `${relFilePath} age (${proxyAgeMS} ms) is older than max age (${maxAgeInMS} ms)`,
           };
         }
         return {
@@ -185,7 +193,7 @@ export function fileSysResourceAgeProxyStrategy(
           isConstructFromOrigin: false,
           proxyFileInfo,
           constructFromOriginReason:
-            `${proxyFilePathAndName} age (${proxyAgeMS} ms) is less than max age (${maxAgeInMS} ms)`,
+            `${relFilePath} age (${proxyAgeMS} ms) is less than max age (${maxAgeInMS} ms)`,
         };
       } else {
         return {
@@ -193,14 +201,14 @@ export function fileSysResourceAgeProxyStrategy(
           isConstructFromOrigin: true,
           constructFromOriginReason:
             // deno-fmt-ignore
-            `${proxyFilePathAndName} proxyFileInfo.mtime was not successful: proxyFileInfo = ${JSON.stringify(proxyFileInfo)}`,
+            `${relFilePath} proxyFileInfo.mtime was not successful: proxyFileInfo = ${JSON.stringify(proxyFileInfo)}`,
         };
       }
     } else {
       return {
         proxyFilePathAndName,
         isConstructFromOrigin: true,
-        constructFromOriginReason: `${proxyFilePathAndName} does not exist`,
+        constructFromOriginReason: `${relFilePath} does not exist`,
       };
     }
   };
@@ -334,16 +342,21 @@ export function fileSysDirectoryProxyEventsConsoleEmitter(
     result = new FileSysDirectoryProxyEventsEmitter(envVars.verbose);
     window.fsdProxyEventsEmitters.set(cacheKey, result);
     result.on("proxyStrategyResult", (psr) => {
-      if (psr.isConstructFromOrigin) {
-        console.info(colors.red(
-          `Acquiring path ${
-            colors.brightRed(psr.proxyPath)
-          } from origin: ${psr.constructFromOriginReason}`,
-        ));
-      } else {
-        console.info(colors.gray(
-          `Using cached path: ${psr.proxyPath}`,
-        ));
+      if (result.isVerbose) {
+        const relPath = path.isAbsolute(psr.proxyPath)
+          ? path.relative(Deno.cwd(), psr.proxyPath)
+          : psr.proxyPath;
+        if (psr.isConstructFromOrigin) {
+          console.info(colors.cyan(
+            `Acquiring path ${
+              colors.brightCyan(relPath)
+            } from origin: ${psr.constructFromOriginReason}`,
+          ));
+        } else {
+          console.info(colors.gray(
+            `Using cached path: ${relPath}`,
+          ));
+        }
       }
     });
   } else {
@@ -377,6 +390,9 @@ export function fileSysDirectoryAgeProxyStrategy(
   maxAgeInMS: number,
 ): FileSysDirectoryProxyStrategy {
   return async (proxyPath) => {
+    const relPath = path.isAbsolute(proxyPath)
+      ? path.relative(Deno.cwd(), proxyPath)
+      : proxyPath;
     if (fs.existsSync(proxyPath)) {
       const proxyPathInfo = await Deno.stat(proxyPath);
       if (proxyPathInfo && proxyPathInfo.mtime) {
@@ -387,7 +403,7 @@ export function fileSysDirectoryAgeProxyStrategy(
             isConstructFromOrigin: true,
             proxyPathInfo,
             constructFromOriginReason:
-              `${proxyPath} age (${proxyAgeMS} ms) is older than max age (${maxAgeInMS} ms)`,
+              `${relPath} age (${proxyAgeMS} ms) is older than max age (${maxAgeInMS} ms)`,
           };
         }
         return {
@@ -395,7 +411,7 @@ export function fileSysDirectoryAgeProxyStrategy(
           isConstructFromOrigin: false,
           proxyPathInfo,
           constructFromOriginReason:
-            `${proxyPath} age (${proxyAgeMS} ms) is less than max age (${maxAgeInMS} ms)`,
+            `${relPath} age (${proxyAgeMS} ms) is less than max age (${maxAgeInMS} ms)`,
         };
       } else {
         return {
@@ -403,14 +419,14 @@ export function fileSysDirectoryAgeProxyStrategy(
           isConstructFromOrigin: true,
           constructFromOriginReason:
             // deno-fmt-ignore
-            `${proxyPath} proxyPathInfo.mtime was not successful: proxyFileInfo = ${JSON.stringify(proxyPathInfo)}`,
+            `${relPath} proxyPathInfo.mtime was not successful: proxyFileInfo = ${JSON.stringify(proxyPathInfo)}`,
         };
       }
     } else {
       return {
         proxyPath,
         isConstructFromOrigin: true,
-        constructFromOriginReason: `${proxyPath} does not exist`,
+        constructFromOriginReason: `${relPath} does not exist`,
       };
     }
   };

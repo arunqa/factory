@@ -1,4 +1,4 @@
-import { fs, path, safety } from "../../deps.ts";
+import { colors, fs, path, safety } from "../../deps.ts";
 import * as govn from "../../governance/mod.ts";
 import * as c from "../../core/std/content.ts";
 
@@ -207,17 +207,27 @@ export async function symlinkDirectoryChildren(
   destRootPath: string,
   maxDepth = 1,
 ) {
-  for await (
-    const we of fs.walk(originRootPath, {
-      maxDepth,
-      includeDirs: true,
-      includeFiles: true,
-    })
-  ) {
-    if (we.path === originRootPath) continue;
-    await fs.ensureSymlink(
-      path.resolve(we.path),
-      path.join(destRootPath, we.name),
+  if (fs.existsSync(originRootPath)) {
+    for await (
+      const we of fs.walk(originRootPath, {
+        maxDepth,
+        includeDirs: true,
+        includeFiles: true,
+      })
+    ) {
+      if (we.path === originRootPath) continue;
+      await fs.ensureSymlink(
+        path.resolve(we.path),
+        path.join(destRootPath, we.name),
+      );
+    }
+  } else {
+    console.warn(
+      colors.red(
+        `Unable to symlinkDirectoryChildren of ${
+          colors.brightRed(originRootPath)
+        } to ${destRootPath}: path not found`,
+      ),
     );
   }
 }
