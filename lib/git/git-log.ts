@@ -95,7 +95,7 @@ export interface GitlogOptions<Fields extends string = DefaultField> {
 }
 
 const defaultOptions = {
-  number: 50,
+  number: 25,
   fields: defaultFields,
   nameStatus: true,
   includeMergeCommitFiles: false,
@@ -293,6 +293,7 @@ export function gitLogCmd<Field extends govn.CommitField = DefaultField>(
         "git",
         `--git-dir=${gp.gitDir}`,
         `--work-tree=${gp.workTreePath}`,
+        "--no-pager",
         ...createCommandArguments(options),
       ],
       stdout: "piped",
