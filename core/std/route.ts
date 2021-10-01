@@ -275,18 +275,35 @@ export function resolveRouteUnit(
 }
 
 export class TypicalRouteFactory implements govn.RouteFactory {
-  route(
+  /**
+   * Return a units array and accessor suitable for preparing routes. This
+   * method may be overridden to replace accessor or otherwise modify the route
+   * units.
+   * @param rus The instance to extract the units array and accessor from
+   * @returns The units array and accessor which route constructor can use
+   */
+  routeUnits(
     rs: govn.RouteUnit | govn.RouteUnits | govn.RouteUnitsSupplier,
-  ): govn.Route {
+  ): [units: govn.RouteUnit[], accessor: (index: number) => govn.RouteUnit] {
     const units = isRouteUnitsSupplier(rs)
       ? rs.route.units
       : (isRouteUnits(rs) ? rs.units : [rs]);
+    const accessor: (index: number) => govn.RouteUnit = (index) => {
+      return units[index];
+    };
+    return [units, accessor];
+  }
+
+  route(
+    rs: govn.RouteUnit | govn.RouteUnits | govn.RouteUnitsSupplier,
+  ): govn.Route {
+    const [units, accessor] = this.routeUnits(rs);
     const hierUnits: govn.RouteNode[] = [];
     const terminalIndex = units.length - 1;
     const parentIndex = terminalIndex - 1;
     let qualifiedPath = "";
     for (let i = 0; i < units.length; i++) {
-      const component = units[i];
+      const component = accessor(i);
       qualifiedPath += "/" + component.unit;
       const node: govn.RouteNode = {
         level: i,
