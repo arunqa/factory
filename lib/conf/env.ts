@@ -1,4 +1,4 @@
-import { colors, events, json5, safety } from "../../deps.ts";
+import { colors, events, json5, safety } from "./deps.ts";
 import * as govn from "./governance.ts";
 
 export class EnvConfigurationEventsEmitter<Configuration, Context>
@@ -74,6 +74,17 @@ export function envConfigurationEventsConsoleEmitter<
   const result = new EnvConfigurationEventsEmitter<Configuration, Context>(
     verboseArg,
   );
+  if (result.isVerbose) {
+    console.log(
+      colors.brightBlue(
+        `envConfigurationEventsConsoleEmitter: verbose ${
+          colors.gray(
+            `(${verboseArg} EnvConfigurationEventsEmitter)`,
+          )
+        }`,
+      ),
+    );
+  }
   result.on(
     "searchEnvPropertyAttempts",
     (attempts, handled, defaulted, value) => {
@@ -84,7 +95,7 @@ export function envConfigurationEventsConsoleEmitter<
           const [name, namespace] = propertyName(property.name);
           const envVarValue = property.isValueSecret
             ? "******"
-            : terminal.envVarValue;
+            : JSON.stringify(terminal.envVarValue);
           const typedValue = `${
             property.isValueSecret ? "******" : JSON.stringify(value)
           }, type: ${typeof value}, isValueSecret: ${property
@@ -95,7 +106,7 @@ export function envConfigurationEventsConsoleEmitter<
             }in ${attempts.map((a) => a.envVarName).join(", ")} [${
               handled
                 ? colors.brightGreen(
-                  `found envVarName: ${terminal.envVarName}, envVarValue: '${envVarValue}', value: ${typedValue}`,
+                  `found envVarName: ${terminal.envVarName}, envVarValue: ${envVarValue}, value: ${typedValue}`,
                 )
                 : colors.brightMagenta(
                   (defaulted
@@ -403,7 +414,7 @@ export abstract class EnvConfiguration<Configuration, Context = never>
   ): ConfigurableEnvVarProperty<Configuration, number, Context> {
     const valueGuard = {
       guard: (o: unknown): o is number => {
-        if (o && typeof o === "number") return true;
+        if (typeof o === "number") return true;
         return false;
       },
       onGuardFailure: onGuardFailure || ((_: unknown) => NaN),
