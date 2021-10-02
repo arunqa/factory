@@ -95,7 +95,7 @@ export interface GitlogOptions<Fields extends string = DefaultField> {
 }
 
 const defaultOptions = {
-  number: 25,
+  number: 500,
   fields: defaultFields,
   nameStatus: true,
   includeMergeCommitFiles: false,

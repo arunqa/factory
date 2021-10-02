@@ -1,5 +1,5 @@
-import { path } from "../../deps.ts";
-import { testingAsserts as ta } from "../../deps-test.ts";
+import { path } from "./deps.ts";
+import { testingAsserts as ta } from "./deps-test.ts";
 import * as mod from "./mod.ts";
 
 const testPath = path.relative(
@@ -29,7 +29,21 @@ Deno.test(`Git in ${testPath}`, async () => {
   ta.assert(git.cached.isDirty == isDirty);
 
   // TODO: figure out how to test this deterministically
-  // console.dir(await git.status());
-  // console.dir(await git.log());
-  // console.dir(await git.isDirty());
+  ta.assert(await git.status());
+  ta.assert(await git.log());
+});
+
+Deno.test(`Git Executive in ${testPath}`, async () => {
+  const git = await mod.discoverGitWorktreeExecutive(testPath);
+  ta.assert(git);
+
+  const currentBranch = await git.currentBranch();
+  const isDirty = await git.isDirty();
+  ta.assert(currentBranch);
+  ta.assert(git.cached.currentBranch == currentBranch);
+  ta.assert(git.cached.isDirty == isDirty);
+
+  // TODO: figure out how to test this deterministically
+  ta.assert(await git.status());
+  ta.assert(await git.log());
 });

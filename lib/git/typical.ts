@@ -1,4 +1,4 @@
-import { fs, path, safety } from "../../deps.ts";
+import { fs, path, safety } from "./deps.ts";
 import * as govn from "./governance.ts";
 import * as gl from "./git-log.ts";
 
@@ -254,9 +254,13 @@ export class TypicalGit implements govn.GitExecutive {
   ): Promise<GitCmdSuccessResult | GitCmdFailureResult> {
     let result: GitCmdSuccessResult | GitCmdFailureResult;
     const cmd = Deno.run(cmdOptions(this));
-    const status = await cmd.status();
-    const stdOutRaw = await cmd.output();
-    const stdErrRaw = await cmd.stderrOutput();
+
+    // see https://github.com/denoland/deno/issues/4568 why this is necessary
+    const [stdErrRaw, stdOutRaw, status] = await Promise.all([
+      cmd.stderrOutput(),
+      cmd.output(),
+      cmd.status(),
+    ]);
     if (status.success) {
       const stdOut = new TextDecoder().decode(stdOutRaw);
       result = { status, stdOut };
