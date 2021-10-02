@@ -49,20 +49,6 @@ export interface ResourceRefinerySuppliers<Resource>
     ResourceRefinerySyncSupplier<Resource> {
 }
 
-export interface ResourceProxyStrategyResult {
-  readonly isConstructFromOrigin: boolean;
-  readonly constructFromOriginReason: string;
-}
-
-export interface ProxiedResource {
-  readonly proxyStrategyResult: ResourceProxyStrategyResult;
-}
-
-export interface ProxiedResourceNotAvailable extends ProxiedResource {
-  readonly proxyNotAvailable: boolean;
-  readonly proxyOriginError?: Error;
-}
-
 export type ResourcesIndexFilterCacheKey = string;
 
 export interface ResourcesIndexFilterPredicate<Resource> {

@@ -1,5 +1,5 @@
-import { colors, events, fs, path } from "../deps.ts";
-import * as govn from "../../governance/mod.ts";
+import { colors, events, fs, path } from "./deps.ts";
+import * as govn from "./governance.ts";
 import * as conf from "../../lib/conf/mod.ts";
 
 declare global {
@@ -80,7 +80,7 @@ export function fileSysResourceProxyEventsConsoleEmitter(
             colors.cyan(
               `Acquiring ${
                 colors.brightCyan(relFilePath)
-              } from origin: ${psr.constructFromOriginReason}`,
+              } from origin: ${psr.proxyRemarks}`,
             ),
           );
         } else {
@@ -163,8 +163,7 @@ export const fileSysResourceNeverProxyStrategy: FileSysResourceProxyStrategy =
     return {
       proxyFilePathAndName,
       isConstructFromOrigin: true,
-      constructFromOriginReason:
-        `fileSysResourceNeverProxyStrategy always ignores proxies`,
+      proxyRemarks: `fileSysResourceNeverProxyStrategy always ignores proxies`,
     };
   };
 
@@ -175,6 +174,14 @@ export function fileSysResourceAgeProxyStrategy(
     const relFilePath = path.isAbsolute(proxyFilePathAndName)
       ? path.relative(Deno.cwd(), proxyFilePathAndName)
       : proxyFilePathAndName;
+    if (maxAgeInMS == 0) {
+      return {
+        proxyFilePathAndName,
+        isConstructFromOrigin: true,
+        proxyRemarks:
+          `cache is disabled since maxAgeInMS is 0 [fileSysResourceAgeProxyStrategy]`,
+      };
+    }
     if (fs.existsSync(proxyFilePathAndName)) {
       const proxyFileInfo = await Deno.stat(proxyFilePathAndName);
       if (proxyFileInfo && proxyFileInfo.mtime) {
@@ -184,38 +191,38 @@ export function fileSysResourceAgeProxyStrategy(
             proxyFilePathAndName,
             isConstructFromOrigin: true,
             proxyFileInfo,
-            constructFromOriginReason:
-              `${relFilePath} age (${proxyAgeMS} ms) is older than max age (${maxAgeInMS} ms)`,
+            proxyRemarks:
+              `${relFilePath} age (${proxyAgeMS} ms) is older than max age (${maxAgeInMS} ms) [fileSysResourceAgeProxyStrategy]`,
           };
         }
         return {
           proxyFilePathAndName,
           isConstructFromOrigin: false,
           proxyFileInfo,
-          constructFromOriginReason:
-            `${relFilePath} age (${proxyAgeMS} ms) is less than max age (${maxAgeInMS} ms)`,
+          proxyRemarks:
+            `${relFilePath} age (${proxyAgeMS} ms) is less than max age (${maxAgeInMS} ms) [fileSysResourceAgeProxyStrategy]`,
         };
       } else {
         return {
           proxyFilePathAndName,
           isConstructFromOrigin: true,
-          constructFromOriginReason:
+          proxyRemarks:
             // deno-fmt-ignore
-            `${relFilePath} proxyFileInfo.mtime was not successful: proxyFileInfo = ${JSON.stringify(proxyFileInfo)}`,
+            `${relFilePath} proxyFileInfo.mtime was not successful: proxyFileInfo = ${JSON.stringify(proxyFileInfo)} [fileSysResourceAgeProxyStrategy]`,
         };
       }
     } else {
       return {
         proxyFilePathAndName,
         isConstructFromOrigin: true,
-        constructFromOriginReason: `${relFilePath} does not exist`,
+        proxyRemarks:
+          `${relFilePath} does not exist [fileSysResourceAgeProxyStrategy]`,
       };
     }
   };
 }
 
-export abstract class ProxyableFileSysResource<Resource, OriginContext>
-  implements govn.ResourceFactorySupplier<Resource> {
+export abstract class ProxyableFileSysResource<Resource, OriginContext> {
   constructor(
     readonly proxyFilePathAndName: string,
     readonly proxyStrategy: FileSysResourceProxyStrategy,
@@ -350,7 +357,7 @@ export function fileSysDirectoryProxyEventsConsoleEmitter(
           console.info(colors.cyan(
             `Acquiring path ${
               colors.brightCyan(relPath)
-            } from origin: ${psr.constructFromOriginReason}`,
+            } from origin: ${psr.proxyRemarks}`,
           ));
         } else {
           console.info(colors.gray(
@@ -381,8 +388,7 @@ export const fileSysDirectoryNeverProxyStrategy: FileSysDirectoryProxyStrategy =
     return {
       proxyPath,
       isConstructFromOrigin: true,
-      constructFromOriginReason:
-        `fileSysDirectoryNeverProxyStrategy always ignores proxies`,
+      proxyRemarks: `fileSysDirectoryNeverProxyStrategy always ignores proxies`,
     };
   };
 
@@ -402,7 +408,7 @@ export function fileSysDirectoryAgeProxyStrategy(
             proxyPath,
             isConstructFromOrigin: true,
             proxyPathInfo,
-            constructFromOriginReason:
+            proxyRemarks:
               `${relPath} age (${proxyAgeMS} ms) is older than max age (${maxAgeInMS} ms)`,
           };
         }
@@ -410,14 +416,14 @@ export function fileSysDirectoryAgeProxyStrategy(
           proxyPath,
           isConstructFromOrigin: false,
           proxyPathInfo,
-          constructFromOriginReason:
+          proxyRemarks:
             `${relPath} age (${proxyAgeMS} ms) is less than max age (${maxAgeInMS} ms)`,
         };
       } else {
         return {
           proxyPath,
           isConstructFromOrigin: true,
-          constructFromOriginReason:
+          proxyRemarks:
             // deno-fmt-ignore
             `${relPath} proxyPathInfo.mtime was not successful: proxyFileInfo = ${JSON.stringify(proxyPathInfo)}`,
         };
@@ -426,7 +432,7 @@ export function fileSysDirectoryAgeProxyStrategy(
       return {
         proxyPath,
         isConstructFromOrigin: true,
-        constructFromOriginReason: `${relPath} does not exist`,
+        proxyRemarks: `${relPath} does not exist`,
       };
     }
   };

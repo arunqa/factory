@@ -1,30 +1,19 @@
-import { govnSvcHealth as health } from "../../deps.ts";
-
-export interface TextKeyCache<T> {
-  [key: string]: T;
-}
-
-export interface CacheHealthKeyNameTransformer {
-  (keyName: string): string;
-}
-
-export interface CacheHealth {
-  (keyName: CacheHealthKeyNameTransformer): health.ServiceHealthComponents;
-}
+import { govnSvcHealth as health } from "./deps.ts";
+import * as govn from "./governance.ts";
 
 /**
  * Create a simple LRU cache which looks and acts like a normal object but
  * is backed by a Proxy object that stores expensive to construct objects.
  * @param maxEntries evict cached items after this many entries
  */
-export function lruCache<T>(
+export function lruTextKeyedResourceProxy<T>(
   maxEntries = 50,
-): [cache: TextKeyCache<T>, health: CacheHealth] {
-  const result: TextKeyCache<T> = {};
+): [cache: govn.TextKeyProxy<T>, health: govn.CacheHealth] {
+  const result: govn.TextKeyProxy<T> = {};
   const handler = {
     // Set objects store the cache keys in insertion order.
     cache: new Set<string>(),
-    get: function (obj: TextKeyCache<T>, key: string): T | undefined {
+    get: function (obj: govn.TextKeyProxy<T>, key: string): T | undefined {
       const entry = obj[key];
       if (entry) {
         // move the most recent key to the end so it's last to be evicted
@@ -33,7 +22,7 @@ export function lruCache<T>(
       }
       return entry;
     },
-    set: function (obj: TextKeyCache<T>, key: string, value: T): boolean {
+    set: function (obj: govn.TextKeyProxy<T>, key: string, value: T): boolean {
       obj[key] = value;
       if (this.cache.size >= maxEntries) {
         // least-recently used cache eviction strategy, the oldest

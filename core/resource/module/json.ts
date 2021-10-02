@@ -2,7 +2,7 @@ import { fs } from "../../deps.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as nature from "../../../core/std/nature.ts";
 import * as fsrf from "../../originate/file-sys-globs.ts";
-import * as fsp from "../../originate/file-sys-proxy.ts";
+import * as cache from "../../../lib/cache/mod.ts";
 import * as route from "../../../core/std/route.ts";
 import * as persist from "../../../core/std/persist.ts";
 
@@ -26,24 +26,24 @@ export interface FileSysJsonResourcesConstructor {
 }
 
 export class FileSysJsonResourceProxyFactory<OriginContext>
-  extends fsp.ProxyableFileSysResource<govn.JsonTextSupplier, OriginContext> {
+  extends cache.ProxyableFileSysResource<govn.JsonTextSupplier, OriginContext> {
   constructor(
     proxyFilePathAndName: string,
-    proxyStrategy: fsp.FileSysResourceProxyStrategy,
-    readonly origin: fsp.ProxyableFileSysOriginSupplier<
+    proxyStrategy: cache.FileSysResourceProxyStrategy,
+    readonly origin: cache.ProxyableFileSysOriginSupplier<
       govn.JsonTextSupplier,
       OriginContext
     >,
     readonly proxy: (
-      suggested: govn.JsonTextSupplier & fsp.ProxiedFileSysResource,
-    ) => Promise<govn.JsonTextSupplier & fsp.ProxiedFileSysResource>,
-    fsrpEE?: fsp.FileSysResourceProxyEventsEmitter,
+      suggested: govn.JsonTextSupplier & cache.ProxiedFileSysResource,
+    ) => Promise<govn.JsonTextSupplier & cache.ProxiedFileSysResource>,
+    fsrpEE?: cache.FileSysResourceProxyEventsEmitter,
   ) {
     super(proxyFilePathAndName, proxyStrategy, fsrpEE);
   }
 
   isOriginAvailable(
-    fsrpsr: fsp.FileSysResourceProxyStrategyResult,
+    fsrpsr: cache.FileSysResourceProxyStrategyResult,
   ): Promise<OriginContext | false> {
     return this.origin.isOriginAvailable(fsrpsr);
   }
@@ -53,8 +53,8 @@ export class FileSysJsonResourceProxyFactory<OriginContext>
   }
 
   async constructFromProxy(
-    pfsr: fsp.ProxiedFileSysResource,
-  ): Promise<govn.JsonTextSupplier & fsp.ProxiedFileSysResource> {
+    pfsr: cache.ProxiedFileSysResource,
+  ): Promise<govn.JsonTextSupplier & cache.ProxiedFileSysResource> {
     return await this.proxy({
       jsonText: {
         text: () =>
@@ -69,8 +69,8 @@ export class FileSysJsonResourceProxyFactory<OriginContext>
   // deno-lint-ignore require-await
   async constructErrorProxy(
     pfsr:
-      & Omit<fsp.ProxiedFileSysResource, "proxiedFileInfo">
-      & govn.ProxiedResourceNotAvailable,
+      & Omit<cache.ProxiedFileSysResource, "proxiedFileInfo">
+      & cache.ProxiedResourceNotAvailable,
   ): Promise<govn.JsonTextSupplier> {
     console.warn(
       `FileSysJsonResourceProxyFactory issue: ${JSON.stringify(pfsr)}`,
