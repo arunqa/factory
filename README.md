@@ -114,8 +114,8 @@ pages to adhere to a design system, not optimize for making local changes.
 
 ## Software Supply Chain
 
-- Regularly run `find . -name "*.ts" | xargs udd` in the root so that updates
-  can be done easily
+- Regularly run `just maintain` at the top level of this library. This will help
+  update and maintain dependencies and perform other library-specific maintenance.
 
 ## TODOs
 
