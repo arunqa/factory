@@ -1,13 +1,11 @@
-import { colors, safety } from "../../deps.ts";
-import { pg, pgQuery as pgq } from "./deps.ts";
-import * as stdCache from "../../core/std/cache.ts";
-import * as redisCache from "./cache.ts";
+import { colors, pg, pgQuery as pgq, safety } from "./deps.ts";
+import * as c from "../cache/mod.ts";
 import * as conf from "./conf.ts";
 
 declare global {
   interface Window {
     globalSqlResultsCache: ResultsCache;
-    globalSqlResultsCacheHealth: stdCache.CacheHealth;
+    globalSqlResultsCacheHealth: c.CacheHealth;
     globalSqlDbConns: Map<string, DatabaseConnection>;
     postgresSqlDbConnSpecValidity: (
       name: string,
@@ -22,7 +20,7 @@ declare global {
 
 export async function configureSqlGlobals() {
   if (!window.globalSqlResultsCache) {
-    const [dbResultsCache, dbResultsCacheHealth] = await redisCache.redisCache<
+    const [dbResultsCache, dbResultsCacheHealth] = await c.redisCache<
       SqlResultSupplier<unknown>
     >({
       onSuccess: (_init, report) => {
@@ -111,7 +109,7 @@ export function isTransformableResult<T>(
   return isTR(o);
 }
 
-export type ResultsCache = stdCache.TextKeyCache<SqlResultSupplier<unknown>>;
+export type ResultsCache = c.TextKeyProxy<SqlResultSupplier<unknown>>;
 
 export type DatabaseQuery<T> =
   | string
