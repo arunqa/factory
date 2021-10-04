@@ -36,13 +36,16 @@ export interface AssetLocations
   readonly dsImage: AssetLocationSupplier; // design system
   readonly dsScript: AssetLocationSupplier; // design system
   readonly dsStylesheet: AssetLocationSupplier; // design system
+  readonly dsComponent: AssetLocationSupplier; // design system
   readonly image: AssetLocationSupplier; // local site
   readonly favIcon: AssetLocationSupplier; // local site
   readonly script: AssetLocationSupplier; // local site
   readonly stylesheet: AssetLocationSupplier; // local site
+  readonly component: AssetLocationSupplier; // local site
   readonly brandImage: AssetLocationSupplier; // white label ("brandable")
   readonly brandScript: AssetLocationSupplier; // white label ("brandable")
   readonly brandStylesheet: AssetLocationSupplier; // white label ("brandable")
+  readonly brandComponent: AssetLocationSupplier; // white label ("brandable")
   readonly brandFavIcon: AssetLocationSupplier; // white label ("brandable")
 }
 
