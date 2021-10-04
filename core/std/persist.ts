@@ -1,4 +1,4 @@
-import { colors, fs, path, safety } from "../../deps.ts";
+import { colors, fs, gip, path, safety } from "../../deps.ts";
 import * as govn from "../../governance/mod.ts";
 import * as c from "../../core/std/content.ts";
 
@@ -306,9 +306,31 @@ export async function linkAssets(
 export async function symlinkDirectoryChildren(
   originRootPath: string,
   destRootPath: string,
-  maxDepth = 1,
+  options?: {
+    readonly maxDepth?: number;
+    readonly ignoreSpecFileName?: string;
+    readonly reportSync?: (src: string, dest: string) => void;
+    readonly reportIgnore?: (ignored: fs.WalkEntry, spec: string) => void;
+  },
 ) {
   if (fs.existsSync(originRootPath)) {
+    const maxDepth = typeof options?.maxDepth === "number"
+      ? options?.maxDepth
+      : 1;
+    const ignoreSpecFileName = options?.ignoreSpecFileName || ".rfignore";
+    const topLevelIgnoreSpec = path.join(
+      originRootPath,
+      ignoreSpecFileName,
+    );
+    const reportSync = options?.reportSync;
+    const reportIgnore = options?.reportIgnore;
+    // deno-lint-ignore no-explicit-any
+    let rfIgnore: any | undefined;
+    if (fs.existsSync(topLevelIgnoreSpec)) {
+      const decoder = new TextDecoder("utf-8");
+      const tlIgnoreContent = Deno.readFileSync(topLevelIgnoreSpec);
+      rfIgnore = gip.compile(decoder.decode(tlIgnoreContent));
+    }
     for await (
       const we of fs.walk(originRootPath, {
         maxDepth,
@@ -317,10 +339,22 @@ export async function symlinkDirectoryChildren(
       })
     ) {
       if (we.path === originRootPath) continue;
-      await fs.ensureSymlink(
-        path.resolve(we.path),
-        path.join(destRootPath, we.name),
-      );
+      if (ignoreSpecFileName && we.name == ignoreSpecFileName) {
+        if (reportIgnore) {
+          reportIgnore(we, ignoreSpecFileName);
+        }
+        continue;
+      }
+      if (rfIgnore && rfIgnore.denies(we.name)) {
+        if (reportIgnore) {
+          reportIgnore(we, topLevelIgnoreSpec);
+        }
+        continue;
+      }
+      const symLinkSrc = path.resolve(we.path);
+      const symLinkDest = path.join(destRootPath, we.name);
+      await fs.ensureSymlink(symLinkSrc, symLinkDest);
+      if (reportSync) reportSync(symLinkSrc, symLinkDest);
     }
   } else {
     console.warn(

@@ -42,7 +42,7 @@ export const assetMetricsWalkOptions: fs.WalkOptions = {
 
 export interface Preferences {
   readonly contentRootPath: fsg.FileSysPathText;
-  readonly staticAssetsRootPath: fsg.FileSysPathText;
+  readonly clientCargoRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
   readonly envVarNamesPrefix: string;
@@ -65,7 +65,7 @@ export class Configuration
   readonly diagnosticsRoute: govn.Route;
   readonly lightningDS = new lds.LightingDesignSystem();
   readonly contentRootPath: fsg.FileSysPathText;
-  readonly staticAssetsRootPath: fsg.FileSysPathText;
+  readonly clientCargoRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
   readonly logger: log.Logger;
@@ -77,7 +77,7 @@ export class Configuration
       (gp) => new git.TypicalGit(gp),
     );
     this.contentRootPath = prefs.contentRootPath;
-    this.staticAssetsRootPath = prefs.staticAssetsRootPath;
+    this.clientCargoRootPath = prefs.clientCargoRootPath;
     this.destRootPath = prefs.destRootPath;
     this.appName = prefs.appName;
     this.logger = log.getLogger();
@@ -305,7 +305,7 @@ export class PublicationDesignSystemArguments
     this.branding = {
       contextBarSubject: config.appName,
       contextBarSubjectImageSrc: (assets) =>
-        assets.image("/assets/images/brand/logo-icon-100x100.png"),
+        assets.image("/asset/image/brand/logo-icon-100x100.png"),
     };
   }
 }
@@ -421,8 +421,14 @@ export class TypicalPublication
         },
       ),
       persist.symlinkDirectoryChildren(
-        path.join(this.config.staticAssetsRootPath),
+        path.join(this.config.clientCargoRootPath),
         path.join(this.config.destRootPath),
+        {
+          reportIgnore: (we, spec) =>
+            console.log(colors.gray(`ignored ${we.path} from ${spec}`)),
+          reportSync: (src, dest) =>
+            console.log(colors.green(`symlinked ${src} to ${dest}`)),
+        },
       ),
     ]);
   }

@@ -143,8 +143,12 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
    * @param destRootPath where to place the assets on the file system
    */
   async symlinkAssets(destRootPath: string) {
-    const dsPath = path.dirname(import.meta.url).substr("file://".length);
-    for (const entry of ["images", "styles", "scripts"]) {
+    const dsPath = path.join(
+      path.dirname(import.meta.url).substr("file://".length),
+      "client-cargo",
+    );
+    // TODO: instead of "harcoding" the values, discover/walk directories
+    for (const entry of ["component", "image", "script", "style"]) {
       await fs.ensureSymlink(
         path.join(dsPath, entry),
         path.join(destRootPath, ...this.lightningAssetsPathUnits, entry),
@@ -158,33 +162,39 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   ): ldsGovn.AssetLocations {
     return {
       ldsIcons: (relURL) =>
-        `${this.lightningAssetsBaseURL}/images/slds-icons${relURL}`,
-      dsImage: (relURL) => `${this.lightningAssetsBaseURL}/images${relURL}`,
-      dsScript: (relURL) => `${this.lightningAssetsBaseURL}/scripts${relURL}`,
-      dsStylesheet: (relURL) =>
-        `${this.lightningAssetsBaseURL}/styles${relURL}`,
+        `${this.lightningAssetsBaseURL}/image/slds-icons${relURL}`,
+      dsImage: (relURL) => `${this.lightningAssetsBaseURL}/image${relURL}`,
+      dsScript: (relURL) => `${this.lightningAssetsBaseURL}/script${relURL}`,
+      dsStylesheet: (relURL) => `${this.lightningAssetsBaseURL}/style${relURL}`,
+      dsComponent: (relURL) =>
+        `${this.lightningAssetsBaseURL}/component${relURL}`,
       image: (relURL) => `${base}${relURL}`,
-      favIcon: (relURL) => `${base}/favicons${relURL}`,
+      favIcon: (relURL) => `${base}${relURL}`,
       script: (relURL) => `${base}${relURL}`,
       stylesheet: (relURL) => `${base}${relURL}`,
+      component: (relURL) => `${base}${relURL}`,
       brandImage: (relURL) => `${base}/brand${relURL}`,
-      brandFavIcon: (relURL) => `${base}/brand/favicons${relURL}`,
+      brandFavIcon: (relURL) => `${base}/brand${relURL}`,
       brandScript: (relURL) => `${base}/brand${relURL}`,
       brandStylesheet: (relURL) => `${base}/brand${relURL}`,
+      brandComponent: (relURL) => `${base}/brand${relURL}`,
       clientCargoValue: () => {
         return `{
           assetsBaseAbsURL() { return "${base}" },
-          ldsIcons(relURL) { return \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/images/slds-icons\${relURL}\`; },
-          dsImage(relURL) { return \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/images\${relURL}\`; },
-          dsScript(relURL) { return  \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/scripts\${relURL}\`; },
-          dsStylesheet(relURL) { return \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/styles\${relURL}\`; },
           image(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; },
-          favIcon(relURL) { return \`\${this.assetsBaseAbsURL()}/favicon/\${relURL}\`; },
+          favIcon(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; },
           script(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; },
           stylesheet(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; },
+          component(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; },
+          dsImage(relURL) { return \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/image\${relURL}\`; },
+          dsScript(relURL) { return  \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/script\${relURL}\`; },
+          dsStylesheet(relURL) { return \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/style\${relURL}\`; },
+          dsComponent(relURL) { return \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/component\${relURL}\`; },
+          ldsIcons(relURL) { return \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/image/slds-icons\${relURL}\`; },
           brandImage(relURL) { return this.image(\`/brand/\${relURL}\`); },
           brandScript(relURL) { return this.script(\`/brand/\${relURL}\`); },
           brandStylesheet(relURL) { return this.stylesheet(\`/brand/\${relURL}\`); },
+          brandComponent(relURL) { return this.component(\`/brand/\${relURL}\`); },
           brandFavIcon(relURL) { return this.favIcon(\`/brand/\${relURL}\`); },
         }`;
       },

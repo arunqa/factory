@@ -8,7 +8,7 @@ const testPath = path.relative(
 );
 const config = new mod.Configuration({
   contentRootPath: path.join(testPath, "../", "docs", "content"),
-  staticAssetsRootPath: path.join(testPath, "../", "docs", "static"),
+  clientCargoRootPath: path.join(testPath, "../", "docs", "client-cargo"),
   destRootPath: path.join(testPath, "../", "docs", "public"),
   appName: "Publication Test",
   envVarNamesPrefix: "PUBCTL_",
