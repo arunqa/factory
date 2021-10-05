@@ -8,4 +8,5 @@ export * from "./footer.ts";
 export * from "./navigation.ts";
 export * from "./table-of-contents.ts";
 export * from "./tile.ts";
+export * from "./timeline.ts";
 export * from "./typical.ts";
