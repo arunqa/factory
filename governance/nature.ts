@@ -45,9 +45,9 @@ export interface PersistableHtmlResource extends
   > {
 }
 
-export interface JsonInstanceSupplier {
-  // deno-lint-ignore no-explicit-any
-  readonly jsonInstance: any;
+// deno-lint-ignore no-explicit-any
+export interface JsonInstanceSupplier<Model = any> {
+  readonly jsonInstance: Model;
 }
 
 export interface JsonResource extends
