@@ -7,6 +7,10 @@ export type IconIdentity = string | {
   readonly name: IconName;
 };
 
+export function iconAssistiveText(identity: IconIdentity): string {
+  return typeof identity === "string" ? identity : identity.name;
+}
+
 export function renderedIcon(
   layout: ldsGovn.LightningLayout,
   identity: IconIdentity,
