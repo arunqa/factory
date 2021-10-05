@@ -149,10 +149,19 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
     );
     // TODO: instead of "harcoding" the values, discover/walk directories
     for (const entry of ["component", "image", "script", "style"]) {
-      await fs.ensureSymlink(
-        path.join(dsPath, entry),
-        path.join(destRootPath, ...this.lightningAssetsPathUnits, entry),
-      );
+      const src = path.join(dsPath, entry);
+      if (fs.existsSync(src)) {
+        await fs.ensureSymlink(
+          path.join(dsPath, entry),
+          path.join(destRootPath, ...this.lightningAssetsPathUnits, entry),
+        );
+      } else {
+        console.warn(
+          `Unable to symlink ${
+            path.join(dsPath, entry)
+          }: source does not exist`,
+        );
+      }
     }
   }
 
