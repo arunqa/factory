@@ -303,6 +303,13 @@ export async function linkAssets(
   }
 }
 
+export const symlinkDirectoryChildrenConsoleReporters = {
+  reportIgnore: (we: fs.WalkEntry, spec: string) =>
+    console.log(colors.gray(`ignored ${we.path} from ${spec}`)),
+  reportSync: (src: string, dest: string) =>
+    console.log(colors.green(`symlinked ${src} to ${dest}`)),
+};
+
 export async function symlinkDirectoryChildren(
   originRootPath: string,
   destRootPath: string,

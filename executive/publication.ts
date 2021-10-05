@@ -423,12 +423,7 @@ export class TypicalPublication
       persist.symlinkDirectoryChildren(
         path.join(this.config.clientCargoRootPath),
         path.join(this.config.destRootPath),
-        {
-          reportIgnore: (we, spec) =>
-            console.log(colors.gray(`ignored ${we.path} from ${spec}`)),
-          reportSync: (src, dest) =>
-            console.log(colors.green(`symlinked ${src} to ${dest}`)),
-        },
+        //persist.symlinkDirectoryChildrenConsoleReporters,
       ),
     ]);
   }
