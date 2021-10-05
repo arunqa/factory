@@ -80,7 +80,7 @@ export function metricsHtmlFactorySupplier(
           },
         };
 
-      const sitemapHTML:
+      const htmlResource:
         & govn.PersistableHtmlResource
         & govn.RouteSupplier
         & govn.FrontmatterSupplier<govn.UntypedFrontmatter> = {
@@ -100,7 +100,7 @@ export function metricsHtmlFactorySupplier(
             textSync: metricsHTML,
           },
         };
-      return sitemapHTML;
+      return htmlResource;
     },
   };
 }
