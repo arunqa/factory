@@ -10,13 +10,31 @@ import * as jsonM from "../resource/module/json.ts";
 import * as mdDS from "../render/markdown/mod.ts";
 import * as g from "../../lib/git/mod.ts";
 
-export function markdownFileSysGlob(
+export function staticMarkdownFileSysGlob(
   mdrs: mdDS.MarkdownRenderStrategy,
+  routeParser = route.humanFriendlyFileSysRouteParser,
 ): fsg.FileSysPathGlob<md.MarkdownResource> {
   return {
     glob: "**/*.md",
-    routeParser: route.humanFriendlyFileSysRouteParser,
-    factory: md.markdownFileSysResourceFactory(
+    routeParser,
+    factory: md.staticMarkdownFileSysResourceFactory(
+      // deno-lint-ignore no-explicit-any
+      r.pipelineUnitsRefinery<any>(
+        fm.prepareFrontmatter(fm.yamlMarkdownFrontmatterRE),
+        mdrs.renderer(),
+      ),
+    ),
+  };
+}
+
+export function markdownModuleFileSysGlob(
+  mdrs: mdDS.MarkdownRenderStrategy,
+  routeParser = route.humanFriendlyFileSysRouteParser,
+): fsg.FileSysPathGlob<md.MarkdownResource> {
+  return {
+    glob: "**/*.md.ts",
+    routeParser,
+    factory: md.markdownModuleFileSysResourceFactory(
       // deno-lint-ignore no-explicit-any
       r.pipelineUnitsRefinery<any>(
         fm.prepareFrontmatter(fm.yamlMarkdownFrontmatterRE),
@@ -30,6 +48,7 @@ export function markdownFileSysGlobs(
   originRootPath: fsg.FileSysPathText,
   mdrs: mdDS.MarkdownRenderStrategy,
   fsRouteFactory: route.FileSysRouteFactory,
+  routeParser = route.humanFriendlyFileSysRouteParser,
 ): fsg.FileSysPaths<md.MarkdownResource> {
   return {
     humanFriendlyName: "Markdown Content",
@@ -37,19 +56,21 @@ export function markdownFileSysGlobs(
     lfsPaths: [{
       humanFriendlyName: `Markdown Content (${originRootPath})`,
       fileSysPath: originRootPath,
-      globs: [markdownFileSysGlob(mdrs)],
+      globs: [staticMarkdownFileSysGlob(mdrs, routeParser)],
       fileSysGitPaths: g.discoverGitWorkTree(originRootPath),
     }],
     fsRouteFactory,
   };
 }
 
-export function htmlFileSysGlob(): fsg.FileSysPathGlob<
+export function htmlFileSysGlob(
+  routeParser = route.humanFriendlyFileSysRouteParser,
+): fsg.FileSysPathGlob<
   html.StaticHtmlResource
 > {
   return {
     glob: "**/*.html",
-    routeParser: route.humanFriendlyFileSysRouteParser,
+    routeParser,
     factory: html.staticHtmlFileSysResourceFactory(
       // deno-lint-ignore no-explicit-any
       r.pipelineUnitsRefinery<any>(
@@ -62,6 +83,7 @@ export function htmlFileSysGlob(): fsg.FileSysPathGlob<
 export function htmlFileSysGlobs(
   originRootPath: fsg.FileSysPathText,
   fsRouteFactory: route.FileSysRouteFactory,
+  routeParser = route.humanFriendlyFileSysRouteParser,
 ): fsg.FileSysPaths<html.StaticHtmlResource> {
   return {
     humanFriendlyName: "HTML Content with Optional Frontmatter",
@@ -69,7 +91,7 @@ export function htmlFileSysGlobs(
     lfsPaths: [{
       humanFriendlyName: `HTML Content (${originRootPath})`,
       fileSysPath: originRootPath,
-      globs: [htmlFileSysGlob()],
+      globs: [htmlFileSysGlob(routeParser)],
       fileSysGitPaths: g.discoverGitWorkTree(originRootPath),
     }],
     fsRouteFactory,
@@ -78,24 +100,27 @@ export function htmlFileSysGlobs(
 
 export function resourceModuleFileSysGlob<State>(
   state: State,
+  routeParser = route.humanFriendlyFileSysRouteParser,
 ): fsg.FileSysPathGlob<
   govn.ModuleResource
 > {
   return {
     glob: "**/*.rf.ts",
     exclude: ["deps.ts"],
-    routeParser: route.humanFriendlyFileSysRouteParser,
+    routeParser,
     factory: module.moduleFileSysResourceFactory(state),
   };
 }
 
-export function jsonModuleFileSysGlob(): fsg.FileSysPathGlob<
+export function jsonModuleFileSysGlob(
+  routeParser = route.humanFriendlyFileSysRouteParser,
+): fsg.FileSysPathGlob<
   govn.JsonInstanceSupplier
 > {
   return {
     glob: "**/*.json.ts",
     exclude: ["deps.ts"],
-    routeParser: route.humanFriendlyFileSysRouteParser,
+    routeParser,
     factory: jsonM.jsonFileSysResourceFactory(),
   };
 }
@@ -103,7 +128,9 @@ export function jsonModuleFileSysGlob(): fsg.FileSysPathGlob<
 export function moduleFileSysGlobs<State>(
   originRootPath: fsg.FileSysPathText,
   fsRouteFactory: route.FileSysRouteFactory,
+  mdrs: mdDS.MarkdownRenderStrategy,
   state: State,
+  routeParser = route.humanFriendlyFileSysRouteParser,
 ): fsg.FileSysPaths<govn.ModuleResource> {
   return {
     humanFriendlyName: "Module Content",
@@ -112,10 +139,16 @@ export function moduleFileSysGlobs<State>(
       humanFriendlyName: `Module Content (${originRootPath})`,
       fileSysPath: originRootPath,
       globs: [
+        resourceModuleFileSysGlob(state, routeParser) as fsg.FileSysPathGlob<
+          // deno-lint-ignore no-explicit-any
+          any
+        >,
         // deno-lint-ignore no-explicit-any
-        resourceModuleFileSysGlob(state) as fsg.FileSysPathGlob<any>,
-        // deno-lint-ignore no-explicit-any
-        jsonModuleFileSysGlob() as fsg.FileSysPathGlob<any>,
+        jsonModuleFileSysGlob(routeParser) as fsg.FileSysPathGlob<any>,
+        markdownModuleFileSysGlob(mdrs, routeParser) as fsg.FileSysPathGlob<
+          // deno-lint-ignore no-explicit-any
+          any
+        >,
       ],
       fileSysGitPaths: g.discoverGitWorkTree(originRootPath),
     }],

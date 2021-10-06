@@ -123,6 +123,13 @@ export class HugoSite extends publ.TypicalPublication {
     // this will not be used for non-file-system routes (such as control panel)
     const routeParser: rt.FileSysRouteParser = (fsp, ca) => {
       const hffsrp = rt.humanFriendlyFileSysRouteParser(fsp, ca);
+      if (
+        !hffsrp.parsedPath.base.endsWith(".md.ts") &&
+        !hffsrp.parsedPath.base.match(".md")
+      ) {
+        return hffsrp;
+      }
+
       const isHugoUnderscoreIndex = hffsrp.parsedPath.name === "_index";
       const routeUnit:
         & govn.RouteUnit
@@ -173,6 +180,7 @@ export class HugoSite extends publ.TypicalPublication {
     };
 
     const { contentRootPath, fsRouteFactory } = this.config;
+    const mdRenderers = this.markdownRenderers();
     return [
       // deno-lint-ignore no-explicit-any
       new fsg.FileSysGlobsOriginator<any>(
@@ -182,7 +190,9 @@ export class HugoSite extends publ.TypicalPublication {
           tfsg.moduleFileSysGlobs<publ.PublicationState>(
             contentRootPath,
             fsRouteFactory,
+            mdRenderers,
             this.state,
+            routeParser,
           ),
           {
             humanFriendlyName: "Hugo Markdown Content",
@@ -193,11 +203,11 @@ export class HugoSite extends publ.TypicalPublication {
               globs: [{
                 glob: "**/*.md",
                 routeParser,
-                factory: md.markdownFileSysResourceFactory(
+                factory: md.staticMarkdownFileSysResourceFactory(
                   // deno-lint-ignore no-explicit-any
                   r.pipelineUnitsRefinery<any>(
                     fm.prepareFrontmatter(fm.yamlMarkdownFrontmatterRE),
-                    this.markdownRenderers().renderer(),
+                    mdRenderers.renderer(),
                   ),
                 ),
               }],

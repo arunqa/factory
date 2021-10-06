@@ -79,7 +79,7 @@ export const markdownContentNature:
     },
   };
 
-export const constructResourceSync: (
+export const constructStaticMarkdownResourceSync: (
   we: fsrf.FileSysGlobWalkEntry<MarkdownResource>,
   options: route.FileSysRouteOptions,
 ) => MarkdownResource = (origination, options) => {
@@ -135,12 +135,109 @@ export const constructResourceSync: (
   return result;
 };
 
-export function markdownFileSysResourceFactory(
+export function staticMarkdownFileSysResourceFactory(
   refine?: govn.ResourceRefinery<MarkdownResource>,
 ): fsrf.FileSysGlobWalkEntryFactory<MarkdownResource> {
   return {
     // deno-lint-ignore require-await
-    construct: async (we, log) => constructResourceSync(we, log),
+    construct: async (we, log) => constructStaticMarkdownResourceSync(we, log),
+    refine,
+  };
+}
+
+export const constructMarkdownModuleResourceSync: (
+  we: fsrf.FileSysGlobWalkEntry<MarkdownResource>,
+  content: string,
+  frontmatter: govn.UntypedExports,
+  options: route.FileSysRouteOptions,
+) => MarkdownResource = (origination, content, frontmatter) => {
+  const nature = markdownContentNature;
+  const result:
+    & MarkdownResource
+    & govn.RouteSupplier = {
+      nature,
+      frontmatter,
+      route: {
+        ...origination.route,
+        nature,
+      },
+      model: {
+        isContentModel: true,
+        isContentAvailable: true,
+        isMarkdownModel: true,
+      },
+      // deno-lint-ignore require-await
+      text: async () => content,
+      textSync: () => content,
+    };
+  return result;
+};
+
+export function markdownModuleFileSysResourceFactory(
+  refine?: govn.ResourceRefinery<MarkdownResource>,
+): fsrf.FileSysGlobWalkEntryFactory<MarkdownResource> {
+  return {
+    construct: async (we, options) => {
+      const nature = markdownContentNature;
+      const model: MarkdownModel = {
+        isContentModel: true,
+        isContentAvailable: true,
+        isMarkdownModel: true,
+      };
+      const imported = await options.extensionsManager.importModule(we.path);
+      const issue = (diagnostics: string, ...args: unknown[]) => {
+        options.log.error(diagnostics, ...args);
+        const result:
+          & govn.ModuleResource
+          & MarkdownResource
+          & govn.RouteSupplier = {
+            imported,
+            nature,
+            route: { ...we.route, nature },
+            model,
+            // deno-lint-ignore require-await
+            text: async () => diagnostics,
+            textSync: () => diagnostics,
+          };
+        return result;
+      };
+
+      if (imported.isValid) {
+        // deno-lint-ignore no-explicit-any
+        const defaultValue = (imported.module as any).default;
+        if (defaultValue) {
+          const frontmatter = imported.exports();
+          const result:
+            & govn.ModuleResource
+            & MarkdownResource
+            & govn.RouteSupplier = {
+              imported,
+              frontmatter,
+              nature,
+              route: route.isRouteSupplier(frontmatter) &&
+                  route.isRoute(frontmatter.route)
+                ? frontmatter.route
+                : { ...we.route, nature },
+              model: {
+                isContentModel: true,
+                isContentAvailable: true,
+                isMarkdownModel: true,
+              },
+              // deno-lint-ignore require-await
+              text: async () => defaultValue,
+              textSync: () => defaultValue,
+            };
+          return result;
+        } else {
+          return issue("Markdown module has no default value");
+        }
+      } else {
+        return issue(
+          "Invalid Markdown Module " + imported.importError,
+          imported.importError,
+        );
+      }
+    },
     refine,
   };
 }

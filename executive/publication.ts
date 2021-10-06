@@ -491,6 +491,7 @@ export class TypicalPublication
       // go to the destination directory so let's track it
       this.consumedFileSysWalkPaths.add(we.path);
     });
+    const mdRenderers = this.markdownRenderers();
     return [
       // deno-lint-ignore no-explicit-any
       new fsg.FileSysGlobsOriginator<any>(
@@ -500,11 +501,12 @@ export class TypicalPublication
           tfsg.moduleFileSysGlobs<PublicationState>(
             contentRootPath,
             fsRouteFactory,
+            mdRenderers,
             this.state,
           ),
           tfsg.markdownFileSysGlobs(
             contentRootPath,
-            this.markdownRenderers(),
+            mdRenderers,
             fsRouteFactory,
           ),
           tfsg.htmlFileSysGlobs(contentRootPath, fsRouteFactory),
