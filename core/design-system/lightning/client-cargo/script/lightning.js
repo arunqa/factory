@@ -198,7 +198,6 @@ const lightningTreeGridsActivate = (
 const lightningElemDirectives = (directives) => {
   for (const directive of directives) {
     const selected = directive.select();
-    console.dir(selected);
     if (selected && selected.length > 0) {
       directive.apply(selected);
     }
