@@ -264,7 +264,7 @@ const lightningActivatePage = (
   }
 
   if (options.activateDiagrams) {
-    KrokiContent.populateAll("pre.kroki-diagram[id]");
+    KrokiContent.populateAll("pre.kroki-diagram[id]", { verbose: false });
   }
 
   stickyFooter();

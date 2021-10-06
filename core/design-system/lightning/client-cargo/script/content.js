@@ -121,7 +121,7 @@ class ChartJsContent extends Content {
           } else {
             console.error(
               'Error loading canvas.dataset.chartjsConfigUrl "' + configURL +
-                '": response.status = ',
+              '": response.status = ',
               response.status,
             );
           }
@@ -180,7 +180,7 @@ class EChartsContent extends Content {
               } else {
                 console.error(
                   'Error loading canvas.dataset.echartsConfigUrl "' +
-                    configURL + '": response.status = ',
+                  configURL + '": response.status = ',
                   response.status,
                 );
               }
@@ -188,7 +188,7 @@ class EChartsContent extends Content {
           ).catch((error) => {
             console.error(
               'Error loading canvas.dataset.echartsConfigUrl "' + configURL +
-                '": ',
+              '": ',
               error,
             );
           });
@@ -268,7 +268,7 @@ class AgGridContent extends Content {
               } else {
                 console.error(
                   'Error loading canvas.dataset.aggridConfigUrl "' + configURL +
-                    '": response.status = ',
+                  '": response.status = ',
                   response.status,
                 );
               }
@@ -276,7 +276,7 @@ class AgGridContent extends Content {
           ).catch((error) => {
             console.error(
               'Error loading canvas.dataset.aggridConfigUrl "' + configURL +
-                '": ',
+              '": ',
               error,
             );
           });
@@ -340,6 +340,12 @@ class KrokiContent extends Content {
   }
 
   populate(options) {
+    const decodeHTML = function (html) {
+      var txt = document.createElement('textarea');
+      txt.innerHTML = html;
+      return txt.value;
+    };
+
     // deno-lint-ignore no-this-alias
     const self = this;
     $script(
@@ -372,7 +378,7 @@ class KrokiContent extends Content {
         };
 
         const target = self.target.element();
-        const diagram = target.innerHTML;
+        const diagram = decodeHTML(target.innerHTML);
         if (diagram) {
           const diagramType = target.dataset.diagram || "plantuml";
           const telemetry = self.telemetrySpan(`populate Kroki ${diagramType}`);
