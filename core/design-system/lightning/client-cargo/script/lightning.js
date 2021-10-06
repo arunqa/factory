@@ -195,12 +195,39 @@ const lightningTreeGridsActivate = (
   });
 };
 
+const lightningElemDirectives = (directives) => {
+  for (const directive of directives) {
+    const selected = directive.select();
+    console.dir(selected);
+    if (selected && selected.length > 0) {
+      directive.apply(selected);
+    }
+  }
+}
+
 const lightningActivateAllPageItems = {
   activateDropDownButtons: true,
   activateTabs: true,
   activateTreeGrids: true,
   activateIconSvgUse: true,
   activateDiagrams: true,
+  activateDirectives: [{
+    select: () => document.querySelectorAll(".md > table"),
+    apply: (selected) => {
+      for (const table of selected) {
+        table.classList.add('slds-table', 'slds-table_cell-buffer', 'slds-table_bordered');
+        for (const thead of table.querySelectorAll('thead')) {
+          thead.classList.add('slds-thead')
+        }
+        for (const tbody of table.querySelectorAll('tbody')) {
+          tbody.classList.add('slds-tbody')
+        }
+        for (const cell of table.querySelectorAll('th,td')) {
+          cell.classList.add('slds-cell-wrap');
+        }
+      }
+    }
+  }]
 };
 
 /**
@@ -224,6 +251,7 @@ const lightningActivatePage = (
   if (options.activateDropDownButtons) lightningDropdownButtonsActivate();
   if (options.activateTabs) lightningTabsActivate();
   if (options.activateTreeGrids) lightningTreeGridsActivate();
+  if (options.activateDirectives) lightningElemDirectives(options.activateDirectives);
 
   // Replace instances like <use href="..."> with proper location of assets:
   //   <svg class="slds-button__icon slds-button__icon_hint slds-button__icon_small" aria-hidden="true">
