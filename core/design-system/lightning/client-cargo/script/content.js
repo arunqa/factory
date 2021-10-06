@@ -158,6 +158,7 @@ class EChartsContent extends Content {
           chart.on("click", function (params) {
             self.navigate(params.data);
           });
+          // deno-lint-ignore no-window-prefix
           window.addEventListener("resize", function () {
             chart.resize();
           });
@@ -361,6 +362,7 @@ class KrokiContent extends Content {
             srcTextType = "dot";
           }
           let base64Encoded;
+          // deno-lint-ignore no-window-prefix
           if (window.TextEncoder) {
             base64Encoded = new TextEncoder("utf-8").encode(srcText);
           } else {
@@ -404,6 +406,7 @@ class KrokiContent extends Content {
   }
 }
 
+// deno-lint-ignore no-unused-vars
 class Board {
   constructor(name) {
     this.name = name;

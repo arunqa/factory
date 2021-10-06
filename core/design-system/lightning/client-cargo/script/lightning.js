@@ -15,6 +15,7 @@ const consoleLogWarningStyles = `
  * Uses https://github.com/Alorel/console-log-html to redirect console.* output to an HTML DOM element.
  * @param {*} ldsRedirectConsoleContainerID
  */
+// deno-lint-ignore no-unused-vars
 const lightningRedirectConsole = (
   ldsRedirectConsoleContainerID = "container_ldsRedirectConsole",
 ) => {
@@ -239,6 +240,7 @@ const lightningActivateAllPageItems = {
  * @param cargo object that contains the "client cargo" from server build
  * @returns HTML
  */
+// deno-lint-ignore no-unused-vars
 const lightningActivatePage = (
   cargo,
   options = lightningActivateAllPageItems,
