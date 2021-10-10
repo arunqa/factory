@@ -121,6 +121,7 @@ pages to adhere to a design system, not optimize for making local changes.
 
 ### Framework
 
+- Integrate [command palette for the web](https://github.com/benwinding/command-pal) for easier navigation of directives, searching, etc.
 - Incorporate [Pandoc Markdown CSS Theme](https://jez.io/pandoc-markdown-css-theme/) as default Markdown CSS.
 - Use Oscar's
   [Git\-based package manager for Deno](https://github.com/oscarotero/gpm) to
