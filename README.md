@@ -1,6 +1,6 @@
 # Resource Factory
 
-![Resource Factory](docs/static/assets/images/factory-hero-large.webp)
+![Resource Factory](docs/client-cargo/assets/images/factory-hero-large.webp)
 
 Resource Factory is a universal approach to generating and assembling code,
 HTML, or other assets that could comprise static sites or engineering artifacts.
@@ -38,19 +38,19 @@ systems or other destinations or futher processed by other systems.
 Resource Factory works with reasonable type-safety using three key concepts:
 
 ```
-Sources             Acquired data          Mutatable resources         Terminal resources
+ Sources             Acquired data          Mutatable resources         Terminal resources
 ┌──────────────┐    ┌───────────────┐ 1:1  ┌──────────────────┐  1:1   ┌──────────────────┐
 │ File Systems ├───►│  Origination  ├─────►│    Refinement    ├───────►│       Render     │
-│ Databases    │    │ ("factories") │ 1:n  │  ("refineries")  │  1:n   │   ("renderers")  │
+│ Databases    │    │ ("factories") │ 1:n  │  ("middleware")  │  1:n   │   ("renderers")  │
 │ URLs         │    └───────────────┘   ┌─►└──────┬───────┬───┘  n:n   └─────────┬────────┘
 │ ...          │            ▲           │         │       │            Immutable │ Design Systems,
 └──────────────┘            │           └─────────┘       │           Refineries │ Persisters, etc.
                             │            recursive        │                      │
-                            │            refinement       │                      │ Destinations
+                            │            middleware       │                      │ Destinations
                             └─────────────────────────────┘              ┌───────▼──────┐
                              recursive originators                       │ File Systems │
                              can "fan out" additional                    │ ...          │
-                             resources in refineries                     └──────────────┘
+                             resources in middleware                     └──────────────┘
 ```
 
 - **Origination**. _Factory_ objects, called **originators**, supply _resource
@@ -62,17 +62,14 @@ Sources             Acquired data          Mutatable resources         Terminal 
     creates resource constructors for files in the local file system.
   - Other originators could pull resources from databases, fetch from URLs, or
     any arbitrary sources.
-- **Refinement**. _Transformation_ objects, called **refineries**, supply
-  _resource mutators_. Refineries operate in a pipeline and can mutate resources
-  as many times as required to reach a _terminal state_.
-  - Refineries:
+- **Refinement**. _Transformation_ objects, called **middleware** or **refineries**, 
+  supply _resource mutators_. Middleware operates in a pipeline and can mutate 
+  resources as many times as required to reach a _terminal state_.
+  - Middleware refineries:
     - Use _resource constructors_ created by originators to construct instances.
-    - Perform transformations to further _refine_ or mutate the instances.
+    - Perform transformations to further _refine_ or mutate resource instances.
     - Produce additional factories to "fan out" and recursively produce more
       resources which can then be refined.
-  - `UniversalRefinery` is a built-in Resource Factory refinery which constructs
-    resources from any orginator (such as `FileSysGlobsOriginator`) and applies
-    arbitrary instance mutations.
 - **Finished Product**. _Refined instances_ whose mutations have reached their
   _terminal resource stage_ are fed to **Renderers**. _Renderers_ use one or
   more _render strategies_ to take a terminal resource and product a _rendered_
@@ -285,7 +282,7 @@ pages to adhere to a design system, not optimize for making local changes.
 
 ### Originators
 
-### Refiners
+### Refinery Middleware
 
 ### Type-safety
 
