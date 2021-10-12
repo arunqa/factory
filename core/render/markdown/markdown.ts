@@ -95,6 +95,7 @@ export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
     // @ts-ignore: This expression is not callable.
     this.mdiRenderer = markdownIt({
       html: true,
+      linkify: true,
       ...mdiOptions,
       replaceLink: this.mpl?.rewriteURL,
     });
