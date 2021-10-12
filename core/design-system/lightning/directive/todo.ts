@@ -78,10 +78,10 @@ export class ToDoDirective implements
                 resource.model,
               );
             if (
-              !lds.isLightningNavigationNotificationSupplier(resource.model)
+              !lds.isLightningNavigationNotificationSupplier(resource.route)
             ) {
               diagnostic =
-                `<br><mark>lds.isLightningNavigationNotificationSupplier(resource.model) is false for some reason</mark>`;
+                `<br><mark>lds.isLightningNavigationNotificationSupplier(resource.route) is false for some reason</mark>`;
             }
           }
         }
