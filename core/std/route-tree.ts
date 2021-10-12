@@ -235,6 +235,9 @@ export class TypicalRouteTree implements govn.RouteTree {
           select: (query) => {
             return selectTreeNode(result!, query);
           },
+          walk: (inspector) => {
+            return inspectNodes(result!.children, inspector);
+          },
           ...routeNode,
           children: [],
         };

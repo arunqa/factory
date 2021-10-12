@@ -167,6 +167,9 @@ export interface RouteTreeNode extends RouteNode, Partial<RouteSupplier> {
   readonly parent?: RouteTreeNode;
   readonly children: RouteTreeNode[];
   readonly select: (selector: string) => RouteTreeNode | undefined;
+  readonly walk: (
+    inspector: (entry: RouteTreeNode) => boolean,
+  ) => RouteTreeNode | void;
 }
 
 export interface RouteTree extends RouteTargetsSupplier {

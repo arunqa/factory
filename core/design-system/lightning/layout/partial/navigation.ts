@@ -121,7 +121,7 @@ export const verticalNavigationShadedPartial: ldsGovn.LightningPartial = (
         <legend class="slds-nav-vertical__title">${contentTree.label}</legend>               
         ${contentTree.children.map(rtn => {
           const isActive = layout.activeTreeNode && rtn.qualifiedPath == layout.activeTreeNode.qualifiedPath;
-          const notification = layout.dsArgs.navigation?.notification(rtn);
+          const notification = layout.dsArgs.navigation?.descendantsNotifications(rtn);
           return `<span class="slds-nav-vertical__item">
             <input type="radio" id="unique-id-03-recent" value="unique-id-03-recent" name="unique-id-shade"${isActive ? ' checked=""' : ''} />
             <label class="slds-nav-vertical__action" for="unique-id-03-recent">

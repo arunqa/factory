@@ -61,12 +61,38 @@ export class LightingDesignSystemNavigation
       : this.location(rs.redirect);
   }
 
-  notification(
+  notifications(
     node: govn.RouteTreeNode,
   ): ldsGovn.LightningNavigationNotification | undefined {
     if (isLightningNavigationNotificationSupplier(node.route)) {
       return node.route.ldsNavNotification;
     }
+  }
+
+  descendantsNotifications(
+    node: govn.RouteTreeNode,
+  ): ldsGovn.LightningNavigationNotification | undefined {
+    const notifications = (parentRTN: govn.RouteTreeNode) => {
+      let sum = 0;
+      parentRTN.walk((rtn) => {
+        if (isLightningNavigationNotificationSupplier(rtn.route)) {
+          sum += rtn.route.ldsNavNotification.count;
+        }
+        return true;
+      });
+      if (isLightningNavigationNotificationSupplier(parentRTN.route)) {
+        sum += parentRTN.route.ldsNavNotification.count;
+      }
+      return sum;
+    };
+
+    const childNotifications = notifications(node);
+    if (childNotifications > 0) {
+      return {
+        count: childNotifications,
+      };
+    }
+    return undefined;
   }
 
   clientCargoValue(_layout: html.HtmlLayout) {

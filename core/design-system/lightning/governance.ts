@@ -71,7 +71,10 @@ export interface LightningNavigation
   readonly redirectUrl: (
     rs: govn.RedirectSupplier,
   ) => govn.RouteLocation | undefined;
-  readonly notification: (
+  readonly notifications: (
+    unit: govn.RouteTreeNode,
+  ) => LightningNavigationNotification | undefined;
+  readonly descendantsNotifications: (
     unit: govn.RouteTreeNode,
   ) => LightningNavigationNotification | undefined;
 }
