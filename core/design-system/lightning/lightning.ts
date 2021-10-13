@@ -24,7 +24,7 @@ export class LightingDesignSystemLayouts<
 
 export const isLightningNavigationNotificationSupplier = safety.typeGuard<
   ldsGovn.LightningNavigationNotificationSupplier
->("ldsNavNotification");
+>("ldsNavNotifications");
 
 export class LightingDesignSystemNavigation
   implements ldsGovn.LightningNavigation {
@@ -63,34 +63,68 @@ export class LightingDesignSystemNavigation
 
   notifications(
     node: govn.RouteTreeNode,
-  ): ldsGovn.LightningNavigationNotification | undefined {
+  ): ldsGovn.LightningNavigationNotifications | undefined {
     if (isLightningNavigationNotificationSupplier(node.route)) {
-      return node.route.ldsNavNotification;
+      return node.route.ldsNavNotifications;
     }
   }
 
   descendantsNotifications(
     node: govn.RouteTreeNode,
-  ): ldsGovn.LightningNavigationNotification | undefined {
+  ): ldsGovn.LightningNavigationNotifications | undefined {
     const notifications = (parentRTN: govn.RouteTreeNode) => {
-      let sum = 0;
+      const accumulate: ldsGovn.MutatableLightningNavigationNotification[] = [];
       parentRTN.walk((rtn) => {
         if (isLightningNavigationNotificationSupplier(rtn.route)) {
-          sum += rtn.route.ldsNavNotification.count;
+          for (const lnn of rtn.route.ldsNavNotifications.collection) {
+            let found = false;
+            for (const lnnA of accumulate) {
+              if (lnnA.identity == lnn.identity) {
+                lnnA.count += lnn.count;
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              // we don't use the spread operator for base (...base) because base
+              // could be a class instead of just an interface (like ToDoDirectiveNotification)
+              accumulate.push({
+                count: lnn.count,
+                identity: lnn.identity,
+                assistiveText: lnn.assistiveText,
+                icon: lnn.icon,
+              });
+            }
+          }
         }
         return true;
       });
       if (isLightningNavigationNotificationSupplier(parentRTN.route)) {
-        sum += parentRTN.route.ldsNavNotification.count;
+        for (const lnn of parentRTN.route.ldsNavNotifications.collection) {
+          let found = false;
+          for (const lnnA of accumulate) {
+            if (lnnA.identity == lnn.identity) {
+              lnnA.count += lnn.count;
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            accumulate.push({
+              count: lnn.count,
+              identity: lnn.identity,
+              assistiveText: lnn.assistiveText,
+              icon: lnn.icon,
+            });
+          }
+        }
       }
-      return sum;
+      return accumulate;
     };
 
-    const childNotifications = notifications(node);
-    if (childNotifications > 0) {
-      return {
-        count: childNotifications,
-      };
+    const collection = notifications(node);
+    if (collection.length > 0) {
+      return { collection };
     }
     return undefined;
   }

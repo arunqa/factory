@@ -7,7 +7,7 @@ export type CardBody = string;
 
 export interface Card {
   readonly title: CardTitle;
-  readonly notification?: ldsGovn.LightningNavigationNotification;
+  readonly notifications?: ldsGovn.LightningNavigationNotifications;
   readonly icon?: icon.IconIdentity;
   readonly href?: CardTitleLink;
   readonly body?: CardBody;
@@ -31,11 +31,12 @@ export function renderedCard(
           <h2 class="slds-card__header-title">
             <a href="${card.href}" class="slds-card__header-link slds-truncate" title="${card.title}">
               <span>${card.title}</span>
-            </a>${card.notification ? `
+            </a>${card.notifications ? card.notifications.collection.map(lnn =>`
             <span class="slds-badge slds-col_bump-left">
-              <span class="slds-assistive-text">:</span>${card.notification.count}
-              <span class="slds-assistive-text">${card.notification.assistiveText}</span>
-            </span>` : ''}
+              ${lnn.icon ? icon.renderedIcon(layout, lnn.icon, "slds-icon_xx-small") : ''}
+              <span class="slds-assistive-text">:</span>${lnn.count}
+              <span class="slds-assistive-text">${lnn.assistiveText}</span>
+            </span>`).join("\n") : ''}
           </h2>
         </div>
       </header>

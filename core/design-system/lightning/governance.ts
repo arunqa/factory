@@ -1,6 +1,7 @@
 import * as govn from "../../../governance/mod.ts";
 import * as git from "../../../lib/git/mod.ts";
 import * as html from "../../render/html/mod.ts";
+import * as l from "./layout/mod.ts";
 
 export const indexUnitName = "index";
 
@@ -49,13 +50,26 @@ export interface AssetLocations
   readonly brandFavIcon: AssetLocationSupplier; // white label ("brandable")
 }
 
-export interface LightningNavigationNotification {
-  readonly count: number;
-  readonly assistiveText?: string;
+export type LightningNavigationNotificationIdentity = string;
+
+export interface MutatableLightningNavigationNotification {
+  identity: LightningNavigationNotificationIdentity;
+  count: number;
+  icon?: l.IconIdentity;
+  assistiveText?: string;
+}
+
+// deno-lint-ignore no-empty-interface
+export interface LightningNavigationNotification
+  extends Readonly<MutatableLightningNavigationNotification> {
+}
+
+export interface LightningNavigationNotifications {
+  readonly collection: LightningNavigationNotification[];
 }
 
 export interface LightningNavigationNotificationSupplier {
-  readonly ldsNavNotification: LightningNavigationNotification;
+  readonly ldsNavNotifications: LightningNavigationNotifications;
 }
 
 export interface LightningNavigation
@@ -73,10 +87,10 @@ export interface LightningNavigation
   ) => govn.RouteLocation | undefined;
   readonly notifications: (
     unit: govn.RouteTreeNode,
-  ) => LightningNavigationNotification | undefined;
+  ) => LightningNavigationNotifications | undefined;
   readonly descendantsNotifications: (
     unit: govn.RouteTreeNode,
-  ) => LightningNavigationNotification | undefined;
+  ) => LightningNavigationNotifications | undefined;
 }
 
 export interface LightningNavigationContext {

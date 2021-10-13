@@ -32,7 +32,9 @@ export function isContentTODOsModelSupplier(
 
 export class ToDoDirectiveNotification
   implements lds.LightningNavigationNotification {
+  readonly identity = "todo";
   readonly assistiveText = "TODOs";
+  readonly icon = "task";
 
   constructor(readonly state: ToDosDirectiveStateSupplier) {
   }
@@ -72,11 +74,18 @@ export class ToDoDirective implements
             // the following now makes resource's route a lds.LightningNavigationNotificationSupplier
             // which will get picked up in Lightning design system navigation to show notification
             // values in navigation and other components
-            // deno-lint-ignore no-explicit-any
-            (resource.route as any).ldsNavNotification =
+            const notifications: lds.LightningNavigationNotifications =
+              lds.isLightningNavigationNotificationSupplier(resource.route)
+                ? resource.route.ldsNavNotifications
+                : // deno-lint-ignore no-explicit-any
+                  ((resource.route as any).ldsNavNotifications = {
+                    collection: [],
+                  });
+            notifications.collection.push(
               new ToDoDirectiveNotification(
                 resource.model,
-              );
+              ),
+            );
             if (
               !lds.isLightningNavigationNotificationSupplier(resource.route)
             ) {

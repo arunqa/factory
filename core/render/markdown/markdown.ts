@@ -96,6 +96,7 @@ export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
     this.mdiRenderer = markdownIt({
       html: true,
       linkify: true,
+      typographer: true,
       ...mdiOptions,
       replaceLink: this.mpl?.rewriteURL,
     });
