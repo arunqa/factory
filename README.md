@@ -62,6 +62,10 @@ Resource Factory works with reasonable type-safety using three key concepts:
     creates resource constructors for files in the local file system.
   - Other originators could pull resources from databases, fetch from URLs, or
     any arbitrary sources.
+  - [WunderGraph](https://wundergraph.com/) is a great comparable RF's origination
+    capabilities.
+  - Proxying / caching is built-in so that expensive origination can be locally
+    cached as JSON (file system) or other "proxies" (e.g. Redis).
 - **Refinement**. _Transformation_ objects, called **middleware** or **refineries**, 
   supply _resource mutators_. Middleware operates in a pipeline and can mutate 
   resources as many times as required to reach a _terminal state_.
