@@ -90,6 +90,11 @@ generators (SSGs) allow easy changes to HTML output on a per-page basis but if
 Resource Factory is used as an SSG we would be more focused on enforcing HTML
 pages to adhere to a design system, not optimize for making local changes.
 
+We do not want to encourage the use of anything other than HTML, Web Components,
+JavaScript (with strong type-safety using Typescript or other governance tools).
+This means staying away from all templating tools and using plain Typescript and
+JavaScript is best. 
+
 ### Content naming conventions
 
 - `name.m1.m2.ts` is used for TypeScript-based content with `m1` and `m2` as
@@ -153,6 +158,12 @@ pages to adhere to a design system, not optimize for making local changes.
 - [Marko](https://markojs.com/) is a similar idea but only supports NPM
 - Evaluate [xstate](https://cdn.skypack.dev/xstate) to incorporate FSMs where
   appropriate.
+
+### Bunders and Builders
+
+- Allow poly-build capability using [Parcel](https://parceljs.org/), [esbuild](https://esbuild.github.io/),
+  [Rome](https://rome.tools/), and other bundlers and builders. This space is
+  very active and we should not reinvent the wheel.
 
 ### Context
 
