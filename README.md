@@ -104,6 +104,8 @@ JavaScript is best.
     JSON, etc.).
   - `name.html.ts` signifies with `.html` is that this module produces HTML.
   - `name.json.ts` signifies with `.json` is that this module produces JSON.
+  - `name.ssrs.rf.ts` signifies that this is a Deno Deploy or similar server-
+    side rendering service (SSRS)
 
 ## Software Supply Chain and Dependencies (SSCD)
 
@@ -184,6 +186,9 @@ JavaScript is best.
 
 - Use [Ajv JSON schema validator](https://ajv.js.org/) to validate models since
   need to be type-safe but fully extensible across resources.
+- Decide how much alignment or separation there should be between frontmatter
+  and models. Should frontmatter and models be the same or is there room for 
+  both? For example, frontmatter might be schema-free but models are type-safe?
 
 ### Redirects
 
@@ -284,6 +289,9 @@ JavaScript is best.
 
 ### Frontmatter
 
+- [HUGE, a Hugo framework](https://www.thenewdynamic.com/article/introducing-huge-a-hugo-framework/)
+  seems to have some good idea about how to use Frontmatter in Markdown to drive
+  some interesting behaviors.
 - Unify frontmatter and model in resources so that FM is more about unstructured
   data while model is structured and type-safe
 - Use
