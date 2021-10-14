@@ -123,6 +123,11 @@ JavaScript is best.
 
 ### Framework
 
+- Allow certain Deno modules to flag themselves for automatic SSR through
+  serverless services. We can use something like `module.ssrs.rf.ts` to indicate
+  that a route like `/module` gets created and that route proxies everything to 
+  that "SSR service" (`ssrs`). [Overlord](https://github.com/KhaledSakr/overlord)
+  is a good example of that capability.
 - Integrate [command palette for the web](https://github.com/benwinding/command-pal) for easier navigation of directives, searching, etc.
 - Incorporate [Pandoc Markdown CSS Theme](https://jez.io/pandoc-markdown-css-theme/) as default Markdown CSS.
 - Use Oscar's
@@ -290,6 +295,12 @@ JavaScript is best.
   - Use this for LayoutSupplier declarations
   - Consider [Ajv JSON schema validator](https://ajv.js.org/) for validating
     frontmatter in JS instead of just TypeScript.
+
+### Images
+
+- Check out [imgIX](https://docs.imgix.com/setup/serving-images) for either
+  direct integration or guidance to build our own Deno Deploy-based serverless
+  services for similar capabilities.
 
 ### Originators
 
