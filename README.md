@@ -125,6 +125,9 @@ JavaScript is best.
 
 ### Framework
 
+- Consider replacing or augmenting `shah/ts-safety` with [garronej/tsafe](https://github.com/garronej/tsafe)
+  because it has more capabilities for ensuring type safety. `tsafe` can be used
+  with AJV to validate frontmatter and models at compile time and runtime.
 - Allow certain Deno modules to flag themselves for automatic SSR through
   serverless services. We can use something like `module.ssrs.rf.ts` to indicate
   that a route like `/module` gets created and that route proxies everything to 
