@@ -129,7 +129,7 @@ export const verticalNavigationShadedPartial: ldsGovn.LightningPartial = (
                 <span class="slds-nav-vertical_radio-faux">${rtn.label}</span>               
               </a>
               ${notifications ? notifications.collection.map(lnn => `<span class="slds-badge slds-col_bump-left">
-                ${lnn.icon ? icon.renderedIconContainer(layout, lnn.icon, "slds-icon_xx-small") : ''}<span class="slds-assistive-text">:</span>${lnn.count}
+                ${lnn.icon ? icon.renderedIconContainer(layout, lnn.icon, "slds-icon_xx-small") : ''}<span class="slds-assistive-text">:</span>${lnn.count()}
                 ${lnn.assistiveText ? `<span class="slds-assistive-text">${lnn.assistiveText}</span>` : ''}
               </span>`).join("\n") : '<!-- no notifications -->'}
             </label>

@@ -52,16 +52,11 @@ export interface AssetLocations
 
 export type LightningNavigationNotificationIdentity = string;
 
-export interface MutatableLightningNavigationNotification {
-  identity: LightningNavigationNotificationIdentity;
-  count: number;
-  icon?: l.IconIdentity;
-  assistiveText?: string;
-}
-
-// deno-lint-ignore no-empty-interface
-export interface LightningNavigationNotification
-  extends Readonly<MutatableLightningNavigationNotification> {
+export interface LightningNavigationNotification {
+  readonly identity: LightningNavigationNotificationIdentity;
+  readonly count: (set?: number) => number;
+  readonly icon?: l.IconIdentity;
+  readonly assistiveText?: string;
 }
 
 export interface LightningNavigationNotifications {

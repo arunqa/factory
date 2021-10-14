@@ -157,9 +157,45 @@ export interface PublicationState {
 }
 
 export class ResourcesTree extends rtree.TypicalRouteTree {
+  consumeRoute(
+    rs: govn.RouteSupplier | govn.Route,
+    options?: {
+      readonly nodeExists?: rtree.RouteTreeNodeExists;
+      readonly copyOf?: govn.RouteTreeNode;
+    },
+  ): govn.RouteTreeNode | undefined {
+    const result = super.consumeRoute(rs, options);
+    if (fm.isFrontmatterSupplier(rs)) {
+      fm.referenceFrontmatter(rs, result);
+    }
+    if (m.isModelSupplier(rs)) {
+      m.referenceModel(rs, result);
+      if (lds.isLightningNavigationNotificationSupplier(rs.model)) {
+        lds.referenceNotifications(rs.model, result);
+      }
+    }
+    return result;
+  }
 }
 
 export class NavigationTree extends rtree.TypicalRouteTree {
+  consumeRoute(
+    rs: govn.RouteSupplier | govn.Route,
+    options?: {
+      readonly nodeExists?: rtree.RouteTreeNodeExists;
+      readonly copyOf?: govn.RouteTreeNode;
+    },
+  ): govn.RouteTreeNode | undefined {
+    const result = super.consumeRoute(rs, options);
+    const copyOf = options?.copyOf;
+    if (m.isModelSupplier(copyOf)) {
+      m.referenceModel(copyOf, result);
+      if (lds.isLightningNavigationNotificationSupplier(copyOf.model)) {
+        lds.referenceNotifications(copyOf.model, result);
+      }
+    }
+    return result;
+  }
 }
 
 export function isContentTODOsSupplier(o: unknown): o is govn.ModelSupplier<
@@ -197,14 +233,6 @@ export class PublicationRoutes {
     }
 
     const result = this.resourcesTree.consumeRoute(rs);
-    if (result) {
-      if (fm.isFrontmatterSupplier(rs)) {
-        fm.referenceFrontmatter(rs, result);
-      }
-      if (m.isModelSupplier(rs)) {
-        m.referenceModel(rs, result);
-      }
-    }
 
     if (
       isPublicationRouteEventsHandler(terminal) &&
@@ -633,6 +661,28 @@ export class TypicalPublication
     }
   }
 
+  async finalizePrePersist(
+    originationRefinery: govn.ResourceRefinerySync<
+      govn.RouteSupplier<govn.RouteNode>
+    >,
+    resourcesIndex: r.UniversalResourcesIndex<unknown>,
+  ) {
+    // the first found of all resources are now available, but haven't yet been
+    // persisted so let's prepare the navigation trees before we persist
+    this.routes.prepareNavigationTree();
+
+    // the navigation tree may have generated redirect HTML pages (e.g. aliases)
+    // so let's get those into the index too
+    for await (
+      const resource of this.originate(
+        this.routes.redirectResources(),
+        originationRefinery,
+      )
+    ) {
+      resourcesIndex.index(resource);
+    }
+  }
+
   async finalizeProduce() {
     // any files that were not consumed should "mirrored" to the destination
     await this.mirrorUnconsumedAssets();
@@ -660,19 +710,9 @@ export class TypicalPublication
     }
 
     // the first found of all resources are now available, but haven't yet been
-    // persisted so let's prepare the navigation trees before we persist
-    this.routes.prepareNavigationTree();
-
-    // the navigation tree may have generated redirect HTML pages (e.g. aliases)
-    // so let's get those into the index too
-    for await (
-      const resource of this.originate(
-        this.routes.redirectResources(),
-        originationRefinery,
-      )
-    ) {
-      resourcesIndex.index(resource);
-    }
+    // persisted so let's do any routes finalization, new resources construction
+    // or any other pre-persist activities
+    await this.finalizePrePersist(originationRefinery, resourcesIndex);
 
     // now all resources, child resources, redirect pages, etc. have been
     // created so we can persist all pages that are in our index

@@ -26,6 +26,73 @@ export const isLightningNavigationNotificationSupplier = safety.typeGuard<
   ldsGovn.LightningNavigationNotificationSupplier
 >("ldsNavNotifications");
 
+/**
+ * See if source is already a LightningNavigationNotificationSupplier and, if
+ * it is, return source.ldsNavNotifications. If it's not already a supplier,
+ * mutate source into a supplier by giving it an empty collection and returning
+ * it.
+ * @param source the instance to check
+ * @param notFound the return value of this function will be assigned if source is not already a LightningNavigationNotificationSupplier
+ * @param found the return value of this function will be assigned if source is already a LightningNavigationNotificationSupplier
+ * @returns value of either found or notFound
+ */
+export function prepareNotifications(
+  source: unknown,
+  notFound: () => ldsGovn.LightningNavigationNotifications,
+  found?: ((
+    lnn: ldsGovn.LightningNavigationNotifications,
+  ) => ldsGovn.LightningNavigationNotifications),
+): ldsGovn.LightningNavigationNotifications {
+  const result = isLightningNavigationNotificationSupplier(source)
+    ? (found ? found(source.ldsNavNotifications) : source.ldsNavNotifications)
+    : // deno-lint-ignore no-explicit-any
+      ((source as any).ldsNavNotifications = notFound());
+  return result;
+}
+
+/**
+ * Add notification to dest if it doesn't exist or increment count if it does
+ * @param dest the instance to mutate
+ * @param notification the notification to add
+ * @returns dest
+ */
+export function mergeNotifications(
+  notification: ldsGovn.LightningNavigationNotification,
+  dest: ldsGovn.LightningNavigationNotifications,
+): ldsGovn.LightningNavigationNotifications {
+  const existing = dest.collection.find((n) =>
+    n.identity == notification.identity
+  );
+  if (existing) {
+    existing.count(existing.count() + notification.count());
+  } else {
+    dest.collection.push(notification);
+  }
+  return dest;
+}
+/**
+ * See if dest is already a LightningNavigationNotificationSupplier and, if
+ * it is, add source.ldsNavNotifications collection items to it. If it's not
+ * already a supplier, mutate dest into a supplier by giving it the source.
+ * @param source the notifications to assign
+ * @param dest the instance to mutate and turn into a LightningNavigationNotificationSupplier
+ * @returns dest as LightningNavigationNotificationSupplier
+ */
+export function referenceNotifications(
+  source: ldsGovn.LightningNavigationNotificationSupplier,
+  dest: unknown,
+): ldsGovn.LightningNavigationNotificationSupplier {
+  if (isLightningNavigationNotificationSupplier(dest)) {
+    for (const lnn of source.ldsNavNotifications.collection) {
+      mergeNotifications(lnn, dest.ldsNavNotifications);
+    }
+  } else {
+    // deno-lint-ignore no-explicit-any
+    (dest as any).ldsNavNotifications = source.ldsNavNotifications;
+  }
+  return dest as ldsGovn.LightningNavigationNotificationSupplier;
+}
+
 export class LightingDesignSystemNavigation
   implements ldsGovn.LightningNavigation {
   constructor(
@@ -64,8 +131,8 @@ export class LightingDesignSystemNavigation
   notifications(
     node: govn.RouteTreeNode,
   ): ldsGovn.LightningNavigationNotifications | undefined {
-    if (isLightningNavigationNotificationSupplier(node.route)) {
-      return node.route.ldsNavNotifications;
+    if (isLightningNavigationNotificationSupplier(node)) {
+      return node.ldsNavNotifications;
     }
   }
 
@@ -73,48 +140,44 @@ export class LightingDesignSystemNavigation
     node: govn.RouteTreeNode,
   ): ldsGovn.LightningNavigationNotifications | undefined {
     const notifications = (parentRTN: govn.RouteTreeNode) => {
-      const accumulate: ldsGovn.MutatableLightningNavigationNotification[] = [];
+      const accumulate: ldsGovn.LightningNavigationNotification[] = [];
       parentRTN.walk((rtn) => {
-        if (isLightningNavigationNotificationSupplier(rtn.route)) {
-          for (const lnn of rtn.route.ldsNavNotifications.collection) {
+        if (isLightningNavigationNotificationSupplier(rtn)) {
+          for (const lnn of rtn.ldsNavNotifications.collection) {
             let found = false;
             for (const lnnA of accumulate) {
               if (lnnA.identity == lnn.identity) {
-                lnnA.count += lnn.count;
+                lnnA.count(lnnA.count() + lnn.count());
                 found = true;
                 break;
               }
             }
             if (!found) {
-              // we don't use the spread operator for base (...base) because base
-              // could be a class instead of just an interface (like ToDoDirectiveNotification)
+              let count = lnn.count();
               accumulate.push({
-                count: lnn.count,
-                identity: lnn.identity,
-                assistiveText: lnn.assistiveText,
-                icon: lnn.icon,
+                ...lnn,
+                count: (set) => (set ? (count = set) : count),
               });
             }
           }
         }
         return true;
       });
-      if (isLightningNavigationNotificationSupplier(parentRTN.route)) {
-        for (const lnn of parentRTN.route.ldsNavNotifications.collection) {
+      if (isLightningNavigationNotificationSupplier(parentRTN)) {
+        for (const lnn of parentRTN.ldsNavNotifications.collection) {
           let found = false;
           for (const lnnA of accumulate) {
             if (lnnA.identity == lnn.identity) {
-              lnnA.count += lnn.count;
+              lnnA.count(lnnA.count() + lnn.count());
               found = true;
               break;
             }
           }
           if (!found) {
+            let count = lnn.count();
             accumulate.push({
-              count: lnn.count,
-              identity: lnn.identity,
-              assistiveText: lnn.assistiveText,
-              icon: lnn.icon,
+              ...lnn,
+              count: (set) => (set ? (count = set) : count),
             });
           }
         }

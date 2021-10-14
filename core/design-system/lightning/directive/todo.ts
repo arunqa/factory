@@ -1,6 +1,5 @@
 import { safety } from "../../../deps.ts";
 import * as govn from "../../../../governance/mod.ts";
-import * as r from "../../../../core/std/route.ts";
 import * as m from "../../../../core/std/model.ts";
 import * as mdDS from "../../../../core/render/markdown/mod.ts";
 import * as lds from "../mod.ts";
@@ -30,26 +29,23 @@ export function isContentTODOsModelSupplier(
   return false;
 }
 
-export class ToDoDirectiveNotification
-  implements lds.LightningNavigationNotification {
-  readonly identity = "todo";
-  readonly assistiveText = "TODOs";
-  readonly icon = "task";
-
-  constructor(readonly state: ToDosDirectiveStateSupplier) {
-  }
-
-  get count(): number {
-    return this.state.contentTODOs.length;
-  }
-}
-
 export class ToDoDirective implements
   govn.DirectiveExpectation<
     mdDS.MarkdownContentInlineDirective<TodoDirectiveAttrs>,
     string | undefined
   > {
   readonly identity = "todo";
+
+  notification(
+    todoSS: ToDosDirectiveStateSupplier,
+  ): lds.LightningNavigationNotification {
+    return {
+      count: () => todoSS.contentTODOs.length,
+      identity: this.identity,
+      icon: "task",
+      assistiveText: "TODO",
+    };
+  }
 
   encountered(
     d: mdDS.MarkdownContentInlineDirective<TodoDirectiveAttrs>,
@@ -60,7 +56,10 @@ export class ToDoDirective implements
     if (resource) {
       if (m.isModelSupplier(resource)) {
         if (isToDosDirectiveStateSupplier(resource.model)) {
-          // there's already a TODO being tracked, let's just add it
+          // there's already a TODO being tracked, let's just add it;
+          // resource.route isLightningNavigationNotificationSupplier will
+          // be true and resource.model.contentTODOs is referenced in that
+          // instance so adding it contentTODOs.push(todo) will update it.
           resource.model.contentTODOs.push(todo);
         } else {
           // this is the first TODO so let's create the array and track as Model
@@ -70,34 +69,31 @@ export class ToDoDirective implements
               `<br><mark>isContentTODOsModelSupplier(resource.model) is false for some reason</mark>`;
             return;
           }
-          if (r.isRouteSupplier(resource)) {
-            // the following now makes resource's route a lds.LightningNavigationNotificationSupplier
-            // which will get picked up in Lightning design system navigation to show notification
-            // values in navigation and other components
-            const notifications: lds.LightningNavigationNotifications =
-              lds.isLightningNavigationNotificationSupplier(resource.route)
-                ? resource.route.ldsNavNotifications
-                : // deno-lint-ignore no-explicit-any
-                  ((resource.route as any).ldsNavNotifications = {
-                    collection: [],
-                  });
-            notifications.collection.push(
-              new ToDoDirectiveNotification(
-                resource.model,
-              ),
-            );
-            if (
-              !lds.isLightningNavigationNotificationSupplier(resource.route)
-            ) {
-              diagnostic =
-                `<br><mark>lds.isLightningNavigationNotificationSupplier(resource.route) is false for some reason</mark>`;
-            }
+          // the following now makes resource's route a lds.LightningNavigationNotificationSupplier
+          // which will get picked up in Lightning design system navigation to show notification
+          // values in navigation and other components
+          lds.prepareNotifications(
+            resource.model,
+            () => ({
+              collection: [this.notification(resource.model)],
+            }),
+            (lnn) =>
+              lds.mergeNotifications(this.notification(resource.model), lnn),
+          );
+          if (
+            !lds.isLightningNavigationNotificationSupplier(resource.model)
+          ) {
+            diagnostic =
+              `<br><mark>lds.isLightningNavigationNotificationSupplier(resource.route) is false in ToDoDirective.encountered</mark>`;
           }
         }
+      } else {
+        diagnostic =
+          `<br><mark>m.isModelSupplier(resource) is false in ToDoDirective.encountered</mark>`;
       }
     } else {
       diagnostic =
-        `<br><mark>d.renderEnv.resource in ToDoDirective.encountered() is undefined</mark>`;
+        `<br><mark>d.renderEnv.resource in ToDoDirective.encountered() is undefined in ToDoDirective.encountered</mark>`;
     }
 
     // deno-fmt-ignore

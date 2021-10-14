@@ -208,7 +208,10 @@ export class TypicalRouteTree implements govn.RouteTree {
 
   consumeRoute(
     rs: govn.RouteSupplier | govn.Route,
-    options?: { readonly nodeExists?: RouteTreeNodeExists },
+    options?: {
+      readonly nodeExists?: RouteTreeNodeExists;
+      readonly copyOf?: govn.RouteTreeNode;
+    },
   ): govn.RouteTreeNode | undefined {
     const nodeExists = options?.nodeExists || this.nodeExists ||
       ((node, collection) => collection.find((cn) => cn.unit == node.unit));
@@ -330,7 +333,7 @@ export class TypicalRouteTree implements govn.RouteTree {
     const order = options?.order;
     inspectNodes(source.items, (node) => {
       if (node.route && filter(node)) {
-        this.consumeRoute(node.route, options);
+        this.consumeRoute(node.route, { ...options, copyOf: node });
       }
       return true;
     });
