@@ -139,9 +139,6 @@ JavaScript is best.
   is a good example of that capability.
 - Integrate [command palette for the web](https://github.com/benwinding/command-pal) for easier navigation of directives, searching, etc.
 - Incorporate [Pandoc Markdown CSS Theme](https://jez.io/pandoc-markdown-css-theme/) as default Markdown CSS.
-- Use Oscar's
-  [Git\-based package manager for Deno](https://github.com/oscarotero/gpm) to
-  download assets locally from GitHub packages when design system is remote.
 - Use [deno-ci](https://github.com/justjavac/deno-ci) to store traceability data
   in observability diagnostics to indicate whether build was done in CI/CD
   environment.
