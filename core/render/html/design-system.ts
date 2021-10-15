@@ -121,7 +121,6 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
   ) {
   }
 
-  abstract symlinkAssets(destRootPath: string): Promise<void>;
   abstract layout(
     body: html.HtmlLayoutBody | (() => html.HtmlLayoutBody),
     supplier: html.HtmlLayoutStrategySupplier<Layout>,

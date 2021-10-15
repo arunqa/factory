@@ -24,6 +24,7 @@ import * as fsg from "../core/originate/file-sys-globs.ts";
 import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
 import * as lds from "../core/design-system/lightning/mod.ts";
 import * as ldsDirec from "../core/design-system/lightning/directive/mod.ts";
+import * as html from "../core/render/html/mod.ts";
 import * as jrs from "../core/render/json.ts";
 import * as tfr from "../core/render/text.ts";
 import * as dtr from "../core/render/delimited-text.ts";
@@ -42,10 +43,10 @@ export const assetMetricsWalkOptions: fs.WalkOptions = {
 
 export interface Preferences {
   readonly contentRootPath: fsg.FileSysPathText;
-  readonly clientCargoRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
   readonly envVarNamesPrefix: string;
+  readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
   readonly assetsMetricsWalkers?: (
     config: Configuration,
@@ -65,10 +66,10 @@ export class Configuration
   readonly diagnosticsRoute: govn.Route;
   readonly lightningDS = new lds.LightingDesignSystem();
   readonly contentRootPath: fsg.FileSysPathText;
-  readonly clientCargoRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
   readonly logger: log.Logger;
+  readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
 
   constructor(prefs: Preferences) {
@@ -77,7 +78,7 @@ export class Configuration
       (gp) => new git.TypicalGit(gp),
     );
     this.contentRootPath = prefs.contentRootPath;
-    this.clientCargoRootPath = prefs.clientCargoRootPath;
+    this.persistClientCargo = prefs.persistClientCargo;
     this.destRootPath = prefs.destRootPath;
     this.appName = prefs.appName;
     this.logger = log.getLogger();
@@ -425,7 +426,6 @@ export class TypicalPublication
    */
   async mirrorUnconsumedAssets() {
     await Promise.all([
-      this.config.lightningDS.symlinkAssets(this.config.destRootPath),
       persist.linkAssets(
         this.config.contentRootPath,
         this.config.destRootPath,
@@ -448,11 +448,7 @@ export class TypicalPublication
             we.isFile && !this.consumedFileSysWalkPaths.has(we.path),
         },
       ),
-      persist.symlinkDirectoryChildren(
-        path.join(this.config.clientCargoRootPath),
-        path.join(this.config.destRootPath),
-        //persist.symlinkDirectoryChildrenConsoleReporters,
-      ),
+      this.config.persistClientCargo(this.config.destRootPath),
     ]);
   }
 

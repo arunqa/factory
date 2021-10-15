@@ -2,6 +2,10 @@ import * as govn from "../../../governance/mod.ts";
 import * as ds from "./design-system.ts";
 import * as contrib from "../contributions.ts";
 
+export interface HtmlLayoutClientCargoPersister {
+  (destination: string): Promise<void>;
+}
+
 export type HtmlLayoutClientCargoJavaScriptValue = string;
 
 export interface HtmlLayoutClientCargoValueSupplier {

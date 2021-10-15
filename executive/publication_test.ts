@@ -1,6 +1,7 @@
 import { path } from "../deps.ts";
 // import { testingAsserts as ta } from "../deps-test.ts";
 import * as mod from "./publication.ts";
+import * as persist from "../core/std/persist.ts";
 
 const testPath = path.relative(
   Deno.cwd(),
@@ -8,7 +9,13 @@ const testPath = path.relative(
 );
 const config = new mod.Configuration({
   contentRootPath: path.join(testPath, "../", "docs", "content"),
-  clientCargoRootPath: path.join(testPath, "../", "docs", "client-cargo"),
+  persistClientCargo: async (publishDest) => {
+    await persist.symlinkDirectoryChildren(
+      path.join(path.join(testPath, "../", "docs", "client-cargo")),
+      path.join(publishDest),
+      persist.symlinkDirectoryChildrenConsoleReporters,
+    );
+  },
   destRootPath: path.join(testPath, "../", "docs", "public"),
   appName: "Publication Test",
   envVarNamesPrefix: "PUBCTL_",

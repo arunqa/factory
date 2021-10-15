@@ -1,4 +1,4 @@
-import { fs, path, safety } from "../../deps.ts";
+import { safety } from "../../deps.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as html from "../../render/html/mod.ts";
 import * as c from "../../../core/std/content.ts";
@@ -256,36 +256,6 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       },
   ) {
     super("LightningDS", new LightingDesignSystemLayouts());
-  }
-
-  /**
-   * All images, stylesheets, scripts, and other "assets" will be symlink'd
-   * so that they can be available in the published artifacts but can easily
-   * be modified during development using any local web server without any
-   * special "development server".
-   * @param destRootPath where to place the assets on the file system
-   */
-  async symlinkAssets(destRootPath: string) {
-    const dsPath = path.join(
-      path.dirname(import.meta.url).substr("file://".length),
-      "client-cargo",
-    );
-    // TODO: instead of "harcoding" the values, discover/walk directories
-    for (const entry of ["component", "image", "script", "style"]) {
-      const src = path.join(dsPath, entry);
-      if (fs.existsSync(src)) {
-        await fs.ensureSymlink(
-          path.join(dsPath, entry),
-          path.join(destRootPath, ...this.lightningAssetsPathUnits, entry),
-        );
-      } else {
-        console.warn(
-          `Unable to symlink ${
-            path.join(dsPath, entry)
-          }: source does not exist`,
-        );
-      }
-    }
   }
 
   assets(
