@@ -28,7 +28,6 @@ import * as html from "../core/render/html/mod.ts";
 import * as jrs from "../core/render/json.ts";
 import * as tfr from "../core/render/text.ts";
 import * as dtr from "../core/render/delimited-text.ts";
-import * as persist from "../core/std/persist.ts";
 import * as render from "../core/std/render.ts";
 import * as cpC from "../core/content/control-panel.ts";
 import * as conf from "../lib/conf/mod.ts";
@@ -36,6 +35,7 @@ import * as redirectC from "../core/design-system/lightning/content/redirects.rf
 import * as ldsDiagC from "../core/design-system/lightning/content/diagnostic/mod.ts";
 import * as sqlObsC from "../lib/db/observability.rf.ts";
 import * as mdr from "../core/render/markdown/mod.ts";
+import * as fsLink from "../lib/fs/link.ts";
 
 export const assetMetricsWalkOptions: fs.WalkOptions = {
   skip: [/\.git/],
@@ -426,7 +426,7 @@ export class TypicalPublication
    */
   async mirrorUnconsumedAssets() {
     await Promise.all([
-      persist.linkAssets(
+      fsLink.linkAssets(
         this.config.contentRootPath,
         this.config.destRootPath,
         {
