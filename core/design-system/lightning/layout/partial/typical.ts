@@ -64,7 +64,6 @@ ${clientCargoPartial(layout)}
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const typicalTailPartial: ldsGovn.LightningPartial = (layout) => `
-<script src="${layout.dsArgs.assets.dsScript("/content.js")}"></script>
 <script src="${layout.dsArgs.assets.dsScript("/lightning.js")}"></script>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)

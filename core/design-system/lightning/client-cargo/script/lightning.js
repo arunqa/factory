@@ -210,7 +210,6 @@ const lightningActivateAllPageItems = {
   activateTabs: true,
   activateTreeGrids: true,
   activateIconSvgUse: true,
-  activateDiagrams: true,
   activateDirectives: [{
     select: () => document.querySelectorAll(".md > table"),
     apply: (selected) => {
@@ -263,10 +262,6 @@ const lightningActivatePage = (
       document.querySelectorAll("svg > use"),
       cargo,
     );
-  }
-
-  if (options.activateDiagrams) {
-    KrokiContent.populateAll("pre.kroki-diagram[id]", { verbose: false });
   }
 
   stickyFooter();
