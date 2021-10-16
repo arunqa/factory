@@ -5,6 +5,7 @@ import { default as markdownItFootnote } from "https://jspm.dev/markdown-it-foot
 import { default as markdownItAnchor } from "https://jspm.dev/markdown-it-anchor@8.3.0";
 import { default as markdownItTitle } from "https://jspm.dev/markdown-it-title@4.0.0";
 import { default as markdownItDirective } from "https://jspm.dev/markdown-it-directive@1.0.1";
+import { default as markdownItDirectiveWC } from "https://jspm.dev/markdown-it-directive-webcomponents@1.2.0";
 import * as govn from "../../../governance/mod.ts";
 import * as c from "../../../core/std/content.ts";
 import * as m from "../../../core/std/model.ts";
@@ -68,6 +69,16 @@ export interface MarkdownLinkUrlRewriter {
   (parsedURL: string, renderEnv: Record<string, unknown>): string;
 }
 
+export interface MarkdownWebComponentDirective {
+  readonly present: "inline" | "block" | "both";
+  readonly name: string;
+  readonly tag: string;
+  readonly allowedAttrs?: (string | RegExp)[];
+  readonly destLinkName?: string;
+  readonly destStringName?: string;
+  readonly parseInner?: boolean;
+}
+
 export interface MarkdownLayoutPreferences {
   readonly directiveExpectations?: govn.DirectiveExpectationsSupplier<
     govn.DirectiveExpectation<
@@ -81,6 +92,7 @@ export interface MarkdownLayoutPreferences {
     rendered: string,
     resource: md.MarkdownResource,
   ) => string;
+  readonly webComponents?: MarkdownWebComponentDirective[];
 }
 
 export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
@@ -152,6 +164,11 @@ export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
             };
           }
         });
+    }
+    if (this.mpl?.webComponents) {
+      this.mdiRenderer.use(markdownItDirectiveWC, {
+        components: this.mpl.webComponents,
+      });
     }
   }
 

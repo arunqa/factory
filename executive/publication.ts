@@ -467,6 +467,17 @@ export class TypicalPublication
     };
   }
 
+  webComponentDirectives(): mdr.MarkdownWebComponentDirective[] {
+    return [
+      {
+        present: "block",
+        name: "kroki-diagram",
+        tag: "kroki-diagram",
+        allowedAttrs: ["type", "host", "output", "diagnose"],
+      },
+    ];
+  }
+
   /**
    * Supply the markdown renderers that our Markdown resources can use to render
    * their content to HTML.
@@ -477,6 +488,7 @@ export class TypicalPublication
       new mdr.MarkdownLayouts({
         directiveExpectations: this.directiveExpectationsSupplier(),
         rewriteURL: this.config.rewriteMarkdownLink,
+        webComponents: this.webComponentDirectives(),
       }),
     );
   }
