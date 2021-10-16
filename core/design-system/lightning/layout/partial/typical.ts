@@ -56,7 +56,7 @@ export const typicalHeadPartial: ldsGovn.LightningPartial = (layout) => `
      and dependency manager. You should use this instead of <script> tags.
      TODO: consider https://addyosmani.com/basket.js/ as well -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
-${dia.mermaidDiagramsPartial(layout)}
+${dia.clientDiagramsContributionsPartial(layout)}
 ${clientCargoPartial(layout)} 
 <link rel="shortcut icon" href="${layout.dsArgs.assets.favIcon("/asset/image/favicon.ico")}"/>
 <title>${layout.layoutText.title(layout)}</title>
