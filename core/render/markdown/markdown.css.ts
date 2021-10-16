@@ -1,7 +1,10 @@
 import { base64 } from "../../deps.ts";
 
-export const CSS = (className: string) => `
-/* TODO: These styles were "borrowed" from GitLab and need to find out what copyrights need to be followed */
+// If you change any CSS in here, you'll need to manually update ../../design-system/lightning/client-cargo/style/markdown.auto.css
+// by running the Justfile acquire-markdown-css target
+
+export const CSS = (className: string) =>
+  `/* TODO: These styles were "borrowed" from GitLab and need to find out what copyrights need to be followed */
 
 .${className} {
     color: #303030;
@@ -51,7 +54,7 @@ export const CSS = (className: string) => `
     background-color: #fdfdfd
 }
 
-.${className} img.js-lazy-loaded, .md img.emoji {
+.${className} img.js-lazy-loaded, .${className} img.emoji {
     min-width: inherit;
     min-height: inherit;
     background-color: inherit;
@@ -119,7 +122,7 @@ export const CSS = (className: string) => `
     font-size: 0.95em
 }
 
-.${className} blockquote, .md .blockquote {
+.${className} blockquote, .${className} .blockquote {
     color: #7f8fa4;
     font-size: inherit;
     padding: 8px 24px;
@@ -127,18 +130,18 @@ export const CSS = (className: string) => `
     border-left: 3px solid #eaeaea
 }
 
-.${className} blockquote:dir(rtl), .md .blockquote:dir(rtl) {
+.${className} blockquote:dir(rtl), .${className} .blockquote:dir(rtl) {
     border-left: 0;
     border-right: 3px solid #eaeaea
 }
 
-.${className} blockquote p, .md .blockquote p {
+.${className} blockquote p, .${className} .blockquote p {
     color: #7f8fa4 !important;
     font-size: inherit;
     line-height: 1.5
 }
 
-.${className} blockquote p:last-child, .md .blockquote p:last-child {
+.${className} blockquote p:last-child, .${className} .blockquote p:last-child {
     margin: 0
 }
 
@@ -198,7 +201,7 @@ export const CSS = (className: string) => `
     border-bottom-width: 1px
 }
 
-.${className} table:not(.code).grid-rows>thead>tr>th, .md table:not(.code).grid-rows>tbody>tr>td {
+.${className} table:not(.code).grid-rows>thead>tr>th, .${className} table:not(.code).grid-rows>tbody>tr>td {
     border-right-width: 0;
     border-left-width: 0
 }
@@ -245,11 +248,11 @@ export const CSS = (className: string) => `
     border-bottom-width: 0
 }
 
-.${className} table:not(.code).frame-topbot>thead>tr>th:first-child, .md table:not(.code).frame-topbot>tbody>tr>td:first-child, .md table:not(.code).frame-ends>thead>tr>th:first-child, .md table:not(.code).frame-ends>tbody>tr>td:first-child {
+.${className} table:not(.code).frame-topbot>thead>tr>th:first-child, .${className} table:not(.code).frame-topbot>tbody>tr>td:first-child, .${className} table:not(.code).frame-ends>thead>tr>th:first-child, .${className} table:not(.code).frame-ends>tbody>tr>td:first-child {
     border-left-width: 0
 }
 
-.${className} table:not(.code).frame-topbot>thead>tr>th:last-child, .md table:not(.code).frame-topbot>tbody>tr>td:last-child, .md table:not(.code).frame-ends>thead>tr>th:last-child, .md table:not(.code).frame-ends>tbody>tr>td:last-child {
+.${className} table:not(.code).frame-topbot>thead>tr>th:last-child, .${className} table:not(.code).frame-topbot>tbody>tr>td:last-child, .${className} table:not(.code).frame-ends>thead>tr>th:last-child, .${className} table:not(.code).frame-ends>tbody>tr>td:last-child {
     border-right-width: 0
 }
 
@@ -261,15 +264,15 @@ export const CSS = (className: string) => `
     border-bottom-width: 0
 }
 
-.${className} table:not(.code).frame-none>thead>tr>th:first-child, .md table:not(.code).frame-none>tbody>tr>td:first-child {
+.${className} table:not(.code).frame-none>thead>tr>th:first-child, .${className} table:not(.code).frame-none>tbody>tr>td:first-child {
     border-left-width: 0
 }
 
-.${className} table:not(.code).frame-none>thead>tr>th:last-child, .md table:not(.code).frame-none>tbody>tr>td:last-child {
+.${className} table:not(.code).frame-none>thead>tr>th:last-child, .${className} table:not(.code).frame-none>tbody>tr>td:last-child {
     border-right-width: 0
 }
 
-.${className} table:not(.code).stripes-all tr, .md table:not(.code).stripes-odd tr:nth-of-type(odd), .md table:not(.code).stripes-even tr:nth-of-type(even), .md table:not(.code).stripes-hover tr:hover {
+.${className} table:not(.code).stripes-all tr, .${className} table:not(.code).stripes-odd tr:nth-of-type(odd), .${className} table:not(.code).stripes-even tr:nth-of-type(even), .${className} table:not(.code).stripes-hover tr:hover {
     background: #fafafa
 }
 
@@ -303,16 +306,20 @@ export const CSS = (className: string) => `
     margin-left: 16px
 }
 
-.${className} ul, .md ol {
+.${className} ul, .${className} ol {
     padding: 0;
     margin: 0 0 16px
 }
 
-.${className} ul ul, .md ul ol, .md ol ul, .md ol ol {
+.${className} ol {
+    list-style-type: decimal;
+}
+
+.${className} ul ul, .${className} ul ol, .${className} ol ul, .${className} ol ol {
     margin-bottom: 0
 }
 
-.${className} ul:dir(rtl), .md ol:dir(rtl) {
+.${className} ul:dir(rtl), .${className} ol:dir(rtl) {
     margin: 3px 28px 3px 0 !important
 }
 
@@ -328,11 +335,11 @@ export const CSS = (className: string) => `
     list-style-type: square
 }
 
-.${className} ul.checklist, .md ul.none, .md ol.none, .md ul.no-bullet, .md ol.no-bullet, .md ol.unnumbered, .md ul.unstyled, .md ol.unstyled {
+.${className} ul.checklist, .${className} ul.none, .${className} ol.none, .${className} ul.no-bullet, .${className} ol.no-bullet, .${className} ol.unnumbered, .${className} ul.unstyled, .${className} ol.unstyled {
     list-style-type: none
 }
 
-.${className} ul.checklist li, .md ul.none li, .md ol.none li, .md ul.no-bullet li, .md ol.no-bullet li, .md ol.unnumbered li, .md ul.unstyled li, .md ol.unstyled li {
+.${className} ul.checklist li, .${className} ul.none li, .${className} ol.none li, .${className} ul.no-bullet li, .${className} ol.no-bullet li, .${className} ol.unnumbered li, .${className} ul.unstyled li, .${className} ol.unstyled li {
     margin-left: 0
 }
 
@@ -343,7 +350,7 @@ export const CSS = (className: string) => `
 }
 
 @media screen and (-webkit-min-device-pixel-ratio: 0) {
-    .md li {
+    .${className} li {
         margin-left: 28px;
         padding-left: 0
     }
@@ -363,7 +370,7 @@ export const CSS = (className: string) => `
     top: 5px
 }
 
-.${className} a.with-attachment-icon::before, .md a[href*='/uploads/']::before, .md a[href*='storage.googleapis.com/google-code-attachments/']::before {
+.${className} a.with-attachment-icon::before, .${className} a[href*='/uploads/']::before, .${className} a[href*='storage.googleapis.com/google-code-attachments/']::before {
     margin-right: 4px;
     font-style: normal;
     font-size: inherit;
@@ -372,27 +379,27 @@ export const CSS = (className: string) => `
     content: '📎'
 }
 
-.${className} a[href*='/uploads/'].no-attachment-icon::before, .md a[href*='storage.googleapis.com/google-code-attachments/'].no-attachment-icon::before {
+.${className} a[href*='/uploads/'].no-attachment-icon::before, .${className} a[href*='storage.googleapis.com/google-code-attachments/'].no-attachment-icon::before {
     display: none
 }
 
-.${className} h1 a.anchor, .md h2 a.anchor, .md h3 a.anchor, .md h4 a.anchor, .md h5 a.anchor, .md h6 a.anchor {
+.${className} h1 a.anchor, .${className} h2 a.anchor, .${className} h3 a.anchor, .${className} h4 a.anchor, .${className} h5 a.anchor, .${className} h6 a.anchor {
     float: left;
     margin-left: -20px;
     text-decoration: none;
     outline: none
 }
 
-.${className} h1 a.anchor::after, .md h2 a.anchor::after, .md h3 a.anchor::after, .md h4 a.anchor::after, .md h5 a.anchor::after, .md h6 a.anchor::after {
+.${className} h1 a.anchor::after, .${className} h2 a.anchor::after, .${className} h3 a.anchor::after, .${className} h4 a.anchor::after, .${className} h5 a.anchor::after, .${className} h6 a.anchor::after {
     content: url(./icon_anchor-297aa9b0225eff3d6d0da74ce042a0ed5575b92aa66b7109a5e060a795b42e36.svg);
     visibility: hidden
 }
 
-.${className} h1:hover>a.anchor::after, .md h2:hover>a.anchor::after, .md h3:hover>a.anchor::after, .md h4:hover>a.anchor::after, .md h5:hover>a.anchor::after, .md h6:hover>a.anchor::after {
+.${className} h1:hover>a.anchor::after, .${className} h2:hover>a.anchor::after, .${className} h3:hover>a.anchor::after, .${className} h4:hover>a.anchor::after, .${className} h5:hover>a.anchor::after, .${className} h6:hover>a.anchor::after {
     visibility: visible
 }
 
-.${className} h1>a.anchor:focus::after, .md h2>a.anchor:focus::after, .md h3>a.anchor:focus::after, .md h4>a.anchor:focus::after, .md h5>a.anchor:focus::after, .md h6>a.anchor:focus::after {
+.${className} h1>a.anchor:focus::after, .${className} h2>a.anchor:focus::after, .${className} h3>a.anchor:focus::after, .${className} h4>a.anchor:focus::after, .${className} h5>a.anchor:focus::after, .${className} h6>a.anchor:focus::after {
     visibility: visible;
     outline: auto
 }
@@ -426,27 +433,27 @@ export const CSS = (className: string) => `
     -moz-osx-font-smoothing: grayscale
 }
 
-.${className} .fa-2x, .md .admonitionblock td.icon [class^='fa icon-'] {
+.${className} .fa-2x, .${className} .admonitionblock td.icon [class^='fa icon-'] {
     font-size: 2em
 }
 
-.${className} .fa-exclamation-triangle::before, .md .admonitionblock td.icon .icon-warning::before {
+.${className} .fa-exclamation-triangle::before, .${className} .admonitionblock td.icon .icon-warning::before {
     content: '⚠'
 }
 
-.${className} .fa-exclamation-circle::before, .md .admonitionblock td.icon .icon-important::before {
+.${className} .fa-exclamation-circle::before, .${className} .admonitionblock td.icon .icon-important::before {
     content: '❗'
 }
 
-.${className} .fa-lightbulb-o::before, .md .admonitionblock td.icon .icon-tip::before {
+.${className} .fa-lightbulb-o::before, .${className} .admonitionblock td.icon .icon-tip::before {
     content: '💡'
 }
 
-.${className} .fa-thumb-tack::before, .md .admonitionblock td.icon .icon-note::before {
+.${className} .fa-thumb-tack::before, .${className} .admonitionblock td.icon .icon-note::before {
     content: '📌'
 }
 
-.${className} .fa-fire::before, .md .admonitionblock td.icon .icon-caution::before {
+.${className} .fa-fire::before, .${className} .admonitionblock td.icon .icon-caution::before {
     content: '🔥'
 }
 
@@ -533,3 +540,9 @@ export const styleTag = (className: string) => {
 };
 
 export default styleTag;
+
+// If this file is "executed it will emit the primary CSS to STDOUT so that it
+// can be stored into a file by the caller
+if (import.meta.main) {
+  console.log(CSS("md"));
+}

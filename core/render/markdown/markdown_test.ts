@@ -34,19 +34,11 @@ Deno.test(`markdownHTML without frontmatter and integrated styles through data U
     syncResult.html.toString(),
     "<p><strong>transform</strong> test</p>",
   );
-  ta.assertStringIncludes(
-    syncResult.html.toString(),
-    `<style>@import url("data:text/css;base64`,
-  );
 
   const asyncResult = await renderer.rendered(asset);
   ta.assertStringIncludes(
     asyncResult.html.toString(),
     "<p><strong>transform</strong> test</p>",
-  );
-  ta.assertStringIncludes(
-    asyncResult.html.toString(),
-    `<style>@import url("data:text/css;base64`,
   );
 });
 

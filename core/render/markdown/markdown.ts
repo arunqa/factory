@@ -11,7 +11,6 @@ import * as c from "../../../core/std/content.ts";
 import * as m from "../../../core/std/model.ts";
 import * as fm from "../../../core/std/frontmatter.ts";
 import * as md from "../../resource/markdown.ts";
-import mdStyle from "./markdown.css.ts";
 
 /**
  * markdownRenderEnv is available after Markdown rendering and includes
@@ -93,6 +92,7 @@ export interface MarkdownLayoutPreferences {
     resource: md.MarkdownResource,
   ) => string;
   readonly webComponents?: MarkdownWebComponentDirective[];
+  readonly topLevelMarkdownClassName?: string;
 }
 
 export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
@@ -215,9 +215,6 @@ export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
 }
 
 export const defaultMarkdownStylesheetClassName = "md";
-export const defaultMarkdownStyleTagUsingDataURI = mdStyle(
-  defaultMarkdownStylesheetClassName,
-);
 
 export class MarkdownLayouts
   implements govn.LayoutStrategies<md.MarkdownResource, govn.HtmlSupplier> {
@@ -230,8 +227,7 @@ export class MarkdownLayouts
       "html-in-md-div-with-style-as-data-URI",
       {
         // deno-fmt-ignore
-        transformRendered: (rendered) => `${defaultMarkdownStyleTagUsingDataURI}
-        <div class="${defaultMarkdownStylesheetClassName}">${rendered}</div>`,
+        transformRendered: (rendered) => `<div class="${mpl?.topLevelMarkdownClassName || defaultMarkdownStylesheetClassName}">${rendered}</div>`,
         ...this.mpl,
       },
     );
