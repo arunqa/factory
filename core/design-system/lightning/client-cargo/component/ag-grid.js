@@ -8,37 +8,8 @@ class AgGridComponent extends HTMLElement {
     constructor() {
         // Always call super() first, this is required by the spec.
         super();
-    }
-
-    attributeChangedCallback(name, oldValue, newValue) {
-        if (!this.__initialized) { return }
-        if (oldValue !== newValue) {
-            this[name] = newValue
-        }
-    }
-
-    get configHref() {
-        return this.getAttribute(AgGridComponent.configHrefAttrName);
-    }
-
-    set configHref(val) {
-        if (val) {
-            this.setAttribute(AgGridComponent.configHrefAttrName, val);
-        } else {
-            this.removeAttribute(AgGridComponent.configHrefAttrName);
-        }
-    }
-
-    get domLayout() {
-        return this.getAttribute(AgGridComponent.domLayoutAttrName) || "autoHeight";
-    }
-
-    set domLayout(val) {
-        if (val && (val == "autoHeight" || val == "normal")) {
-            this.setAttribute(AgGridComponent.domLayoutAttrName, val);
-        } else {
-            this.removeAttribute(AgGridComponent.domLayoutAttrName);
-        }
+        this.configHref = this.getAttribute(AgGridComponent.configHrefAttrName);
+        this.domLayout = this.getAttribute(AgGridComponent.domLayoutAttrName) || "autoHeight";
     }
 
     connectedCallback() {
@@ -77,14 +48,14 @@ class AgGridComponent extends HTMLElement {
                             if (response.status == 200) {
                                 response.json().then((data) => { configure(data); });
                             } else {
-                                this.innerHTML = `Error loading <a href="${configURL}">${configURL}</a>: response.status = ${response.status}`;
+                                this.innerHTML = `Error loading <a href="${configURL}">${configURL}</a>: response.status = ${response.status} in AgGridComponent`;
                             }
                         },
                     ).catch((error) => {
-                        this.innerHTML = `Error loading ${configURL}: ${error}`;
+                        this.innerHTML = `Error loading ${configURL}: ${error} in AgGridComponent`;
                     });
                 } else {
-                    this.innerHTML = `this.configHref (attribute "${AgGridComponent.configHrefAttrName}") not supplied`
+                    this.innerHTML = `this.configHref (attribute "${AgGridComponent.configHrefAttrName}") not supplied for AgGridComponent`
                 }
             }
         );

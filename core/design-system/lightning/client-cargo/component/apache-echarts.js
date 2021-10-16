@@ -1,31 +1,13 @@
 class ApacheEChartsComponent extends HTMLElement {
     static configHrefAttrName = "config-href";
     static get observedAttributes() {
-        return [ApacheEChartsComponent.configHrefAttrName]
+        return [ApacheEChartsComponent.configHrefAttrName];
     }
 
     constructor() {
         // Always call super() first, this is required by the spec.
         super();
-    }
-
-    attributeChangedCallback(name, oldValue, newValue) {
-        if (!this.__initialized) { return }
-        if (oldValue !== newValue) {
-            this[name] = newValue
-        }
-    }
-
-    get configHref() {
-        return this.getAttribute(ApacheEChartsComponent.configHrefAttrName);
-    }
-
-    set configHref(val) {
-        if (val) {
-            this.setAttribute(ApacheEChartsComponent.configHrefAttrName, val);
-        } else {
-            this.removeAttribute(ApacheEChartsComponent.configHrefAttrName);
-        }
+        this.configHref = this.getAttribute(ApacheEChartsComponent.configHrefAttrName);
     }
 
     navigate(data, _options) {
@@ -38,7 +20,8 @@ class ApacheEChartsComponent extends HTMLElement {
     }
 
     connectedCallback() {
-        if (this.configHref) {
+        const configURL = this.configHref;
+        if (configURL) {
             $script(
                 "https://cdn.jsdelivr.net/npm/echarts@5.1.2/dist/echarts.min.js",
                 () => {
@@ -54,28 +37,23 @@ class ApacheEChartsComponent extends HTMLElement {
                         });
                     };
 
-                    const configURL = this.configHref;
-                    if (configURL) {
-                        fetch(configURL).then(
-                            (response) => {
-                                if (response.status == 200) {
-                                    response.json().then((config) => {
-                                        configure(config);
-                                    });
-                                } else {
-                                    this.innerHTML = `Error loading ${configURL}: response.status = ${response.status}`;
-                                }
-                            },
-                        ).catch((error) => {
-                            this.innerHTML = `Error loading ${configURL}: ${error}`;
-                        });
-                    } else {
-                        this.innerHTML = `this.configHref (attribute "${AgGridComponent.configHrefAttrName}") not supplied`
-                    }
+                    fetch(configURL).then(
+                        (response) => {
+                            if (response.status == 200) {
+                                response.json().then((config) => {
+                                    configure(config);
+                                });
+                            } else {
+                                this.innerHTML = `Error loading ${configURL}: response.status = ${response.status} in ApacheEChartsComponent`;
+                            }
+                        },
+                    ).catch((error) => {
+                        this.innerHTML = `Error loading ${configURL}: ${error} in ApacheEChartsComponent`;
+                    });
                 },
             );
         } else {
-            this.innerHTML = `this.configHref (attribute "${ApacheEChartsComponent.configHrefAttrName}") not supplied`
+            this.innerHTML = `this.configHref (attribute "${ApacheEChartsComponent.configHrefAttrName}") not supplied for ApacheEChartsComponent`
         }
     }
 }
