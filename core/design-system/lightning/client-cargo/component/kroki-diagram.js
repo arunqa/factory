@@ -1,6 +1,6 @@
 class KrokiComponent extends HTMLElement {
     static hostAttrName = "host";
-    static diagramAttrName = "diagram";
+    static diagramAttrName = "type";
     static outputAttrName = "output";
     static diagnoseAttrName = "diagnose";
     static get observedAttributes() {
