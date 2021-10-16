@@ -291,6 +291,12 @@ JavaScript is best.
 - Allow directories to become routes without necessarily tying it to a resource
   - Should directories themselves become originators (resource factories)?
 
+### Markdown
+
+- Use [zero-md](https://github.com/zerodevx/zero-md) native markdown-to-html web 
+  component to allow client-side Markdown rendering when dynamic content needs
+  to be rendered.
+
 ### Frontmatter
 
 - [HUGE, a Hugo framework](https://www.thenewdynamic.com/article/introducing-huge-a-hugo-framework/)
