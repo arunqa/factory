@@ -1,5 +1,20 @@
 # Lightning Design System (R<sup>2</sup>) Rendering Strategy
 
+## Guidance
+
+- Eliminate abstractions and implicit functionality in favor of explicit. This
+  is especially important for JS, CSS, and other bundling so that developers
+  know exactly what code is coming from which source.
+- Whenever possible, allow static HTML to be as interactive as generated HTML.
+  For example:
+  - When implementing base (in location, etc.) pass it through with client cargo
+    and use HTML [base](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base)
+    element so that pure HTML will work, too.
+
+## Maintenance
+
+- Use `just maintain` for regular maintenance of dependencies
+
 ## References
 
 - [Lightning Design System Starter Kit](https://github.com/salesforce-ux/design-system-starter-kit)
@@ -7,20 +22,12 @@
 
 ## TODOs
 
-- Use Oscar's
-  [Git\-based package manager for Deno](https://github.com/oscarotero/gpm) to
-  download assets locally from GitHub packages when design system is remote.
+- Add `bundle` target to Justfile to do minification, merging JS, CSS, etc.
 - Refactor common non-LDS-specific partials into base Design System.
 - Integrate [UFO](https://github.com/unjs/ufo) _URL utils for humans_ into
   design system infrastructure so that client-side JS can utilize proper URL
   functionality.
 - Implement [OpenGraph](https://ogp.me/) in base Design System (not LDS).
-- Whenever possible, allow static HTML to be as interactive as generated HTML.
-  For example:
-  - When implementing base (in location, etc.) pass it through with client cargo
-    and use HTML
-    [base](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base)
-    element so that pure HTML will work, too.
 - Add `Partial<govn.RenderContextSupplier<HtmlLayoutRenderContext>>` to
   HtmlLayout so that pages, partials, etc. can easily see which _environment_
   (_context_) like production, sandbox, devl, test, etc. they are running in.
@@ -43,9 +50,8 @@
 - Check out [rasterizer](https://rasterizer.io/) to see the kinds of images we
   can generate from data. We can create a new render strategy that can take
   arbitrary data and generate images like Twitter Cards, etc.
-- Check out
-  [Analysis of Feed URLs](https://blog.jim-nielsen.com/2021/feed-urls/) to allow
-  different kinds of feed configurations.
+- Check out [Analysis of Feed URLs](https://blog.jim-nielsen.com/2021/feed-urls/) 
+  to allow different kinds of feed configurations.
 
 ## Documentation TODOs
 
