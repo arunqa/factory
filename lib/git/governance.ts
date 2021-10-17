@@ -5,6 +5,15 @@ export type GitDir = string;
 export interface GitRemote {
   readonly gitObjectPath: string;
   readonly remoteURL: string;
+  readonly paths: GitPathsSupplier;
+}
+
+export interface GitRemoteResolver {
+  (
+    candidate: GitEntry | GitEntryStatus,
+    branch: GitBranch,
+    paths: GitPathsSupplier,
+  ): GitRemote | undefined;
 }
 
 export interface GitPathsSupplier {
@@ -95,4 +104,5 @@ export interface GitExecutive extends GitPathsSupplier {
   readonly log: <Field extends CommitField>() => Promise<
     GitCommitBase<Field>[] | GitCommitBaseWithFiles<Field>[] | void
   >;
+  readonly resolveRemote: GitRemoteResolver;
 }

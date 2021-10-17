@@ -47,6 +47,7 @@ export interface Preferences {
   readonly appName: string;
   readonly envVarNamesPrefix: string;
   readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
+  readonly gitRemoteResolver: git.GitRemoteResolver;
   readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
@@ -72,6 +73,7 @@ export class Configuration
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
   readonly logger: log.Logger;
+  readonly gitRemoteResolver: git.GitRemoteResolver;
   readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
@@ -79,9 +81,10 @@ export class Configuration
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
 
   constructor(prefs: Preferences) {
+    this.gitRemoteResolver = prefs.gitRemoteResolver;
     this.git = git.discoverGitWorktreeExecutiveSync(
       prefs.contentRootPath,
-      (gp) => new git.TypicalGit(gp),
+      (gp) => new git.TypicalGit(gp, this.gitRemoteResolver),
     );
     this.contentRootPath = prefs.contentRootPath;
     this.persistClientCargo = prefs.persistClientCargo;
@@ -329,7 +332,10 @@ export class PublicationDesignSystemArguments
   readonly navigation: lds.LightingDesignSystemNavigation;
   readonly assets: lds.AssetLocations;
   readonly branding: lds.LightningBranding;
-  readonly gitRemoteResolver: govn.RouteGitRemoteResolver<html.GitRemoteAnchor>;
+  readonly gitRemoteResolver: git.GitRemoteResolver;
+  readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
+    html.GitRemoteAnchor
+  >;
   readonly renderedAt = new Date();
 
   constructor(config: Configuration, routes: PublicationRoutes) {
@@ -345,7 +351,8 @@ export class PublicationDesignSystemArguments
       contextBarSubjectImageSrc: (assets) =>
         assets.image("/asset/image/brand/logo-icon-100x100.png"),
     };
-    this.gitRemoteResolver = config.routeGitRemoteResolver;
+    this.gitRemoteResolver = config.gitRemoteResolver;
+    this.routeGitRemoteResolver = config.routeGitRemoteResolver;
   }
 }
 

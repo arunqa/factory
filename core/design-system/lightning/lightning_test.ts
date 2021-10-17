@@ -32,11 +32,28 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
     assets,
     branding,
     renderedAt: new Date(),
-    gitRemoteResolver: (route, _branch) => ({
-      gitObjectPath: route.terminal?.qualifiedPath || "??",
-      remoteURL: route.terminal?.qualifiedPath || "??",
-      textContent: route.terminal?.qualifiedPath || "??",
+    gitRemoteResolver: (candidate, _branch, paths) => ({
+      // TODO: implement properly
+      gitObjectPath: typeof candidate === "string"
+        ? candidate
+        : candidate.entry,
+      remoteURL: typeof candidate === "string" ? candidate : candidate.entry,
+      paths,
     }),
+    routeGitRemoteResolver: (route, branch, paths) => {
+      const remote = dsArgs.gitRemoteResolver(
+        route.terminal?.qualifiedPath || "??",
+        branch,
+        paths,
+      );
+      return {
+        ...remote,
+        gitObjectPath: route.terminal?.qualifiedPath || "??",
+        remoteURL: route.terminal?.qualifiedPath || "??",
+        textContent: route.terminal?.qualifiedPath || "??",
+        paths,
+      };
+    },
   };
   const syncResult = ls.renderedSync(
     lds.layout(resource, lss, dsArgs),

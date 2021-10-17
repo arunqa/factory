@@ -96,6 +96,7 @@ export function discoverGitWorktreeExecutiveSync(
 
 export async function discoverGitWorktreeExecutive(
   fileSysPath: string,
+  resolveRemote: govn.GitRemoteResolver,
   options?: {
     readonly factory?: (
       fsp: string,
@@ -120,7 +121,7 @@ export async function discoverGitWorktreeExecutive(
 
   let executive: govn.GitExecutive | undefined;
   if (!options?.factory) {
-    executive = new TypicalGit(gitPaths);
+    executive = new TypicalGit(gitPaths, resolveRemote);
     await (executive as TypicalGit).init();
   } else {
     executive = await options?.factory(fileSysPath);
@@ -223,7 +224,10 @@ export class TypicalGit implements govn.GitExecutive {
   #initialized: boolean | undefined;
   #cached: govn.GitCacheablesSupplier | undefined;
 
-  constructor(gps: govn.GitPathsSupplier) {
+  constructor(
+    gps: govn.GitPathsSupplier,
+    readonly resolveRemote: govn.GitRemoteResolver,
+  ) {
     this.workTreePath = gps.workTreePath;
     this.gitDir = gps.gitDir;
   }

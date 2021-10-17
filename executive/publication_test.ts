@@ -7,7 +7,7 @@ const testPath = path.relative(
   Deno.cwd(),
   path.dirname(import.meta.url).substr("file://".length),
 );
-const config = new mod.Configuration({
+const prefs: mod.Preferences = {
   contentRootPath: path.join(testPath, "../", "docs", "content"),
   persistClientCargo: async (publishDest) => {
     await fsLink.symlinkDirectoryChildren(
@@ -20,13 +20,28 @@ const config = new mod.Configuration({
   destRootPath: path.join(testPath, "../", "docs", "public"),
   appName: "Publication Test",
   envVarNamesPrefix: "PUBCTL_",
-  routeGitRemoteResolver: (route, _branch) => ({
+  gitRemoteResolver: (candidate, _branch, paths) => ({
     // TODO: implement properly
-    gitObjectPath: route.terminal?.qualifiedPath || "??",
-    remoteURL: route.terminal?.qualifiedPath || "??",
-    textContent: route.terminal?.qualifiedPath || "??",
+    gitObjectPath: typeof candidate === "string" ? candidate : candidate.entry,
+    remoteURL: typeof candidate === "string" ? candidate : candidate.entry,
+    paths,
   }),
-});
+  routeGitRemoteResolver: (route, branch, paths) => {
+    const remote = prefs.gitRemoteResolver(
+      route.terminal?.qualifiedPath || "??",
+      branch,
+      paths,
+    );
+    return {
+      ...remote,
+      gitObjectPath: route.terminal?.qualifiedPath || "??",
+      remoteURL: route.terminal?.qualifiedPath || "??",
+      textContent: route.terminal?.qualifiedPath || "??",
+      paths,
+    };
+  },
+};
+const config = new mod.Configuration(prefs);
 const executive = new mod.Executive([new mod.TypicalPublication(config)]);
 
 Deno.test(`Publication discovered proper number of assets ${config.contentRootPath}`, async () => {

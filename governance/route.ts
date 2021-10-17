@@ -152,7 +152,11 @@ export interface RouteSupplier<Unit extends RouteNode = RouteNode>
 }
 
 export interface RouteGitRemoteResolver<Remote> {
-  (route: Route, branch: git.GitBranch): Remote | undefined;
+  (
+    route: Route,
+    branch: git.GitBranch,
+    paths: git.GitPathsSupplier,
+  ): Remote | undefined;
 }
 
 export interface RouteFactory {

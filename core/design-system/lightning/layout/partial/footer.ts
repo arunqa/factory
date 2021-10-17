@@ -1,12 +1,21 @@
+import * as html from "../../../../render/html/governance.ts";
 import * as ldsGovn from "../../governance.ts";
 
 export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
   layout,
 ) => {
-  const gitBranch = layout.dsArgs.git?.cached.currentBranch || "??";
-  const gitRemote = layout.activeRoute
-    ? layout.dsArgs.gitRemoteResolver(layout.activeRoute, gitBranch)
-    : undefined;
+  let gitBranch: string | undefined;
+  let gitRemote: html.GitRemoteAnchor | undefined;
+  if (layout.dsArgs.git) {
+    gitBranch = layout.dsArgs.git.cached.currentBranch || "??";
+    gitRemote = layout.activeRoute
+      ? layout.dsArgs.routeGitRemoteResolver(
+        layout.activeRoute,
+        gitBranch,
+        layout.dsArgs.git,
+      )
+      : undefined;
+  }
   // we hide the footer using display:none and then stickyFooter() in lightning-tail.js will display it in the proper place
   // deno-fmt-ignore
   return `<footer class="footer font-size-medium" style="position: absolute; bottom: 0; height: 60px; margin-top: 40px; width: 100%; display:none;">
