@@ -7,6 +7,7 @@ import * as m from "../../../core/std/model.ts";
 import * as fm from "../../../core/std/frontmatter.ts";
 import * as ldsGovn from "./governance.ts";
 import * as l from "./layout/mod.ts";
+import * as direc from "./directive/mod.ts";
 import * as route from "../../../core/std/route.ts";
 import * as rtree from "../../../core/std/route-tree.ts";
 import * as render from "../../../core/std/render.ts";
@@ -245,6 +246,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   extends html.DesignSystem<Layout> {
   readonly lightningAssetsBaseURL = "/lightning";
   readonly lightningAssetsPathUnits = ["lightning"];
+  readonly directives = [new direc.ToDoDirective(), ...direc.allCustomElements];
   constructor(
     readonly emptyContentModelLayoutSS:
       & govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier>
@@ -256,6 +258,10 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       },
   ) {
     super("LightningDS", new LightingDesignSystemLayouts());
+  }
+
+  allowedDirectives(filter?: (DE: html.DesignSystemDirective) => boolean) {
+    return filter ? this.directives.filter(filter) : this.directives;
   }
 
   assets(

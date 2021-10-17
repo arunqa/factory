@@ -459,23 +459,11 @@ export class TypicalPublication
   directiveExpectationsSupplier():
     | govn.DirectiveExpectationsSupplier<
       // deno-lint-ignore no-explicit-any
-      govn.DirectiveExpectation<any, string | undefined>
+      govn.DirectiveExpectation<any, any>
     >
     | undefined {
-    return {
-      allowedDirectives: () => [new ldsDirec.ToDoDirective()],
-    };
-  }
-
-  webComponentDirectives(): mdr.MarkdownWebComponentDirective[] {
-    return [
-      {
-        present: "block",
-        name: "kroki-diagram",
-        tag: "kroki-diagram",
-        allowedAttrs: ["type", "host", "output", "diagnose"],
-      },
-    ];
+    // by default we delegate directive expectations to the design system
+    return this.config.lightningDS;
   }
 
   /**
@@ -488,7 +476,6 @@ export class TypicalPublication
       new mdr.MarkdownLayouts({
         directiveExpectations: this.directiveExpectationsSupplier(),
         rewriteURL: this.config.rewriteMarkdownLink,
-        webComponents: this.webComponentDirectives(),
       }),
     );
   }

@@ -113,8 +113,13 @@ export class DesignSystemLayouts<Layout extends html.HtmlLayout>
   }
 }
 
+// deno-lint-ignore no-explicit-any
+export type DesignSystemDirective = govn.DirectiveExpectation<any, any>;
+
 export abstract class DesignSystem<Layout extends html.HtmlLayout>
-  implements govn.RenderStrategy<Layout, govn.HtmlSupplier> {
+  implements
+    govn.RenderStrategy<Layout, govn.HtmlSupplier>,
+    govn.DirectiveExpectationsSupplier<DesignSystemDirective> {
   constructor(
     readonly identity: govn.RenderStrategyIdentity,
     readonly layoutStrategies: DesignSystemLayouts<Layout>,
@@ -126,6 +131,10 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
     supplier: html.HtmlLayoutStrategySupplier<Layout>,
     ...args: unknown[]
   ): Layout;
+
+  abstract allowedDirectives(
+    filter?: (DE: DesignSystemDirective) => boolean,
+  ): DesignSystemDirective[];
 
   frontmatterLayoutStrategy(
     layoutArgs: DesignSystemLayoutArgumentsSupplier,

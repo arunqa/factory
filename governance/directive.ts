@@ -11,5 +11,5 @@ export interface DirectiveExpectationsSupplier<
   // deno-lint-ignore no-explicit-any
   DE extends DirectiveExpectation<any, any>,
 > {
-  readonly allowedDirectives: () => Iterable<DE>;
+  readonly allowedDirectives: (filter?: (d: DE) => boolean) => Iterable<DE>;
 }

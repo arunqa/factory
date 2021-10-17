@@ -68,7 +68,7 @@ export interface MarkdownLinkUrlRewriter {
   (parsedURL: string, renderEnv: Record<string, unknown>): string;
 }
 
-export interface MarkdownWebComponentDirective {
+export interface MarkdownClientCustomElementDirective {
   readonly present: "inline" | "block" | "both";
   readonly name: string;
   readonly tag: string;
@@ -77,6 +77,10 @@ export interface MarkdownWebComponentDirective {
   readonly destStringName?: string;
   readonly parseInner?: boolean;
 }
+
+export const isMarkdownClientCustomElementDirective = safety.typeGuard<
+  MarkdownClientCustomElementDirective
+>("present", "name", "tag");
 
 export interface MarkdownLayoutPreferences {
   readonly directiveExpectations?: govn.DirectiveExpectationsSupplier<
@@ -91,7 +95,6 @@ export interface MarkdownLayoutPreferences {
     rendered: string,
     resource: md.MarkdownResource,
   ) => string;
-  readonly webComponents?: MarkdownWebComponentDirective[];
   readonly topLevelMarkdownClassName?: string;
 }
 
@@ -123,7 +126,9 @@ export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
         // deno-lint-ignore no-explicit-any
         .use((md: any) => {
           for (
-            const de of this.mpl!.directiveExpectations!.allowedDirectives()
+            const de of this.mpl!.directiveExpectations!.allowedDirectives((
+              d,
+            ) => !isMarkdownClientCustomElementDirective(d))
           ) {
             md.inlineDirectives[de.identity] = (
               // deno-lint-ignore no-explicit-any
@@ -164,10 +169,10 @@ export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
             };
           }
         });
-    }
-    if (this.mpl?.webComponents) {
       this.mdiRenderer.use(markdownItDirectiveWC, {
-        components: this.mpl.webComponents,
+        components: this.mpl.directiveExpectations.allowedDirectives((d) =>
+          isMarkdownClientCustomElementDirective(d)
+        ),
       });
     }
   }
