@@ -2,18 +2,39 @@ export type GitEntry = string;
 export type GitWorkTreePath = string;
 export type GitDir = string;
 
-export interface GitRemote {
-  readonly gitObjectPath: string;
+export interface ManagedGitReference {
   readonly remoteURL: string;
   readonly paths: GitPathsSupplier;
 }
 
-export interface GitRemoteResolver {
+export interface GitRemoteAsset extends ManagedGitReference {
+  readonly gitAssetPath: string;
+}
+
+export interface GitRemoteAssetResolver {
   (
     candidate: GitEntry | GitEntryStatus,
     branch: GitBranch,
     paths: GitPathsSupplier,
-  ): GitRemote | undefined;
+  ): GitRemoteAsset | undefined;
+}
+
+export interface GitRemoteCommit<Field extends CommitField>
+  extends ManagedGitReference {
+  readonly commit: GitCommitBase<Field> | GitCommitBaseWithFiles<Field>;
+}
+
+export interface GitRemoteCommitResolver<Field extends CommitField> {
+  (
+    commit: GitCommitBase<Field> | GitCommitBaseWithFiles<Field>,
+    paths: GitPathsSupplier,
+  ): GitRemoteCommit<Field> | undefined;
+}
+
+export interface ManagedGitResolvers {
+  readonly remoteAsset: GitRemoteAssetResolver;
+  // deno-lint-ignore no-explicit-any
+  readonly remoteCommit: GitRemoteCommitResolver<any>;
 }
 
 export interface GitPathsSupplier {
@@ -70,6 +91,7 @@ export const gitCommitFieldMap = {
   body: "%b",
   rawBody: "%B",
 } as const;
+
 export type CommitField = keyof typeof gitCommitFieldMap;
 
 export type GitCommitBase<Field extends string> = Record<Field, string>;
@@ -88,6 +110,12 @@ export type GitBranch = string;
 
 export interface GitCacheablesSupplier extends GitPathsSupplier {
   readonly currentBranch: GitBranch | undefined;
+  readonly mostRecentCommit:
+    // deno-lint-ignore no-explicit-any
+    | GitCommitBase<any>
+    // deno-lint-ignore no-explicit-any
+    | GitCommitBaseWithFiles<any>
+    | void;
   readonly status: GitEntriesStatusesSupplier;
   readonly isDirty: boolean;
 }
@@ -97,6 +125,9 @@ export interface GitExecutive extends GitPathsSupplier {
   readonly currentBranch: (
     cmd?: GitRunCmdOptionsSupplier,
   ) => Promise<GitBranch | undefined>;
+  readonly mostRecentCommit: <Field extends CommitField>(
+    cmd?: GitRunCmdOptionsSupplier,
+  ) => Promise<GitCommitBase<Field> | GitCommitBaseWithFiles<Field> | void>;
   readonly status: (
     cmd?: GitRunCmdOptionsSupplier,
   ) => Promise<GitEntriesStatusesSupplier>;
@@ -104,5 +135,5 @@ export interface GitExecutive extends GitPathsSupplier {
   readonly log: <Field extends CommitField>() => Promise<
     GitCommitBase<Field>[] | GitCommitBaseWithFiles<Field>[] | void
   >;
-  readonly resolveRemote: GitRemoteResolver;
+  readonly mGitResolvers: ManagedGitResolvers;
 }

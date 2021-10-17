@@ -54,9 +54,9 @@ export interface GitlogOptions<Fields extends string = DefaultField> {
    */
   includeMergeCommitFiles?: boolean;
   /**
-   * The number of commits to return
+   * The number of commits to return, -1 for most recent, > 0 for more
    *
-   * @default 50
+   * @default 500
    */
   number?: number;
   /** An array of fields to return from the log */
@@ -221,7 +221,11 @@ function createCommandArguments<
     command.push("-m");
   }
 
-  command.push(`-n ${options.number}`);
+  if (options.number === -1) {
+    command.push(`-1`);
+  } else {
+    command.push(`-n ${options.number}`);
+  }
 
   command = addOptionalArguments(command, options);
 
@@ -271,7 +275,7 @@ function createCommandArguments<
 }
 
 export function gitLogCmd<Field extends govn.CommitField = DefaultField>(
-  userOptions?: GitlogOptions<Field>,
+  userOptions?: -1 | GitlogOptions<Field>,
   inherit?: Partial<Deno.RunOptions>,
 ): [
   grcos: govn.GitRunCmdOptionsSupplier,
@@ -285,7 +289,7 @@ export function gitLogCmd<Field extends govn.CommitField = DefaultField>(
   const options = {
     // deno-lint-ignore no-explicit-any
     ...(defaultOptions as any),
-    ...userOptions,
+    ...(typeof userOptions === "number" ? { number: -1 } : userOptions),
   };
   return [(gp) => {
     return {

@@ -32,23 +32,30 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
     assets,
     branding,
     renderedAt: new Date(),
-    gitRemoteResolver: (candidate, _branch, paths) => ({
-      // TODO: implement properly
-      gitObjectPath: typeof candidate === "string"
-        ? candidate
-        : candidate.entry,
-      remoteURL: typeof candidate === "string" ? candidate : candidate.entry,
-      paths,
-    }),
+    mGitResolvers: {
+      remoteAsset: (candidate, _branch, paths) => ({
+        // TODO: implement properly
+        gitAssetPath: typeof candidate === "string"
+          ? candidate
+          : candidate.entry,
+        remoteURL: typeof candidate === "string" ? candidate : candidate.entry,
+        paths,
+      }),
+      remoteCommit: (commit, paths) => ({
+        commit,
+        remoteURL: "??",
+        paths,
+      }),
+    },
     routeGitRemoteResolver: (route, branch, paths) => {
-      const remote = dsArgs.gitRemoteResolver(
+      const remote = dsArgs.mGitResolvers.remoteAsset(
         route.terminal?.qualifiedPath || "??",
         branch,
         paths,
       );
       return {
         ...remote,
-        gitObjectPath: route.terminal?.qualifiedPath || "??",
+        gitAssetPath: route.terminal?.qualifiedPath || "??",
         remoteURL: route.terminal?.qualifiedPath || "??",
         textContent: route.terminal?.qualifiedPath || "??",
         paths,

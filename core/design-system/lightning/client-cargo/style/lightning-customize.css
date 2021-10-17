@@ -17,6 +17,10 @@ footer a.git-remote-object {
     color: #cae6f1 !important
 }
 
+footer a.git-remote-commit {
+    color: #cae6f1 !important
+}
+
 /* SLDS */
 
 .slds-context-bar {

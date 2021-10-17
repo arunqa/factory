@@ -96,7 +96,7 @@ export function discoverGitWorktreeExecutiveSync(
 
 export async function discoverGitWorktreeExecutive(
   fileSysPath: string,
-  resolveRemote: govn.GitRemoteResolver,
+  mGitResolvers: govn.ManagedGitResolvers,
   options?: {
     readonly factory?: (
       fsp: string,
@@ -121,7 +121,7 @@ export async function discoverGitWorktreeExecutive(
 
   let executive: govn.GitExecutive | undefined;
   if (!options?.factory) {
-    executive = new TypicalGit(gitPaths, resolveRemote);
+    executive = new TypicalGit(gitPaths, mGitResolvers);
     await (executive as TypicalGit).init();
   } else {
     executive = await options?.factory(fileSysPath);
@@ -226,7 +226,7 @@ export class TypicalGit implements govn.GitExecutive {
 
   constructor(
     gps: govn.GitPathsSupplier,
-    readonly resolveRemote: govn.GitRemoteResolver,
+    readonly mGitResolvers: govn.ManagedGitResolvers,
   ) {
     this.workTreePath = gps.workTreePath;
     this.gitDir = gps.gitDir;
@@ -238,6 +238,7 @@ export class TypicalGit implements govn.GitExecutive {
       gitDir: this.gitDir,
       workTreePath: this.workTreePath,
       currentBranch: await this.currentBranch(),
+      mostRecentCommit: await this.mostRecentCommit(),
       status: await this.status(),
       isDirty: await this.isDirty(),
     };
@@ -318,6 +319,23 @@ export class TypicalGit implements govn.GitExecutive {
     const cmdResult = await this.run(cmdOptions);
     if (isGitCmdSuccessful(cmdResult)) {
       return cmdResult.stdOut;
+    } else {
+      return undefined;
+    }
+  }
+
+  async mostRecentCommit<
+    Field extends govn.CommitField = gl.DefaultField,
+  >(): Promise<
+    govn.GitCommitBase<Field> | govn.GitCommitBaseWithFiles<Field> | void
+  > {
+    const [cmdOptions, onSuccess] = gl.gitLogCmd<Field>(-1);
+    const cmdResult = await this.run(cmdOptions);
+    if (isGitCmdSuccessful(cmdResult)) {
+      const success = onSuccess(cmdResult.stdOut);
+      if (success && success.length > 0) {
+        return success[0];
+      }
     } else {
       return undefined;
     }

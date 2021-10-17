@@ -51,7 +51,7 @@ export function renderedTimelineActivity(
               </label>
             </div>` : ''}
             <h3 class="slds-truncate" title="${ta.subject}">
-              <a href="#">
+              <a href="${ta.href}">
                 <strong>${ta.subject}</strong>
               </a>
             </h3>

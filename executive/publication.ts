@@ -47,7 +47,7 @@ export interface Preferences {
   readonly appName: string;
   readonly envVarNamesPrefix: string;
   readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
-  readonly gitRemoteResolver: git.GitRemoteResolver;
+  readonly mGitResolvers: git.ManagedGitResolvers;
   readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
@@ -73,7 +73,7 @@ export class Configuration
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
   readonly logger: log.Logger;
-  readonly gitRemoteResolver: git.GitRemoteResolver;
+  readonly mGitResolvers: git.ManagedGitResolvers;
   readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
@@ -81,10 +81,10 @@ export class Configuration
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
 
   constructor(prefs: Preferences) {
-    this.gitRemoteResolver = prefs.gitRemoteResolver;
+    this.mGitResolvers = prefs.mGitResolvers;
     this.git = git.discoverGitWorktreeExecutiveSync(
       prefs.contentRootPath,
-      (gp) => new git.TypicalGit(gp, this.gitRemoteResolver),
+      (gp) => new git.TypicalGit(gp, this.mGitResolvers),
     );
     this.contentRootPath = prefs.contentRootPath;
     this.persistClientCargo = prefs.persistClientCargo;
@@ -332,7 +332,7 @@ export class PublicationDesignSystemArguments
   readonly navigation: lds.LightingDesignSystemNavigation;
   readonly assets: lds.AssetLocations;
   readonly branding: lds.LightningBranding;
-  readonly gitRemoteResolver: git.GitRemoteResolver;
+  readonly mGitResolvers: git.ManagedGitResolvers;
   readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
@@ -351,7 +351,7 @@ export class PublicationDesignSystemArguments
       contextBarSubjectImageSrc: (assets) =>
         assets.image("/asset/image/brand/logo-icon-100x100.png"),
     };
-    this.gitRemoteResolver = config.gitRemoteResolver;
+    this.mGitResolvers = config.mGitResolvers;
     this.routeGitRemoteResolver = config.routeGitRemoteResolver;
   }
 }

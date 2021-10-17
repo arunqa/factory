@@ -20,7 +20,10 @@ Deno.test(`Git in ${testPath}`, async () => {
     "../../.git",
   );
 
-  const git = new mod.TypicalGit(gitPaths, () => undefined);
+  const git = new mod.TypicalGit(gitPaths, {
+    remoteAsset: () => undefined,
+    remoteCommit: () => undefined,
+  });
   await git.init();
   const currentBranch = await git.currentBranch();
   const isDirty = await git.isDirty();
@@ -34,7 +37,10 @@ Deno.test(`Git in ${testPath}`, async () => {
 });
 
 Deno.test(`Git Executive in ${testPath}`, async () => {
-  const git = await mod.discoverGitWorktreeExecutive(testPath, () => undefined);
+  const git = await mod.discoverGitWorktreeExecutive(testPath, {
+    remoteAsset: () => undefined,
+    remoteCommit: () => undefined,
+  });
   ta.assert(git);
 
   const currentBranch = await git.currentBranch();
