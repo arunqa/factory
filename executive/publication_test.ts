@@ -20,6 +20,12 @@ const config = new mod.Configuration({
   destRootPath: path.join(testPath, "../", "docs", "public"),
   appName: "Publication Test",
   envVarNamesPrefix: "PUBCTL_",
+  routeGitRemoteResolver: (route, _branch) => ({
+    // TODO: implement properly
+    gitObjectPath: route.terminal?.qualifiedPath || "??",
+    remoteURL: route.terminal?.qualifiedPath || "??",
+    textContent: route.terminal?.qualifiedPath || "??",
+  }),
 });
 const executive = new mod.Executive([new mod.TypicalPublication(config)]);
 

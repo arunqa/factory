@@ -2,6 +2,11 @@ export type GitEntry = string;
 export type GitWorkTreePath = string;
 export type GitDir = string;
 
+export interface GitRemote {
+  readonly gitObjectPath: string;
+  readonly remoteURL: string;
+}
+
 export interface GitPathsSupplier {
   readonly workTreePath: GitWorkTreePath; // git --work-tree argument
   readonly gitDir: GitDir; // git --git-dir argument

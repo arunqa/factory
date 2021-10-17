@@ -3,6 +3,10 @@ import * as ldsGovn from "../../governance.ts";
 export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
   layout,
 ) => {
+  const gitBranch = layout.dsArgs.git?.cached.currentBranch || "??";
+  const gitRemote = layout.activeRoute
+    ? layout.dsArgs.gitRemoteResolver(layout.activeRoute, gitBranch)
+    : undefined;
   // we hide the footer using display:none and then stickyFooter() in lightning-tail.js will display it in the proper place
   // deno-fmt-ignore
   return `<footer class="footer font-size-medium" style="position: absolute; bottom: 0; height: 60px; margin-top: 40px; width: 100%; display:none;">
@@ -10,7 +14,15 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
       <article class="slds-text-align_center slds-p-top_small slds-p-bottom_large">
         <p class="slds-text-body_small">© 1997-<script>document.write(new Date().getFullYear())</script> Netspective Media LLC. All Rights Reserved.</p>
         <p class="slds-text-body_small">Publication created <span is="time-ago" date="${layout.dsArgs.renderedAt}"/></p>
-        <p class="slds-text-body_small">${layout.dsArgs.git ? ` 🌲 ${layout.dsArgs.git?.cached.currentBranch || "??"}` : "not in Git work tree"} 📄 Modified <span is="time-ago" date="${layout.activeRoute?.terminal?.lastModifiedAt}"/></p>
+        <p class="slds-text-body_small">
+        ${gitRemote 
+          ? `📄 <a href="${gitRemote.remoteURL}" title="${gitRemote.gitObjectPath}" class="git-remote-object">${gitRemote.textContent}</a>`
+          : `<!-- no git remote -->`}
+        ${layout.activeRoute?.terminal?.lastModifiedAt 
+          ? `modified <span is="time-ago" date="${layout.activeRoute?.terminal?.lastModifiedAt}" title="${layout.activeRoute?.terminal?.lastModifiedAt}"/>`
+          : '<!-- no layout.activeRoute?.terminal?.lastModifiedAt -->'}
+        ${layout.dsArgs.git ? ` 🌲 ${gitBranch}` : "<!-- not in Git work tree -->"}
+        </p>
       </article>
     </div>
   </footer>`;

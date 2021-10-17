@@ -47,6 +47,9 @@ export interface Preferences {
   readonly appName: string;
   readonly envVarNamesPrefix: string;
   readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
+  readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
+    html.GitRemoteAnchor
+  >;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
   readonly assetsMetricsWalkers?: (
     config: Configuration,
@@ -60,7 +63,7 @@ export class Configuration
   readonly envVarNamesPrefix: string;
   readonly assetsMetricsWalkers: fsT.FileSysAssetWalker[];
   readonly git?: git.GitExecutive;
-  readonly fsRouteFactory = new route.FileSysRouteFactory();
+  readonly fsRouteFactory: route.FileSysRouteFactory;
   readonly extensionsManager = new e.CachedExtensions();
   readonly observabilityRoute: govn.Route;
   readonly diagnosticsRoute: govn.Route;
@@ -69,6 +72,9 @@ export class Configuration
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
   readonly logger: log.Logger;
+  readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
+    html.GitRemoteAnchor
+  >;
   readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
 
@@ -82,6 +88,8 @@ export class Configuration
     this.destRootPath = prefs.destRootPath;
     this.appName = prefs.appName;
     this.logger = log.getLogger();
+    this.routeGitRemoteResolver = prefs.routeGitRemoteResolver;
+    this.fsRouteFactory = new route.FileSysRouteFactory();
     this.observabilityRoute = cpC.observabilityRoute(this.fsRouteFactory);
     this.diagnosticsRoute = cpC.diagnosticsRoute(this.fsRouteFactory);
     this.envVarNamesPrefix = prefs.envVarNamesPrefix;
@@ -321,6 +329,7 @@ export class PublicationDesignSystemArguments
   readonly navigation: lds.LightingDesignSystemNavigation;
   readonly assets: lds.AssetLocations;
   readonly branding: lds.LightningBranding;
+  readonly gitRemoteResolver: govn.RouteGitRemoteResolver<html.GitRemoteAnchor>;
   readonly renderedAt = new Date();
 
   constructor(config: Configuration, routes: PublicationRoutes) {
@@ -336,6 +345,7 @@ export class PublicationDesignSystemArguments
       contextBarSubjectImageSrc: (assets) =>
         assets.image("/asset/image/brand/logo-icon-100x100.png"),
     };
+    this.gitRemoteResolver = config.routeGitRemoteResolver;
   }
 }
 

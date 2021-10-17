@@ -3,6 +3,7 @@ import * as n from "./nature.ts";
 import * as e from "./extension.ts";
 import * as render from "./render.ts";
 import * as fm from "./frontmatter.ts";
+import * as git from "../lib/git/mod.ts";
 
 export type RouteUnitName = string;
 export type RouteRelativeURL = string;
@@ -148,6 +149,10 @@ export interface ParsedRouteSupplier<Unit extends RouteUnit = RouteUnit> {
 export interface RouteSupplier<Unit extends RouteNode = RouteNode>
   extends RouteUnitsSupplier<Unit> {
   readonly route: Route<Unit>;
+}
+
+export interface RouteGitRemoteResolver<Remote> {
+  (route: Route, branch: git.GitBranch): Remote | undefined;
 }
 
 export interface RouteFactory {

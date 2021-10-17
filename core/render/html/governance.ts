@@ -1,6 +1,11 @@
 import * as govn from "../../../governance/mod.ts";
 import * as ds from "./design-system.ts";
 import * as contrib from "../contributions.ts";
+import * as git from "../../../lib/git/mod.ts";
+
+export interface GitRemoteAnchor extends git.GitRemote {
+  readonly textContent: string;
+}
 
 export interface HtmlLayoutClientCargoPersister {
   (destination: string): Promise<void>;

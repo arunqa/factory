@@ -13,6 +13,10 @@ footer {
     color: #cae6f1;
 }
 
+footer a.git-remote-object {
+    color: #cae6f1 !important
+}
+
 /* SLDS */
 
 .slds-context-bar {
