@@ -49,11 +49,21 @@ export const krokiCE: LightningCustomElementMarkdownDirective = {
   encountered,
 };
 
+export const timeAgoCE: LightningCustomElementMarkdownDirective = {
+  identity: "time-ago",
+  present: "inline",
+  name: "time-ago",
+  tag: "time-ago",
+  allowedAttrs: ["date"],
+  encountered,
+};
+
 export const allCustomElements: LightningCustomElementMarkdownDirective[] = [
   agGridCE,
   apacheEChartsCE,
   chartJsCE,
   krokiCE,
+  timeAgoCE,
 ];
 
 export default allCustomElements;

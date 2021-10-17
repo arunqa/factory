@@ -310,3 +310,18 @@ function getTimeAgo(date) {
   const count = Math.floor(secondsAgo / divisor)
   return `${count} ${unit}${(count > 1) ? 's' : ''} ago`
 }
+
+/**
+ * Create a custom element which will take any date and show long ago it was.
+ * Usage in HTML:
+ *     <span is="time-ago" date="valid Date string"/>
+ * `date` is a Javascript Date string that will be passed into new Date(text)
+ */
+customElements.define('time-ago',
+  class TimeAgoSpanElement extends HTMLSpanElement {
+    static get observedAttributes() { return ['date']; }
+    connectedCallback() { this.innerHTML = getTimeAgo(new Date(this.getAttribute('date'))); }
+  },
+  { extends: 'span' }
+);
+
