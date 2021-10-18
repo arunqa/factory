@@ -11,7 +11,7 @@ export function lightningTemplate(identity: string): ldsGovn.LightningTemplate {
 }
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const pageHeadingPartial: ldsGovn.LightningPartial = (layout) => `
+export const pageHeadingPartial: ldsGovn.LightningPartial = (layout) => `<!-- pageHeadingPartial -->
 ${layout.activeTreeNode ? `<div class="schema-header">
   <h1 class="slds-text-heading_large">
     <strong>${layout.layoutText.title(layout)}</strong>
@@ -19,107 +19,91 @@ ${layout.activeTreeNode ? `<div class="schema-header">
 </div>`: ''}`
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const homePage = lightningTemplate("lds/page/home")`<!DOCTYPE html>
-<html lang="en"> <!-- 'ldsHomePage' layout in ${import.meta.url} -->
+export const typicalPageSurroundBodyPrePartial: ldsGovn.LightningPartial = (layout) => `<!-- typicalPageSurroundBodyPre -->
   <head>
-    ${p.typicalHeadPartial}
-    ${(layout) => layout.contributions.scripts.contributions()}
-    ${(layout) => layout.contributions.stylesheets.contributions()}
+    ${p.typicalHeadPartial(layout)}
+    ${layout.contributions.scripts.contributions().contributions.join("\n")}
+    ${layout.contributions.stylesheets.contributions().contributions.join("\n")}
   </head>
-  <body${p.bodyAttrsPartial}>
-  ${p.redirectConsoleContainerPartial}
-  ${p.resourceDiagnosticsPartial}
-  <header>
-  ${p.contextBarPartial}
-  </header>
-  
-  <main class="container flex slds-m-vertical_small slds-container--center"> 
-    <div class="slds-container--xlarge slds-container--center">
-    ${p.typicalBodyPartial}
-    </div>
-    ${p.layoutDiagnosticsPartial}
-  </main>
+  <body${p.bodyAttrsPartial(layout)}>
+    ${p.redirectConsoleContainerPartial(layout)}
+    ${p.resourceDiagnosticsPartial(layout)}
+    <header>
+      ${p.contextBarPartial(layout)}
+    </header>`
 
-  ${p.footerFixedCopyrightBuildPartial}
-  ${p.typicalTailPartial}
-  ${p.redirectConsolePartial}
-  </body>
+// deno-fmt-ignore (because we don't want ${...} wrapped)
+export const typicalPageSurroundBodyPostPartial: ldsGovn.LightningPartial = (layout) => `<!-- typicalPageSurroundBodyPost -->
+    ${p.footerFixedCopyrightBuildPartial(layout)}
+    ${p.typicalTailPartial(layout)}
+    ${p.redirectConsolePartial(layout)}
+  </body>`
+
+// deno-fmt-ignore (because we don't want ${...} wrapped)
+export const homePage = lightningTemplate("lds/page/home")`<!DOCTYPE html>
+<html lang="en"> <!-- 'homePage' layout in ${import.meta.url} -->
+    ${typicalPageSurroundBodyPrePartial}
+  
+    <main class="container flex slds-m-vertical_small slds-container--center"> 
+      <div class="slds-container--xlarge slds-container--center">
+      ${p.typicalBodyPartial}
+      </div>
+      ${p.layoutDiagnosticsPartial}
+    </main>
+
+    ${typicalPageSurroundBodyPostPartial}
 </html>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const innerIndexPage = lightningTemplate("lds/page/inner-index")`<!DOCTYPE html>
-<html lang="en"> <!-- 'ldsInnerIndexPage' layout in ${import.meta.url} -->
-  <head>
-    ${p.typicalHeadPartial}
-    ${(layout) => layout.contributions.scripts.contributions()}
-    ${(layout) => layout.contributions.stylesheets.contributions()}
-  </head>
-  <body${p.bodyAttrsPartial}>
-  ${p.redirectConsoleContainerPartial}
-  ${p.resourceDiagnosticsPartial}
-  <header>
-  ${p.contextBarPartial}
-  </header>
+<html lang="en"> <!-- 'innerIndexPage' layout in ${import.meta.url} -->
+    ${typicalPageSurroundBodyPrePartial}
   
-  <main class="container flex slds-m-vertical_small">
-  <div class="slds-grid slds-wrap">
-    <div class="slds-grid slds-grid_align-center slds-gutters_medium slds-var-m-around_medium">
-      <div>
-        ${p.breadcrumbsPartial}
-        ${pageHeadingPartial}
-        <div id="content" class="slds-m-top_x-large">
-        ${p.typicalBodyPartial}
+    <main class="container flex slds-m-vertical_small">
+      <div class="slds-grid slds-wrap">
+        <div class="slds-grid slds-grid_align-center slds-gutters_medium slds-var-m-around_medium">
+          <div>
+            ${p.breadcrumbsPartial}
+            ${pageHeadingPartial}
+            <div id="content" class="slds-m-top_x-large">
+            ${p.typicalBodyPartial}
+            </div>
+            ${p.layoutDiagnosticsPartial}
+          </div>
         </div>
-        ${p.layoutDiagnosticsPartial}
       </div>
-    </div>
-  </div>
-  </main>
-  ${p.footerFixedCopyrightBuildPartial}
-  ${p.typicalTailPartial}
-  ${p.redirectConsolePartial}
-  </body>
+    </main>
+
+    ${typicalPageSurroundBodyPostPartial}
 </html>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const innerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto")`<!DOCTYPE html>
-<html lang="en"> <!-- 'ldsInnerIndexAutoPage' layout in ${import.meta.url} -->
-  <head>
-    ${p.typicalHeadPartial}
-    ${(layout) => layout.contributions.scripts.contributions()}
-    ${(layout) => layout.contributions.stylesheets.contributions()}
-  </head>
-  <body${p.bodyAttrsPartial}>
-  ${p.redirectConsoleContainerPartial}
-  ${p.resourceDiagnosticsPartial}
-  <header>
-  ${p.contextBarPartial}
-  </header>
+<html lang="en"> <!-- 'innerIndexAutoPage' layout in ${import.meta.url} -->
+    ${typicalPageSurroundBodyPrePartial}
   
-  <main class="container flex slds-m-vertical_small">
-  <div class="slds-grid slds-wrap">
-    <div class="slds-grid slds-grid_align-center slds-gutters_medium slds-var-m-around_medium">
-      <div>
-        ${p.breadcrumbsWithoutTerminalPartial}
-        ${pageHeadingPartial}
-        <div id="content" class="slds-m-top_x-large">
-        ${(layout, body) => layout.model.isContentAvailable ? p.typicalBodyPartial(layout, body) : ''}
-        ${p.autoIndexCardsBodyPartial}
+    <main class="container flex slds-m-vertical_small">
+    <div class="slds-grid slds-wrap">
+      <div class="slds-grid slds-grid_align-center slds-gutters_medium slds-var-m-around_medium">
+        <div>
+          ${p.breadcrumbsWithoutTerminalPartial}
+          ${pageHeadingPartial}
+          <div id="content" class="slds-m-top_x-large">
+          ${(layout, body) => layout.model.isContentAvailable ? p.typicalBodyPartial(layout, body) : ''}
+          ${p.autoIndexCardsBodyPartial}
+          </div>
+          ${p.layoutDiagnosticsPartial}
         </div>
-        ${p.layoutDiagnosticsPartial}
       </div>
-    </div>
-  </div> 
-  </main>
-  ${p.footerFixedCopyrightBuildPartial}
-  ${p.typicalTailPartial}
-  ${p.redirectConsolePartial}
-  </body>
+    </div> 
+    </main>
+
+    ${typicalPageSurroundBodyPostPartial}
 </html>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const noDefinitiveLayoutPage = lightningTemplate("lds/page/no-layout")`<!DOCTYPE html>
-<html lang="en"> <!-- 'ldsNoDefinitiveLayoutPage' layout in ${import.meta.url} -->
+<html lang="en"> <!-- 'noDefinitiveLayoutPage' layout in ${import.meta.url} -->
   <head>
     ${p.typicalHeadPartial}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/styles/default.min.css">
