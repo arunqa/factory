@@ -1,13 +1,24 @@
 import * as ldsGovn from "../../governance.ts";
 
+const d3 = "d3";
 const mermaid = "mermaid";
 const kroki = "kroki";
+const markmap = "markmap";
 
 function diagramScripts(fmProperty: unknown): string {
   const html: string[] = [];
   const specs: unknown[] = Array.isArray(fmProperty)
     ? fmProperty
     : [fmProperty];
+
+  let d3Imported = false;
+  const importD3 = () => {
+    if (!d3Imported) {
+      html.push(`<script src="https://cdn.jsdelivr.net/npm/d3"></script>`);
+      d3Imported = true;
+    }
+  };
+
   for (const spec of specs) {
     if (typeof spec === "string") {
       switch (spec) {
@@ -21,6 +32,18 @@ function diagramScripts(fmProperty: unknown): string {
           // TODO: fix /lighting so that it uses baseURL
           html.push(
             `<script type="module" src="/lightning/component/kroki-diagram.js"></script>`,
+          );
+          break;
+
+        case d3:
+          importD3();
+          break;
+
+        case markmap:
+          importD3();
+          // TODO: fix /lighting so that it uses baseURL
+          html.push(
+            `<script type="module" src="/lightning/component/markmap-diagram.js"></script>`,
           );
           break;
       }

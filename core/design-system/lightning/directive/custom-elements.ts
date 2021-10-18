@@ -49,6 +49,15 @@ export const krokiCE: LightningCustomElementMarkdownDirective = {
   encountered,
 };
 
+export const markmapCE: LightningCustomElementMarkdownDirective = {
+  identity: "markmap",
+  present: "block",
+  name: "markmap",
+  tag: "markmap-diagram",
+  allowedAttrs: ["diagnose"],
+  encountered,
+};
+
 export const timeAgoCE: LightningCustomElementMarkdownDirective = {
   identity: "time-ago",
   present: "inline",
@@ -63,6 +72,7 @@ export const allCustomElements: LightningCustomElementMarkdownDirective[] = [
   apacheEChartsCE,
   chartJsCE,
   krokiCE,
+  markmapCE,
   timeAgoCE,
 ];
 
