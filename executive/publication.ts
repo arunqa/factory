@@ -68,7 +68,7 @@ export class Configuration
   readonly extensionsManager = new e.CachedExtensions();
   readonly observabilityRoute: govn.Route;
   readonly diagnosticsRoute: govn.Route;
-  readonly lightningDS = new lds.LightingDesignSystem();
+  readonly designSystem: lds.LightingDesignSystem<lds.LightningLayout>;
   readonly contentRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
@@ -93,6 +93,7 @@ export class Configuration
     this.logger = log.getLogger();
     this.routeGitRemoteResolver = prefs.routeGitRemoteResolver;
     this.fsRouteFactory = new route.FileSysRouteFactory();
+    this.designSystem = this.constructDesignSystem();
     this.observabilityRoute = cpC.observabilityRoute(this.fsRouteFactory);
     this.diagnosticsRoute = cpC.diagnosticsRoute(this.fsRouteFactory);
     this.envVarNamesPrefix = prefs.envVarNamesPrefix;
@@ -110,6 +111,10 @@ export class Configuration
         options: assetMetricsWalkOptions,
       }];
     this.rewriteMarkdownLink = prefs.rewriteMarkdownLink;
+  }
+
+  constructDesignSystem() {
+    return new lds.LightingDesignSystem();
   }
 }
 
@@ -345,7 +350,7 @@ export class PublicationDesignSystemArguments
       true,
       routes.navigationTree,
     );
-    this.assets = config.lightningDS.assets();
+    this.assets = config.designSystem.assets();
     this.branding = {
       contextBarSubject: config.appName,
       contextBarSubjectImageSrc: (assets) =>
@@ -480,7 +485,7 @@ export class TypicalPublication
     >
     | undefined {
     // by default we delegate directive expectations to the design system
-    return this.config.lightningDS;
+    return this.config.designSystem;
   }
 
   /**
@@ -566,7 +571,7 @@ export class TypicalPublication
 
   persistersRefinery() {
     return r.pipelineUnitsRefineryUntyped(
-      this.config.lightningDS.prettyUrlsHtmlProducer(
+      this.config.designSystem.prettyUrlsHtmlProducer(
         this.config.destRootPath,
         this.ds,
         this.fspEventsEmitter,
