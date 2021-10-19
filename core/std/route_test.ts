@@ -9,7 +9,9 @@ const testPath = path.relative(
   path.dirname(import.meta.url).substr("file://".length),
 );
 
-const routeFactory = new mod.TypicalRouteFactory();
+const routeFactory = new mod.TypicalRouteFactory(
+  mod.defaultRouteLocationResolver(),
+);
 
 const root1: govn.RouteUnit = {
   unit: "home",
@@ -398,14 +400,16 @@ Deno.test(`route locations`, () => {
     "/home/module2/component1/service1",
   );
   ta.assertEquals(
-    route.terminal.location("/base"),
+    route.terminal.location({ base: "/base" }),
     "/base/home/module2/component1/service1",
   );
 });
 
 Deno.test(`FileSysRoutes`, async () => {
   const em = new CachedExtensions();
-  const fsRouteFactory = new mod.FileSysRouteFactory();
+  const fsRouteFactory = new mod.FileSysRouteFactory(
+    mod.defaultRouteLocationResolver(),
+  );
   const base = path.resolve(testPath, "route_test", "content");
   const index = await fsRouteFactory.fsRoute(
     path.resolve(base, "index.md"),

@@ -17,7 +17,7 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
   };
   // ***** TODO ****
   // ***** REPLACE surface in context ****
-  const rf = new rt.TypicalRouteFactory();
+  const rf = new rt.TypicalRouteFactory(rt.defaultRouteLocationResolver());
   const routeTree = new rtree.TypicalRouteTree(rf);
   const layoutText = new mod.LightingDesignSystemText();
   const navigation = new mod.LightingDesignSystemNavigation(true, routeTree);

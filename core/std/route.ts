@@ -91,24 +91,19 @@ export function isRouteSupplier(
 
 export function routeNodeLocation(
   ru: govn.RouteNode,
-  baseOrOptions?:
-    | govn.RouteLocation
-    | govn.RouteLocationOptions,
+  options?: govn.RouteLocationOptions,
 ): govn.RouteLocation {
   const dest = ru.qualifiedPath;
-  if (typeof baseOrOptions === "string") {
-    return `${baseOrOptions}${dest}`;
-  }
-  if (baseOrOptions) {
-    if (baseOrOptions.routeLocation) {
-      return baseOrOptions.routeLocation(ru, baseOrOptions.base);
+  if (options) {
+    if (options.routeLocation) {
+      return options.routeLocation(ru, options.base);
     }
-    if (baseOrOptions.routeURL) {
-      const url = baseOrOptions.routeURL(ru, baseOrOptions.base);
+    if (options.routeURL) {
+      const url = options.routeURL(ru, options.base);
       return url.toString();
     }
-    if (baseOrOptions.base) {
-      return `${baseOrOptions.base}${dest}`;
+    if (options.base) {
+      return `${options.base}${dest}`;
     }
   }
   return `${dest}`;
@@ -274,7 +269,42 @@ export function resolveRouteUnit(
   return noMatch ? noMatch(unitIndex) : undefined;
 }
 
+export interface RouteLocationResolver {
+  (
+    node: govn.RouteNode,
+    options?: govn.RouteLocationOptions,
+  ): govn.RouteLocation;
+}
+
+export function defaultRouteLocationResolver(
+  resolverOptions?: {
+    readonly defaultOptions?: govn.RouteLocationOptions;
+    readonly enhance?: (
+      suggested: govn.RouteLocation,
+      node: govn.RouteNode,
+      options?: govn.RouteLocationOptions,
+    ) => govn.RouteLocation;
+  },
+): RouteLocationResolver {
+  const enhance = resolverOptions?.enhance;
+  return enhance
+    ? ((node, options) => {
+      // first run the default behavior
+      const result = routeNodeLocation(
+        node,
+        options || resolverOptions?.defaultOptions,
+      );
+      // now wrap the customization
+      return enhance(result, node, options || resolverOptions?.defaultOptions);
+    })
+    : routeNodeLocation;
+}
+
 export class TypicalRouteFactory implements govn.RouteFactory {
+  constructor(
+    readonly routeLocationResolver: RouteLocationResolver,
+  ) {
+  }
   /**
    * Return a units array and accessor suitable for preparing routes. This
    * method may be overridden to replace accessor or otherwise modify the route
@@ -309,7 +339,7 @@ export class TypicalRouteFactory implements govn.RouteFactory {
         level: i,
         qualifiedPath,
         resolve: (relative) => resolveRouteUnit(relative, i, result),
-        location: (baseOrOptions) => routeNodeLocation(node, baseOrOptions),
+        location: (options) => this.routeLocationResolver(node, options),
         isIntermediate: i < terminalIndex,
         inRoute: (route) => route.inRoute(node) ? true : false,
         ...component,
@@ -372,7 +402,7 @@ export class TypicalRouteFactory implements govn.RouteFactory {
       level: terminalIndex,
       qualifiedPath,
       resolve: (relative) => resolveRouteUnit(relative, terminalIndex, result),
-      location: (baseOrOptions) => routeNodeLocation(node, baseOrOptions),
+      location: (options) => this.routeLocationResolver(node, options),
       isIntermediate: false,
       inRoute: (route) => route.inRoute(node) ? true : false,
       ...child,
@@ -570,7 +600,7 @@ export class FileSysRouteFactory extends TypicalRouteFactory {
       lastModifiedAt: stat.mtime || undefined,
       createdAt: stat.birthtime || undefined,
       resolve: (relative) => resolveRouteUnit(relative, level, result),
-      location: (baseOrOptions) => routeNodeLocation(routeUnit, baseOrOptions),
+      location: (options) => this.routeLocationResolver(routeUnit, options),
       inRoute: (route) => route.inRoute(routeUnit) ? true : false,
     };
     result.units.push(routeUnit);

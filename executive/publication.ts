@@ -51,6 +51,7 @@ export interface Preferences {
   readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
+  readonly routeLocationResolver?: route.RouteLocationResolver;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
   readonly assetsMetricsWalkers?: (
     config: Configuration,
@@ -65,6 +66,7 @@ export class Configuration
   readonly assetsMetricsWalkers: fsT.FileSysAssetWalker[];
   readonly git?: git.GitExecutive;
   readonly fsRouteFactory: route.FileSysRouteFactory;
+  readonly routeLocationResolver?: route.RouteLocationResolver;
   readonly extensionsManager = new e.CachedExtensions();
   readonly observabilityRoute: govn.Route;
   readonly diagnosticsRoute: govn.Route;
@@ -92,7 +94,10 @@ export class Configuration
     this.appName = prefs.appName;
     this.logger = log.getLogger();
     this.routeGitRemoteResolver = prefs.routeGitRemoteResolver;
-    this.fsRouteFactory = new route.FileSysRouteFactory();
+    this.routeLocationResolver = prefs.routeLocationResolver;
+    this.fsRouteFactory = new route.FileSysRouteFactory(
+      this.routeLocationResolver || route.defaultRouteLocationResolver(),
+    );
     this.designSystem = this.constructDesignSystem();
     this.observabilityRoute = cpC.observabilityRoute(this.fsRouteFactory);
     this.diagnosticsRoute = cpC.diagnosticsRoute(this.fsRouteFactory);

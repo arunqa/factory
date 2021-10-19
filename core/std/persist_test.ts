@@ -29,7 +29,9 @@ const m2Component1Service1: govn.RouteUnit = {
 };
 
 Deno.test(`route file destinations`, () => {
-  const routeFactory = new r.TypicalRouteFactory();
+  const routeFactory = new r.TypicalRouteFactory(
+    r.defaultRouteLocationResolver(),
+  );
   const homeRoute: govn.RouteUnits = { units: [root1] };
   const module2Route: govn.RouteUnits = {
     units: [...homeRoute.units, module2],
@@ -51,7 +53,7 @@ Deno.test(`route file destinations`, () => {
     "/home/module2/component1/service1",
   );
   ta.assertEquals(
-    route.terminal.location("/base"),
+    route.terminal.location({ base: "/base" }),
     "/base/home/module2/component1/service1",
   );
 

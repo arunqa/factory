@@ -49,9 +49,7 @@ export interface RouteUnit
   readonly isIntermediate?: boolean;
   readonly aliases?: RouteAlias[];
   readonly targetableID?: TargetableRouteIdentity;
-  readonly location?: (
-    baseOrOptions?: RouteLocation | RouteLocationOptions,
-  ) => RouteLocation;
+  readonly location?: (options?: RouteLocationOptions) => RouteLocation;
 }
 
 export interface RouteTargetsSupplier {
@@ -100,9 +98,7 @@ export interface RouteNode extends RouteUnit {
       parseError?: boolean,
     ) => RouteUnit,
   ) => RouteUnit | undefined;
-  readonly location: (
-    baseOrOptions?: RouteLocation | RouteLocationOptions,
-  ) => RouteLocation;
+  readonly location: (options?: RouteLocationOptions) => RouteLocation;
   readonly inRoute: (route: Route) => boolean;
   readonly lastModifiedAt?: Date;
   readonly createdAt?: Date;

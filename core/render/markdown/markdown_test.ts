@@ -6,7 +6,9 @@ import * as c from "../../../core/std/content.ts";
 import * as md from "../../resource/markdown.ts";
 import * as mod from "./mod.ts";
 
-const routeFactory = new route.TypicalRouteFactory();
+const routeFactory = new route.TypicalRouteFactory(
+  route.defaultRouteLocationResolver(),
+);
 const mds = new mod.MarkdownRenderStrategy(new mod.MarkdownLayouts());
 const renderer =
   mds.layoutStrategies.defaultLayoutStrategySupplier.layoutStrategy;

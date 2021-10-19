@@ -21,7 +21,9 @@ const observability = new obs.Observability(
 );
 const testGlobPrime = "**/*";
 const extensionsManager = new e.CachedExtensions();
-const fsRouteFactory = new r.FileSysRouteFactory();
+const fsRouteFactory = new r.FileSysRouteFactory(
+  r.defaultRouteLocationResolver(),
+);
 const fsgo = new mod.FileSysGlobsOriginator<fs.WalkEntry>(
   [{
     humanFriendlyName: `test top level`,
