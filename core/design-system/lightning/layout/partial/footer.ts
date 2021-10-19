@@ -39,7 +39,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
         </p>
         <p class="slds-text-body_small">
         ${remoteAsset 
-          ? `📄 <a href="${remoteAsset.remoteURL}" title="${remoteAsset.gitAssetPath}" class="git-remote-object">${remoteAsset.textContent}</a>`
+          ? `📄 <a href="${remoteAsset.href}" title="${remoteAsset.assetPathRelToWorkTree}" class="git-remote-object">${remoteAsset.textContent}</a>`
           : `<!-- no git remote -->`}
         ${layout.activeRoute?.terminal?.lastModifiedAt 
           ? `modified <span is="time-ago" date="${layout.activeRoute?.terminal?.lastModifiedAt}" title="${layout.activeRoute?.terminal?.lastModifiedAt}"/>`

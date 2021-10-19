@@ -47,7 +47,7 @@ export interface Preferences {
   readonly appName: string;
   readonly envVarNamesPrefix: string;
   readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
-  readonly mGitResolvers: git.ManagedGitResolvers;
+  readonly mGitResolvers: () => git.ManagedGitResolvers<string>;
   readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
@@ -75,7 +75,7 @@ export class Configuration
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
   readonly logger: log.Logger;
-  readonly mGitResolvers: git.ManagedGitResolvers;
+  readonly mGitResolvers: () => git.ManagedGitResolvers<string>;
   readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
@@ -342,7 +342,7 @@ export class PublicationDesignSystemArguments
   readonly navigation: lds.LightingDesignSystemNavigation;
   readonly assets: lds.AssetLocations;
   readonly branding: lds.LightningBranding;
-  readonly mGitResolvers: git.ManagedGitResolvers;
+  readonly mGitResolvers: git.ManagedGitResolvers<string>;
   readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
@@ -361,7 +361,7 @@ export class PublicationDesignSystemArguments
       contextBarSubjectImageSrc: (assets) =>
         assets.image("/asset/image/brand/logo-icon-100x100.png"),
     };
-    this.mGitResolvers = config.mGitResolvers;
+    this.mGitResolvers = config.mGitResolvers();
     this.routeGitRemoteResolver = config.routeGitRemoteResolver;
   }
 }

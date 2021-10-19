@@ -121,7 +121,7 @@ export interface LightningLayoutText
 
 export interface LightingDesignSystemArguments {
   readonly git?: git.GitExecutive;
-  readonly mGitResolvers: git.ManagedGitResolvers;
+  readonly mGitResolvers: git.ManagedGitResolvers<string>;
   readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;

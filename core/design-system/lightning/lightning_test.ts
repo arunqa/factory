@@ -4,6 +4,7 @@ import * as content from "../../../core/std/content.ts";
 import * as modGovn from "./governance.ts";
 import * as rt from "../../../core/std/route.ts";
 import * as rtree from "../../../core/std/route-tree.ts";
+import * as git from "../../../lib/git/mod.ts";
 import * as mod from "./lightning.ts";
 
 export type Resource = govn.TextSyncSupplier;
@@ -33,32 +34,21 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
     branding,
     renderedAt: new Date(),
     mGitResolvers: {
-      remoteAsset: (candidate, _branch, paths) => ({
-        // TODO: implement properly
-        gitAssetPath: typeof candidate === "string"
-          ? candidate
-          : candidate.entry,
-        remoteURL: typeof candidate === "string" ? candidate : candidate.entry,
-        paths,
-      }),
+      ...git.typicalGitWorkTreeAssetUrlResolvers(),
       remoteCommit: (commit, paths) => ({
         commit,
         remoteURL: "??",
         paths,
       }),
+      workTreeAsset: git.typicalGitWorkTreeAssetResolver,
     },
-    routeGitRemoteResolver: (route, branch, paths) => {
-      const remote = dsArgs.mGitResolvers.remoteAsset(
-        route.terminal?.qualifiedPath || "??",
-        branch,
-        paths,
-      );
+    routeGitRemoteResolver: (route, gitBranchOrTag, paths) => {
       return {
-        ...remote,
-        gitAssetPath: route.terminal?.qualifiedPath || "??",
-        remoteURL: route.terminal?.qualifiedPath || "??",
+        assetPathRelToWorkTree: route.terminal?.qualifiedPath || "??",
+        href: route.terminal?.qualifiedPath || "??",
         textContent: route.terminal?.qualifiedPath || "??",
         paths,
+        gitBranchOrTag,
       };
     },
   };

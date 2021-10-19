@@ -2,6 +2,7 @@ import { path } from "../deps.ts";
 // import { testingAsserts as ta } from "../deps-test.ts";
 import * as mod from "./publication.ts";
 import * as fsLink from "../lib/fs/link.ts";
+import * as git from "../lib/git/mod.ts";
 
 const testPath = path.relative(
   Deno.cwd(),
@@ -20,31 +21,22 @@ const prefs: mod.Preferences = {
   destRootPath: path.join(testPath, "../", "docs", "public"),
   appName: "Publication Test",
   envVarNamesPrefix: "PUBCTL_",
-  mGitResolvers: {
-    remoteAsset: (candidate, _branch, paths) => ({
-      // TODO: implement properly
-      gitAssetPath: typeof candidate === "string" ? candidate : candidate.entry,
-      remoteURL: typeof candidate === "string" ? candidate : candidate.entry,
-      paths,
-    }),
+  mGitResolvers: () => ({
+    ...git.typicalGitWorkTreeAssetUrlResolvers(),
     remoteCommit: (commit, paths) => ({
       commit,
       remoteURL: "??",
       paths,
     }),
-  },
-  routeGitRemoteResolver: (route, branch, paths) => {
-    const remote = prefs.mGitResolvers.remoteAsset(
-      route.terminal?.qualifiedPath || "??",
-      branch,
-      paths,
-    );
+    workTreeAsset: git.typicalGitWorkTreeAssetResolver,
+  }),
+  routeGitRemoteResolver: (route, gitBranchOrTag, paths) => {
     return {
-      ...remote,
-      gitAssetPath: route.terminal?.qualifiedPath || "??",
-      remoteURL: route.terminal?.qualifiedPath || "??",
+      assetPathRelToWorkTree: route.terminal?.qualifiedPath || "??",
+      href: route.terminal?.qualifiedPath || "??",
       textContent: route.terminal?.qualifiedPath || "??",
       paths,
+      gitBranchOrTag,
     };
   },
 };

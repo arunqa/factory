@@ -3,7 +3,8 @@ import * as ds from "./design-system.ts";
 import * as contrib from "../contributions.ts";
 import * as git from "../../../lib/git/mod.ts";
 
-export interface GitRemoteAnchor extends git.GitRemoteAsset {
+export interface GitRemoteAnchor extends git.GitAsset {
+  readonly href: string;
   readonly textContent: string;
 }
 

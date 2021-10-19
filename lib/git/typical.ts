@@ -43,6 +43,8 @@ export function discoverGitWorkTree(
         workTreePath: current,
         gitDir,
         cachedAt: new Date(),
+        assetAbsWorkTreePath: (asset: govn.GitAsset) =>
+          path.join(current, asset.assetPathRelToWorkTree),
       };
     }
     return false;
@@ -96,7 +98,7 @@ export function discoverGitWorktreeExecutiveSync(
 
 export async function discoverGitWorktreeExecutive(
   fileSysPath: string,
-  mGitResolvers: govn.ManagedGitResolvers,
+  mGitResolvers: () => govn.ManagedGitResolvers<string>,
   options?: {
     readonly factory?: (
       fsp: string,
@@ -218,6 +220,49 @@ export const isGitCmdFailure = safety.typeGuard<GitCmdFailureResult>(
   "stdErr",
 );
 
+export function typicalGitWorkTreeAssetUrlResolvers<Identity extends string>(
+  ...defaults: govn.GitWorkTreeAssetUrlResolver<Identity>[]
+): govn.GitWorkTreeAssetUrlResolvers<Identity> {
+  const gitAssetUrlResolvers = new Map<
+    string,
+    govn.GitWorkTreeAssetUrlResolver<Identity>
+  >();
+  defaults.forEach((resolver) =>
+    gitAssetUrlResolvers.set(resolver.identity, resolver)
+  );
+  return {
+    gitAssetUrlResolver: (identity) => gitAssetUrlResolvers.get(identity),
+    gitAssetUrlResolvers: gitAssetUrlResolvers.values(),
+  };
+}
+
+export const typicalGitWorkTreeAssetResolver: govn.GitWorkTreeAssetResolver = (
+  candidate,
+  gitBranchOrTag,
+  paths,
+) => {
+  const entry = typeof candidate === "string" ? candidate : candidate.entry;
+  const workTreePath = paths.workTreePath;
+  if (path.isAbsolute(entry)) {
+    if (entry.startsWith(workTreePath)) {
+      return {
+        assetPathRelToWorkTree: entry.substr(workTreePath.length + 1), // +1 is because we don't want a leading /
+        gitAssetWorkTreeAbsPath: entry,
+        gitBranchOrTag,
+        paths,
+      };
+    }
+    // the entry doesn't belong to paths.workTreePath
+    return undefined;
+  }
+  return {
+    assetPathRelToWorkTree: entry,
+    gitAssetWorkTreeAbsPath: path.join(paths.workTreePath, entry),
+    gitBranchOrTag,
+    paths,
+  };
+};
+
 export class TypicalGit implements govn.GitExecutive {
   readonly workTreePath: govn.GitWorkTreePath; // git --work-tree argument
   readonly gitDir: govn.GitDir; // git --git-dir argument
@@ -226,10 +271,14 @@ export class TypicalGit implements govn.GitExecutive {
 
   constructor(
     gps: govn.GitPathsSupplier,
-    readonly mGitResolvers: govn.ManagedGitResolvers,
+    readonly mGitResolvers: () => govn.ManagedGitResolvers<string>,
   ) {
     this.workTreePath = gps.workTreePath;
     this.gitDir = gps.gitDir;
+  }
+
+  assetAbsWorkTreePath(asset: govn.GitAsset) {
+    return path.join(this.workTreePath, asset.assetPathRelToWorkTree);
   }
 
   async init(): Promise<void> {
@@ -237,6 +286,8 @@ export class TypicalGit implements govn.GitExecutive {
     this.#cached = {
       gitDir: this.gitDir,
       workTreePath: this.workTreePath,
+      assetAbsWorkTreePath: (asset) =>
+        path.join(this.workTreePath, asset.assetPathRelToWorkTree),
       currentBranch: await this.currentBranch(),
       mostRecentCommit: await this.mostRecentCommit(),
       status: await this.status(),

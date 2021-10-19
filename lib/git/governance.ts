@@ -3,24 +3,42 @@ export type GitWorkTreePath = string;
 export type GitDir = string;
 
 export interface ManagedGitReference {
-  readonly remoteURL: string;
   readonly paths: GitPathsSupplier;
 }
 
-export interface GitRemoteAsset extends ManagedGitReference {
-  readonly gitAssetPath: string;
+export interface GitAsset extends ManagedGitReference {
+  readonly assetPathRelToWorkTree: string;
+  readonly gitBranchOrTag: GitBranchOrTag;
 }
 
-export interface GitRemoteAssetResolver {
+export interface GitWorkTreeAsset extends GitAsset, ManagedGitReference {
+}
+
+export interface GitWorkTreeAssetUrlResolver<Identity extends string> {
+  readonly identity: Identity;
+  readonly gitAssetUrl: (asset: GitWorkTreeAsset) => string;
+}
+
+export interface GitWorkTreeAssetUrlResolvers<Identity extends string> {
+  readonly gitAssetUrlResolver: (
+    identity: string,
+  ) => GitWorkTreeAssetUrlResolver<Identity> | undefined;
+  readonly gitAssetUrlResolvers: Iterable<
+    GitWorkTreeAssetUrlResolver<Identity>
+  >;
+}
+
+export interface GitWorkTreeAssetResolver {
   (
     candidate: GitEntry | GitEntryStatus,
-    branch: GitBranch,
+    gitBranchOrTag: GitBranch,
     paths: GitPathsSupplier,
-  ): GitRemoteAsset | undefined;
+  ): GitWorkTreeAsset | undefined;
 }
 
 export interface GitRemoteCommit<Field extends CommitField>
   extends ManagedGitReference {
+  readonly remoteURL: string;
   readonly commit: GitCommitBase<Field> | GitCommitBaseWithFiles<Field>;
 }
 
@@ -31,8 +49,9 @@ export interface GitRemoteCommitResolver<Field extends CommitField> {
   ): GitRemoteCommit<Field> | undefined;
 }
 
-export interface ManagedGitResolvers {
-  readonly remoteAsset: GitRemoteAssetResolver;
+export interface ManagedGitResolvers<Identity extends string>
+  extends GitWorkTreeAssetUrlResolvers<Identity> {
+  readonly workTreeAsset: GitWorkTreeAssetResolver;
   // deno-lint-ignore no-explicit-any
   readonly remoteCommit: GitRemoteCommitResolver<any>;
 }
@@ -40,6 +59,7 @@ export interface ManagedGitResolvers {
 export interface GitPathsSupplier {
   readonly workTreePath: GitWorkTreePath; // git --work-tree argument
   readonly gitDir: GitDir; // git --git-dir argument
+  readonly assetAbsWorkTreePath: (asset: GitAsset) => GitEntry;
 }
 
 export enum GitStatus {
@@ -107,6 +127,7 @@ export interface GitRunCmdOptionsSupplier {
 }
 
 export type GitBranch = string;
+export type GitBranchOrTag = string;
 
 export interface GitCacheablesSupplier extends GitPathsSupplier {
   readonly currentBranch: GitBranch | undefined;
@@ -135,5 +156,5 @@ export interface GitExecutive extends GitPathsSupplier {
   readonly log: <Field extends CommitField>() => Promise<
     GitCommitBase<Field>[] | GitCommitBaseWithFiles<Field>[] | void
   >;
-  readonly mGitResolvers: ManagedGitResolvers;
+  readonly mGitResolvers: () => ManagedGitResolvers<string>;
 }
