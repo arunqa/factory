@@ -1,4 +1,5 @@
-import { colors, fs, gip, path } from "./deps.ts";
+import { colors, fs, path } from "./deps.ts";
+import * as gip from "https://cdn.skypack.dev/gitignore-parser@0.0.2";
 
 /**
  * Walk a root path and sym/hard link all content that matches globs.

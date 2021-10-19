@@ -1,7 +1,5 @@
-import {
-  govnSvcFsAnalytics as fsA,
-  govnSvcMetrics as gsm,
-} from "../../../../../deps.ts";
+import { govnSvcMetrics as gsm } from "../../../../../deps.ts";
+import * as fsA from "../../../../../lib/fs/fs-analytics.ts";
 import * as govn from "../../../../../governance/mod.ts";
 import * as dGovn from "./governance.ts";
 import * as nature from "../../../../std/nature.ts";

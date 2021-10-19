@@ -174,6 +174,26 @@ export function gitShowCurrentBranchCmd(
   };
 }
 
+export function gitLatestTagCmd(
+  inherit?: Partial<Deno.RunOptions>,
+): govn.GitRunCmdOptionsSupplier {
+  return (gp) => {
+    return {
+      cmd: [
+        "git",
+        `--git-dir=${gp.gitDir}`,
+        `--work-tree=${gp.workTreePath}`,
+        "describe",
+        "--tags",
+        "--abbrev=0",
+      ],
+      stdout: "piped",
+      stderr: "piped",
+      ...inherit,
+    };
+  };
+}
+
 export function parseGitStatus(
   status: string,
   delim = "\n",
@@ -389,6 +409,17 @@ export class TypicalGit implements govn.GitExecutive {
       if (success && success.length > 0) {
         return success[0];
       }
+    } else {
+      return undefined;
+    }
+  }
+
+  async latestTag(
+    cmdOptions = gitLatestTagCmd(),
+  ): Promise<govn.GitTag | undefined> {
+    const cmdResult = await this.run(cmdOptions);
+    if (isGitCmdSuccessful(cmdResult)) {
+      return cmdResult.stdOut;
     } else {
       return undefined;
     }

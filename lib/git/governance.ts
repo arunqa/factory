@@ -133,6 +133,7 @@ export interface GitRunCmdOptionsSupplier {
 }
 
 export type GitBranch = string;
+export type GitTag = string;
 export type GitBranchOrTag = string;
 
 export interface GitCacheablesSupplier extends GitPathsSupplier {
@@ -162,5 +163,8 @@ export interface GitExecutive extends GitPathsSupplier {
   readonly log: <Field extends CommitField>() => Promise<
     GitCommitBase<Field>[] | GitCommitBaseWithFiles<Field>[] | void
   >;
+  readonly latestTag: (
+    cmd?: GitRunCmdOptionsSupplier,
+  ) => Promise<GitTag | undefined>;
   readonly mGitResolvers: ManagedGitResolvers<string>;
 }

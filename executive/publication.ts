@@ -1,8 +1,6 @@
 import {
   colors,
   fs,
-  govnSvcFsAnalytics as fsA,
-  govnSvcFsTree as fsT,
   govnSvcHealth as health,
   govnSvcMetrics as gsm,
   govnSvcTelemetry as telem,
@@ -10,6 +8,8 @@ import {
   path,
   safety,
 } from "../deps.ts";
+import * as fsA from "../lib/fs/fs-analytics.ts";
+import * as fsT from "../lib/fs/fs-tree.ts";
 import * as govn from "../governance/mod.ts";
 import * as e from "../core/std/extension.ts";
 import * as obs from "../core/std/observability.ts";

@@ -1,4 +1,4 @@
-import { govnSvcFsAnalytics as fsA } from "../../../../deps.ts";
+import * as fsA from "../../../../../lib/fs/fs-analytics.ts";
 import * as govn from "../../../../../governance/mod.ts";
 import * as o from "../../../../std/observability.ts";
 
