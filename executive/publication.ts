@@ -47,7 +47,7 @@ export interface Preferences {
   readonly appName: string;
   readonly envVarNamesPrefix: string;
   readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
-  readonly mGitResolvers: () => git.ManagedGitResolvers<string>;
+  readonly mGitResolvers: git.ManagedGitResolvers<string>;
   readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
@@ -75,7 +75,7 @@ export class Configuration
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
   readonly logger: log.Logger;
-  readonly mGitResolvers: () => git.ManagedGitResolvers<string>;
+  readonly mGitResolvers: git.ManagedGitResolvers<string>;
   readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
@@ -229,7 +229,25 @@ export function isContentTODOsSupplier(o: unknown): o is govn.ModelSupplier<
   return false;
 }
 
+export const PublicationRoutesGitAssetUrlResolverID = "publication" as const;
+
 export class PublicationRoutes {
+  readonly gitAssetPublUrlResolver: git.GitWorkTreeAssetUrlResolver<string> = {
+    identity: PublicationRoutesGitAssetUrlResolverID,
+    gitAssetUrl: (asset, fallback) => {
+      let node = this.resourcesTree.fileSysPaths.get(
+        asset.assetPathRelToWorkTree,
+      );
+      if (!node) {
+        node = this.resourcesTree.fileSysPaths.get(
+          asset.paths.assetAbsWorkTreePath(asset),
+        );
+      }
+      if (node) return node.location();
+      return fallback ? fallback() : undefined;
+    },
+  };
+
   constructor(
     readonly routeFactory: govn.RouteFactory,
     readonly resourcesTree = new ResourcesTree(routeFactory),
@@ -361,7 +379,7 @@ export class PublicationDesignSystemArguments
       contextBarSubjectImageSrc: (assets) =>
         assets.image("/asset/image/brand/logo-icon-100x100.png"),
     };
-    this.mGitResolvers = config.mGitResolvers();
+    this.mGitResolvers = config.mGitResolvers;
     this.routeGitRemoteResolver = config.routeGitRemoteResolver;
   }
 }
@@ -400,6 +418,7 @@ export class TypicalPublication
       isDiagnosticsOptionsSupplier,
       () => defaultDiagsOptions,
     );
+    this.config.mGitResolvers.registerResolver(routes.gitAssetPublUrlResolver);
     this.diagsOptions = diagsConfig.configureSync();
     this.state = {
       observability: new obs.Observability(

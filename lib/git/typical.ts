@@ -98,7 +98,7 @@ export function discoverGitWorktreeExecutiveSync(
 
 export async function discoverGitWorktreeExecutive(
   fileSysPath: string,
-  mGitResolvers: () => govn.ManagedGitResolvers<string>,
+  mGitResolvers: govn.ManagedGitResolvers<string>,
   options?: {
     readonly factory?: (
       fsp: string,
@@ -233,6 +233,8 @@ export function typicalGitWorkTreeAssetUrlResolvers<Identity extends string>(
   return {
     gitAssetUrlResolver: (identity) => gitAssetUrlResolvers.get(identity),
     gitAssetUrlResolvers: gitAssetUrlResolvers.values(),
+    registerResolver: (resolver) =>
+      gitAssetUrlResolvers.set(resolver.identity, resolver),
   };
 }
 
@@ -271,7 +273,7 @@ export class TypicalGit implements govn.GitExecutive {
 
   constructor(
     gps: govn.GitPathsSupplier,
-    readonly mGitResolvers: () => govn.ManagedGitResolvers<string>,
+    readonly mGitResolvers: govn.ManagedGitResolvers<string>,
   ) {
     this.workTreePath = gps.workTreePath;
     this.gitDir = gps.gitDir;

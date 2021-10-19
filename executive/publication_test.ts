@@ -21,7 +21,7 @@ const prefs: mod.Preferences = {
   destRootPath: path.join(testPath, "../", "docs", "public"),
   appName: "Publication Test",
   envVarNamesPrefix: "PUBCTL_",
-  mGitResolvers: () => ({
+  mGitResolvers: {
     ...git.typicalGitWorkTreeAssetUrlResolvers(),
     remoteCommit: (commit, paths) => ({
       commit,
@@ -29,7 +29,7 @@ const prefs: mod.Preferences = {
       paths,
     }),
     workTreeAsset: git.typicalGitWorkTreeAssetResolver,
-  }),
+  },
   routeGitRemoteResolver: (route, gitBranchOrTag, paths) => {
     return {
       assetPathRelToWorkTree: route.terminal?.qualifiedPath || "??",

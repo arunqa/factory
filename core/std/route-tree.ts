@@ -119,6 +119,7 @@ export interface RouteTreeNodeExists {
 }
 
 export class TypicalRouteTree implements govn.RouteTree {
+  readonly fileSysPaths = new Map<string, govn.RouteTreeNode>();
   readonly locations = new Map<govn.RouteLocation, govn.RouteTreeNode>();
   readonly items: govn.RouteTreeNode[] = [];
   readonly aliasesSuppliers: govn.RouteTreeNode[] = [];
@@ -160,6 +161,10 @@ export class TypicalRouteTree implements govn.RouteTree {
 
   node(location: govn.RouteLocation): govn.RouteTreeNode | undefined {
     return this.locations.get(location);
+  }
+
+  fileSysNode(fileSysAbsPath: string): govn.RouteTreeNode | undefined {
+    return this.fileSysPaths.get(fileSysAbsPath);
   }
 
   registerAliases(node: govn.RouteTreeNode) {
@@ -246,6 +251,9 @@ export class TypicalRouteTree implements govn.RouteTree {
         };
         collection.push(result);
         this.locations.set(result.qualifiedPath, result);
+        if (r.isFileSysRouteUnit(routeNode)) {
+          this.fileSysPaths.set(routeNode.fileSysPath, result);
+        }
         if (result.targetableID) this.registerTargetableNode(result);
         if (result.aliases) this.registerAliases(result);
       }

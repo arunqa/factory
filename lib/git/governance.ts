@@ -16,7 +16,10 @@ export interface GitWorkTreeAsset extends GitAsset, ManagedGitReference {
 
 export interface GitWorkTreeAssetUrlResolver<Identity extends string> {
   readonly identity: Identity;
-  readonly gitAssetUrl: (asset: GitWorkTreeAsset) => string;
+  readonly gitAssetUrl: (
+    asset: GitWorkTreeAsset,
+    fallback?: () => string | undefined,
+  ) => string | undefined;
 }
 
 export interface GitWorkTreeAssetUrlResolvers<Identity extends string> {
@@ -26,6 +29,9 @@ export interface GitWorkTreeAssetUrlResolvers<Identity extends string> {
   readonly gitAssetUrlResolvers: Iterable<
     GitWorkTreeAssetUrlResolver<Identity>
   >;
+  readonly registerResolver: (
+    resolver: GitWorkTreeAssetUrlResolver<Identity>,
+  ) => void;
 }
 
 export interface GitWorkTreeAssetResolver {
@@ -156,5 +162,5 @@ export interface GitExecutive extends GitPathsSupplier {
   readonly log: <Field extends CommitField>() => Promise<
     GitCommitBase<Field>[] | GitCommitBaseWithFiles<Field>[] | void
   >;
-  readonly mGitResolvers: () => ManagedGitResolvers<string>;
+  readonly mGitResolvers: ManagedGitResolvers<string>;
 }
