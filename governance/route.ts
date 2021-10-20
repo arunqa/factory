@@ -113,6 +113,19 @@ export interface RouteUnits<Unit extends RouteUnit = RouteUnit> {
   readonly terminal?: Unit;
 }
 
+export interface RouteOrigin {
+  readonly isRouteOrigin: true;
+  readonly label: string;
+}
+
+export interface ModuleRouteOrigin extends RouteOrigin {
+  readonly moduleMetaURL: string;
+}
+
+export interface RouteOriginSupplier {
+  readonly origin: RouteOrigin;
+}
+
 export interface Route<Unit extends RouteNode = RouteNode>
   extends
     RouteUnits<Unit>,
@@ -120,7 +133,8 @@ export interface Route<Unit extends RouteNode = RouteNode>
     // deno-lint-ignore no-explicit-any
     Partial<n.NatureSupplier<any>>,
     // deno-lint-ignore no-explicit-any
-    Partial<render.RenderTargetsSupplier<any>> {
+    Partial<render.RenderTargetsSupplier<any>>,
+    Partial<RouteOriginSupplier> {
   readonly inRoute: (
     unit: RouteNode,
   ) => RouteNode | undefined;

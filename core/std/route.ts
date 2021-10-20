@@ -89,6 +89,23 @@ export function isRouteSupplier(
   return false;
 }
 
+export function routeModuleOrigin(
+  moduleMetaURL: string,
+  label: string,
+): govn.ModuleRouteOrigin {
+  return {
+    isRouteOrigin: true,
+    moduleMetaURL,
+    label,
+  };
+}
+
+export const isModuleRouteOrigin = safety.typeGuard<govn.ModuleRouteOrigin>(
+  "isRouteOrigin",
+  "moduleMetaURL",
+  "label",
+);
+
 export function routeNodeLocation(
   ru: govn.RouteNode,
   options?: govn.RouteLocationOptions,
