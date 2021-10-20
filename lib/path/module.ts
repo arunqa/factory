@@ -1,4 +1,4 @@
-import { path } from "../deps.ts";
+import { path } from "./deps.ts";
 
 export interface AbsolutePathTransformer {
   (relative?: string): string;
