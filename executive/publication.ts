@@ -220,15 +220,6 @@ export class NavigationTree extends rtree.TypicalRouteTree {
   }
 }
 
-export function isContentTODOsSupplier(o: unknown): o is govn.ModelSupplier<
-  ldsDirec.ToDosDirectiveStateSupplier
-> {
-  if (m.isModelShapeSupplier(o, ldsDirec.isToDosDirectiveStateSupplier)) {
-    return o.model.contentTODOs && o.model.contentTODOs.length > 0;
-  }
-  return false;
-}
-
 export const PublicationRoutesGitAssetUrlResolverID = "publication" as const;
 
 export class PublicationRoutes {
@@ -593,6 +584,46 @@ export class TypicalPublication
     return this.routes.resourcesTreePopulatorSync();
   }
 
+  // deno-lint-ignore no-explicit-any
+  inspectionRefinery(): govn.ResourceRefinery<any> | undefined {
+    return undefined;
+  }
+
+  // deno-lint-ignore no-explicit-any
+  inspectionRefinerySync(): govn.ResourceRefinerySync<any> | undefined {
+    return (resource) => {
+      if (route.isRouteSupplier(resource)) {
+        const rr = resource.route;
+        if (rr.terminal && route.isFileSysRouteUnit(rr.terminal)) {
+          const fileName = rr.terminal.fileSysPathParts.base;
+          if (fileName.includes(" ")) {
+            return ldsDirec.registerActionItems(
+              resource,
+              undefined,
+              {
+                type: "lint-issue",
+                subject:
+                  `${fileName} should be renamed because it has spaces (replace all spaces with hyphens '-')`,
+              },
+            );
+          }
+
+          if (fileName !== fileName.toLocaleLowerCase()) {
+            return ldsDirec.registerActionItems(
+              resource,
+              undefined,
+              {
+                type: "lint-issue",
+                subject:
+                  `${fileName} should be renamed because it has mixed case letters (all text should be lowercase only)`,
+              },
+            );
+          }
+        }
+      }
+    };
+  }
+
   persistersRefinery() {
     return r.pipelineUnitsRefineryUntyped(
       this.config.designSystem.prettyUrlsHtmlProducer(
@@ -699,6 +730,24 @@ export class TypicalPublication
       // we need to persist these ourselves because by the time produceMetrics()
       // is called, all other resources have already been persisted
       resourcesIndex.index(await persist(resource));
+    }
+  }
+
+  async inspectResources(
+    resourcesIndex: r.UniversalResourcesIndex<unknown>,
+  ): Promise<void> {
+    const inspectSync = this.inspectionRefinerySync();
+    if (inspectSync) {
+      for (const resource of resourcesIndex.resources()) {
+        inspectSync(resource);
+      }
+    }
+
+    const inspect = this.inspectionRefinery();
+    if (inspect) {
+      for await (const resource of resourcesIndex.resources()) {
+        inspect(resource);
+      }
     }
   }
 

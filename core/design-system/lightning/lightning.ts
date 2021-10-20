@@ -43,11 +43,17 @@ export function prepareNotifications(
   found?: ((
     lnn: ldsGovn.LightningNavigationNotifications,
   ) => ldsGovn.LightningNavigationNotifications),
+  assignmentFailed?: (diagnostic: string) => void,
 ): ldsGovn.LightningNavigationNotifications {
   const result = isLightningNavigationNotificationSupplier(source)
     ? (found ? found(source.ldsNavNotifications) : source.ldsNavNotifications)
     : // deno-lint-ignore no-explicit-any
       ((source as any).ldsNavNotifications = notFound());
+  if (assignmentFailed && !isLightningNavigationNotificationSupplier(source)) {
+    assignmentFailed(
+      "isLightningNavigationNotificationSupplier(source) is false in lds.prepareNotifications. This should never happen.",
+    );
+  }
   return result;
 }
 
@@ -246,7 +252,10 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   extends html.DesignSystem<Layout> {
   readonly lightningAssetsBaseURL = "/lightning";
   readonly lightningAssetsPathUnits = ["lightning"];
-  readonly directives = [new direc.ToDoDirective(), ...direc.allCustomElements];
+  readonly directives = [
+    new direc.ActionItemDirective(),
+    ...direc.allCustomElements,
+  ];
   constructor(
     readonly emptyContentModelLayoutSS:
       & govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier>
