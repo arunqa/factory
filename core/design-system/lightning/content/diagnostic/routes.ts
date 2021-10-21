@@ -1,6 +1,7 @@
 import * as govn from "../../../../../governance/mod.ts";
 import * as dGovn from "./governance.ts";
 import * as nature from "../../../../std/nature.ts";
+import * as route from "../../../../std/route.ts";
 import * as rJSON from "../../../../content/routes.json.ts";
 import * as lds from "../../mod.ts";
 
@@ -186,6 +187,10 @@ export function routesHtmlFactorySupplier(
             false,
           ),
           nature: nature.htmlContentNature,
+          origin: route.routeModuleOrigin(
+            import.meta.url,
+            "routesHtmlFactorySupplier",
+          ),
         },
         html: {
           // deno-lint-ignore require-await
@@ -221,6 +226,10 @@ export function routesJsonFactorySupplier(
             false,
           ),
           nature: nature.jsonContentNature,
+          origin: route.routeModuleOrigin(
+            import.meta.url,
+            "routesJsonFactorySupplier",
+          ),
         },
         jsonInstance: () => state.routes.resourcesTree,
         jsonText: {

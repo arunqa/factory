@@ -1,5 +1,6 @@
 import * as govn from "../../../../../governance/mod.ts";
 import * as nature from "../../../../std/nature.ts";
+import * as route from "../../../../std/route.ts";
 import * as lds from "../../mod.ts";
 
 const layoutsGrid = "layouts";
@@ -61,6 +62,10 @@ export function renderersHtmlFactorySupplier(
             false,
           ),
           nature: nature.htmlContentNature,
+          origin: route.routeModuleOrigin(
+            import.meta.url,
+            "renderersHtmlFactorySupplier",
+          ),
         },
         html: {
           // deno-lint-ignore require-await
