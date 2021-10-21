@@ -69,6 +69,10 @@ export interface HtmlLayoutText<Layout> {
   readonly title: (layout: Layout) => string;
 }
 
+export interface HtmlLayoutOriginDomDataAttrsResolver {
+  (layout: HtmlLayout, srcModuleImportMetaURL: string, symbol: string): string;
+}
+
 /*
 TODO: Add Partial<govn.RenderContextSupplier<HtmlLayoutRenderContext>> to
 HtmlLayout so that pages, partials, etc. can easily see which "environment"
@@ -88,6 +92,7 @@ export interface HtmlLayout<
   readonly layoutSS: HtmlLayoutStrategySupplier<any>;
   readonly contributions: HtmlLayoutContributions;
   readonly layoutText: LayoutText;
+  readonly origin: HtmlLayoutOriginDomDataAttrsResolver;
 }
 
 /**

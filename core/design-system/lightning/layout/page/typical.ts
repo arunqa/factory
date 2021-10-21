@@ -41,7 +41,7 @@ export const typicalPageSurroundBodyPostPartial: ldsGovn.LightningPartial = (lay
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const homePage = lightningTemplate("lds/page/home")`<!DOCTYPE html>
-<html lang="en"> <!-- 'homePage' layout in ${import.meta.url} -->
+<html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "homePage")}>
     ${typicalPageSurroundBodyPrePartial}
   
     <main class="container flex slds-m-vertical_small slds-container--center"> 
@@ -56,7 +56,7 @@ export const homePage = lightningTemplate("lds/page/home")`<!DOCTYPE html>
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const innerIndexPage = lightningTemplate("lds/page/inner-index")`<!DOCTYPE html>
-<html lang="en"> <!-- 'innerIndexPage' layout in ${import.meta.url} -->
+<html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "innerIndexPage")}>
     ${typicalPageSurroundBodyPrePartial}
   
     <main class="container flex slds-m-vertical_small">
@@ -79,7 +79,7 @@ export const innerIndexPage = lightningTemplate("lds/page/inner-index")`<!DOCTYP
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const innerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto")`<!DOCTYPE html>
-<html lang="en"> <!-- 'innerIndexAutoPage' layout in ${import.meta.url} -->
+<html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "innerIndexAutoPage")}>
     ${typicalPageSurroundBodyPrePartial}
   
     <main class="container flex slds-m-vertical_small">
@@ -103,7 +103,7 @@ export const innerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto")
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const noDefinitiveLayoutPage = lightningTemplate("lds/page/no-layout")`<!DOCTYPE html>
-<html lang="en"> <!-- 'noDefinitiveLayoutPage' layout in ${import.meta.url} -->
+<html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "noDefinitiveLayoutPage")}>
   <head>
     ${p.typicalHeadPartial}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/styles/default.min.css">

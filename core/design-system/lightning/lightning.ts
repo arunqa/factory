@@ -365,6 +365,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       activeTreeNode,
       contributions: this.contributions(),
       clientCargoPropertyName: "clientLayout",
+      origin: html.htmlLayoutOriginDataAttrs,
       ...layoutArgs,
     };
     return result as Layout; // TODO: consider not casting to type

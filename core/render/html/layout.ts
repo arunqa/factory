@@ -2,6 +2,21 @@ import * as govn from "../../../governance/mod.ts";
 import * as hGovn from "./governance.ts";
 import * as c from "../../../core/std/content.ts";
 import * as contrib from "../contributions.ts";
+import * as r from "../../../core/std/render.ts";
+
+export const htmlLayoutOriginDataAttrs:
+  hGovn.HtmlLayoutOriginDomDataAttrsResolver = (
+    layout: hGovn.HtmlLayout,
+    srcModuleImportMetaURL: string,
+    symbol: string,
+  ): string => {
+    const ls = layout.layoutSS.layoutStrategy;
+    return `data-rf-origin-layout-symbol="${symbol}" ${
+      r.isIdentifiableLayoutStrategy(ls)
+        ? `data-rf-origin-layout-name="${ls.identity}"`
+        : ""
+    }" data-rf-origin-layout-src="${srcModuleImportMetaURL}"`;
+  };
 
 const bodyAsync = (
   instance: govn.FlexibleContent | govn.FlexibleContentSync | govn.HtmlSupplier,

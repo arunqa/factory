@@ -21,6 +21,18 @@ footer a.git-remote-commit {
     color: #cae6f1 !important
 }
 
+footer p.localhost-diags-warning {
+    color: #FF7F7F;
+}
+
+footer code.localhost-diags-layout-origin {
+    color: yellow;
+}
+
+footer code.localhost-diags-layout-origin-src {
+    color: yellowgreen;
+}
+
 /* SLDS */
 
 .slds-context-bar {

@@ -45,6 +45,20 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
           ? `modified <span is="time-ago" date="${layout.activeRoute?.terminal?.lastModifiedAt}" title="${layout.activeRoute?.terminal?.lastModifiedAt}"/>`
           : '<!-- no layout.activeRoute?.terminal?.lastModifiedAt -->'}
         ${layout.dsArgs.git ? ` 🌲 ${gitBranch}` : "<!-- not in Git work tree -->"}
+        <script>
+          if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+            const htmlDataSet = document.documentElement.dataset;
+            console.dir(htmlDataSet);
+            if(htmlDataSet.rfOriginLayoutSrc) {
+              document.write(\`<p title="\${htmlDataSet.rfOriginLayoutSrc}" class="localhost-diags">
+              Using layout <code class="localhost-diags-layout-origin">\${htmlDataSet.rfOriginLayoutName}</code> 
+              (<code class="localhost-diags-layout-origin">\${htmlDataSet.rfOriginLayoutSymbol}</code>) in 
+              <code class="localhost-diags-layout-origin-src">\${htmlDataSet.rfOriginLayoutSrc.split('/').reverse()[0]}</code></p>\`);
+            } else {
+              document.write(\`<p title="\${htmlDataSet.rfOriginLayoutSrc}" class="localhost-diags localhost-diags-warning">No layout information in <code>&lt;html data-rf-origin-layout-*&gt;</code></p>\`);
+            }
+          }
+        </script>
         </p>
       </article>
     </div>
