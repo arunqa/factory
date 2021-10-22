@@ -59,19 +59,15 @@ export const innerIndexPage = lightningTemplate("lds/page/inner-index")`<!DOCTYP
 <html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "innerIndexPage")}>
     ${typicalPageSurroundBodyPrePartial}
   
-    <main class="container flex slds-m-vertical_small">
-      <div class="slds-grid slds-wrap">
-        <div class="slds-grid slds-grid_align-center slds-gutters_medium slds-var-m-around_medium">
-          <div>
+    <main class="slds-container_x-large slds-container_center slds-p-around_medium">
+        <div>
             ${p.breadcrumbsPartial}
             ${pageHeadingPartial}
             <div id="content" class="slds-m-top_x-large">
             ${p.typicalBodyPartial}
             </div>
             ${p.layoutDiagnosticsPartial}
-          </div>
         </div>
-      </div>
     </main>
 
     ${typicalPageSurroundBodyPostPartial}
@@ -82,9 +78,7 @@ export const innerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto")
 <html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "innerIndexAutoPage")}>
     ${typicalPageSurroundBodyPrePartial}
   
-    <main class="container flex slds-m-vertical_small">
-    <div class="slds-grid slds-wrap">
-      <div class="slds-grid slds-grid_align-center slds-gutters_medium slds-var-m-around_medium">
+    <main class="slds-container_x-large slds-container_center slds-p-around_medium">
         <div>
           ${p.breadcrumbsWithoutTerminalPartial}
           ${pageHeadingPartial}
@@ -94,8 +88,6 @@ export const innerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto")
           </div>
           ${p.layoutDiagnosticsPartial}
         </div>
-      </div>
-    </div> 
     </main>
 
     ${typicalPageSurroundBodyPostPartial}
