@@ -14,14 +14,14 @@ const _testPathRel = path.relative(Deno.cwd(), testPathAbs);
 Deno.test("TODO: fileSysAnalytics", async () => {
   const assetsTree = new fst.FileSysAssetsTree();
   const srcRoot =
-    "/home/snshah/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/content";
+    `/home/${Deno.env.get("USER")}/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/content`;
   const src = await assetsTree.consumeAssets({
     identity: "content",
     root: srcRoot,
     rootIsAbsolute: path.isAbsolute(srcRoot),
   });
   const destRoot =
-    "/home/snshah/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/public";
+    `/home/${Deno.env.get("USER")}/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/public`;
   const dest = await assetsTree.consumeAssets({
     identity: "public",
     root: destRoot,

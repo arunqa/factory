@@ -42,7 +42,7 @@ const _testPathRel = path.relative(Deno.cwd(), testPathAbs);
 Deno.test("TODO: filesystem tree", async () => {
   const assetsTree = new mod.FileSysAssetsTree();
   const srcRoot =
-    "/home/snshah/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/content";
+    `/home/${Deno.env.get("USER")}/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/content`;
   const src = await assetsTree.consumeAssets({
     identity: "content",
     root: srcRoot,
@@ -52,7 +52,7 @@ Deno.test("TODO: filesystem tree", async () => {
     },
   });
   const destRoot =
-    "/home/snshah/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/public";
+    `/home/${Deno.env.get("USER")}/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/public`;
   const dest = await assetsTree.consumeAssets({
     identity: "public",
     root: destRoot,
