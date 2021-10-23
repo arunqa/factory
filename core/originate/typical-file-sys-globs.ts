@@ -115,7 +115,7 @@ export function resourceModuleFileSysGlob<State>(
 export function jsonModuleFileSysGlob(
   routeParser = route.humanFriendlyFileSysRouteParser,
 ): fsg.FileSysPathGlob<
-  govn.JsonInstanceSupplier
+  govn.StructuredDataInstanceSupplier
 > {
   return {
     glob: "**/*.json.ts",

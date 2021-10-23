@@ -174,35 +174,37 @@ export function metricsFactorySuppliers(
   }, {
     // deno-lint-ignore require-await
     resourceFactory: async () => {
-      const metricsJSON: govn.PersistableJsonResource & govn.RouteSupplier = {
-        nature: nature.jsonContentNature,
-        route: {
-          ...rf.childRoute(
-            { unit: "assets-metrics", label: "Assets Metrics JSON" },
-            parentRoute,
-            false,
-          ),
+      const metricsJSON:
+        & govn.PersistableStructuredDataResource
+        & govn.RouteSupplier = {
           nature: nature.jsonContentNature,
-        },
-        jsonInstance: () => state.metrics.assets.collected.metrics,
-        jsonText: {
-          // deno-lint-ignore require-await
-          text: async () => {
-            return JSON.stringify(
-              state.metrics.assets.collected.metrics,
-              fsA.jsonMetricsReplacer,
-              "  ",
-            );
+          route: {
+            ...rf.childRoute(
+              { unit: "assets-metrics", label: "Assets Metrics JSON" },
+              parentRoute,
+              false,
+            ),
+            nature: nature.jsonContentNature,
           },
-          textSync: () => {
-            return JSON.stringify(
-              state.metrics.assets.collected.metrics,
-              fsA.jsonMetricsReplacer,
-              "  ",
-            );
+          structuredDataInstance: () => state.metrics.assets.collected.metrics,
+          serializedData: {
+            // deno-lint-ignore require-await
+            text: async () => {
+              return JSON.stringify(
+                state.metrics.assets.collected.metrics,
+                fsA.jsonMetricsReplacer,
+                "  ",
+              );
+            },
+            textSync: () => {
+              return JSON.stringify(
+                state.metrics.assets.collected.metrics,
+                fsA.jsonMetricsReplacer,
+                "  ",
+              );
+            },
           },
-        },
-      };
+        };
       return metricsJSON;
     },
   }];

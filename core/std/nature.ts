@@ -42,13 +42,63 @@ export const htmlMediaTypeNature: govn.MediaTypeNature<govn.HtmlResource> = {
   },
 };
 
-export const jsonMediaTypeNature: govn.MediaTypeNature<govn.JsonResource> = {
+export const jsonMediaTypeNature: govn.MediaTypeNature<
+  govn.StructuredDataResource
+> = {
   mediaType: "application/json",
-  guard: (o: unknown): o is govn.JsonResource => {
+  guard: (o: unknown): o is govn.StructuredDataResource => {
     if (
       isNatureSupplier(o) && isMediaTypeNature(o.nature) &&
       o.nature.mediaType === jsonMediaTypeNature.mediaType &&
-      c.isJsonTextSupplier(o)
+      c.isSerializedDataSupplier(o)
+    ) {
+      return true;
+    }
+    return false;
+  },
+};
+
+export const json5MediaTypeNature: govn.MediaTypeNature<
+  govn.StructuredDataResource
+> = {
+  mediaType: "application/json5",
+  guard: (o: unknown): o is govn.StructuredDataResource => {
+    if (
+      isNatureSupplier(o) && isMediaTypeNature(o.nature) &&
+      o.nature.mediaType === json5MediaTypeNature.mediaType &&
+      c.isSerializedDataSupplier(o)
+    ) {
+      return true;
+    }
+    return false;
+  },
+};
+
+export const yamlMediaTypeNature: govn.MediaTypeNature<
+  govn.StructuredDataResource
+> = {
+  mediaType: "text/vnd.yaml",
+  guard: (o: unknown): o is govn.StructuredDataResource => {
+    if (
+      isNatureSupplier(o) && isMediaTypeNature(o.nature) &&
+      o.nature.mediaType === yamlMediaTypeNature.mediaType &&
+      c.isSerializedDataSupplier(o)
+    ) {
+      return true;
+    }
+    return false;
+  },
+};
+
+export const tomlMediaTypeNature: govn.MediaTypeNature<
+  govn.StructuredDataResource
+> = {
+  mediaType: "application/toml",
+  guard: (o: unknown): o is govn.StructuredDataResource => {
+    if (
+      isNatureSupplier(o) && isMediaTypeNature(o.nature) &&
+      o.nature.mediaType === tomlMediaTypeNature.mediaType &&
+      c.isSerializedDataSupplier(o)
     ) {
       return true;
     }
@@ -74,18 +124,13 @@ export const prepareHTML: (text: string) => govn.HtmlSupplier = (
   };
 };
 
-export const prepareJSON: (
-  // deno-lint-ignore no-explicit-any
-  instance: any,
-  // deno-lint-ignore no-explicit-any
-  replacer?: (this: any, key: string, value: any) => any,
-) => govn.JsonTextSupplier = (
+export const prepareJSON: govn.StructuredDataSerializer = (
   instance,
   replacer,
 ) => {
   const fc = c.flexibleContent(JSON.stringify(instance, replacer));
   return {
-    jsonText: fc,
+    serializedData: fc,
   };
 };
 
@@ -189,13 +234,17 @@ export const htmlContentNature:
     },
   };
 
-export const jsonContentNature:
-  & govn.MediaTypeNature<govn.JsonResource>
-  & govn.JsonSuppliersFactory
-  & govn.FileSysPersistenceSupplier<govn.JsonResource> = {
-    mediaType: jsonMediaTypeNature.mediaType,
-    guard: jsonMediaTypeNature.guard,
-    prepareJSON,
+export function structuredDataContentNature(
+  mtNature: govn.MediaTypeNature<govn.StructuredDataResource>,
+  prepareStructuredData: govn.StructuredDataSerializer,
+):
+  & govn.MediaTypeNature<govn.StructuredDataResource>
+  & govn.StructuredDataFactory
+  & govn.FileSysPersistenceSupplier<govn.StructuredDataResource> {
+  return {
+    mediaType: mtNature.mediaType,
+    guard: mtNature.guard,
+    prepareStructuredData,
     persistFileSysRefinery: (
       rootPath,
       namingStrategy,
@@ -203,9 +252,9 @@ export const jsonContentNature:
       ...functionArgs
     ) => {
       return async (resource) => {
-        if (c.isJsonTextSupplier(resource)) {
+        if (c.isSerializedDataSupplier(resource)) {
           await p.persistFlexibleFileCustom(
-            resource.jsonText,
+            resource.serializedData,
             namingStrategy(
               resource as unknown as govn.RouteSupplier<govn.RouteNode>,
               rootPath,
@@ -223,9 +272,9 @@ export const jsonContentNature:
       eventsEmitter,
       ...functionArgs
     ) => {
-      if (c.isJsonTextSupplier(resource)) {
+      if (c.isSerializedDataSupplier(resource)) {
         await p.persistFlexibleFileCustom(
-          resource.jsonText,
+          resource.serializedData,
           namingStrategy(
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,
             rootPath,
@@ -235,3 +284,9 @@ export const jsonContentNature:
       }
     },
   };
+}
+
+export const jsonContentNature = structuredDataContentNature(
+  jsonMediaTypeNature,
+  prepareJSON,
+);

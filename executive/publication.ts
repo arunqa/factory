@@ -631,7 +631,7 @@ export class TypicalPublication
         this.ds,
         this.fspEventsEmitter,
       ),
-      jrs.jsonProducer(this.config.destRootPath, {
+      jrs.jsonTextProducer(this.config.destRootPath, {
         routeTree: this.routes.resourcesTree,
       }, this.fspEventsEmitter),
       dtr.csvProducer<PublicationState>(

@@ -213,43 +213,45 @@ export function routesJsonFactorySupplier(
   parentRoute: govn.Route,
   rf: govn.RouteFactory,
   state: dGovn.DiagnosticsResourcesState,
-): govn.ResourceFactorySupplier<govn.JsonInstanceSupplier> {
+): govn.ResourceFactorySupplier<govn.StructuredDataInstanceSupplier> {
   return {
     // deno-lint-ignore require-await
     resourceFactory: async () => {
-      const sitemapJSON: govn.PersistableJsonResource & govn.RouteSupplier = {
-        nature: nature.jsonContentNature,
-        route: {
-          ...rf.childRoute(
-            { unit: "routes", label: "Routes JSON" },
-            parentRoute,
-            false,
-          ),
+      const sitemapJSON:
+        & govn.PersistableStructuredDataResource
+        & govn.RouteSupplier = {
           nature: nature.jsonContentNature,
-          origin: route.routeModuleOrigin(
-            import.meta.url,
-            "routesJsonFactorySupplier",
-          ),
-        },
-        jsonInstance: () => state.routes.resourcesTree,
-        jsonText: {
-          // deno-lint-ignore require-await
-          text: async () => {
-            return JSON.stringify(
-              state.routes.resourcesTree,
-              rJSON.routeTreeJsonReplacer,
-              "  ",
-            );
+          route: {
+            ...rf.childRoute(
+              { unit: "routes", label: "Routes JSON" },
+              parentRoute,
+              false,
+            ),
+            nature: nature.jsonContentNature,
+            origin: route.routeModuleOrigin(
+              import.meta.url,
+              "routesJsonFactorySupplier",
+            ),
           },
-          textSync: () => {
-            return JSON.stringify(
-              state.routes.resourcesTree,
-              rJSON.routeTreeJsonReplacer,
-              "  ",
-            );
+          structuredDataInstance: () => state.routes.resourcesTree,
+          serializedData: {
+            // deno-lint-ignore require-await
+            text: async () => {
+              return JSON.stringify(
+                state.routes.resourcesTree,
+                rJSON.routeTreeJsonReplacer,
+                "  ",
+              );
+            },
+            textSync: () => {
+              return JSON.stringify(
+                state.routes.resourcesTree,
+                rJSON.routeTreeJsonReplacer,
+                "  ",
+              );
+            },
           },
-        },
-      };
+        };
       return sitemapJSON;
     },
   };

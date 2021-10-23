@@ -49,8 +49,8 @@ export interface HtmlSupplier {
   readonly html: FlexibleContent | FlexibleContentSync | string;
 }
 
-export interface JsonTextSupplier {
-  readonly jsonText: FlexibleContent | FlexibleContentSync | string;
+export interface SerializedDataSupplier {
+  readonly serializedData: FlexibleContent | FlexibleContentSync | string;
 }
 
 export interface DiagnosticsSupplier {
@@ -98,11 +98,15 @@ export interface HtmlSuppliersFactory {
   readonly prepareHTML: (text: string) => HtmlSupplier;
 }
 
-export interface JsonSuppliersFactory {
-  readonly prepareJSON: (
+export interface StructuredDataSerializer {
+  (
     // deno-lint-ignore no-explicit-any
     instance: any,
     // deno-lint-ignore no-explicit-any
     replacer?: (this: any, key: string, value: any) => any,
-  ) => JsonTextSupplier;
+  ): SerializedDataSupplier;
+}
+
+export interface StructuredDataFactory {
+  readonly prepareStructuredData: StructuredDataSerializer;
 }

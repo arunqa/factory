@@ -88,14 +88,16 @@ export const isHtmlSupplier = safety.typeGuard<govn.HtmlSupplier>(
   "html",
 );
 
-export const isJsonInstanceSupplier = safety.typeGuard<
-  govn.JsonInstanceSupplier
+export const isStructuredDataInstanceSupplier = safety.typeGuard<
+  govn.StructuredDataInstanceSupplier
 >(
-  "jsonInstance",
+  "structuredDataInstance",
 );
 
-export const isJsonTextSupplier = safety.typeGuard<govn.JsonTextSupplier>(
-  "jsonText",
+export const isSerializedDataSupplier = safety.typeGuard<
+  govn.SerializedDataSupplier
+>(
+  "serializedData",
 );
 
 export const isDiagnosticsSupplier = safety.typeGuard<govn.DiagnosticsSupplier>(

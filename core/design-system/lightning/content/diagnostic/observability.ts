@@ -54,8 +54,9 @@ export function observabilityPostProduceResources<
           resourceFactory: async () => {
             const health = state.observability.serviceHealth();
             const healthJSON = JSON.stringify(health, undefined, "  ");
-            const resource: govn.PersistableJsonResource & govn.RouteSupplier =
-              {
+            const resource:
+              & govn.PersistableStructuredDataResource
+              & govn.RouteSupplier = {
                 nature: nature.jsonContentNature,
                 route: {
                   ...rf.childRoute(
@@ -65,8 +66,8 @@ export function observabilityPostProduceResources<
                   ),
                   nature: nature.jsonContentNature,
                 },
-                jsonInstance: () => health,
-                jsonText: {
+                structuredDataInstance: () => health,
+                serializedData: {
                   text: healthJSON,
                   textSync: healthJSON,
                 },

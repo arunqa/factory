@@ -5,41 +5,41 @@ import * as route from "../../../core/std/route.ts";
 
 export interface FileSysJsonResourceConstructor {
   (
-    we: fsrf.FileSysGlobWalkEntry<govn.JsonInstanceSupplier>,
+    we: fsrf.FileSysGlobWalkEntry<govn.StructuredDataInstanceSupplier>,
     options: route.FileSysRouteOptions,
     imported: govn.ExtensionModule,
-  ): Promise<govn.JsonInstanceSupplier>;
+  ): Promise<govn.StructuredDataInstanceSupplier>;
 }
 
 export interface FileSysJsonResourcesConstructor {
   (
-    we: fsrf.FileSysGlobWalkEntry<govn.JsonInstanceSupplier>,
+    we: fsrf.FileSysGlobWalkEntry<govn.StructuredDataInstanceSupplier>,
     options: route.FileSysRouteOptions,
     imported: govn.ExtensionModule,
   ): Promise<
-    & govn.JsonInstanceSupplier
-    & govn.ChildResourcesFactoriesSupplier<govn.JsonInstanceSupplier>
+    & govn.StructuredDataInstanceSupplier
+    & govn.ChildResourcesFactoriesSupplier<govn.StructuredDataInstanceSupplier>
   >;
 }
 
 export function jsonFileSysResourceFactory(
-  refine?: govn.ResourceRefinery<govn.JsonInstanceSupplier>,
-): fsrf.FileSysGlobWalkEntryFactory<govn.JsonInstanceSupplier> {
+  refine?: govn.ResourceRefinery<govn.StructuredDataInstanceSupplier>,
+): fsrf.FileSysGlobWalkEntryFactory<govn.StructuredDataInstanceSupplier> {
   return {
     construct: async (we, options) => {
       const imported = await options.extensionsManager.importModule(we.path);
       const issue = (diagnostics: string, ...args: unknown[]) => {
         options.log.error(diagnostics, ...args);
-        const jsonInstance = diagnostics;
+        const structuredDataInstance = diagnostics;
         const result:
           & govn.ModuleResource
-          & govn.PersistableJsonResource
+          & govn.PersistableStructuredDataResource
           & govn.RouteSupplier = {
             imported,
             nature: nature.jsonContentNature,
             route: { ...we.route, nature: nature.jsonContentNature },
-            jsonInstance,
-            jsonText: jsonInstance,
+            structuredDataInstance,
+            serializedData: structuredDataInstance,
           };
         return result;
       };
@@ -51,8 +51,10 @@ export function jsonFileSysResourceFactory(
           const exports = imported.exports();
           const result:
             & govn.ModuleResource
-            & govn.JsonInstanceSupplier
-            & govn.NatureSupplier<govn.MediaTypeNature<govn.JsonTextSupplier>>
+            & govn.StructuredDataInstanceSupplier
+            & govn.NatureSupplier<
+              govn.MediaTypeNature<govn.SerializedDataSupplier>
+            >
             & govn.RouteSupplier = {
               imported,
               nature: nature.jsonContentNature,
@@ -60,7 +62,7 @@ export function jsonFileSysResourceFactory(
                 route.isRouteSupplier(exports) && route.isRoute(exports.route)
                   ? exports.route
                   : { ...we.route, nature: nature.jsonContentNature },
-              jsonInstance: defaultValue,
+              structuredDataInstance: defaultValue,
             };
           return result;
         } else {

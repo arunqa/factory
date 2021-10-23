@@ -13,60 +13,72 @@ import * as persist from "../../core/std/persist.ts";
 // * like for iCal, RSS, XML, etc.? or, should it remain focused on JSON only? *
 // *****************************************************************************
 
-export interface JsonRenderContext
+export interface StructureDataRenderContext
   extends Partial<govn.FrontmatterSupplier<govn.UntypedFrontmatter>> {
   readonly routeTree: govn.RouteTree;
 }
 
-export interface JsonLayout<Resource>
+export interface StructuredDataLayout<Resource>
   extends
-    JsonRenderContext,
+    StructureDataRenderContext,
     Partial<govn.FrontmatterSupplier<govn.UntypedFrontmatter>> {
   readonly resource: Resource;
+  readonly mediaTypeNature: govn.MediaTypeNature<govn.StructuredDataResource>;
   readonly activeRoute?: govn.Route;
 }
 
-export interface JsonTextProducer<Resource> {
-  (layout: JsonLayout<Resource>): Promise<govn.JsonTextSupplier>;
+export interface StructuredDataTextProducer<Resource> {
+  (
+    layout: StructuredDataLayout<Resource>,
+  ): Promise<govn.SerializedDataSupplier>;
 }
 
-export function jsonProducer(
+export function structuredDataTextProducer(
+  mediaTypeNature: govn.MediaTypeNature<govn.StructuredDataResource>,
   destRootPath: string,
-  context: JsonRenderContext,
+  namingStrategy: persist.LocalFileSystemNamingStrategy<
+    govn.RouteSupplier<govn.RouteNode>
+  >,
+  context: StructureDataRenderContext,
   fspEE?: govn.FileSysPersistenceEventsEmitter,
-): govn.ResourceRefinery<govn.JsonTextSupplier> {
-  const ns = persist.routePersistForceExtnNamingStrategy(".json");
+): govn.ResourceRefinery<govn.SerializedDataSupplier> {
   const producer = r.pipelineUnitsRefineryUntyped(
     async (resource) => {
-      if (c.isJsonTextSupplier(resource)) {
+      if (c.isSerializedDataSupplier(resource)) {
         return resource;
       }
-      if (c.isJsonInstanceSupplier(resource)) {
-        if (c.isJsonTextSupplier(resource.jsonInstance)) {
-          return resource.jsonInstance;
+      if (c.isStructuredDataInstanceSupplier(resource)) {
+        if (c.isSerializedDataSupplier(resource.structuredDataInstance)) {
+          return resource.structuredDataInstance;
         }
-        if (typeof resource.jsonInstance === "function") {
-          const jiFunction = resource.jsonInstance as JsonTextProducer<unknown>;
-          const layout: JsonLayout<govn.JsonInstanceSupplier> = {
+        if (typeof resource.structuredDataInstance === "function") {
+          const stdpFunction = resource
+            .structuredDataInstance as StructuredDataTextProducer<unknown>;
+          const layout: StructuredDataLayout<
+            govn.StructuredDataInstanceSupplier
+          > = {
             ...context,
+            mediaTypeNature,
             resource,
             activeRoute: route.isRouteSupplier(resource)
               ? resource.route
               : undefined,
           };
-          const supplier = await jiFunction(layout);
-          const result: govn.JsonInstanceSupplier & govn.JsonTextSupplier = {
-            ...resource,
-            ...supplier,
-          };
+          const supplier = await stdpFunction(layout);
+          const result:
+            & govn.StructuredDataInstanceSupplier
+            & govn.SerializedDataSupplier = {
+              ...resource,
+              ...supplier,
+            };
           return result;
         }
-        if (c.isJsonTextSupplier(resource.jsonInstance)) {
-          return resource.jsonInstance;
+        if (c.isSerializedDataSupplier(resource.structuredDataInstance)) {
+          return resource.structuredDataInstance;
         }
-        const issue: govn.JsonTextSupplier = {
-          jsonText: c.flexibleContent(
-            "jsonProducer() was not able to produce JSON text",
+        const issue: govn.SerializedDataSupplier = {
+          serializedData: c.flexibleContent(
+            "structuredDataTextProducer() was not able to serialize data",
           ),
         };
         return issue;
@@ -74,14 +86,15 @@ export function jsonProducer(
       return resource;
     },
     async (resource) => {
-      const layout: JsonLayout<govn.JsonResource> = {
+      const layout: StructuredDataLayout<govn.StructuredDataResource> = {
         ...context,
+        mediaTypeNature,
         resource,
       };
-      if (c.isJsonTextSupplier(resource)) {
+      if (c.isSerializedDataSupplier(resource)) {
         await persist.persistFlexibleFileCustom(
-          resource.jsonText,
-          ns(
+          resource.serializedData,
+          namingStrategy(
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,
             destRootPath,
           ),
@@ -100,7 +113,7 @@ export function jsonProducer(
     if (
       render.isRenderableMediaTypeResource(
         resource,
-        n.jsonMediaTypeNature.mediaType,
+        mediaTypeNature.mediaType,
       )
     ) {
       return await producer(resource);
@@ -108,4 +121,18 @@ export function jsonProducer(
     // we cannot handle this type of rendering target, no change to resource
     return resource;
   };
+}
+
+export function jsonTextProducer(
+  destRootPath: string,
+  context: StructureDataRenderContext,
+  fspEE?: govn.FileSysPersistenceEventsEmitter,
+): govn.ResourceRefinery<govn.SerializedDataSupplier> {
+  return structuredDataTextProducer(
+    n.jsonMediaTypeNature,
+    destRootPath,
+    persist.routePersistForceExtnNamingStrategy(".json"),
+    context,
+    fspEE,
+  );
 }

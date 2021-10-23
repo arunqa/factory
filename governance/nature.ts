@@ -46,23 +46,23 @@ export interface PersistableHtmlResource extends
 }
 
 // deno-lint-ignore no-explicit-any
-export interface JsonInstanceSupplier<Model = any> {
-  readonly jsonInstance: Model;
+export interface StructuredDataInstanceSupplier<Model = any> {
+  readonly structuredDataInstance: Model;
 }
 
-export interface JsonResource extends
+export interface StructuredDataResource extends
   NatureSupplier<
-    MediaTypeNature<c.JsonTextSupplier>
+    MediaTypeNature<c.SerializedDataSupplier>
   >,
-  JsonInstanceSupplier,
-  c.JsonTextSupplier {
+  StructuredDataInstanceSupplier,
+  c.SerializedDataSupplier {
 }
 
-export interface PersistableJsonResource extends
+export interface PersistableStructuredDataResource extends
   NatureSupplier<
-    & MediaTypeNature<c.JsonTextSupplier>
-    & p.FileSysPersistenceSupplier<JsonResource>
+    & MediaTypeNature<c.SerializedDataSupplier>
+    & p.FileSysPersistenceSupplier<StructuredDataResource>
   >,
-  JsonInstanceSupplier,
-  c.JsonTextSupplier {
+  StructuredDataInstanceSupplier,
+  c.SerializedDataSupplier {
 }

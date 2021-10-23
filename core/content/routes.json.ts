@@ -55,11 +55,16 @@ export const routeTreeJsonReplacer = (key: string, value: unknown) => {
  * @param layout JSON layout context will be passed in during text emit
  * @returns JsonTextSupplier with the content
  */
-// deno-lint-ignore require-await
-export const jsonRoutesProducer: jr.JsonTextProducer<unknown> = async (
-  layout,
-) => {
-  return {
-    jsonText: JSON.stringify(layout.routeTree, routeTreeJsonReplacer, "  "),
+export const jsonRoutesProducer: jr.StructuredDataTextProducer<unknown> =
+  // deno-lint-ignore require-await
+  async (
+    layout,
+  ) => {
+    return {
+      serializedData: JSON.stringify(
+        layout.routeTree,
+        routeTreeJsonReplacer,
+        "  ",
+      ),
+    };
   };
-};
