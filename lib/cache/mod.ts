@@ -1,3 +1,4 @@
+export * from "./config.ts";
 export * from "./file-sys-model.ts";
 export * from "./file-sys-path.ts";
 export * from "./file-sys-strategy.ts";

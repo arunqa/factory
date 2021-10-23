@@ -22,6 +22,7 @@ export interface ModelProxyStrategy {
 }
 
 export interface ModelProxyState {
+  readonly proxyConfigState?: ProxyConfigurationState;
   readonly proxyStrategyResult: ModelProxyStrategyResult;
 }
 
@@ -32,6 +33,10 @@ export interface ModelProxyIssue extends ModelProxyState {
 
 export type ProxyableModel<Model> = () => Promise<Model>;
 
+export interface ProxyConfigurationState {
+  readonly isConfigured: boolean;
+}
+
 export interface ProxyableModelLifecycle<
   Model,
   OriginContext,
@@ -39,6 +44,7 @@ export interface ProxyableModelLifecycle<
   State = ModelProxyState,
   Issue = ModelProxyIssue,
 > {
+  readonly configState?: () => Promise<ProxyConfigurationState>;
   readonly isOriginAvailable: (
     psr: StrategyResult,
   ) => Promise<OriginContext | false>;
@@ -48,7 +54,8 @@ export interface ProxyableModelLifecycle<
   ) => Promise<Model>;
   readonly constructFromError: (issue: Issue) => Promise<Model>;
   readonly constructFromProxy: (proxied: State) => Promise<Model>;
-  readonly persistProxied: (
+  readonly constructNotConfigured?: () => Promise<Model>;
+  readonly cacheProxied: (
     model: Model,
     psr: StrategyResult,
     oc: OriginContext,

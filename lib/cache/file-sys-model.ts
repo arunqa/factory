@@ -34,24 +34,42 @@ export function proxyableFileSysModel<Model, OriginContext>(
   args: govn.ProxyableFileSysModelArguments<Model, OriginContext>,
 ): govn.ProxyableModel<Model> {
   return async () => {
+    let proxyConfigState: govn.ProxyConfigurationState | undefined;
     const fsrpsr = await args.proxyStrategy(args.proxyFilePathAndName);
+    if (args.configState) {
+      // if this proxy needs to be "configured" (e.g. coming from a database or
+      // an API which requires secrets) and the configuration is not provided
+      // then just try to construct from proxy without trying to originate.
+      proxyConfigState = await args.configState();
+      if (!proxyConfigState.isConfigured) {
+        return args.constructNotConfigured
+          ? await args.constructNotConfigured()
+          : await args.constructFromProxy({
+            proxyConfigState,
+            proxyStrategyResult: fsrpsr,
+          });
+      }
+    }
+
     if (fsrpsr.isConstructFromOrigin) {
       try {
         const ctx = await args.isOriginAvailable(fsrpsr);
         if (ctx) {
           const model = await args.constructFromOrigin(ctx, fsrpsr);
-          return await args.persistProxied(model, fsrpsr, ctx);
+          return await args.cacheProxied(model, fsrpsr, ctx);
         } else {
           if (fsrpsr.proxyFileInfo) {
             // origin was not available, use the proxy
             return await args.constructFromProxy({
               proxyStrategyResult: fsrpsr,
+              proxyConfigState,
             });
           }
           // origin was not available, and proxy is not available
           return await args.constructFromError({
             originNotAvailable: true,
             proxyStrategyResult: fsrpsr,
+            proxyConfigState,
           });
         }
       } catch (proxyOriginError) {
@@ -60,11 +78,15 @@ export function proxyableFileSysModel<Model, OriginContext>(
           proxyStrategyResult: fsrpsr,
           originNotAvailable: false,
           proxyOriginError,
+          proxyConfigState,
         });
       }
     } else {
       // fsrpsr.isConstructFromOrigin is false
-      return await args.constructFromProxy({ proxyStrategyResult: fsrpsr });
+      return await args.constructFromProxy({
+        proxyStrategyResult: fsrpsr,
+        proxyConfigState,
+      });
     }
   };
 }
