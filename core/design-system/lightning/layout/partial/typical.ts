@@ -29,6 +29,12 @@ export const clientCargoPartial: ldsGovn.LightningPartial = (layout) => {
       finalize: undefined, // set to (cargo, ...) => { ... } to call in lightningActivatePage() after all other activation done
       location(relURL) { return \`\${this.route?.terminal?.qualifiedPath}\${relURL}\` },
       navigate(absURL) { window.location = absURL; },
+      resolvePrettyUrlHref: (path) => {
+          if (window.location.pathname.endsWith('/')) return path; // we're a pretty URL, no change
+          if (path.startsWith('/')) return path;                   // absolute path, no change
+          if (path.startsWith('../')) return path.substr(3);       // relative path but we're not using pretty URL so strip first unit
+          return path;                                             // not sure, leave it alone
+      },
       lightingIconURL(identity, layout) {
         const collection = typeof identity === "string" ? "utility" : identity.collection;
         const name = typeof identity === "string" ? identity : identity.name;
