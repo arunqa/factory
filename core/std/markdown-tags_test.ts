@@ -1,5 +1,6 @@
 import { testingAsserts as ta } from "../../deps-test.ts";
 import * as md from "./markdown-tags.ts";
+import * as tmpl from "./template.ts";
 
 const golden = `---
 title: Generated Markdown
@@ -36,8 +37,8 @@ Deno.test(`simple Markdown content generator`, () => {
     "https://github.com/skulptur/markdown-fns/tree/master/example";
   const fruits = ["Apples", "Oranges", "Bananas"];
 
-  const span = md.htmlTagFn("span");
-  const customTag = md.htmlTagFn("tag");
+  const span = tmpl.htmlTagFn("span");
+  const customTag = tmpl.htmlTagFn("tag");
 
   const markdown = md.lines([
     md.untypedFrontMatterYAML({ title: "Generated Markdown" }),
@@ -56,7 +57,7 @@ Deno.test(`simple Markdown content generator`, () => {
     md.ordered(fruits),
     md.unordered(fruits),
     md.link("example", exampleUrl),
-    md.htmlTag("b", "HTML without params"),
+    tmpl.htmlTag("b", "HTML without params"),
     customTag("param", "HTML tag with simple param"),
     span({ style: "abc:xyz" }, "span HTML with key/value param"),
   ]);
