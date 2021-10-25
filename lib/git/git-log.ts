@@ -219,6 +219,8 @@ function createCommandArguments<
 
   if (options.includeMergeCommitFiles) {
     command.push("-m");
+  } else {
+    command.push("--no-merges");
   }
 
   if (options.number === -1) {
