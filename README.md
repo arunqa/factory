@@ -293,6 +293,9 @@ JavaScript is best.
     exist.
 - Allow directories to become routes without necessarily tying it to a resource
   - Should directories themselves become originators (resource factories)?
+- Implement [related content](https://gohugo.io/content-management/related/)
+  similar to the way Hugo and other SSGs work. In our case, we can allow dynamic
+  relationships with Frontmatter (untyped) or Models (type-safe).
 
 ### Markdown
 
