@@ -7,35 +7,27 @@ import {
   log,
   path,
   safety,
-} from "../deps.ts";
-import * as fsA from "../lib/fs/fs-analytics.ts";
-import * as fsT from "../lib/fs/fs-tree.ts";
-import * as govn from "../governance/mod.ts";
-import * as e from "../core/std/extension.ts";
-import * as obs from "../core/std/observability.ts";
-import * as r from "../core/std/resource.ts";
-import * as n from "../core/std/nature.ts";
-import * as git from "../lib/git/mod.ts";
-import * as fm from "../core/std/frontmatter.ts";
-import * as m from "../core/std/model.ts";
-import * as route from "../core/std/route.ts";
-import * as rtree from "../core/std/route-tree.ts";
-import * as fsg from "../core/originate/file-sys-globs.ts";
-import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
-import * as lds from "../core/design-system/lightning/mod.ts";
-import * as ldsDirec from "../core/design-system/lightning/directive/mod.ts";
-import * as html from "../core/render/html/mod.ts";
-import * as jrs from "../core/render/json.ts";
-import * as tfr from "../core/render/text.ts";
-import * as dtr from "../core/render/delimited-text.ts";
-import * as render from "../core/std/render.ts";
-import * as cpC from "../core/content/control-panel.ts";
-import * as conf from "../lib/conf/mod.ts";
-import * as redirectC from "../core/design-system/lightning/content/redirects.rf.ts";
-import * as ldsDiagC from "../core/design-system/lightning/content/diagnostic/mod.ts";
-import * as sqlObsC from "../lib/db/observability.rf.ts";
-import * as mdr from "../core/render/markdown/mod.ts";
-import * as fsLink from "../lib/fs/link.ts";
+} from "../../deps.ts";
+import * as rfGovn from "../../governance/mod.ts";
+import * as rfStd from "../../core/std/mod.ts";
+import * as fsA from "../../lib/fs/fs-analytics.ts";
+import * as fsT from "../../lib/fs/fs-tree.ts";
+import * as git from "../../lib/git/mod.ts";
+import * as fsg from "../../core/originate/file-sys-globs.ts";
+import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
+import * as lds from "../../core/design-system/lightning/mod.ts";
+import * as ldsDirec from "../../core/design-system/lightning/directive/mod.ts";
+import * as html from "../../core/render/html/mod.ts";
+import * as jrs from "../../core/render/json.ts";
+import * as tfr from "../../core/render/text.ts";
+import * as dtr from "../../core/render/delimited-text.ts";
+import * as cpC from "../../core/content/control-panel.ts";
+import * as conf from "../../lib/conf/mod.ts";
+import * as redirectC from "../../core/design-system/lightning/content/redirects.rf.ts";
+import * as ldsDiagC from "../../core/design-system/lightning/content/diagnostic/mod.ts";
+import * as sqlObsC from "../../lib/db/observability.rf.ts";
+import * as mdr from "../../core/render/markdown/mod.ts";
+import * as fsLink from "../../lib/fs/link.ts";
 
 export const assetMetricsWalkOptions: fs.WalkOptions = {
   skip: [/\.git/],
@@ -48,10 +40,10 @@ export interface Preferences {
   readonly envVarNamesPrefix: string;
   readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
   readonly mGitResolvers: git.ManagedGitResolvers<string>;
-  readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
+  readonly routeGitRemoteResolver: rfGovn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
-  readonly routeLocationResolver?: route.RouteLocationResolver;
+  readonly routeLocationResolver?: rfStd.RouteLocationResolver;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
   readonly assetsMetricsWalkers?: (
     config: Configuration,
@@ -65,18 +57,18 @@ export class Configuration
   readonly envVarNamesPrefix: string;
   readonly assetsMetricsWalkers: fsT.FileSysAssetWalker[];
   readonly git?: git.GitExecutive;
-  readonly fsRouteFactory: route.FileSysRouteFactory;
-  readonly routeLocationResolver?: route.RouteLocationResolver;
-  readonly extensionsManager = new e.CachedExtensions();
-  readonly observabilityRoute: govn.Route;
-  readonly diagnosticsRoute: govn.Route;
+  readonly fsRouteFactory: rfStd.FileSysRouteFactory;
+  readonly routeLocationResolver?: rfStd.RouteLocationResolver;
+  readonly extensionsManager = new rfStd.CachedExtensions();
+  readonly observabilityRoute: rfGovn.Route;
+  readonly diagnosticsRoute: rfGovn.Route;
   readonly designSystem: lds.LightingDesignSystem<lds.LightningLayout>;
   readonly contentRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
   readonly logger: log.Logger;
   readonly mGitResolvers: git.ManagedGitResolvers<string>;
-  readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
+  readonly routeGitRemoteResolver: rfGovn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
   readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
@@ -95,8 +87,8 @@ export class Configuration
     this.logger = log.getLogger();
     this.routeGitRemoteResolver = prefs.routeGitRemoteResolver;
     this.routeLocationResolver = prefs.routeLocationResolver;
-    this.fsRouteFactory = new route.FileSysRouteFactory(
-      this.routeLocationResolver || route.defaultRouteLocationResolver(),
+    this.fsRouteFactory = new rfStd.FileSysRouteFactory(
+      this.routeLocationResolver || rfStd.defaultRouteLocationResolver(),
     );
     this.designSystem = this.constructDesignSystem();
     this.observabilityRoute = cpC.observabilityRoute(this.fsRouteFactory);
@@ -135,7 +127,7 @@ export interface PublicationRouteEventsHandler<Context> {
    * @param rs the resource, which has rs.route and all other resource content
    */
   readonly prepareResourceRoute?: (
-    rs: govn.RouteSupplier<govn.RouteNode>,
+    rs: rfGovn.RouteSupplier<rfGovn.RouteNode>,
   ) => Context;
 
   /**
@@ -149,8 +141,8 @@ export interface PublicationRouteEventsHandler<Context> {
    * @param ctx if prepareResourceRoute was called before prepareResourceTreeNode, this is the Context
    */
   readonly prepareResourceTreeNode?: (
-    rs: govn.RouteSupplier<govn.RouteNode>,
-    rtn?: govn.RouteTreeNode,
+    rs: rfGovn.RouteSupplier<rfGovn.RouteNode>,
+    rtn?: rfGovn.RouteTreeNode,
     ctx?: Context,
   ) => void;
 }
@@ -171,27 +163,27 @@ export const isDiagnosticsOptionsSupplier = safety.typeGuard<
 >("metrics", "renderers", "routes");
 
 export interface PublicationState {
-  readonly observability: obs.Observability;
-  readonly resourcesTree: govn.RouteTree;
-  readonly resourcesIndex: r.UniversalResourcesIndex<unknown>;
+  readonly observability: rfStd.Observability;
+  readonly resourcesTree: rfGovn.RouteTree;
+  readonly resourcesIndex: rfStd.UniversalResourcesIndex<unknown>;
   readonly diagnostics: () => ldsDiagC.DiagnosticsResourcesState;
   assetsMetrics?: fsA.AssetsMetricsResult;
 }
 
-export class ResourcesTree extends rtree.TypicalRouteTree {
+export class ResourcesTree extends rfStd.TypicalRouteTree {
   consumeRoute(
-    rs: govn.RouteSupplier | govn.Route,
+    rs: rfGovn.RouteSupplier | rfGovn.Route,
     options?: {
-      readonly nodeExists?: rtree.RouteTreeNodeExists;
-      readonly copyOf?: govn.RouteTreeNode;
+      readonly nodeExists?: rfStd.RouteTreeNodeExists;
+      readonly copyOf?: rfGovn.RouteTreeNode;
     },
-  ): govn.RouteTreeNode | undefined {
+  ): rfGovn.RouteTreeNode | undefined {
     const result = super.consumeRoute(rs, options);
-    if (fm.isFrontmatterSupplier(rs)) {
-      fm.referenceFrontmatter(rs, result);
+    if (rfStd.isFrontmatterSupplier(rs)) {
+      rfStd.referenceFrontmatter(rs, result);
     }
-    if (m.isModelSupplier(rs)) {
-      m.referenceModel(rs, result);
+    if (rfStd.isModelSupplier(rs)) {
+      rfStd.referenceModel(rs, result);
       if (lds.isLightningNavigationNotificationSupplier(rs.model)) {
         lds.referenceNotifications(rs.model, result);
       }
@@ -200,18 +192,18 @@ export class ResourcesTree extends rtree.TypicalRouteTree {
   }
 }
 
-export class NavigationTree extends rtree.TypicalRouteTree {
+export class NavigationTree extends rfStd.TypicalRouteTree {
   consumeRoute(
-    rs: govn.RouteSupplier | govn.Route,
+    rs: rfGovn.RouteSupplier | rfGovn.Route,
     options?: {
-      readonly nodeExists?: rtree.RouteTreeNodeExists;
-      readonly copyOf?: govn.RouteTreeNode;
+      readonly nodeExists?: rfStd.RouteTreeNodeExists;
+      readonly copyOf?: rfGovn.RouteTreeNode;
     },
-  ): govn.RouteTreeNode | undefined {
+  ): rfGovn.RouteTreeNode | undefined {
     const result = super.consumeRoute(rs, options);
     const copyOf = options?.copyOf;
-    if (m.isModelSupplier(copyOf)) {
-      m.referenceModel(copyOf, result);
+    if (rfStd.isModelSupplier(copyOf)) {
+      rfStd.referenceModel(copyOf, result);
       if (lds.isLightningNavigationNotificationSupplier(copyOf.model)) {
         lds.referenceNotifications(copyOf.model, result);
       }
@@ -240,7 +232,7 @@ export class PublicationRoutes {
   };
 
   constructor(
-    readonly routeFactory: govn.RouteFactory,
+    readonly routeFactory: rfGovn.RouteFactory,
     readonly resourcesTree = new ResourcesTree(routeFactory),
     readonly navigationTree = new NavigationTree(routeFactory),
   ) {
@@ -253,8 +245,8 @@ export class PublicationRoutes {
    * @returns the newly create tree node or undefined if route is rejected
    */
   consumeResourceRoute(
-    rs: govn.RouteSupplier<govn.RouteNode>,
-  ): govn.RouteTreeNode | undefined {
+    rs: rfGovn.RouteSupplier<rfGovn.RouteNode>,
+  ): rfGovn.RouteTreeNode | undefined {
     let ctx: unknown;
     const terminal = rs?.route?.terminal;
     if (
@@ -286,23 +278,23 @@ export class PublicationRoutes {
    * handled by prepareNavigationTree().
    * @returns resource refinery (sync)
    */
-  resourcesTreePopulator(): govn.ResourceRefinery<
-    govn.RouteSupplier<govn.RouteNode>
+  resourcesTreePopulator(): rfGovn.ResourceRefinery<
+    rfGovn.RouteSupplier<rfGovn.RouteNode>
   > {
     // deno-lint-ignore require-await
     return async (resource) => {
-      if (route.isRouteSupplier(resource)) {
+      if (rfStd.isRouteSupplier(resource)) {
         this.consumeResourceRoute(resource);
       }
       return resource;
     };
   }
 
-  resourcesTreePopulatorSync(): govn.ResourceRefinerySync<
-    govn.RouteSupplier<govn.RouteNode>
+  resourcesTreePopulatorSync(): rfGovn.ResourceRefinerySync<
+    rfGovn.RouteSupplier<rfGovn.RouteNode>
   > {
     return (resource) => {
-      if (route.isRouteSupplier(resource)) {
+      if (rfStd.isRouteSupplier(resource)) {
         this.consumeResourceRoute(resource);
       }
       return resource;
@@ -324,9 +316,9 @@ export class PublicationRoutes {
     this.navigationTree.consumeTree(
       this.resourcesTree,
       (node) =>
-        render.isRenderableMediaTypeResource(
+        rfStd.isRenderableMediaTypeResource(
             node.route,
-            n.htmlMediaTypeNature.mediaType,
+            rfStd.htmlMediaTypeNature.mediaType,
           )
           ? true
           : false,
@@ -339,7 +331,7 @@ export class PublicationRoutes {
    * either within the same site or to external resources.
    * @returns
    */
-  redirectResources(): govn.ResourcesFactoriesSupplier<govn.HtmlResource> {
+  redirectResources(): rfGovn.ResourcesFactoriesSupplier<rfGovn.HtmlResource> {
     return redirectC.redirectResources(this.resourcesTree);
   }
 }
@@ -352,7 +344,7 @@ export class PublicationDesignSystemArguments
   readonly assets: lds.AssetLocations;
   readonly branding: lds.LightningBranding;
   readonly mGitResolvers: git.ManagedGitResolvers<string>;
-  readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
+  readonly routeGitRemoteResolver: rfGovn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
   readonly renderedAt = new Date();
@@ -381,12 +373,12 @@ export interface Publication {
 }
 
 export class TypicalPublication
-  implements Publication, govn.ObservabilityHealthComponentStatusSupplier {
+  implements Publication, rfGovn.ObservabilityHealthComponentStatusSupplier {
   readonly namespaceURIs = ["TypicalPublication<Resource>"];
   readonly state: PublicationState;
   readonly consumedFileSysWalkPaths = new Set<string>();
   readonly persistedDestFiles = new Set<string>();
-  readonly fspEventsEmitter = new govn.FileSysPersistenceEventsEmitter();
+  readonly fspEventsEmitter = new rfGovn.FileSysPersistenceEventsEmitter();
   readonly diagsOptions: DiagnosticsOptionsSupplier;
 
   constructor(
@@ -412,11 +404,11 @@ export class TypicalPublication
     this.config.mGitResolvers.registerResolver(routes.gitAssetPublUrlResolver);
     this.diagsOptions = diagsConfig.configureSync();
     this.state = {
-      observability: new obs.Observability(
-        new govn.ObservabilityEventsEmitter(),
+      observability: new rfStd.Observability(
+        new rfGovn.ObservabilityEventsEmitter(),
       ),
       resourcesTree: routes.resourcesTree,
-      resourcesIndex: new r.UniversalResourcesIndex(),
+      resourcesIndex: new rfStd.UniversalResourcesIndex(),
       diagnostics: () => ({
         routes: {
           resourcesTree: routes.resourcesTree,
@@ -442,7 +434,7 @@ export class TypicalPublication
     });
   }
 
-  *obsHealthStatus(): Generator<govn.ObservabilityHealthComponentStatus> {
+  *obsHealthStatus(): Generator<rfGovn.ObservabilityHealthComponentStatus> {
     const time = new Date();
     const status = health.healthyComponent({
       componentId: this.namespaceURIs.join(", "),
@@ -494,9 +486,9 @@ export class TypicalPublication
    * @returns list of directives we will allow in Markdown
    */
   directiveExpectationsSupplier():
-    | govn.DirectiveExpectationsSupplier<
+    | rfGovn.DirectiveExpectationsSupplier<
       // deno-lint-ignore no-explicit-any
-      govn.DirectiveExpectation<any, any>
+      rfGovn.DirectiveExpectation<any, any>
     >
     | undefined {
     // by default we delegate directive expectations to the design system
@@ -542,7 +534,7 @@ export class TypicalPublication
   }
 
   // deno-lint-ignore no-explicit-any
-  originators(): govn.ResourcesFactoriesSupplier<any>[] {
+  originators(): rfGovn.ResourcesFactoriesSupplier<any>[] {
     const { contentRootPath, fsRouteFactory } = this.config;
     const watcher = new fsg.FileSysGlobsOriginatorEventEmitter();
     // deno-lint-ignore require-await
@@ -585,16 +577,16 @@ export class TypicalPublication
   }
 
   // deno-lint-ignore no-explicit-any
-  inspectionRefinery(): govn.ResourceRefinery<any> | undefined {
+  inspectionRefinery(): rfGovn.ResourceRefinery<any> | undefined {
     return undefined;
   }
 
   // deno-lint-ignore no-explicit-any
-  inspectionRefinerySync(): govn.ResourceRefinerySync<any> | undefined {
+  inspectionRefinerySync(): rfGovn.ResourceRefinerySync<any> | undefined {
     return (resource) => {
-      if (route.isRouteSupplier(resource)) {
+      if (rfStd.isRouteSupplier(resource)) {
         const rr = resource.route;
-        if (rr.terminal && route.isFileSysRouteUnit(rr.terminal)) {
+        if (rr.terminal && rfStd.isFileSysRouteUnit(rr.terminal)) {
           const fileName = rr.terminal.fileSysPathParts.base;
           if (fileName.includes(" ")) {
             return ldsDirec.registerActionItems(
@@ -625,7 +617,7 @@ export class TypicalPublication
   }
 
   persistersRefinery() {
-    return r.pipelineUnitsRefineryUntyped(
+    return rfStd.pipelineUnitsRefineryUntyped(
       this.config.designSystem.prettyUrlsHtmlProducer(
         this.config.destRootPath,
         this.ds,
@@ -655,16 +647,16 @@ export class TypicalPublication
   }
 
   async *originate<Resource>(
-    supplier: govn.ResourcesFactoriesSupplier<Resource>,
+    supplier: rfGovn.ResourcesFactoriesSupplier<Resource>,
     // deno-lint-ignore no-explicit-any
-    refine: govn.ResourceRefinerySync<any>,
+    refine: rfGovn.ResourceRefinerySync<any>,
     _parent?: Resource,
   ): AsyncGenerator<Resource> {
     for await (const rf of supplier.resourcesFactories()) {
       const resource = refine(await rf.resourceFactory()) as Resource;
       let hasChildren = false;
       let yieldWithChildren = false;
-      if (r.isChildResourcesFactoriesSupplier<Resource>(resource)) {
+      if (rfStd.isChildResourcesFactoriesSupplier<Resource>(resource)) {
         // our constructed resource wants to create its own resources so allow
         // it become a dynamic supplier of resource factories via recursion
         yield* this.originate(resource, refine, resource);
@@ -677,9 +669,9 @@ export class TypicalPublication
     }
   }
 
-  async *resources<Resource>(refine: govn.ResourceRefinerySync<Resource>) {
+  async *resources<Resource>(refine: rfGovn.ResourceRefinerySync<Resource>) {
     for await (const originator of this.originators()) {
-      if (obs.isObservabilityHealthComponentSupplier(originator)) {
+      if (rfStd.isObservabilityHealthComponentSupplier(originator)) {
         this.state.observability.events.emitSync(
           "healthStatusSupplier",
           originator,
@@ -734,7 +726,7 @@ export class TypicalPublication
   }
 
   async inspectResources(
-    resourcesIndex: r.UniversalResourcesIndex<unknown>,
+    resourcesIndex: rfStd.UniversalResourcesIndex<unknown>,
   ): Promise<void> {
     const inspectSync = this.inspectionRefinerySync();
     if (inspectSync) {
@@ -752,10 +744,10 @@ export class TypicalPublication
   }
 
   async finalizePrePersist(
-    originationRefinery: govn.ResourceRefinerySync<
-      govn.RouteSupplier<govn.RouteNode>
+    originationRefinery: rfGovn.ResourceRefinerySync<
+      rfGovn.RouteSupplier<rfGovn.RouteNode>
     >,
-    resourcesIndex: r.UniversalResourcesIndex<unknown>,
+    resourcesIndex: rfStd.UniversalResourcesIndex<unknown>,
   ) {
     // the first found of all resources are now available, but haven't yet been
     // persisted so let's prepare the navigation trees before we persist

@@ -1,24 +1,25 @@
-import { path } from "../deps.ts";
+import { path } from "../../deps.ts";
 // import { testingAsserts as ta } from "../deps-test.ts";
 import * as mod from "./publication.ts";
-import * as fsLink from "../lib/fs/link.ts";
-import * as git from "../lib/git/mod.ts";
+import * as fsLink from "../../lib/fs/link.ts";
+import * as git from "../../lib/git/mod.ts";
 
 const testPath = path.relative(
   Deno.cwd(),
   path.dirname(import.meta.url).substr("file://".length),
 );
+const docsPath = path.join(testPath, "../../", "docs");
 const prefs: mod.Preferences = {
-  contentRootPath: path.join(testPath, "../", "docs", "content"),
+  contentRootPath: path.join(docsPath, "content"),
   persistClientCargo: async (publishDest) => {
     await fsLink.symlinkDirectoryChildren(
-      path.join(path.join(testPath, "../", "docs", "client-cargo")),
+      path.join(path.join(docsPath, "client-cargo")),
       path.join(publishDest),
       undefined,
       //fsLink.symlinkDirectoryChildrenConsoleReporters,
     );
   },
-  destRootPath: path.join(testPath, "../", "docs", "public"),
+  destRootPath: path.join(docsPath, "public"),
   appName: "Publication Test",
   envVarNamesPrefix: "PUBCTL_",
   mGitResolvers: {

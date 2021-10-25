@@ -1,16 +1,12 @@
-import * as govn from "../governance/mod.ts";
-import * as r from "../core/std/resource.ts";
-import * as n from "../core/std/nature.ts";
-import * as render from "../core/std/render.ts";
-import * as fsg from "../core/originate/file-sys-globs.ts";
+import * as rfGovn from "../../governance/mod.ts";
+import * as rfStd from "../../core/std/mod.ts";
+import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as publ from "./publication.ts";
-import * as rt from "../core/std/route.ts";
-import * as fm from "../core/std/frontmatter.ts";
-import * as g from "../lib/git/mod.ts";
-import * as md from "../core/resource/markdown.ts";
-import * as tfsg from "../core/originate/typical-file-sys-globs.ts";
-import * as lds from "../core/design-system/lightning/mod.ts";
-import * as cpC from "../core/content/control-panel.ts";
+import * as g from "../../lib/git/mod.ts";
+import * as md from "../../core/resource/markdown.ts";
+import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
+import * as lds from "../../core/design-system/lightning/mod.ts";
+import * as cpC from "../../core/content/control-panel.ts";
 
 export interface HugoPageWeightSupplier {
   readonly weight?: number;
@@ -31,7 +27,7 @@ export function hugoPageProperties<Resource>(
   let weight: number | undefined;
   let title: string | undefined;
   let mainMenuName: string | undefined;
-  if (fm.isFrontmatterSupplier(resource)) {
+  if (rfStd.isFrontmatterSupplier(resource)) {
     const fmUntyped = resource.frontmatter;
     // deno-lint-ignore no-explicit-any
     const menu = fmUntyped.menu as any;
@@ -53,8 +49,8 @@ export function hugoPageProperties<Resource>(
  * @returns 0 if weights are equal, +1 or -1 for sort order
  */
 const orderByWeight: (
-  a: govn.RouteTreeNode & HugoPageWeightSupplier,
-  b: govn.RouteTreeNode & HugoPageWeightSupplier,
+  a: rfGovn.RouteTreeNode & HugoPageWeightSupplier,
+  b: rfGovn.RouteTreeNode & HugoPageWeightSupplier,
 ) => number = (a, b) => {
   const weightA = a.weight;
   const weightB = b.weight;
@@ -70,7 +66,7 @@ export class HugoResourcesTree extends publ.ResourcesTree {
 
 export class HugoRoutes extends publ.PublicationRoutes {
   constructor(
-    readonly routeFactory: govn.RouteFactory,
+    readonly routeFactory: rfGovn.RouteFactory,
     readonly contextBarLevel = 1,
   ) {
     super(routeFactory, new HugoResourcesTree(routeFactory));
@@ -87,9 +83,9 @@ export class HugoRoutes extends publ.PublicationRoutes {
         const nodeNav = node as lds.NavigationTreeNodeCapabilities;
         if (nodeNav.isContextBarRouteNode) return true;
         if (node.level < this.contextBarLevel) return false;
-        return render.isRenderableMediaTypeResource(
+        return rfStd.isRenderableMediaTypeResource(
             node.route,
-            n.htmlMediaTypeNature.mediaType,
+            rfStd.htmlMediaTypeNature.mediaType,
           )
           ? true
           : false;
@@ -110,7 +106,7 @@ export class HugoSite extends publ.TypicalPublication {
   }
 
   // deno-lint-ignore no-explicit-any
-  originators(): govn.ResourcesFactoriesSupplier<any>[] {
+  originators(): rfGovn.ResourcesFactoriesSupplier<any>[] {
     const fsgoWatcher = new fsg.FileSysGlobsOriginatorEventEmitter();
     // deno-lint-ignore require-await
     fsgoWatcher.on("beforeYieldWalkEntry", async (we) => {
@@ -121,8 +117,8 @@ export class HugoSite extends publ.TypicalPublication {
 
     // use this file system routes parser to handle special rules and conditions;
     // this will not be used for non-file-system routes (such as control panel)
-    const routeParser: rt.FileSysRouteParser = (fsp, ca) => {
-      const hffsrp = rt.humanFriendlyFileSysRouteParser(fsp, ca);
+    const routeParser: rfStd.FileSysRouteParser = (fsp, ca) => {
+      const hffsrp = rfStd.humanFriendlyFileSysRouteParser(fsp, ca);
       if (
         !hffsrp.parsedPath.base.endsWith(".md.ts") &&
         !hffsrp.parsedPath.base.match(".md")
@@ -132,7 +128,7 @@ export class HugoSite extends publ.TypicalPublication {
 
       const isHugoUnderscoreIndex = hffsrp.parsedPath.name === "_index";
       const routeUnit:
-        & govn.RouteUnit
+        & rfGovn.RouteUnit
         & publ.PublicationRouteEventsHandler<HugoPageProperties> = {
           ...hffsrp.routeUnit,
           unit: isHugoUnderscoreIndex
@@ -205,8 +201,8 @@ export class HugoSite extends publ.TypicalPublication {
                 routeParser,
                 factory: md.staticMarkdownFileSysResourceFactory(
                   // deno-lint-ignore no-explicit-any
-                  r.pipelineUnitsRefinery<any>(
-                    fm.prepareFrontmatter(fm.yamlMarkdownFrontmatterRE),
+                  rfStd.pipelineUnitsRefinery<any>(
+                    rfStd.prepareFrontmatter(rfStd.yamlMarkdownFrontmatterRE),
                     mdRenderers.renderer(),
                   ),
                 ),
