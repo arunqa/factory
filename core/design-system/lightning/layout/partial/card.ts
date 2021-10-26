@@ -33,7 +33,7 @@ export function renderedCard(
               <span>${card.title}</span>
             </a>${card.notifications ? card.notifications.collection.map(lnn =>`
             <span class="slds-badge slds-col_bump-left">
-              ${lnn.icon ? icon.renderedIcon(layout, lnn.icon, "slds-icon_xx-small") : ''}
+              ${lnn.icon ? icon.renderedIcon(layout, lnn.icon, "slds-icon_xx-small slds-icon-text-default slds-m-right_xx-small") : ''}
               <span class="slds-assistive-text">:</span>${lnn.count()}
               <span class="slds-assistive-text">${lnn.assistiveText}</span>
             </span>`).join("\n") : ''}
