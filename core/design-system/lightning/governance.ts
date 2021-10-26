@@ -1,21 +1,23 @@
+import { safety } from "../../deps.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as html from "../../render/html/mod.ts";
 import * as l from "./layout/mod.ts";
 
-export const indexUnitName = "index";
-
-/**
- * Interface implemented by route tree nodes to add specific design system-
- * specific capabilities.
- */
-export interface MutatableNavigationTreeNodeCapabilities {
-  isContextBarRouteNode?: boolean;
-  isIndexNode?: boolean;
+export interface MutableNavigationTreeContextBarNode {
+  isContextBarRouteNode: boolean;
 }
 
-export type NavigationTreeNodeCapabilities = Readonly<
-  MutatableNavigationTreeNodeCapabilities
+export type NavigationTreeContextBarNode = Readonly<
+  MutableNavigationTreeContextBarNode
 >;
+
+export const isMutableNavigationTreeContextBarNode = safety.typeGuard<
+  MutableNavigationTreeContextBarNode
+>();
+
+export const isNavigationTreeContextBarNode = safety.typeGuard<
+  NavigationTreeContextBarNode
+>();
 
 /**
  * Used by Deno HTML modules as html: { text: LightningLayoutBodySupplier }

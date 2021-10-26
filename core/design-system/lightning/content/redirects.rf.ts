@@ -1,6 +1,7 @@
 import * as govn from "../../../../governance/mod.ts";
 import * as n from "../../../std/nature.ts";
 import * as rtree from "../../../std/route-tree.ts";
+import * as ds from "../../../render/html/mod.ts";
 import * as lds from "../mod.ts";
 
 // TODO: redirects might also want to generate (yield) .htaccess files too?
@@ -46,7 +47,7 @@ export function redirectResources(
                 },
                 route: {
                   ...resourcesTree.routeFactory.childRoute(
-                    { unit: lds.indexUnitName, label: "Routes" },
+                    { unit: ds.indexUnitName, label: "Routes" },
                     alias.route!, // the route for aliases is created in rtree.TypicalRouteTree
                     false,
                   ),

@@ -86,7 +86,7 @@ export function metricsHtmlFactorySupplier(
           frontmatter,
           route: {
             ...rf.childRoute(
-              { unit: lds.indexUnitName, label: "Metrics" },
+              { unit: ds.indexUnitName, label: "Metrics" },
               parentRoute,
               false,
             ),

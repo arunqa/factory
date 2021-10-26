@@ -13,6 +13,22 @@ import * as persist from "../../../core/std/persist.ts";
 import * as rtree from "../../../core/std/route-tree.ts";
 import * as notif from "../../../lib/notification/mod.ts";
 
+export const indexUnitName = "index";
+
+export interface MutableNavigationTreeIndexNode {
+  isIndexNode: boolean;
+}
+
+export const isMutableNavigationTreeIndexNode = safety.typeGuard<
+  MutableNavigationTreeIndexNode
+>();
+
+export type NavigationTreeIndexNode = Readonly<MutableNavigationTreeIndexNode>;
+
+export const isNavigationTreeIndexNode = safety.typeGuard<
+  NavigationTreeIndexNode
+>();
+
 export interface DesignSystemLayoutArgumentsSupplier {
   readonly layout:
     | govn.RenderStrategyIdentity

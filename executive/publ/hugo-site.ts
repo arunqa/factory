@@ -3,6 +3,7 @@ import * as rfStd from "../../core/std/mod.ts";
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as publ from "./publication.ts";
 import * as g from "../../lib/git/mod.ts";
+import * as ds from "../../core/render/html/mod.ts";
 import * as md from "../../core/resource/markdown.ts";
 import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
 import * as lds from "../../core/design-system/lightning/mod.ts";
@@ -80,8 +81,11 @@ export class HugoRoutes extends publ.PublicationRoutes {
     this.navigationTree.consumeTree(
       this.resourcesTree,
       (node) => {
-        const nodeNav = node as lds.NavigationTreeNodeCapabilities;
-        if (nodeNav.isContextBarRouteNode) return true;
+        if (
+          lds.isNavigationTreeContextBarNode(node) && node.isContextBarRouteNode
+        ) {
+          return true;
+        }
         if (node.level < this.contextBarLevel) return false;
         return rfStd.isRenderableMediaTypeResource(
             node.route,
@@ -132,7 +136,7 @@ export class HugoSite extends publ.TypicalPublication {
         & publ.PublicationRouteEventsHandler<HugoPageProperties> = {
           ...hffsrp.routeUnit,
           unit: isHugoUnderscoreIndex
-            ? lds.indexUnitName
+            ? ds.indexUnitName
             : hffsrp.routeUnit.unit,
           prepareResourceRoute: (rs) => {
             const hpp = hugoPageProperties(rs);
@@ -160,12 +164,15 @@ export class HugoSite extends publ.TypicalPublication {
             return hpp;
           },
           prepareResourceTreeNode: (_rs, node, hpp) => {
-            const nodeNav = node as lds.MutatableNavigationTreeNodeCapabilities;
-            if (node?.level == HugoSite.contextBarLevel && hpp!.mainMenuName) {
-              nodeNav.isContextBarRouteNode = true;
+            if (
+              node?.level == HugoSite.contextBarLevel && hpp!.mainMenuName
+            ) {
+              (node as unknown as lds.MutableNavigationTreeContextBarNode)
+                .isContextBarRouteNode = true;
             }
-            if (isHugoUnderscoreIndex || node?.unit == lds.indexUnitName) {
-              nodeNav.isIndexNode = true;
+            if (isHugoUnderscoreIndex || node?.unit == ds.indexUnitName) {
+              (node as unknown as ds.MutableNavigationTreeIndexNode)
+                .isIndexNode = true;
             }
           },
         };

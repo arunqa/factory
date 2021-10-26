@@ -2,6 +2,7 @@ import * as govn from "../../../../governance/mod.ts";
 import * as aiM from "../../../model/action-item.ts";
 import * as m from "../../../../core/std/model.ts";
 import * as mdDS from "../../../render/markdown/mod.ts";
+import * as htmlDS from "../../../render/html/mod.ts";
 import * as notif from "../../../../lib/notification/mod.ts";
 import * as lds from "../mod.ts";
 
@@ -169,7 +170,7 @@ export function activeRouteNodeActionItems(
   activeNode: govn.RouteTreeNode | undefined,
 ): RouteNodeActionItem[] {
   let actionNodes: govn.RouteTreeNode[] | undefined;
-  if (activeNode?.unit == lds.indexUnitName) {
+  if (activeNode?.unit == htmlDS.indexUnitName) {
     actionNodes = activeNode?.parent
       ? [...activeNode.parent.children, ...activeNode.children]
       : activeNode.children;

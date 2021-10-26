@@ -1,11 +1,12 @@
 import * as govn from "../../../../../governance/mod.ts";
+import * as ds from "../../../../render/html/mod.ts";
 import * as ldsGovn from "../../governance.ts";
 import * as card from "./card.ts";
 
 export const autoIndexCardsBodyPartial: ldsGovn.LightningPartial = (layout) => {
   const contentTree = layout.dsCtx.navigation.contentTree(layout);
   let cardNodes: govn.RouteTreeNode[] | undefined;
-  if (contentTree?.unit == ldsGovn.indexUnitName) {
+  if (contentTree?.unit == ds.indexUnitName) {
     cardNodes = contentTree?.parent
       ? [...contentTree.parent.children, ...contentTree.children]
       : contentTree.children;
