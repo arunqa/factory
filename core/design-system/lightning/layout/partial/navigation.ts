@@ -121,7 +121,7 @@ export const verticalNavigationShadedPartial: ldsGovn.LightningPartial = (
         <legend class="slds-nav-vertical__title">${contentTree.label}</legend>               
         ${contentTree.children.map(rtn => {
           const isActive = layout.activeTreeNode && rtn.qualifiedPath == layout.activeTreeNode.qualifiedPath;
-          const notifications = layout.dsCtx.navigation?.descendantsNotifications<ldsGovn.LightningNavigationNotifications>(rtn);
+          const notifications = layout.dsCtx.navigation?.descendantsNotifications<ldsGovn.LightningNavigationNotification>(rtn);
           return `<span class="slds-nav-vertical__item">
             <input type="radio" id="unique-id-03-recent" value="unique-id-03-recent" name="unique-id-shade"${isActive ? ' checked=""' : ''} />
             <label class="slds-nav-vertical__action" for="unique-id-03-recent">
@@ -130,14 +130,14 @@ export const verticalNavigationShadedPartial: ldsGovn.LightningPartial = (
               </a>
               ${notifications ? notifications.collection.map(lnn => `<span class="slds-badge slds-col_bump-left">
                 ${lnn.icon ? icon.renderedIconContainer(layout, lnn.icon, "slds-icon_xx-small") : ''}<span class="slds-assistive-text">:</span>${lnn.count()}
-                ${lnn.assistiveText ? `<span class="slds-assistive-text">${lnn.assistiveText}</span>` : ''}
+                ${lnn.subject ? `<span class="slds-assistive-text">${lnn.subject}</span>` : ''}
               </span>`).join("\n") : '<!-- no notifications -->'}
             </label>
           </span>`;
         }).join('\n')}                
       </fieldset>
       </div>
-    </div> 
+    </div>  
   </div>` : `<!-- no vertical shaded navigation -->`
 };
 

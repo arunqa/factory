@@ -73,6 +73,11 @@ export interface HtmlLayoutOriginDomDataAttrsResolver {
   (layout: HtmlLayout, srcModuleImportMetaURL: string, symbol: string): string;
 }
 
+export interface HtmlLayoutNavigationContext {
+  readonly activeRoute?: govn.Route;
+  readonly activeTreeNode?: govn.RouteTreeNode;
+}
+
 /*
 TODO: Add Partial<govn.RenderContextSupplier<HtmlLayoutRenderContext>> to
 HtmlLayout so that pages, partials, etc. can easily see which "environment"
@@ -84,7 +89,8 @@ export interface HtmlLayout<
 > extends
   Partial<govn.FrontmatterSupplier<govn.UntypedFrontmatter>>,
   HtmlLayoutClientCargoSupplier,
-  HtmlLayoutArguments {
+  HtmlLayoutArguments,
+  HtmlLayoutNavigationContext {
   readonly bodySource: HtmlLayoutBody;
   // deno-lint-ignore no-explicit-any
   readonly designSystem: ds.DesignSystem<any>;

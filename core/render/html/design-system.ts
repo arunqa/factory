@@ -6,9 +6,12 @@ import * as html from "../../render/html/mod.ts";
 import * as contrib from "../contributions.ts";
 import * as m from "../../../core/std/model.ts";
 import * as r from "../../../core/std/resource.ts";
+import * as route from "../../../core/std/route.ts";
 import * as render from "../../../core/std/render.ts";
 import * as nature from "../../../core/std/nature.ts";
 import * as persist from "../../../core/std/persist.ts";
+import * as rtree from "../../../core/std/route-tree.ts";
+import * as notif from "../../../lib/notification/mod.ts";
 
 export interface DesignSystemLayoutArgumentsSupplier {
   readonly layout:
@@ -143,21 +146,16 @@ export interface DesignSystemAssetLocations
   readonly brandFavIcon: DesignSystemAssetLocationSupplier; // white label ("brandable")
 }
 
-export type DesignSystemNotificationIdentity = string;
-
-export interface DesignSystemNotification {
-  readonly identity: DesignSystemNotificationIdentity;
-  readonly count: (set?: number) => number;
-  readonly assistiveText?: string;
+// deno-lint-ignore no-empty-interface
+export interface DesignSystemNotification extends notif.Notification {
 }
 
-export interface DesignSystemNotifications<
-  Notification extends DesignSystemNotification = DesignSystemNotification,
-> {
-  readonly collection: Notification[];
+// deno-lint-ignore no-empty-interface
+export interface DesignSystemNotifications<T extends DesignSystemNotification>
+  extends notif.Notifications<T> {
 }
 
-export interface DesignSystemNavigation<
+export interface DesignSystemNavigationAdapter<
   Layout extends html.HtmlLayout,
 > extends govn.RouteTreeSupplier, html.HtmlLayoutClientCargoValueSupplier {
   readonly home: govn.RouteLocation;
@@ -168,21 +166,21 @@ export interface DesignSystemNavigation<
   readonly redirectUrl: (
     rs: govn.RedirectSupplier,
   ) => govn.RouteLocation | undefined;
-  readonly notifications: <Notifications extends DesignSystemNotifications>(
+  readonly notifications: <Notification extends DesignSystemNotification>(
     unit: govn.RouteTreeNode,
-  ) => Notifications | undefined;
+  ) => DesignSystemNotifications<Notification> | undefined;
   readonly descendantsNotifications: <
-    Notifications extends DesignSystemNotifications,
+    Notification extends DesignSystemNotification,
   >(
     unit: govn.RouteTreeNode,
-  ) => Notifications | undefined;
+  ) => DesignSystemNotifications<Notification> | undefined;
 }
 
 export interface DesignSystemContentAdapter<
   Layout extends html.HtmlLayout,
   LayoutText extends html.HtmlLayoutText<Layout>,
   AssetLocations extends DesignSystemAssetLocations,
-  Navigation extends DesignSystemNavigation<Layout>,
+  Navigation extends DesignSystemNavigationAdapter<Layout>,
 > {
   readonly git?: git.GitExecutive;
   readonly mGitResolvers: git.ManagedGitResolvers<string>;
@@ -210,7 +208,7 @@ export interface DesignSystemFactory<
   Layout extends html.HtmlLayout,
   LayoutText extends html.HtmlLayoutText<Layout>,
   AssetLocations extends DesignSystemAssetLocations,
-  Navigation extends DesignSystemNavigation<Layout>,
+  Navigation extends DesignSystemNavigationAdapter<Layout>,
 > {
   readonly designSystem: html.DesignSystem<Layout>;
   readonly contentAdapter: html.DesignSystemContentAdapter<
@@ -219,6 +217,121 @@ export interface DesignSystemFactory<
     AssetLocations,
     Navigation
   >;
+}
+
+export class DesignSystemNavigation<Layout extends html.HtmlLayout>
+  implements html.DesignSystemNavigationAdapter<Layout> {
+  constructor(
+    readonly prettyURLs: boolean,
+    readonly routeTree: rtree.TypicalRouteTree,
+    readonly home = "/", // TODO: adjust for base location etc.
+  ) {
+  }
+
+  contentTree(layout: Layout): govn.RouteTreeNode | undefined {
+    return layout.activeTreeNode?.parent;
+  }
+
+  location(unit: govn.RouteNode): string {
+    if (this.prettyURLs) {
+      const loc = unit.qualifiedPath === "/index" ? "/" : unit.location();
+      return loc.endsWith("/index")
+        ? loc.endsWith("/") ? `${loc}..` : `${loc}/..`
+        : (loc.endsWith("/") ? loc : `${loc}/`);
+    }
+    return unit.qualifiedPath === "/index" ? "/" : unit.location();
+  }
+
+  redirectUrl(
+    rs: govn.RedirectSupplier,
+  ): govn.RouteLocation | undefined {
+    return route.isRedirectUrlSupplier(rs)
+      ? rs.redirect
+      : this.location(rs.redirect);
+  }
+
+  notifications<
+    Notifications extends DesignSystemNotifications<DesignSystemNotification>,
+  >(
+    node: govn.RouteTreeNode,
+  ): Notifications | undefined {
+    if (notif.isNotificationsSupplier(node)) {
+      return node.notifications as Notifications;
+    }
+  }
+
+  descendantsNotifications<Notification extends DesignSystemNotification>(
+    node: govn.RouteTreeNode,
+  ): DesignSystemNotifications<Notification> | undefined {
+    const notifications = (parentRTN: govn.RouteTreeNode) => {
+      const accumulate: Notification[] = [];
+      parentRTN.walk((rtn) => {
+        if (notif.isNotificationsSupplier<Notification>(rtn)) {
+          for (const lnn of rtn.notifications.collection) {
+            let found = false;
+            for (const lnnA of accumulate) {
+              if (lnnA.identity == lnn.identity) {
+                lnnA.count(lnnA.count() + lnn.count());
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              let count = lnn.count();
+              accumulate.push({
+                ...lnn,
+                count: (set) => (set ? (count = set) : count),
+              });
+            }
+          }
+        }
+        return true;
+      });
+      if (notif.isNotificationsSupplier<Notification>(parentRTN)) {
+        for (const lnn of parentRTN.notifications.collection) {
+          let found = false;
+          for (const lnnA of accumulate) {
+            if (lnnA.identity == lnn.identity) {
+              lnnA.count(lnnA.count() + lnn.count());
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            let count = lnn.count();
+            accumulate.push({
+              ...lnn,
+              count: (set) => (set ? (count = set) : count),
+            });
+          }
+        }
+      }
+      return accumulate;
+    };
+
+    const collection = notifications(node);
+    if (collection.length > 0) {
+      return { collection } as DesignSystemNotifications<Notification>;
+    }
+    return undefined;
+  }
+
+  clientCargoValue(_layout: html.HtmlLayout) {
+    let locationJsFn = "";
+    if (this.prettyURLs) {
+      locationJsFn = `{
+          const loc = unit.qualifiedPath === "/index" ? "/" : unit.location();
+          return loc.endsWith("/index")
+            ? loc.endsWith("/") ? \`\${loc}..\` : \`\${loc}/..\`
+            : (loc.endsWith("/") ? loc : \`\${loc}/\`);
+        }`;
+    } else {
+      locationJsFn = `unit.qualifiedPath === "/index" ? "/" : unit.location()`;
+    }
+    return `{
+      location: (unit) => ${locationJsFn}
+    }`;
+  }
 }
 
 // deno-lint-ignore no-explicit-any

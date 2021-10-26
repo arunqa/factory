@@ -2,6 +2,7 @@ import * as govn from "../../../../governance/mod.ts";
 import * as aiM from "../../../model/action-item.ts";
 import * as m from "../../../../core/std/model.ts";
 import * as mdDS from "../../../render/markdown/mod.ts";
+import * as notif from "../../../../lib/notification/mod.ts";
 import * as lds from "../mod.ts";
 
 export interface RegisterActionItemsOptions {
@@ -25,7 +26,7 @@ export function registerActionItems<Resource>(
       count: () => ais.actionItems.length,
       identity: aiM.ToDoActionItem,
       icon: "task",
-      assistiveText: "Action Item",
+      subject: "Action Item",
     };
   });
 
@@ -53,12 +54,12 @@ export function registerActionItems<Resource>(
       // values in navigation and other components
       const instance = notification(resource.model);
       if (instance) {
-        lds.prepareNotifications(
+        notif.prepareNotifications(
           resource.model,
           () => ({
             collection: [instance],
           }),
-          (lnn) => lds.mergeNotifications(instance, lnn),
+          (lnn) => notif.mergeNotifications(instance, lnn),
           options?.onNotificationAssignmentFailed,
         );
       }
@@ -146,7 +147,7 @@ export function routeNodesActionItems(
         return true;
       });
     }
-    if (lds.isLightningNavigationNotificationSupplier(parentRTN)) {
+    if (notif.isNotificationsSupplier(parentRTN)) {
       if (aiM.isActionItemsModelSupplier(parentRTN)) {
         accumulate.push(
           ...(parentRTN.model.actionItems.map((todo) => ({

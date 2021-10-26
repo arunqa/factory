@@ -39,20 +39,11 @@ export interface LightningNavigationNotifications
   extends html.DesignSystemNotifications<LightningNavigationNotification> {
 }
 
-export interface LightningNavigationNotificationSupplier {
-  readonly ldsNavNotifications: LightningNavigationNotifications;
-}
-
 export interface LightningNavigation
-  extends html.DesignSystemNavigation<LightningLayout> {
+  extends html.DesignSystemNavigationAdapter<LightningLayout> {
   readonly contextBarItems: (
     layout: LightningLayout,
   ) => govn.RouteNode[];
-}
-
-export interface LightningNavigationContext {
-  readonly activeRoute?: govn.Route;
-  readonly activeTreeNode?: govn.RouteTreeNode;
 }
 
 export type LightningContextBarSubject = string | [label: string, href: string];
@@ -65,14 +56,14 @@ export interface LightningBranding {
   readonly contextBarSubject:
     | LightningContextBarSubject
     | ((
-      lnc: LightningNavigationContext,
+      lnc: html.HtmlLayoutNavigationContext,
       assets: LightningAssetLocations,
     ) => LightningContextBarSubject);
   readonly contextBarSubjectImageSrc:
     | LightningContextBarSubjectImageSrc
     | ((
       assets: LightningAssetLocations,
-      lnc: LightningNavigationContext,
+      lnc: html.HtmlLayoutNavigationContext,
     ) => LightningContextBarSubjectImageSrc);
 }
 
@@ -95,7 +86,6 @@ export interface LightingDesignSystemContentAdapter
 export interface LightningLayout
   extends
     html.HtmlLayout<LightningLayoutText>,
-    LightningNavigationContext,
     govn.ModelSupplier<govn.ContentModel> {
   readonly dsCtx: LightingDesignSystemContentAdapter;
 }

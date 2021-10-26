@@ -6,7 +6,7 @@ export const typicalBodyPartial: ldsGovn.LightningPartial = (_, body) =>
 
 // hide properties that could have circular references which will break JSON.stringify()
 const routeJsonReplacer = (key: string, value: unknown) =>
-  ["ldsNavNotifications", "owner", "parent", "children", "ancestors"].find((
+  ["notifications", "owner", "parent", "children", "ancestors"].find((
       name,
     ) => name == key
     )

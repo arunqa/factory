@@ -35,7 +35,7 @@ export function renderedCard(
             <span class="slds-badge slds-col_bump-left">
               ${lnn.icon ? icon.renderedIcon(layout, lnn.icon, "slds-icon_xx-small slds-icon-text-default slds-m-right_xx-small") : ''}
               <span class="slds-assistive-text">:</span>${lnn.count()}
-              <span class="slds-assistive-text">${lnn.assistiveText}</span>
+              <span class="slds-assistive-text">${lnn.subject}</span>
             </span>`).join("\n") : ''}
           </h2>
         </div>

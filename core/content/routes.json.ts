@@ -30,7 +30,7 @@ export const routeTreeJsonReplacer = (key: string, value: unknown) => {
       const ancestors = value as govn.RouteNode[];
       return ancestors.map((a) => a.qualifiedPath);
     }
-    return ["owner", "ldsNavNotifications", "route"].find((name) => name == key)
+    return ["owner", "notifications", "route"].find((name) => name == key)
       ? undefined // these can be circular, omit them
       : value;
   }

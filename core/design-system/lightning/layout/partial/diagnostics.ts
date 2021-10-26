@@ -16,15 +16,13 @@ const escapeHtmlJsonReplacer = (_key: string, value: unknown) =>
 
 // hide properties that could have circular references which will break JSON.stringify()
 const routeTreeJsonReplacer = (key: string, value: unknown) =>
-  ["owner", "parent", "ancestors", "ldsNavNotifications"].find((name) =>
-      name == key
-    )
+  ["owner", "parent", "ancestors", "notifications"].find((name) => name == key)
     ? "(ignored)"
     : escapeHtmlJsonReplacer(key, value);
 
 // hide properties that could have circular references which will break JSON.stringify()
 const routeJsonReplacer = (key: string, value: unknown) =>
-  ["ldsNavNotifications"].find((name) => name == key) ? "(ignored)" : value;
+  ["notifications"].find((name) => name == key) ? "(ignored)" : value;
 
 /**
  * Show LDS diagnostics for debugging if layout `diagnostics` argument is true,

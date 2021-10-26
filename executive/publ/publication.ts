@@ -16,6 +16,7 @@ import * as fsA from "../../lib/fs/fs-analytics.ts";
 import * as fsT from "../../lib/fs/fs-tree.ts";
 import * as fsLink from "../../lib/fs/link.ts";
 import * as git from "../../lib/git/mod.ts";
+import * as notif from "../../lib/notification/mod.ts";
 
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
@@ -183,8 +184,8 @@ export class ResourcesTree extends rfStd.TypicalRouteTree {
     }
     if (rfStd.isModelSupplier(rs)) {
       rfStd.referenceModel(rs, result);
-      if (lds.isLightningNavigationNotificationSupplier(rs.model)) {
-        lds.referenceNotifications(rs.model, result);
+      if (notif.isNotificationsSupplier(rs.model)) {
+        notif.referenceNotifications(rs.model, result);
       }
     }
     return result;
@@ -203,8 +204,8 @@ export class NavigationTree extends rfStd.TypicalRouteTree {
     const copyOf = options?.copyOf;
     if (rfStd.isModelSupplier(copyOf)) {
       rfStd.referenceModel(copyOf, result);
-      if (lds.isLightningNavigationNotificationSupplier(copyOf.model)) {
-        lds.referenceNotifications(copyOf.model, result);
+      if (notif.isNotificationsSupplier(copyOf.model)) {
+        notif.referenceNotifications(copyOf.model, result);
       }
     }
     return result;
