@@ -1,5 +1,4 @@
 import * as govn from "../../../governance/mod.ts";
-import * as git from "../../../lib/git/mod.ts";
 import * as html from "../../render/html/mod.ts";
 import * as l from "./layout/mod.ts";
 
@@ -25,42 +24,19 @@ export interface LightningLayoutBodySupplier {
   (layout: LightningLayout): string;
 }
 
-export type AssetURL = string;
-
-export interface AssetLocationSupplier {
-  (relURL: AssetURL): AssetURL;
+export interface LightningAssetLocations
+  extends html.DesignSystemAssetLocations {
+  readonly ldsIcons: html.DesignSystemAssetLocationSupplier; // specific to Lightning icons in SVG
 }
 
-export interface AssetLocations
-  extends html.HtmlLayoutClientCargoValueSupplier {
-  readonly ldsIcons: AssetLocationSupplier; // specific to Lightning icons in SVG
-  readonly dsImage: AssetLocationSupplier; // design system
-  readonly dsScript: AssetLocationSupplier; // design system
-  readonly dsStylesheet: AssetLocationSupplier; // design system
-  readonly dsComponent: AssetLocationSupplier; // design system
-  readonly image: AssetLocationSupplier; // local site
-  readonly favIcon: AssetLocationSupplier; // local site
-  readonly script: AssetLocationSupplier; // local site
-  readonly stylesheet: AssetLocationSupplier; // local site
-  readonly component: AssetLocationSupplier; // local site
-  readonly brandImage: AssetLocationSupplier; // white label ("brandable")
-  readonly brandScript: AssetLocationSupplier; // white label ("brandable")
-  readonly brandStylesheet: AssetLocationSupplier; // white label ("brandable")
-  readonly brandComponent: AssetLocationSupplier; // white label ("brandable")
-  readonly brandFavIcon: AssetLocationSupplier; // white label ("brandable")
-}
-
-export type LightningNavigationNotificationIdentity = string;
-
-export interface LightningNavigationNotification {
-  readonly identity: LightningNavigationNotificationIdentity;
-  readonly count: (set?: number) => number;
+export interface LightningNavigationNotification
+  extends html.DesignSystemNotification {
   readonly icon?: l.IconIdentity;
-  readonly assistiveText?: string;
 }
 
-export interface LightningNavigationNotifications {
-  readonly collection: LightningNavigationNotification[];
+// deno-lint-ignore no-empty-interface
+export interface LightningNavigationNotifications
+  extends html.DesignSystemNotifications<LightningNavigationNotification> {
 }
 
 export interface LightningNavigationNotificationSupplier {
@@ -68,24 +44,10 @@ export interface LightningNavigationNotificationSupplier {
 }
 
 export interface LightningNavigation
-  extends govn.RouteTreeSupplier, html.HtmlLayoutClientCargoValueSupplier {
-  readonly home: govn.RouteLocation;
+  extends html.DesignSystemNavigation<LightningLayout> {
   readonly contextBarItems: (
     layout: LightningLayout,
   ) => govn.RouteNode[];
-  readonly contentTree: (
-    layout: LightningLayout,
-  ) => govn.RouteTreeNode | undefined;
-  readonly location: (unit: govn.RouteNode) => govn.RouteLocation;
-  readonly redirectUrl: (
-    rs: govn.RedirectSupplier,
-  ) => govn.RouteLocation | undefined;
-  readonly notifications: (
-    unit: govn.RouteTreeNode,
-  ) => LightningNavigationNotifications | undefined;
-  readonly descendantsNotifications: (
-    unit: govn.RouteTreeNode,
-  ) => LightningNavigationNotifications | undefined;
 }
 
 export interface LightningNavigationContext {
@@ -104,12 +66,12 @@ export interface LightningBranding {
     | LightningContextBarSubject
     | ((
       lnc: LightningNavigationContext,
-      assets: AssetLocations,
+      assets: LightningAssetLocations,
     ) => LightningContextBarSubject);
   readonly contextBarSubjectImageSrc:
     | LightningContextBarSubjectImageSrc
     | ((
-      assets: AssetLocations,
+      assets: LightningAssetLocations,
       lnc: LightningNavigationContext,
     ) => LightningContextBarSubjectImageSrc);
 }
@@ -119,17 +81,15 @@ export interface LightningLayoutText
   extends html.HtmlLayoutText<LightningLayout> {
 }
 
-export interface LightingDesignSystemArguments {
-  readonly git?: git.GitExecutive;
-  readonly mGitResolvers: git.ManagedGitResolvers<string>;
-  readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
-    html.GitRemoteAnchor
-  >;
-  readonly layoutText: LightningLayoutText;
-  readonly navigation: LightningNavigation;
-  readonly assets: AssetLocations;
+export interface LightingDesignSystemContentAdapter
+  extends
+    html.DesignSystemContentAdapter<
+      LightningLayout,
+      LightningLayoutText,
+      LightningAssetLocations,
+      LightningNavigation
+    > {
   readonly branding: LightningBranding;
-  readonly renderedAt: Date;
 }
 
 export interface LightningLayout
@@ -137,7 +97,7 @@ export interface LightningLayout
     html.HtmlLayout<LightningLayoutText>,
     LightningNavigationContext,
     govn.ModelSupplier<govn.ContentModel> {
-  readonly dsArgs: LightingDesignSystemArguments;
+  readonly dsCtx: LightingDesignSystemContentAdapter;
 }
 
 // deno-lint-ignore no-empty-interface
@@ -152,5 +112,15 @@ export interface LightningTemplate extends
   html.TemplateLiteralHtmlLayout<
     html.HelperFunctionOrString<LightningLayout>,
     LightningLayout
+  > {
+}
+
+// deno-lint-ignore no-empty-interface
+export interface LightningDesignSystemFactory extends
+  html.DesignSystemFactory<
+    LightningLayout,
+    LightningLayoutText,
+    LightningAssetLocations,
+    LightningNavigation
   > {
 }

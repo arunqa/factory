@@ -10,20 +10,20 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
   let remoteCommit:
     | git.GitRemoteCommit<"hash" | "authorName" | "subject">
     | undefined;
-  if (layout.dsArgs.git) {
-    const cached = layout.dsArgs.git.cached;
+  if (layout.dsCtx.git) {
+    const cached = layout.dsCtx.git.cached;
     gitBranch = cached.currentBranch || "??";
     remoteCommit = cached.mostRecentCommit
-      ? layout.dsArgs.mGitResolvers.remoteCommit(
+      ? layout.dsCtx.mGitResolvers.remoteCommit(
         cached.mostRecentCommit,
-        layout.dsArgs.git,
+        layout.dsCtx.git,
       )
       : undefined;
     remoteAsset = layout.activeRoute
-      ? layout.dsArgs.routeGitRemoteResolver(
+      ? layout.dsCtx.routeGitRemoteResolver(
         layout.activeRoute,
         gitBranch,
-        layout.dsArgs.git,
+        layout.dsCtx.git,
       )
       : undefined;
   }
@@ -34,7 +34,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
       <article class="slds-text-align_center slds-p-top_small slds-p-bottom_large">
         <p class="slds-text-body_small">© 1997-<script>document.write(new Date().getFullYear())</script> Netspective Media LLC. All Rights Reserved.</p>        
         <p class="slds-text-body_small">
-          Publication created <span is="time-ago" date="${layout.dsArgs.renderedAt}"/>
+          Publication created <span is="time-ago" date="${layout.dsCtx.renderedAt}"/>
           ${remoteCommit ? ` (triggered by <a href="${remoteCommit.remoteURL}" class="git-remote-commit" title="${remoteCommit.commit.subject}">${remoteCommit.commit.authorName}</a>)` : ''}
         </p>
         <p class="slds-text-body_small">
@@ -44,7 +44,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
         ${layout.activeRoute?.terminal?.lastModifiedAt 
           ? `modified <span is="time-ago" date="${layout.activeRoute?.terminal?.lastModifiedAt}" title="${layout.activeRoute?.terminal?.lastModifiedAt}"/>`
           : '<!-- no layout.activeRoute?.terminal?.lastModifiedAt -->'}
-        ${layout.dsArgs.git ? ` 🌲 ${gitBranch}` : "<!-- not in Git work tree -->"}
+        ${layout.dsCtx.git ? ` 🌲 ${gitBranch}` : "<!-- not in Git work tree -->"}
         <script>
           if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
             const htmlDataSet = document.documentElement.dataset;

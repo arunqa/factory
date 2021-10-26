@@ -10,24 +10,29 @@ import {
 } from "../../deps.ts";
 import * as rfGovn from "../../governance/mod.ts";
 import * as rfStd from "../../core/std/mod.ts";
+
+import * as conf from "../../lib/conf/mod.ts";
 import * as fsA from "../../lib/fs/fs-analytics.ts";
 import * as fsT from "../../lib/fs/fs-tree.ts";
+import * as fsLink from "../../lib/fs/link.ts";
 import * as git from "../../lib/git/mod.ts";
+
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
-import * as lds from "../../core/design-system/lightning/mod.ts";
-import * as ldsDirec from "../../core/design-system/lightning/directive/mod.ts";
+
 import * as html from "../../core/render/html/mod.ts";
 import * as jrs from "../../core/render/json.ts";
 import * as tfr from "../../core/render/text.ts";
 import * as dtr from "../../core/render/delimited-text.ts";
-import * as cpC from "../../core/content/control-panel.ts";
-import * as conf from "../../lib/conf/mod.ts";
-import * as redirectC from "../../core/design-system/lightning/content/redirects.rf.ts";
-import * as ldsDiagC from "../../core/design-system/lightning/content/diagnostic/mod.ts";
-import * as sqlObsC from "../../lib/db/observability.rf.ts";
 import * as mdr from "../../core/render/markdown/mod.ts";
-import * as fsLink from "../../lib/fs/link.ts";
+
+import * as lds from "../../core/design-system/lightning/mod.ts";
+import * as ldsDirec from "../../core/design-system/lightning/directive/mod.ts";
+import * as ldsDiagC from "../../core/design-system/lightning/content/diagnostic/mod.ts";
+import * as redirectC from "../../core/design-system/lightning/content/redirects.rf.ts";
+
+import * as sqlObsC from "../../lib/db/observability.rf.ts";
+import * as cpC from "../../core/content/control-panel.ts";
 
 export const assetMetricsWalkOptions: fs.WalkOptions = {
   skip: [/\.git/],
@@ -62,7 +67,6 @@ export class Configuration
   readonly extensionsManager = new rfStd.CachedExtensions();
   readonly observabilityRoute: rfGovn.Route;
   readonly diagnosticsRoute: rfGovn.Route;
-  readonly designSystem: lds.LightingDesignSystem<lds.LightningLayout>;
   readonly contentRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
@@ -90,7 +94,6 @@ export class Configuration
     this.fsRouteFactory = new rfStd.FileSysRouteFactory(
       this.routeLocationResolver || rfStd.defaultRouteLocationResolver(),
     );
-    this.designSystem = this.constructDesignSystem();
     this.observabilityRoute = cpC.observabilityRoute(this.fsRouteFactory);
     this.diagnosticsRoute = cpC.diagnosticsRoute(this.fsRouteFactory);
     this.envVarNamesPrefix = prefs.envVarNamesPrefix;
@@ -108,10 +111,6 @@ export class Configuration
         options: assetMetricsWalkOptions,
       }];
     this.rewriteMarkdownLink = prefs.rewriteMarkdownLink;
-  }
-
-  constructDesignSystem() {
-    return new lds.LightingDesignSystem();
   }
 }
 
@@ -336,40 +335,36 @@ export class PublicationRoutes {
   }
 }
 
-export class PublicationDesignSystemArguments
-  implements lds.LightingDesignSystemArguments {
-  readonly git?: git.GitExecutive;
-  readonly layoutText: lds.LightingDesignSystemText;
-  readonly navigation: lds.LightingDesignSystemNavigation;
-  readonly assets: lds.AssetLocations;
-  readonly branding: lds.LightningBranding;
-  readonly mGitResolvers: git.ManagedGitResolvers<string>;
-  readonly routeGitRemoteResolver: rfGovn.RouteGitRemoteResolver<
-    html.GitRemoteAnchor
-  >;
-  readonly renderedAt = new Date();
-
-  constructor(config: Configuration, routes: PublicationRoutes) {
-    this.git = config.git;
-    this.layoutText = new lds.LightingDesignSystemText();
-    this.navigation = new lds.LightingDesignSystemNavigation(
-      true,
-      routes.navigationTree,
-    );
-    this.assets = config.designSystem.assets();
-    this.branding = {
-      contextBarSubject: config.appName,
-      contextBarSubjectImageSrc: (assets) =>
-        assets.image("/asset/image/brand/logo-icon-100x100.png"),
-    };
-    this.mGitResolvers = config.mGitResolvers;
-    this.routeGitRemoteResolver = config.routeGitRemoteResolver;
-  }
-}
-
 export interface Publication {
   readonly produce: () => Promise<void>;
   readonly state: PublicationState;
+}
+
+export class PublicationDesignSystem
+  implements lds.LightningDesignSystemFactory {
+  readonly designSystem: lds.LightingDesignSystem<lds.LightningLayout>;
+  readonly contentAdapter: lds.LightingDesignSystemContentAdapter;
+
+  constructor(config: Configuration, routes: PublicationRoutes) {
+    this.designSystem = new lds.LightingDesignSystem();
+    this.contentAdapter = {
+      git: config.git,
+      layoutText: new lds.LightingDesignSystemText(),
+      navigation: new lds.LightingDesignSystemNavigation(
+        true,
+        routes.navigationTree,
+      ),
+      assets: this.designSystem.assets(),
+      branding: {
+        contextBarSubject: config.appName,
+        contextBarSubjectImageSrc: (assets) =>
+          assets.image("/asset/image/brand/logo-icon-100x100.png"),
+      },
+      mGitResolvers: config.mGitResolvers,
+      routeGitRemoteResolver: config.routeGitRemoteResolver,
+      renderedAt: new Date(),
+    };
+  }
 }
 
 export class TypicalPublication
@@ -380,12 +375,15 @@ export class TypicalPublication
   readonly persistedDestFiles = new Set<string>();
   readonly fspEventsEmitter = new rfGovn.FileSysPersistenceEventsEmitter();
   readonly diagsOptions: DiagnosticsOptionsSupplier;
+  // deno-lint-ignore no-explicit-any
+  readonly ds: html.DesignSystemFactory<any, any, any, any>;
 
   constructor(
     readonly config: Configuration,
     readonly routes = new PublicationRoutes(config.fsRouteFactory),
-    readonly ds = new PublicationDesignSystemArguments(config, routes),
+    ds = new PublicationDesignSystem(config, routes),
   ) {
+    this.ds = ds;
     const defaultDiagsOptions: DiagnosticsOptionsSupplier = {
       routes: true,
       metrics: { assets: true },
@@ -492,7 +490,7 @@ export class TypicalPublication
     >
     | undefined {
     // by default we delegate directive expectations to the design system
-    return this.config.designSystem;
+    return this.ds.designSystem;
   }
 
   /**
@@ -618,9 +616,9 @@ export class TypicalPublication
 
   persistersRefinery() {
     return rfStd.pipelineUnitsRefineryUntyped(
-      this.config.designSystem.prettyUrlsHtmlProducer(
+      this.ds.designSystem.prettyUrlsHtmlProducer(
         this.config.destRootPath,
-        this.ds,
+        this.ds.contentAdapter,
         this.fspEventsEmitter,
       ),
       jrs.jsonTextProducer(this.config.destRootPath, {
@@ -643,7 +641,9 @@ export class TypicalPublication
 
   async initProduce() {
     // setup the cache and any other git-specific initialization
-    if (this.ds.git instanceof git.TypicalGit) await this.ds.git.init();
+    if (this.ds.contentAdapter.git instanceof git.TypicalGit) {
+      await this.ds.contentAdapter.git.init();
+    }
   }
 
   async *originate<Resource>(

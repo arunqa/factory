@@ -1,8 +1,14 @@
 import { safety } from "../../deps.ts";
+import * as git from "../../../lib/git/mod.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as fm from "../../std/frontmatter.ts";
 import * as html from "../../render/html/mod.ts";
 import * as contrib from "../contributions.ts";
+import * as m from "../../../core/std/model.ts";
+import * as r from "../../../core/std/resource.ts";
+import * as render from "../../../core/std/render.ts";
+import * as nature from "../../../core/std/nature.ts";
+import * as persist from "../../../core/std/persist.ts";
 
 export interface DesignSystemLayoutArgumentsSupplier {
   readonly layout:
@@ -113,6 +119,108 @@ export class DesignSystemLayouts<Layout extends html.HtmlLayout>
   }
 }
 
+export type DesignSystemAssetURL = string;
+
+export interface DesignSystemAssetLocationSupplier {
+  (relURL: DesignSystemAssetURL): DesignSystemAssetURL;
+}
+
+export interface DesignSystemAssetLocations
+  extends html.HtmlLayoutClientCargoValueSupplier {
+  readonly dsImage: DesignSystemAssetLocationSupplier; // design system
+  readonly dsScript: DesignSystemAssetLocationSupplier; // design system
+  readonly dsStylesheet: DesignSystemAssetLocationSupplier; // design system
+  readonly dsComponent: DesignSystemAssetLocationSupplier; // design system
+  readonly image: DesignSystemAssetLocationSupplier; // local site
+  readonly favIcon: DesignSystemAssetLocationSupplier; // local site
+  readonly script: DesignSystemAssetLocationSupplier; // local site
+  readonly stylesheet: DesignSystemAssetLocationSupplier; // local site
+  readonly component: DesignSystemAssetLocationSupplier; // local site
+  readonly brandImage: DesignSystemAssetLocationSupplier; // white label ("brandable")
+  readonly brandScript: DesignSystemAssetLocationSupplier; // white label ("brandable")
+  readonly brandStylesheet: DesignSystemAssetLocationSupplier; // white label ("brandable")
+  readonly brandComponent: DesignSystemAssetLocationSupplier; // white label ("brandable")
+  readonly brandFavIcon: DesignSystemAssetLocationSupplier; // white label ("brandable")
+}
+
+export type DesignSystemNotificationIdentity = string;
+
+export interface DesignSystemNotification {
+  readonly identity: DesignSystemNotificationIdentity;
+  readonly count: (set?: number) => number;
+  readonly assistiveText?: string;
+}
+
+export interface DesignSystemNotifications<
+  Notification extends DesignSystemNotification = DesignSystemNotification,
+> {
+  readonly collection: Notification[];
+}
+
+export interface DesignSystemNavigation<
+  Layout extends html.HtmlLayout,
+> extends govn.RouteTreeSupplier, html.HtmlLayoutClientCargoValueSupplier {
+  readonly home: govn.RouteLocation;
+  readonly contentTree: (
+    layout: Layout,
+  ) => govn.RouteTreeNode | undefined;
+  readonly location: (unit: govn.RouteNode) => govn.RouteLocation;
+  readonly redirectUrl: (
+    rs: govn.RedirectSupplier,
+  ) => govn.RouteLocation | undefined;
+  readonly notifications: <Notifications extends DesignSystemNotifications>(
+    unit: govn.RouteTreeNode,
+  ) => Notifications | undefined;
+  readonly descendantsNotifications: <
+    Notifications extends DesignSystemNotifications,
+  >(
+    unit: govn.RouteTreeNode,
+  ) => Notifications | undefined;
+}
+
+export interface DesignSystemContentAdapter<
+  Layout extends html.HtmlLayout,
+  LayoutText extends html.HtmlLayoutText<Layout>,
+  AssetLocations extends DesignSystemAssetLocations,
+  Navigation extends DesignSystemNavigation<Layout>,
+> {
+  readonly git?: git.GitExecutive;
+  readonly mGitResolvers: git.ManagedGitResolvers<string>;
+  readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
+    html.GitRemoteAnchor
+  >;
+  readonly layoutText: LayoutText;
+  readonly assets: AssetLocations;
+  readonly navigation: Navigation;
+  readonly renderedAt: Date;
+}
+
+export type UntypedDesignSystemContentAdapter = DesignSystemContentAdapter<
+  // deno-lint-ignore no-explicit-any
+  any,
+  // deno-lint-ignore no-explicit-any
+  any,
+  // deno-lint-ignore no-explicit-any
+  any,
+  // deno-lint-ignore no-explicit-any
+  any
+>;
+
+export interface DesignSystemFactory<
+  Layout extends html.HtmlLayout,
+  LayoutText extends html.HtmlLayoutText<Layout>,
+  AssetLocations extends DesignSystemAssetLocations,
+  Navigation extends DesignSystemNavigation<Layout>,
+> {
+  readonly designSystem: html.DesignSystem<Layout>;
+  readonly contentAdapter: html.DesignSystemContentAdapter<
+    Layout,
+    LayoutText,
+    AssetLocations,
+    Navigation
+  >;
+}
+
 // deno-lint-ignore no-explicit-any
 export type DesignSystemDirective = govn.DirectiveExpectation<any, any>;
 
@@ -120,15 +228,18 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
   implements
     govn.RenderStrategy<Layout, govn.HtmlSupplier>,
     govn.DirectiveExpectationsSupplier<DesignSystemDirective> {
+  readonly prettyUrlIndexUnitName = "index";
   constructor(
     readonly identity: govn.RenderStrategyIdentity,
     readonly layoutStrategies: DesignSystemLayouts<Layout>,
+    readonly dsAssetsBaseURL: string,
   ) {
   }
 
   abstract layout(
     body: html.HtmlLayoutBody | (() => html.HtmlLayoutBody),
     supplier: html.HtmlLayoutStrategySupplier<Layout>,
+    dsCtx: UntypedDesignSystemContentAdapter,
     ...args: unknown[]
   ): Layout;
 
@@ -245,6 +356,136 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
       head: contrib.contributions("<!-- head contrib -->"),
       body: contrib.contributions("<!-- body contrib -->"),
       diagnostics: contrib.contributions("<!-- diagnostics contrib -->"),
+    };
+  }
+
+  clientCargoAssetsJS(
+    base = "", // should NOT be terminated by / since assets will be prefixed by /
+    ...appendJS: string[]
+  ): string[] {
+    return [
+      `assetsBaseAbsURL() { return "${base}" }`,
+      `image(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; }`,
+      `favIcon(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; }`,
+      `script(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; }`,
+      `stylesheet(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; }`,
+      `component(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; }`,
+      `dsImage(relURL) { return \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/image\${relURL}\`; }`,
+      `dsScript(relURL) { return  \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/script\${relURL}\`; }`,
+      `dsStylesheet(relURL) { return \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/style\${relURL}\`; }`,
+      `dsComponent(relURL) { return \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/component\${relURL}\`; }`,
+      `brandImage(relURL) { return this.image(\`/brand/\${relURL}\`); }`,
+      `brandScript(relURL) { return this.script(\`/brand/\${relURL}\`); }`,
+      `brandStylesheet(relURL) { return this.stylesheet(\`/brand/\${relURL}\`); }`,
+      `brandComponent(relURL) { return this.component(\`/brand/\${relURL}\`); }`,
+      `brandFavIcon(relURL) { return this.favIcon(\`/brand/\${relURL}\`); }`,
+      ...appendJS,
+    ];
+  }
+
+  /**
+   * Server-side and client-side access to asset locators. For image, favIcon,
+   * script, and stylesheet that is app-specific (meaning managed outside of
+   * the design-system) those locations are relative to base. For design system
+   * specific dsImage, dsScript, dsComponent, etc. they are relative to the
+   * design system's chosen conventions.
+   * @param base base URL for non-design-system-specific URLs
+   * @param inherit any settings to inherit
+   * @returns functions which will locate assets on server and client
+   */
+  assets(
+    base = "", // should NOT be terminated by / since assets will be prefixed by /
+    inherit?: Partial<html.DesignSystemAssetLocations>,
+  ): html.DesignSystemAssetLocations {
+    return {
+      dsImage: (relURL) => `${this.dsAssetsBaseURL}/image${relURL}`,
+      dsScript: (relURL) => `${this.dsAssetsBaseURL}/script${relURL}`,
+      dsStylesheet: (relURL) => `${this.dsAssetsBaseURL}/style${relURL}`,
+      dsComponent: (relURL) => `${this.dsAssetsBaseURL}/component${relURL}`,
+      image: (relURL) => `${base}${relURL}`,
+      favIcon: (relURL) => `${base}${relURL}`,
+      script: (relURL) => `${base}${relURL}`,
+      stylesheet: (relURL) => `${base}${relURL}`,
+      component: (relURL) => `${base}${relURL}`,
+      brandImage: (relURL) => `${base}/brand${relURL}`,
+      brandFavIcon: (relURL) => `${base}/brand${relURL}`,
+      brandScript: (relURL) => `${base}/brand${relURL}`,
+      brandStylesheet: (relURL) => `${base}/brand${relURL}`,
+      brandComponent: (relURL) => `${base}/brand${relURL}`,
+      clientCargoValue: () => {
+        return `{
+          ${this.clientCargoAssetsJS(base).join(",\n          ")}
+        }`;
+      },
+      ...inherit,
+    };
+  }
+
+  pageRenderer(
+    dsCtx: UntypedDesignSystemContentAdapter,
+    refine?: govn.ResourceRefinery<html.HtmlLayoutBody>,
+  ): govn.ResourceRefinery<govn.HtmlSupplier> {
+    return async (resource) => {
+      const lss =
+        fm.isFrontmatterSupplier(resource) || m.isModelSupplier(resource)
+          ? this.inferredLayoutStrategy(resource)
+          : this.layoutStrategies.diagnosticLayoutStrategy(
+            "Neither frontmatter nor model supplied to LightingDesignSystem.pageRenderer",
+          );
+      return await lss.layoutStrategy.rendered(this.layout(
+        refine ? await refine(resource) : resource,
+        lss,
+        dsCtx,
+      ));
+    };
+  }
+
+  pageRendererSync(
+    dsCtx: UntypedDesignSystemContentAdapter,
+    refine?: govn.ResourceRefinerySync<html.HtmlLayoutBody>,
+  ): govn.ResourceRefinerySync<govn.HtmlSupplier> {
+    return (resource) => {
+      const lss =
+        fm.isFrontmatterSupplier(resource) || m.isModelSupplier(resource)
+          ? this.inferredLayoutStrategy(resource)
+          : this.layoutStrategies.diagnosticLayoutStrategy(
+            "Neither frontmatter nor model supplied to LightingDesignSystem.pageRendererSync",
+          );
+      return lss.layoutStrategy.renderedSync(this.layout(
+        refine ? refine(resource) : resource,
+        lss,
+        dsCtx,
+      ));
+    };
+  }
+
+  prettyUrlsHtmlProducer(
+    destRootPath: string,
+    dsCtx: UntypedDesignSystemContentAdapter,
+    fspEE?: govn.FileSysPersistenceEventsEmitter,
+  ): govn.ResourceRefinery<govn.HtmlSupplier> {
+    const producer = r.pipelineUnitsRefineryUntyped(
+      this.pageRenderer(dsCtx),
+      nature.htmlContentNature.persistFileSysRefinery(
+        destRootPath,
+        persist.routePersistPrettyUrlHtmlNamingStrategy((ru) =>
+          ru.unit === this.prettyUrlIndexUnitName
+        ),
+        fspEE,
+      ),
+    );
+
+    return async (resource) => {
+      if (
+        render.isRenderableMediaTypeResource(
+          resource,
+          nature.htmlMediaTypeNature.mediaType,
+        )
+      ) {
+        return await producer(resource);
+      }
+      // we cannot handle this type of rendering target, no change to resource
+      return resource;
     };
   }
 }

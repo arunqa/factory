@@ -2,7 +2,6 @@ import { safety } from "../../deps.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as html from "../../render/html/mod.ts";
 import * as c from "../../../core/std/content.ts";
-import * as r from "../../../core/std/resource.ts";
 import * as m from "../../../core/std/model.ts";
 import * as fm from "../../../core/std/frontmatter.ts";
 import * as ldsGovn from "./governance.ts";
@@ -10,9 +9,6 @@ import * as l from "./layout/mod.ts";
 import * as direc from "./directive/mod.ts";
 import * as route from "../../../core/std/route.ts";
 import * as rtree from "../../../core/std/route-tree.ts";
-import * as render from "../../../core/std/render.ts";
-import * as nature from "../../../core/std/nature.ts";
-import * as persist from "../../../core/std/persist.ts";
 
 export class LightingDesignSystemLayouts<
   Layout extends ldsGovn.LightningLayout,
@@ -135,17 +131,19 @@ export class LightingDesignSystemNavigation
       : this.location(rs.redirect);
   }
 
-  notifications(
+  notifications<Notifications extends html.DesignSystemNotifications>(
     node: govn.RouteTreeNode,
-  ): ldsGovn.LightningNavigationNotifications | undefined {
+  ): Notifications | undefined {
     if (isLightningNavigationNotificationSupplier(node)) {
-      return node.ldsNavNotifications;
+      return node.ldsNavNotifications as Notifications;
     }
   }
 
-  descendantsNotifications(
+  descendantsNotifications<
+    Notifications extends html.DesignSystemNotifications,
+  >(
     node: govn.RouteTreeNode,
-  ): ldsGovn.LightningNavigationNotifications | undefined {
+  ): Notifications | undefined {
     const notifications = (parentRTN: govn.RouteTreeNode) => {
       const accumulate: ldsGovn.LightningNavigationNotification[] = [];
       parentRTN.walk((rtn) => {
@@ -194,7 +192,7 @@ export class LightingDesignSystemNavigation
 
     const collection = notifications(node);
     if (collection.length > 0) {
-      return { collection };
+      return { collection } as Notifications;
     }
     return undefined;
   }
@@ -250,7 +248,6 @@ const defaultContentModel: () => govn.ContentModel = () => {
 
 export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   extends html.DesignSystem<Layout> {
-  readonly lightningAssetsBaseURL = "/lightning";
   readonly lightningAssetsPathUnits = ["lightning"];
   readonly directives = [
     new direc.ActionItemDirective(),
@@ -266,7 +263,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
         modelLayoutStrategyDiagnostic: "no content available",
       },
   ) {
-    super("LightningDS", new LightingDesignSystemLayouts());
+    super("LightningDS", new LightingDesignSystemLayouts(), "/lightning");
   }
 
   allowedDirectives(filter?: (DE: html.DesignSystemDirective) => boolean) {
@@ -275,48 +272,24 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
 
   assets(
     base = "", // should NOT be terminated by / since assets will be prefixed by /
-    inherit?: Partial<ldsGovn.AssetLocations>,
-  ): ldsGovn.AssetLocations {
-    return {
-      ldsIcons: (relURL) =>
-        `${this.lightningAssetsBaseURL}/image/slds-icons${relURL}`,
-      dsImage: (relURL) => `${this.lightningAssetsBaseURL}/image${relURL}`,
-      dsScript: (relURL) => `${this.lightningAssetsBaseURL}/script${relURL}`,
-      dsStylesheet: (relURL) => `${this.lightningAssetsBaseURL}/style${relURL}`,
-      dsComponent: (relURL) =>
-        `${this.lightningAssetsBaseURL}/component${relURL}`,
-      image: (relURL) => `${base}${relURL}`,
-      favIcon: (relURL) => `${base}${relURL}`,
-      script: (relURL) => `${base}${relURL}`,
-      stylesheet: (relURL) => `${base}${relURL}`,
-      component: (relURL) => `${base}${relURL}`,
-      brandImage: (relURL) => `${base}/brand${relURL}`,
-      brandFavIcon: (relURL) => `${base}/brand${relURL}`,
-      brandScript: (relURL) => `${base}/brand${relURL}`,
-      brandStylesheet: (relURL) => `${base}/brand${relURL}`,
-      brandComponent: (relURL) => `${base}/brand${relURL}`,
+    inherit?: Partial<html.DesignSystemAssetLocations>,
+  ): ldsGovn.LightningAssetLocations {
+    const dsAssets = super.assets(base, inherit);
+    const ldsAssets: ldsGovn.LightningAssetLocations = {
+      ...dsAssets,
+      ldsIcons: (relURL) => `${this.dsAssetsBaseURL}/image/slds-icons${relURL}`,
       clientCargoValue: () => {
-        return `{
-          assetsBaseAbsURL() { return "${base}" },
-          image(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; },
-          favIcon(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; },
-          script(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; },
-          stylesheet(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; },
-          component(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; },
-          dsImage(relURL) { return \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/image\${relURL}\`; },
-          dsScript(relURL) { return  \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/script\${relURL}\`; },
-          dsStylesheet(relURL) { return \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/style\${relURL}\`; },
-          dsComponent(relURL) { return \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/component\${relURL}\`; },
-          ldsIcons(relURL) { return \`\${this.assetsBaseAbsURL()}${this.lightningAssetsBaseURL}/image/slds-icons\${relURL}\`; },
-          brandImage(relURL) { return this.image(\`/brand/\${relURL}\`); },
-          brandScript(relURL) { return this.script(\`/brand/\${relURL}\`); },
-          brandStylesheet(relURL) { return this.stylesheet(\`/brand/\${relURL}\`); },
-          brandComponent(relURL) { return this.component(\`/brand/\${relURL}\`); },
-          brandFavIcon(relURL) { return this.favIcon(\`/brand/\${relURL}\`); },
+        return `{ 
+          ${
+          this.clientCargoAssetsJS(
+            base,
+            `ldsIcons(relURL) { return \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/image/slds-icons\${relURL}\`; }`,
+          ).join(",\n          ")
+        }
         }`;
       },
-      ...inherit,
     };
+    return ldsAssets;
   }
 
   inferredLayoutStrategy(
@@ -334,7 +307,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   layout(
     body: html.HtmlLayoutBody | (() => html.HtmlLayoutBody),
     layoutSS: html.HtmlLayoutStrategySupplier<Layout>,
-    dsArgs: ldsGovn.LightingDesignSystemArguments,
+    dsCtx: ldsGovn.LightingDesignSystemContentAdapter,
   ): Layout {
     const bodySource = typeof body === "function" ? body() : body;
     const frontmatter = fm.isFrontmatterSupplier(bodySource)
@@ -345,7 +318,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       ? bodySource.route
       : undefined;
     const activeTreeNode = activeRoute?.terminal
-      ? dsArgs.navigation.routeTree.node(activeRoute?.terminal.qualifiedPath)
+      ? dsCtx.navigation.routeTree.node(activeRoute?.terminal.qualifiedPath)
       : undefined;
     const model = c.contentModel(
       defaultContentModel,
@@ -354,10 +327,10 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       bodySource,
     );
     const result: ldsGovn.LightningLayout = {
-      dsArgs,
+      dsCtx,
       bodySource,
       model,
-      layoutText: dsArgs.layoutText,
+      layoutText: dsCtx.layoutText,
       designSystem: this,
       layoutSS,
       frontmatter,
@@ -369,73 +342,5 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       ...layoutArgs,
     };
     return result as Layout; // TODO: consider not casting to type
-  }
-
-  pageRenderer(
-    dsArgs: ldsGovn.LightingDesignSystemArguments,
-    refine?: govn.ResourceRefinery<html.HtmlLayoutBody>,
-  ): govn.ResourceRefinery<govn.HtmlSupplier> {
-    return async (resource) => {
-      const lss =
-        fm.isFrontmatterSupplier(resource) || m.isModelSupplier(resource)
-          ? this.inferredLayoutStrategy(resource)
-          : this.layoutStrategies.diagnosticLayoutStrategy(
-            "Neither frontmatter nor model supplied to LightingDesignSystem.pageRenderer",
-          );
-      return await lss.layoutStrategy.rendered(this.layout(
-        refine ? await refine(resource) : resource,
-        lss,
-        dsArgs,
-      ));
-    };
-  }
-
-  pageRendererSync(
-    dsArgs: ldsGovn.LightingDesignSystemArguments,
-    refine?: govn.ResourceRefinerySync<html.HtmlLayoutBody>,
-  ): govn.ResourceRefinerySync<govn.HtmlSupplier> {
-    return (resource) => {
-      const lss =
-        fm.isFrontmatterSupplier(resource) || m.isModelSupplier(resource)
-          ? this.inferredLayoutStrategy(resource)
-          : this.layoutStrategies.diagnosticLayoutStrategy(
-            "Neither frontmatter nor model supplied to LightingDesignSystem.pageRendererSync",
-          );
-      return lss.layoutStrategy.renderedSync(this.layout(
-        refine ? refine(resource) : resource,
-        lss,
-        dsArgs,
-      ));
-    };
-  }
-
-  prettyUrlsHtmlProducer(
-    destRootPath: string,
-    dsArgs: ldsGovn.LightingDesignSystemArguments,
-    fspEE?: govn.FileSysPersistenceEventsEmitter,
-  ): govn.ResourceRefinery<govn.HtmlSupplier> {
-    const producer = r.pipelineUnitsRefineryUntyped(
-      this.pageRenderer(dsArgs),
-      nature.htmlContentNature.persistFileSysRefinery(
-        destRootPath,
-        persist.routePersistPrettyUrlHtmlNamingStrategy((ru) =>
-          ru.unit === ldsGovn.indexUnitName
-        ),
-        fspEE,
-      ),
-    );
-
-    return async (resource) => {
-      if (
-        render.isRenderableMediaTypeResource(
-          resource,
-          nature.htmlMediaTypeNature.mediaType,
-        )
-      ) {
-        return await producer(resource);
-      }
-      // we cannot handle this type of rendering target, no change to resource
-      return resource;
-    };
   }
 }
