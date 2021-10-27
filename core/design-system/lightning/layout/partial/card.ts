@@ -28,7 +28,7 @@ export function renderedCard(
           </span>
         </div>` : ''}        
         <div class="slds-media__body">
-          <h2 class="slds-card__header-title">
+          <h2 class="slds-card__header-title" style="line-height:inherit;">
             <a href="${card.href}" class="slds-card__header-link slds-truncate" title="${card.title}">
               <span>${card.title}</span>
             </a>${card.notifications ? card.notifications.collection.map(lnn =>`
