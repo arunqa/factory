@@ -139,8 +139,8 @@ JavaScript is best.
   is a good example of that capability.
 - Integrate [command palette for the web](https://github.com/benwinding/command-pal) for easier navigation of directives, searching, etc.
 - Incorporate [Pandoc Markdown CSS Theme](https://jez.io/pandoc-markdown-css-theme/) 
-  and [Tufte Pandoc CSS](https://github.com/jez/tufte-pandoc-css) as alternate
-  Markdown layouts. Allow Markdown author to choose their layout using 
+  [Tufte Pandoc CSS](https://github.com/jez/tufte-pandoc-css), and [notion.css](https://sreeram-venkitesh.github.io/notion.css/) 
+  as alternate Markdown layouts. Allow Markdown author to choose their layout using
   `.resFactory` directives.
 - Use [deno-ci](https://github.com/justjavac/deno-ci) to store traceability data
   in observability diagnostics to indicate whether build was done in CI/CD
