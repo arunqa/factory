@@ -27,10 +27,8 @@ import * as tfr from "../../core/render/text.ts";
 import * as dtr from "../../core/render/delimited-text.ts";
 import * as mdr from "../../core/render/markdown/mod.ts";
 
-import * as lds from "../../core/design-system/lightning/mod.ts";
-import * as ldsDirec from "../../core/design-system/lightning/directive/mod.ts";
-import * as ldsDiagC from "../../core/design-system/lightning/content/diagnostic/mod.ts";
-import * as redirectC from "../../core/design-system/lightning/content/redirects.rf.ts";
+import * as diagC from "../../core/content/diagnostic/mod.ts";
+import * as redirectC from "../../core/content/redirects.rf.ts";
 
 import * as sqlObsC from "../../lib/db/observability.rf.ts";
 import * as cpC from "../../core/content/control-panel.ts";
@@ -166,7 +164,7 @@ export interface PublicationState {
   readonly observability: rfStd.Observability;
   readonly resourcesTree: rfGovn.RouteTree;
   readonly resourcesIndex: rfStd.UniversalResourcesIndex<unknown>;
-  readonly diagnostics: () => ldsDiagC.DiagnosticsResourcesState;
+  readonly diagnostics: () => diagC.DiagnosticsResourcesState;
   assetsMetrics?: fsA.AssetsMetricsResult;
 }
 
@@ -341,34 +339,7 @@ export interface Publication {
   readonly state: PublicationState;
 }
 
-export class PublicationDesignSystem
-  implements lds.LightningDesignSystemFactory {
-  readonly designSystem: lds.LightingDesignSystem<lds.LightningLayout>;
-  readonly contentAdapter: lds.LightingDesignSystemContentAdapter;
-
-  constructor(config: Configuration, routes: PublicationRoutes) {
-    this.designSystem = new lds.LightingDesignSystem();
-    this.contentAdapter = {
-      git: config.git,
-      layoutText: new lds.LightingDesignSystemText(),
-      navigation: new lds.LightingDesignSystemNavigation(
-        true,
-        routes.navigationTree,
-      ),
-      assets: this.designSystem.assets(),
-      branding: {
-        contextBarSubject: config.appName,
-        contextBarSubjectImageSrc: (assets) =>
-          assets.image("/asset/image/brand/logo-icon-100x100.png"),
-      },
-      mGitResolvers: config.mGitResolvers,
-      routeGitRemoteResolver: config.routeGitRemoteResolver,
-      renderedAt: new Date(),
-    };
-  }
-}
-
-export class TypicalPublication
+export abstract class TypicalPublication
   implements Publication, rfGovn.ObservabilityHealthComponentStatusSupplier {
   readonly namespaceURIs = ["TypicalPublication<Resource>"];
   readonly state: PublicationState;
@@ -382,9 +353,8 @@ export class TypicalPublication
   constructor(
     readonly config: Configuration,
     readonly routes = new PublicationRoutes(config.fsRouteFactory),
-    ds = new PublicationDesignSystem(config, routes),
   ) {
-    this.ds = ds;
+    this.ds = this.constructDesignSystem(config, routes);
     const defaultDiagsOptions: DiagnosticsOptionsSupplier = {
       routes: true,
       metrics: { assets: true },
@@ -432,6 +402,12 @@ export class TypicalPublication
       this.persistedDestFiles.add(destFileName);
     });
   }
+
+  abstract constructDesignSystem(
+    config: Configuration,
+    routes: PublicationRoutes,
+    // deno-lint-ignore no-explicit-any
+  ): html.DesignSystemFactory<any, any, any, any>;
 
   *obsHealthStatus(): Generator<rfGovn.ObservabilityHealthComponentStatus> {
     const time = new Date();
@@ -513,12 +489,12 @@ export class TypicalPublication
       this.config;
     const diagnostics = this.state.diagnostics();
     return [
-      ldsDiagC.diagnosticsResources(
+      diagC.diagnosticsResources(
         diagnosticsRoute,
         fsRouteFactory,
         diagnostics,
       ),
-      ldsDiagC.observabilityPreProduceResources(
+      diagC.observabilityPreProduceResources(
         observabilityRoute,
         fsRouteFactory,
         {
@@ -582,37 +558,7 @@ export class TypicalPublication
 
   // deno-lint-ignore no-explicit-any
   inspectionRefinerySync(): rfGovn.ResourceRefinerySync<any> | undefined {
-    return (resource) => {
-      if (rfStd.isRouteSupplier(resource)) {
-        const rr = resource.route;
-        if (rr.terminal && rfStd.isFileSysRouteUnit(rr.terminal)) {
-          const fileName = rr.terminal.fileSysPathParts.base;
-          if (fileName.includes(" ")) {
-            return ldsDirec.registerActionItems(
-              resource,
-              undefined,
-              {
-                type: "lint-issue",
-                subject:
-                  `${fileName} should be renamed because it has spaces (replace all spaces with hyphens '-')`,
-              },
-            );
-          }
-
-          if (fileName !== fileName.toLocaleLowerCase()) {
-            return ldsDirec.registerActionItems(
-              resource,
-              undefined,
-              {
-                type: "lint-issue",
-                subject:
-                  `${fileName} should be renamed because it has mixed case letters (all text should be lowercase only)`,
-              },
-            );
-          }
-        }
-      }
-    };
+    return undefined;
   }
 
   persistersRefinery() {
@@ -700,7 +646,7 @@ export class TypicalPublication
     const persist = this.persistersRefinery();
     for await (
       const resource of this.originate(
-        ldsDiagC.observabilityPostProduceResources(
+        diagC.observabilityPostProduceResources(
           observabilityRoute,
           fsRouteFactory,
           // before production assetsMetrics is undefined but by now it should

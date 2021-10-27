@@ -88,6 +88,20 @@ export function isFlexibleMutatedDesignSystemArgumentsSupplier(
   return isDesignSystemArgumentsSupplier(o);
 }
 
+export function designSystemTemplate(identity: string) {
+  return html.htmlLayoutTemplate<
+    html.HelperFunctionOrString<html.HtmlLayout>,
+    html.HtmlLayout
+  >(identity);
+}
+
+export const typicalDesignSystemBodyPartial: html.HtmlPartial<html.HtmlLayout> =
+  (_, body) => body || "<!-- no design system body -->";
+
+export const designSystemNoDecorationPage = designSystemTemplate(
+  "ds/page/no-decoration",
+)`${typicalDesignSystemBodyPartial}`;
+
 export class DesignSystemLayouts<Layout extends html.HtmlLayout>
   implements govn.LayoutStrategies<Layout, govn.HtmlSupplier> {
   readonly layouts: Map<
@@ -100,6 +114,10 @@ export class DesignSystemLayouts<Layout extends html.HtmlLayout>
       Layout
     >,
   ) {
+    this.layouts.set(
+      designSystemNoDecorationPage.identity,
+      designSystemNoDecorationPage,
+    );
   }
 
   layoutStrategy(

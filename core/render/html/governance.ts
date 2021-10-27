@@ -92,6 +92,7 @@ export interface HtmlLayout<
   HtmlLayoutArguments,
   HtmlLayoutNavigationContext {
   readonly bodySource: HtmlLayoutBody;
+  readonly dsCtx: ds.UntypedDesignSystemContentAdapter;
   // deno-lint-ignore no-explicit-any
   readonly designSystem: ds.DesignSystem<any>;
   // deno-lint-ignore no-explicit-any

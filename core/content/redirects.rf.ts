@@ -1,8 +1,7 @@
-import * as govn from "../../../../governance/mod.ts";
-import * as n from "../../../std/nature.ts";
-import * as rtree from "../../../std/route-tree.ts";
-import * as ds from "../../../render/html/mod.ts";
-import * as lds from "../mod.ts";
+import * as govn from "../../governance/mod.ts";
+import * as n from "../std/nature.ts";
+import * as rtree from "../std/route-tree.ts";
+import * as ds from "../render/html/mod.ts";
 
 // TODO: redirects might also want to generate (yield) .htaccess files too?
 //       right now we're generating only HTML but .htaccess would be nice too
@@ -19,9 +18,9 @@ export function redirectResources(
         const htmlFS: govn.ResourceFactorySupplier<govn.HtmlResource> = {
           // deno-lint-ignore require-await
           resourceFactory: async () => {
-            const redirectHTML: lds.LightningLayoutBodySupplier = (layout) => {
+            const redirectHTML: ds.HtmlLayoutBodySupplier = (layout) => {
               const targetURL = layout.dsCtx.navigation.redirectUrl(alias);
-              return `<!DOCTYPE HTML>
+              return `<!DOCTYPE HTML>  
               <html lang="en-US">
                   <head>
                       <meta charset="UTF-8">
@@ -55,8 +54,7 @@ export function redirectResources(
                 },
                 html: {
                   // deno-lint-ignore require-await
-                  text: async (layout: lds.LightningLayout) =>
-                    redirectHTML(layout),
+                  text: async (layout: ds.HtmlLayout) => redirectHTML(layout),
                   textSync: redirectHTML,
                 },
               };

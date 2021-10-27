@@ -1,16 +1,14 @@
-import { govnSvcMetrics as gsm } from "../../../../../deps.ts";
-import * as fsA from "../../../../../lib/fs/fs-analytics.ts";
-import * as govn from "../../../../../governance/mod.ts";
+import { govnSvcMetrics as gsm } from "../../../deps.ts";
+import * as fsA from "../../../lib/fs/fs-analytics.ts";
+import * as govn from "../../../governance/mod.ts";
 import * as dGovn from "./governance.ts";
-import * as nature from "../../../../std/nature.ts";
-import * as dtr from "../../../../render/delimited-text.ts";
-import * as tfr from "../../../../render/text.ts";
-import * as ds from "../../../../render/html/mod.ts";
-import * as lds from "../../mod.ts";
-import * as ldsL from "../../layout/mod.ts";
+import * as nature from "../../std/nature.ts";
+import * as dtr from "../../render/delimited-text.ts";
+import * as tfr from "../../render/text.ts";
+import * as ds from "../../render/html/mod.ts";
 
 // deno-fmt-ignore
-const metricsHTML: lds.LightningLayoutBodySupplier = (_layout) => `
+const metricsHTML: ds.HtmlLayoutBodySupplier = () => `
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 <script type="text/javascript"
     src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
@@ -74,7 +72,7 @@ export function metricsHtmlFactorySupplier(
         & govn.UntypedFrontmatter
         & ds.DesignSystemLayoutArgumentsSupplier = {
           layout: {
-            identity: ldsL.noDecorationPage.identity,
+            identity: ds.designSystemNoDecorationPage.identity,
           },
         };
 
@@ -94,7 +92,7 @@ export function metricsHtmlFactorySupplier(
           },
           html: {
             // deno-lint-ignore require-await
-            text: async (layout: lds.LightningLayout) => metricsHTML(layout),
+            text: async (layout: ds.HtmlLayout) => metricsHTML(layout),
             textSync: metricsHTML,
           },
         };

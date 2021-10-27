@@ -1,6 +1,6 @@
-import * as govn from "../../../../../governance/mod.ts";
+import * as govn from "../../../governance/mod.ts";
 import * as dGovn from "./governance.ts";
-import * as rModule from "../../../../resource/module/module.ts";
+import * as rModule from "../../resource/module/module.ts";
 import * as routes from "./routes.ts";
 import * as renderers from "./renderers.ts";
 

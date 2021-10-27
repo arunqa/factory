@@ -1,12 +1,12 @@
-import * as govn from "../../../../../governance/mod.ts";
-import * as nature from "../../../../std/nature.ts";
-import * as route from "../../../../std/route.ts";
-import * as lds from "../../mod.ts";
+import * as govn from "../../../governance/mod.ts";
+import * as nature from "../../std/nature.ts";
+import * as route from "../../std/route.ts";
+import * as ds from "../../render/html/mod.ts";
 
 const layoutsGrid = "layouts";
 
 // deno-fmt-ignore
-const renderersHTML: lds.LightningLayoutBodySupplier = (layout) => `
+const renderersHTML: ds.HtmlLayoutBodySupplier = (layout) => `
 <div id="${layoutsGrid}" style="width:1024px;" class="ag-theme-alpine"></div>
 <script>
 $script(
@@ -69,7 +69,7 @@ export function renderersHtmlFactorySupplier(
         },
         html: {
           // deno-lint-ignore require-await
-          text: async (layout: lds.LightningLayout) => renderersHTML(layout),
+          text: async (layout: ds.HtmlLayout) => renderersHTML(layout),
           textSync: renderersHTML,
         },
       };

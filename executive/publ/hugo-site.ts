@@ -99,7 +99,7 @@ export class HugoRoutes extends publ.PublicationRoutes {
   }
 }
 
-export class HugoSite extends publ.TypicalPublication {
+export abstract class HugoSite extends publ.TypicalPublication {
   static readonly contextBarLevel = 1;
 
   constructor(config: publ.Configuration) {

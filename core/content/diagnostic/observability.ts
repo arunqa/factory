@@ -1,7 +1,7 @@
-import * as govn from "../../../../../governance/mod.ts";
+import * as govn from "../../../governance/mod.ts";
 import * as dGovn from "./governance.ts";
-import * as rModule from "../../../../resource/module/module.ts";
-import * as nature from "../../../../std/nature.ts";
+import * as rModule from "../../resource/module/module.ts";
+import * as nature from "../../std/nature.ts";
 import * as m from "./metrics.ts";
 
 /**

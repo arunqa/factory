@@ -3,6 +3,8 @@ import { path } from "../../deps.ts";
 import * as mod from "./publication.ts";
 import * as fsLink from "../../lib/fs/link.ts";
 import * as git from "../../lib/git/mod.ts";
+import * as ds from "../../core/render/html/mod.ts";
+import * as lds from "../../core/design-system/lightning/mod.ts";
 
 const testPath = path.relative(
   Deno.cwd(),
@@ -41,8 +43,45 @@ const prefs: mod.Preferences = {
     };
   },
 };
+
+export class TestDesignSystem implements lds.LightningDesignSystemFactory {
+  readonly designSystem: lds.LightingDesignSystem<lds.LightningLayout>;
+  readonly contentAdapter: lds.LightingDesignSystemContentAdapter;
+
+  constructor(config: mod.Configuration, routes: mod.PublicationRoutes) {
+    this.designSystem = new lds.LightingDesignSystem();
+    this.contentAdapter = {
+      git: config.git,
+      layoutText: new lds.LightingDesignSystemText(),
+      navigation: new lds.LightingDesignSystemNavigation(
+        true,
+        routes.navigationTree,
+      ),
+      assets: this.designSystem.assets(),
+      branding: {
+        contextBarSubject: config.appName,
+        contextBarSubjectImageSrc: (assets) =>
+          assets.image("/asset/image/brand/logo-icon-100x100.png"),
+      },
+      mGitResolvers: config.mGitResolvers,
+      routeGitRemoteResolver: config.routeGitRemoteResolver,
+      renderedAt: new Date(),
+    };
+  }
+}
+
 const config = new mod.Configuration(prefs);
-const executive = new mod.Executive([new mod.TypicalPublication(config)]);
+const executive = new mod.Executive([
+  new class extends mod.TypicalPublication {
+    constructDesignSystem(
+      config: mod.Configuration,
+      routes: mod.PublicationRoutes,
+      // deno-lint-ignore no-explicit-any
+    ): ds.DesignSystemFactory<any, any, any, any> {
+      return new TestDesignSystem(config, routes);
+    }
+  }(config),
+]);
 
 Deno.test(`Publication discovered proper number of assets ${config.contentRootPath}`, async () => {
   await executive.execute();

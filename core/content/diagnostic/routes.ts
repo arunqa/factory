@@ -1,13 +1,16 @@
-import * as govn from "../../../../../governance/mod.ts";
+import * as govn from "../../../governance/mod.ts";
 import * as dGovn from "./governance.ts";
-import * as nature from "../../../../std/nature.ts";
-import * as route from "../../../../std/route.ts";
-import * as rJSON from "../../../../content/routes.json.ts";
-import * as lds from "../../mod.ts";
+import * as nature from "../../std/nature.ts";
+import * as route from "../../std/route.ts";
+import * as rJSON from "../../content/routes.json.ts";
+import * as ds from "../../render/html/mod.ts";
+
+// TODO: this file used to be LDS-specific but needs to be generic;
+// remove all LDS-specific HTML formatting and replace using AG Grid or generic
 
 function routesHTML(
   _state: dGovn.DiagnosticsResourcesState,
-): lds.LightningLayoutBodySupplier {
+): ds.HtmlLayoutBodySupplier {
   // deno-fmt-ignore
   return (_layout) => `
   <template id="resource-node-leaf-row">
@@ -194,8 +197,7 @@ export function routesHtmlFactorySupplier(
         },
         html: {
           // deno-lint-ignore require-await
-          text: async (layout: lds.LightningLayout) =>
-            routesHTML(state)(layout),
+          text: async (layout: ds.HtmlLayout) => routesHTML(state)(layout),
           textSync: routesHTML(state),
         },
       };
