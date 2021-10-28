@@ -16,9 +16,8 @@ export const smartNavigationPage = t.lightningTemplate("lds/page/default")`<!DOC
   ${p.contextBarPartial}
   </header>
   
-  <main class="container flex slds-m-vertical_small"> 
-  <div class="slds-grid slds-wrap">
-    <div class="slds-grid slds-grid_align-center slds-gutters_medium slds-var-m-around_medium">
+  <main class="slds-container_x-large slds-container_center slds-p-around_medium"> 
+    <div class="slds-grid slds-grid_align-left slds-gutters">
       <div class="slds-col slds-size_3-of-12">
       ${p.verticalNavigationShadedPartial}
       </div>
@@ -45,7 +44,6 @@ export const smartNavigationPage = t.lightningTemplate("lds/page/default")`<!DOC
         </aside>
       </div>
     </div>
-  </div>
   </main>
   ${p.asideTocPartial}
   ${p.footerFixedCopyrightBuildPartial}
