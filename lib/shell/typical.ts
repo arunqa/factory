@@ -3,23 +3,60 @@ import * as govn from "./governance.ts";
 
 declare global {
   interface Window {
-    shell: govn.Shell;
+    rawShell: RawShell;
+    sh: BinSh;
+    bash: Bash;
   }
 }
 
 const isDryRunnable = safety.typeGuard<govn.ShellCmdDryRunnable>("isDryRun");
 
-export class TypicalShell implements govn.Shell {
+export abstract class AbstractShell implements govn.Shell {
   // split components of the command with double-quotes support
-  readonly splitCmdRegExp = /[^\s"]+|"([^"]*)"/gi;
   readonly decoder = new TextDecoder();
+  readonly needShellQuoteEscape = /[^A-Za-z0-9_\/:=-]/;
+  // split components of the command with double-quotes support
+  readonly splitCmdTextUnitsRegExp = /[^\s"]+|"([^"]*)"/gi;
+
+  readonly forceShellQuotesEscaped = (value: string) =>
+    `'${value.replace(/'/g, "'\\''")}'`
+      .replace(/^(?:'')+/g, "") // deduplicate single-quotes
+      .replace(/\\'''/g, "\\'"); // remove non-escaped single-quote if there are enclosed between 2 escaped
+
+  readonly shellQuotesEscaped = (value: string) =>
+    this.needShellQuoteEscape.test(value)
+      ? this.forceShellQuotesEscaped(value)
+      : value;
+
+  readonly shellQuotesEscapedText = (value: string | string[]) => {
+    if (typeof value === "string") return this.shellQuotesEscaped(value);
+    return value.map((v) => this.shellQuotesEscaped(v)).join(" ");
+  };
+
+  readonly cmdTextUnits = (command: string): string[] => {
+    const units = [];
+    let match: RegExpExecArray | null;
+    do {
+      //Each call to exec returns the next regex match as an array
+      match = this.splitCmdTextUnitsRegExp.exec(command);
+      if (match != null) {
+        //Index 1 in the array is the captured group if it exists
+        //Index 0 is the matched text, which we use if no captured group exists
+        units.push(match[1] ? match[1] : match[0]);
+      }
+    } while (match != null);
+    return units;
+  };
 
   constructor(
     readonly defaults?: Omit<
-      govn.ShellCmdRunOptionsSupplier<Deno.RunOptions>,
+      govn.ShellCmdRunOptionsSupplier<govn.ShellCmdRunOptions>,
       "runOptions"
     >,
   ) {
+  }
+
+  async init(): Promise<void> {
   }
 
   isDryRun(...test: unknown[]): boolean {
@@ -29,46 +66,31 @@ export class TypicalShell implements govn.Shell {
     return false;
   }
 
-  commandComponents(command: string): string[] {
-    const components = [];
+  abstract cmdTextRunOptions<
+    RO extends govn.ShellCmdRunOptions = govn.ShellCmdRunOptions,
+  >(cmd: string): RO;
 
-    let match: RegExpExecArray | null;
-    do {
-      //Each call to exec returns the next regex match as an array
-      match = this.splitCmdRegExp.exec(command);
-      if (match != null) {
-        //Index 1 in the array is the captured group if it exists
-        //Index 0 is the matched text, which we use if no captured group exists
-        components.push(match[1] ? match[1] : match[0]);
-      }
-    } while (match != null);
-
-    return components;
+  smartQuotesCmdRunOptions<
+    RO extends govn.ShellCmdRunOptions = govn.ShellCmdRunOptions,
+  >(...args: string[]): RO {
+    return this.cmdTextRunOptions(this.shellQuotesEscapedText(args));
   }
 
-  cmdRunOptions<RO extends Deno.RunOptions = Deno.RunOptions>(
-    cmd: string,
-    inherit?: Partial<Deno.RunOptions> & govn.ShellCmdDryRunnable,
-  ): RO {
+  finalizeRunOptions<
+    RO extends govn.ShellCmdRunOptions = govn.ShellCmdRunOptions,
+  >(ro: RO): RO {
     return {
-      cmd: this.commandComponents(cmd),
-      ...inherit,
-    } as RO;
-  }
-
-  async execute<
-    RO extends Deno.RunOptions & govn.ShellCmdDryRunnable = Deno.RunOptions,
-    ROS extends govn.ShellCmdRunOptionsSupplier<RO> =
-      govn.ShellCmdRunOptionsSupplier<RO>,
-  >(
-    ros: ROS,
-    isValid?: (ser: govn.ShellExecuteResult<RO, ROS>) => boolean,
-  ): Promise<govn.ShellExecuteResult<RO, ROS> | undefined> {
-    const runOptions = ros.runOptions({
+      ...ro,
       stdout: "piped",
       stderr: "piped",
-    });
+    };
+  }
 
+  async execute<RO extends govn.ShellCmdRunOptions = govn.ShellCmdRunOptions>(
+    ros: govn.ShellCmdRunOptionsSupplier<RO>,
+    isValid?: (ser: govn.ShellExecuteResult<RO>) => boolean,
+  ): Promise<govn.ShellExecuteResult<RO> | undefined> {
+    const runOptions = this.finalizeRunOptions(ros.runOptions());
     const isDryRun = this.isDryRun(runOptions, ros);
     const defaults = this.defaults;
     const reportRun = ros.reportRun || defaults?.reportRun;
@@ -88,9 +110,8 @@ export class TypicalShell implements govn.Shell {
         cmd.output(),
         cmd.status(),
       ]);
-      const result: govn.ShellExecuteResult<RO, ROS> = {
+      const result: govn.ShellExecuteResult<RO> = {
         runOptions,
-        runOptionsSupplier: ros,
         status,
         isValid: () => isValid ? isValid(result) : status.success,
       };
@@ -121,8 +142,114 @@ export class TypicalShell implements govn.Shell {
       }
     }
   }
+
+  async exec<RO extends govn.ShellCmdRunOptions = govn.ShellCmdRunOptions>(
+    cmd: string,
+    isValid?: (ser: govn.ShellExecuteResult<RO>) => boolean,
+  ) {
+    return await this.execute<RO>({
+      runOptions: () => this.cmdTextRunOptions(cmd),
+    }, isValid);
+  }
+
+  async execText(
+    cmd: string,
+    options?: {
+      readonly onUnexpected?: () => string | undefined;
+      readonly onError?: (error: Error) => string | undefined;
+      readonly onStdErr?: (stdErr: string) => string | undefined;
+    },
+  ): Promise<string | undefined> {
+    let result: string | undefined;
+    await window.rawShell.execute({
+      runOptions: () => this.cmdTextRunOptions(cmd),
+      consumeStdOut: (stdOut) => {
+        result = stdOut;
+      },
+      consumeStdErr: (options?.onStdErr || options?.onUnexpected)
+        ? ((stdErr) => {
+          result = options?.onStdErr
+            ? options.onStdErr(stdErr)
+            : (options?.onUnexpected ? options.onUnexpected() : undefined);
+        })
+        : undefined,
+      reportError: (options?.onError || options?.onUnexpected)
+        ? ((error) => {
+          result = options?.onError
+            ? options.onError(error)
+            : (options?.onUnexpected ? options.onUnexpected() : undefined);
+        })
+        : undefined,
+    });
+    return result;
+  }
 }
 
-if (!window.shell) {
-  window.shell = new TypicalShell();
+export class RawShell extends AbstractShell {
+  cmdTextRunOptions<
+    RO extends govn.ShellCmdRunOptions = govn.ShellCmdRunOptions,
+  >(cmd: string): RO {
+    return { cmd: this.cmdTextUnits(cmd) } as RO;
+  }
+}
+
+export class BinSh extends AbstractShell {
+  cmdTextRunOptions<
+    RO extends govn.ShellCmdRunOptions = govn.ShellCmdRunOptions,
+  >(cmd: string): RO {
+    return { cmd: ["/bin/sh", "-c", cmd] } as unknown as RO;
+  }
+}
+
+export class Bash extends AbstractShell {
+  constructor(
+    readonly strict = true,
+    readonly bashCmd = "/bin/bash",
+    readonly defaults?: Omit<
+      govn.ShellCmdRunOptionsSupplier<govn.ShellCmdRunOptions>,
+      "runOptions"
+    >,
+  ) {
+    super(defaults);
+  }
+
+  async init(): Promise<void> {
+    // this.bashCmd is typically set to /bin/bash but we want to auto-detect
+    // the proper location in case what was supplied was not correct
+    await window.rawShell.execute({
+      runOptions: () => ({
+        cmd: ["/bin/sh", "-c", "command -v bash || which bash || type -p bash"],
+      }),
+      consumeStdOut: (stdOut) => {
+        (this.bashCmd as string) = stdOut.trim();
+      },
+    });
+  }
+
+  cmdTextRunOptions<
+    RO extends govn.ShellCmdRunOptions = govn.ShellCmdRunOptions,
+  >(cmd: string): RO {
+    return {
+      cmd: [
+        this.bashCmd,
+        "-c",
+        this.strict ? ("set -euo pipefail;" + cmd) : cmd,
+      ],
+    } as unknown as RO;
+  }
+}
+
+if (!window.rawShell) {
+  window.rawShell = new RawShell();
+  await (window.rawShell as RawShell).init();
+}
+
+if (!window.sh) {
+  window.sh = new BinSh();
+  await window.sh.init();
+}
+
+if (!window.bash) {
+  window.bash = new Bash();
+  await window.bash.init();
 }

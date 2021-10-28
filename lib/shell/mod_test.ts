@@ -1,15 +1,14 @@
 import { testingAsserts as ta } from "./deps-test.ts";
 import "./mod.ts"; // need window.shell from here
 
-const testSH = window.shell;
+const testSH = window.rawShell;
 ta.assert(testSH);
 
-Deno.test(`Test shell with invalid command which produces Deno exception (non-zero result)`, async () => {
+Deno.test(`Test raw shell with invalid command which produces Deno exception (non-zero result)`, async () => {
   let reportError: Error | undefined;
   const result = await testSH.execute(
     {
-      runOptions: (inherit) =>
-        testSH.cmdRunOptions("bad command --with --params", inherit),
+      runOptions: () => testSH.cmdTextRunOptions("bad command --with --params"),
       reportError: (error) => {
         reportError = error;
       },
@@ -23,13 +22,15 @@ Deno.test(`Test shell with invalid command which produces Deno exception (non-ze
   ta.assert(reportError, "Error should be trapped and reported");
 });
 
-Deno.test(`Test shell with Git command execution (non-zero result)`, async () => {
+Deno.test(`Test raw shell with Git command execution (non-zero result)`, async () => {
   const testDir = Deno.makeTempDirSync();
   let consumeStdErr: string | undefined;
   const result = await testSH.execute(
     {
-      runOptions: (inherit) =>
-        testSH.cmdRunOptions("git status", { cwd: testDir, ...inherit }),
+      runOptions: () => ({
+        ...testSH.cmdTextRunOptions("git status"),
+        cwd: testDir,
+      }),
       consumeStdErr: (stdErr) => {
         consumeStdErr = stdErr;
       },
@@ -44,12 +45,12 @@ Deno.test(`Test shell with Git command execution (non-zero result)`, async () =>
   Deno.removeSync(testDir, { recursive: true });
 });
 
-Deno.test(`Test shell with Git command execution (zero result)`, async () => {
+Deno.test(`Test raw shell with Git command execution (zero result)`, async () => {
   let resultReported = false;
   let stdOutConsumed: string | undefined;
   const result = await testSH.execute(
     {
-      runOptions: (inherit) => testSH.cmdRunOptions("git status", inherit),
+      runOptions: () => testSH.cmdTextRunOptions("git status"),
       reportResult: (ser) => {
         resultReported = true;
         ta.assertEquals(ser.status.code, 0, "Command result should be zero");
@@ -70,22 +71,14 @@ Deno.test(`Test shell with Git command execution (zero result)`, async () => {
   );
 });
 
-Deno.test(`Test shell with Git command execution (inherit not used)`, () => {
-  ta.assertThrowsAsync(async () => {
-    await testSH.execute({
-      // test what happens when inherit is not used, should throw exception
-      // because we expect stderr, stdout to be "piped"
-      runOptions: () => testSH.cmdRunOptions("git status"),
-    });
-  });
-});
-
-Deno.test(`Test shell with Git command execution (dry run)`, async () => {
+Deno.test(`Test raw shell with Git command execution (dry run)`, async () => {
   let dryRunReportEncountered = false;
   const result = await testSH.execute(
     {
-      runOptions: (inherit) =>
-        testSH.cmdRunOptions("git status -s", { isDryRun: true, ...inherit }),
+      runOptions: () => ({
+        ...testSH.cmdTextRunOptions("git status -s"),
+        isDryRun: true,
+      }),
       reportRun: (ro, isDryRun) => {
         dryRunReportEncountered = isDryRun || false;
         ta.assertEquals(ro.cmd, ["git", "status", "-s"]);
@@ -97,4 +90,18 @@ Deno.test(`Test shell with Git command execution (dry run)`, async () => {
     dryRunReportEncountered,
     "dryRunReportEncountered not encountered, reportRun did not execute",
   );
+});
+
+Deno.test(`Test sh with command -v`, async () => {
+  const result = await window.sh.execText(
+    "command -v bash || which bash || type -p bash",
+  );
+  ta.assert(result);
+  ta.assertEquals(result.trim(), "/bin/bash");
+});
+
+Deno.test(`Test bash with echo`, async () => {
+  const result = await window.bash.execText(`echo "test"`);
+  ta.assert(result);
+  ta.assertEquals(result.trim(), "test");
 });

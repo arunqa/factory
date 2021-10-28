@@ -2,61 +2,52 @@ export interface ShellCmdDryRunnable {
   readonly isDryRun?: boolean;
 }
 
-export interface ShellOutputConsumer<
-  RO extends Deno.RunOptions,
-  ROS extends ShellCmdRunOptionsSupplier<RO>,
-> {
-  (
-    output: string,
-    // deno-lint-ignore no-explicit-any
-    ser: ShellExecuteResult<RO, ShellCmdRunOptionsSupplier<any>>,
-  ): void;
+export interface ShellCmdRunOptions
+  extends Deno.RunOptions, ShellCmdDryRunnable {
 }
 
-export interface ShellCmdRunOptionsSupplier<RO extends Deno.RunOptions>
+export interface ShellOutputConsumer<RO extends Deno.RunOptions> {
+  (output: string, ser: ShellExecuteResult<RO>): void;
+}
+
+export interface ShellCmdRunOptionsSupplier<RO extends ShellCmdRunOptions>
   extends ShellCmdDryRunnable {
-  readonly runOptions: (
-    inherit?: Partial<Deno.RunOptions>,
-  ) => RO & ShellCmdDryRunnable;
-  readonly consumeStdOut?: ShellOutputConsumer<
-    RO,
-    ShellCmdRunOptionsSupplier<RO>
-  >;
-  readonly consumeStdErr?: ShellOutputConsumer<
-    RO,
-    ShellCmdRunOptionsSupplier<RO>
-  >;
+  readonly runOptions: () => RO;
+  readonly consumeStdOut?: ShellOutputConsumer<RO>;
+  readonly consumeStdErr?: ShellOutputConsumer<RO>;
   readonly reportRun?: (runOptions: RO, isDryRun?: boolean) => void;
   readonly reportError?: (error: Error, runOptions: RO) => void;
-  readonly reportResult?: (
-    // deno-lint-ignore no-explicit-any
-    ser: ShellExecuteResult<RO, ShellCmdRunOptionsSupplier<any>>,
-  ) => void;
+  readonly reportResult?: (ser: ShellExecuteResult<RO>) => void;
   readonly decoder?: TextDecoder;
 }
 
-export interface ShellExecuteResult<
-  RO extends Deno.RunOptions & ShellCmdDryRunnable,
-  ROS extends ShellCmdRunOptionsSupplier<RO>,
-> {
+export interface ShellExecuteResult<RO extends ShellCmdRunOptions> {
   readonly runOptions: RO;
-  readonly runOptionsSupplier: ROS;
   readonly status: Deno.ProcessStatus;
   readonly isValid: (status: Deno.ProcessStatus) => boolean;
 }
 
 export interface Shell {
-  readonly cmdRunOptions: <
-    RO extends Deno.RunOptions & ShellCmdDryRunnable = Deno.RunOptions,
-  >(
+  readonly cmdTextRunOptions: <
+    RO extends ShellCmdRunOptions = ShellCmdRunOptions,
+  >(cmd: string) => RO;
+  readonly smartQuotesCmdRunOptions: <
+    RO extends ShellCmdRunOptions = ShellCmdRunOptions,
+  >(...args: string[]) => RO;
+  readonly execute: <RO extends ShellCmdRunOptions = ShellCmdRunOptions>(
+    ros: ShellCmdRunOptionsSupplier<RO>,
+    isValid?: (ser: ShellExecuteResult<RO>) => boolean,
+  ) => Promise<ShellExecuteResult<RO> | undefined>;
+  readonly exec: <RO extends ShellCmdRunOptions = ShellCmdRunOptions>(
     cmd: string,
-    inherit?: Partial<Deno.RunOptions> & ShellCmdDryRunnable,
-  ) => RO;
-  readonly execute: <
-    RO extends Deno.RunOptions & ShellCmdDryRunnable = Deno.RunOptions,
-    ROS extends ShellCmdRunOptionsSupplier<RO> = ShellCmdRunOptionsSupplier<RO>,
-  >(
-    ros: ROS,
-    isValid?: (ser: ShellExecuteResult<RO, ROS>) => boolean,
-  ) => Promise<ShellExecuteResult<RO, ROS> | undefined>;
+    isValid?: (ser: ShellExecuteResult<RO>) => boolean,
+  ) => Promise<ShellExecuteResult<RO> | undefined>;
+  readonly execText: (
+    cmd: string,
+    options?: {
+      readonly onUnexpected?: () => string | undefined;
+      readonly onError?: (error: Error) => string | undefined;
+      readonly onStdErr?: (stdErr: string) => string | undefined;
+    },
+  ) => Promise<string | undefined>;
 }
