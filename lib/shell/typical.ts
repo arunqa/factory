@@ -1,4 +1,5 @@
-import { safety } from "./deps.ts";
+import { path, safety } from "./deps.ts";
+import * as ws from "../text/whitespace.ts";
 import * as govn from "./governance.ts";
 
 declare global {
@@ -182,6 +183,47 @@ export abstract class AbstractShell implements govn.Shell {
         : undefined,
     });
     return result;
+  }
+
+  execShebang<RO extends govn.ShebangRunOptions = govn.ShebangRunOptions>(
+    refine?: (
+      suggested: govn.ShebangRunOptionsSupplier<RO>,
+    ) => govn.ShebangRunOptionsSupplier<RO>,
+    shebangDir = Deno.makeTempDirSync(),
+    shebangFileBaseName = "execShebang",
+  ): govn.ShebangScript<RO, string> {
+    return async (literals, ...exprs) => {
+      let interpolated = "";
+      for (let i = 0; i < literals.length; i++) {
+        interpolated += literals[i]
+          // join lines when there is a suppressed newline
+          .replace(/\\\n[ \t]*/g, "")
+          // handle escaped backticks
+          .replace(/\\`/g, "`");
+
+        if (i < exprs.length) {
+          // TODO: add type-safety here (e.g. strings, functions, etc.)
+          interpolated += exprs[i];
+        }
+      }
+
+      const shebangScript = ws.unindentWhitespace(interpolated);
+      const shebangFile = path.join(shebangDir, shebangFileBaseName);
+      Deno.writeTextFileSync(shebangFile, shebangScript);
+      Deno.chmodSync(shebangFile, 0o777);
+      const ros: govn.ShebangRunOptionsSupplier<RO> = {
+        runOptions: () => ({
+          ...this.cmdTextRunOptions<RO>(shebangFile),
+          cwd: Deno.cwd(),
+          shebangDir,
+          shebangFile,
+          shebangScript,
+        }),
+      };
+      const result = await this.execute<RO>(refine ? refine(ros) : ros);
+      Deno.removeSync(shebangDir, { recursive: true });
+      return result;
+    };
   }
 }
 

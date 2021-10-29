@@ -105,3 +105,19 @@ Deno.test(`Test bash with echo`, async () => {
   ta.assert(result);
   ta.assertEquals(result.trim(), "test");
 });
+
+Deno.test(`Test shebang`, async () => {
+  let shebangOutput: string | undefined;
+  const result = await window.rawShell.execShebang((suggested) => ({
+    ...suggested,
+    consumeStdOut: (stdOut) => shebangOutput = stdOut,
+  }))`
+    #!/bin/bash
+
+    set -euo pipefail;
+    echo "test"
+  `;
+  ta.assert(result);
+  ta.assert(shebangOutput);
+  ta.assertEquals(shebangOutput.trim(), "test");
+});

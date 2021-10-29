@@ -27,6 +27,24 @@ export interface ShellExecuteResult<RO extends ShellCmdRunOptions> {
   readonly isValid: (status: Deno.ProcessStatus) => boolean;
 }
 
+export interface ShebangScript<RO extends ShellCmdRunOptions, Interpolate> {
+  (
+    literals: TemplateStringsArray,
+    ...expressions: Interpolate[]
+  ): Promise<ShellExecuteResult<RO> | undefined>;
+}
+
+export interface ShebangRunOptions extends ShellCmdRunOptions {
+  readonly shebangScript: string;
+  readonly shebangDir: string;
+  readonly shebangFile: string;
+}
+
+// deno-lint-ignore no-empty-interface
+export interface ShebangRunOptionsSupplier<RO extends ShebangRunOptions>
+  extends ShellCmdRunOptionsSupplier<RO> {
+}
+
 export interface Shell {
   readonly cmdTextRunOptions: <
     RO extends ShellCmdRunOptions = ShellCmdRunOptions,
@@ -50,4 +68,6 @@ export interface Shell {
       readonly onStdErr?: (stdErr: string) => string | undefined;
     },
   ) => Promise<string | undefined>;
+  readonly execShebang: <RO extends ShebangRunOptions = ShebangRunOptions>() =>
+    ShebangScript<RO, string>;
 }
