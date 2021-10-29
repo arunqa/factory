@@ -29,6 +29,15 @@ export interface RunOptions {
   readonly onTaskNotFound?: (task: string, tasks: Tasks) => Promise<void>;
 }
 
+export const kebabCaseToCamelTaskName = (text: string) =>
+  // find one or more characters after - and replace with single uppercase
+  text.replace(/-./g, (x) => x.toUpperCase()[1]);
+
+export const camelCaseToKebabTaskName = (text: string) =>
+  // find one or more uppercase characters and separate with -
+  text.replace(/[A-Z]+/g, (match: string) => `-${match}`)
+    .toLocaleLowerCase();
+
 export async function run(
   [name, ...args]: string[],
   tasks: Tasks,
@@ -45,7 +54,7 @@ export async function run(
     },
   },
 ): Promise<void> {
-  const runnable = tasks[name];
+  const runnable = tasks[name] || tasks[kebabCaseToCamelTaskName(name)];
   if (runnable) {
     if (typeof runnable === "function") {
       // deno-lint-ignore no-explicit-any
@@ -74,10 +83,11 @@ export const inspect: IdentifiableTaskRunnerSupplier = {
   // deno-lint-ignore require-await
   exec: async (ctx) => {
     for (const name of Object.keys(ctx.tasks)) {
+      const alias = camelCaseToKebabTaskName(name);
       console.info(
         colors.gray(
           //deno-fmt-ignore
-          `${colors.yellow(name)} (${colors.gray(Deno.inspect(ctx.tasks[name], {colors: true}))})`,
+          `${colors.yellow(name)}${alias != name ? ` or ${colors.yellow(alias)}` : ''} (${colors.gray(Deno.inspect(ctx.tasks[name], {colors: true}))})`,
         ),
       );
     }
