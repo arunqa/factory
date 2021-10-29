@@ -47,18 +47,30 @@ export interface ProxyableModelLifecycle<
   readonly configState?: () => Promise<ProxyConfigurationState>;
   readonly isOriginAvailable: (
     psr: StrategyResult,
+    args: ProxyableFileSysModelArguments<Model, OriginContext>,
   ) => Promise<OriginContext | false>;
   readonly constructFromOrigin: (
     oc: OriginContext,
     sr: StrategyResult,
+    args: ProxyableFileSysModelArguments<Model, OriginContext>,
   ) => Promise<Model>;
-  readonly constructFromError: (issue: Issue) => Promise<Model>;
-  readonly constructFromProxy: (proxied: State) => Promise<Model>;
-  readonly constructNotConfigured?: () => Promise<Model>;
+  readonly constructFromError: (
+    issue: Issue,
+    cachedProxy: Model | undefined,
+    args: ProxyableFileSysModelArguments<Model, OriginContext>,
+  ) => Promise<Model>;
+  readonly constructFromCachedProxy: (
+    proxied: State,
+    args: ProxyableFileSysModelArguments<Model, OriginContext>,
+  ) => Promise<Model>;
+  readonly constructNotConfigured?: (
+    args: ProxyableFileSysModelArguments<Model, OriginContext>,
+  ) => Promise<Model>;
   readonly cacheProxied: (
     model: Model,
     psr: StrategyResult,
     oc: OriginContext,
+    args: ProxyableFileSysModelArguments<Model, OriginContext>,
   ) => Promise<Model>;
 }
 

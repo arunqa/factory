@@ -17,12 +17,12 @@ export function typicalProxyableFileSysModelArgs<
 >(
   args: Omit<
     govn.ProxyableFileSysModelLifecycle<Model, OriginContext>,
-    "constructFromProxy"
+    "constructFromCachedProxy"
   >,
 ): govn.ProxyableFileSysModelLifecycle<Model, OriginContext> {
   return {
     ...args,
-    constructFromProxy: async (pfsr) => {
+    constructFromCachedProxy: async (pfsr) => {
       return JSON.parse(
         await Deno.readTextFile(pfsr.proxyStrategyResult.proxyFilePathAndName),
       );
@@ -43,50 +43,67 @@ export function proxyableFileSysModel<Model, OriginContext>(
       proxyConfigState = await args.configState();
       if (!proxyConfigState.isConfigured) {
         return args.constructNotConfigured
-          ? await args.constructNotConfigured()
-          : await args.constructFromProxy({
+          ? await args.constructNotConfigured(args)
+          : await args.constructFromCachedProxy({
             proxyConfigState,
             proxyStrategyResult: fsrpsr,
-          });
+          }, args);
       }
     }
 
     if (fsrpsr.isConstructFromOrigin) {
       try {
-        const ctx = await args.isOriginAvailable(fsrpsr);
+        const ctx = await args.isOriginAvailable(fsrpsr, args);
         if (ctx) {
-          const model = await args.constructFromOrigin(ctx, fsrpsr);
-          return await args.cacheProxied(model, fsrpsr, ctx);
+          const model = await args.constructFromOrigin(ctx, fsrpsr, args);
+          return await args.cacheProxied(model, fsrpsr, ctx, args);
         } else {
           if (fsrpsr.proxyFileInfo) {
             // origin was not available, use the proxy
-            return await args.constructFromProxy({
+            return await args.constructFromCachedProxy({
               proxyStrategyResult: fsrpsr,
               proxyConfigState,
-            });
+            }, args);
           }
           // origin was not available, and proxy is not available
-          return await args.constructFromError({
-            originNotAvailable: true,
-            proxyStrategyResult: fsrpsr,
-            proxyConfigState,
-          });
+          return await args.constructFromError(
+            {
+              originNotAvailable: true,
+              proxyStrategyResult: fsrpsr,
+              proxyConfigState,
+            },
+            undefined,
+            args,
+          );
         }
       } catch (proxyOriginError) {
-        // origin was not accessible, and proxy is not available
-        return await args.constructFromError({
-          proxyStrategyResult: fsrpsr,
-          originNotAvailable: false,
-          proxyOriginError,
-          proxyConfigState,
-        });
+        // origin was not accessible, proxy might be available
+        let cachedProxy: Model | undefined;
+        try {
+          cachedProxy = await args.constructFromCachedProxy({
+            proxyStrategyResult: fsrpsr,
+            proxyConfigState,
+          }, args);
+        } catch {
+          cachedProxy = undefined;
+        }
+        return await args.constructFromError(
+          {
+            proxyStrategyResult: fsrpsr,
+            originNotAvailable: false,
+            proxyOriginError,
+            proxyConfigState,
+          },
+          cachedProxy,
+          args,
+        );
       }
     } else {
       // fsrpsr.isConstructFromOrigin is false
-      return await args.constructFromProxy({
+      return await args.constructFromCachedProxy({
         proxyStrategyResult: fsrpsr,
         proxyConfigState,
-      });
+      }, args);
     }
   };
 }
