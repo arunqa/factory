@@ -34,6 +34,19 @@ export function proxyableFileSysModel<Model, OriginContext>(
   args: govn.ProxyableFileSysModelArguments<Model, OriginContext>,
 ): govn.ProxyableModel<Model> {
   return async () => {
+    if (window.disableAllProxies) {
+      return args.constructNotConfigured
+        ? await args.constructNotConfigured(args)
+        : await args.constructFromCachedProxy({
+          proxyConfigState: undefined,
+          proxyStrategyResult: {
+            isConstructFromOrigin: false,
+            proxyFilePathAndName: args.proxyFilePathAndName,
+            proxyRemarks: "all proxies are disabled",
+          },
+        }, args);
+    }
+
     let proxyConfigState: govn.ProxyConfigurationState | undefined;
     const fsrpsr = await args.proxyStrategy(args.proxyFilePathAndName);
     if (args.configState) {
