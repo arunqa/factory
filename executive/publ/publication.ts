@@ -37,7 +37,8 @@ export const assetMetricsWalkOptions: fs.WalkOptions = {
   skip: [/\.git/],
 };
 
-export interface Preferences {
+export interface Preferences<OperationalContext> {
+  readonly operationalCtx?: OperationalContext;
   readonly contentRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
@@ -50,12 +51,13 @@ export interface Preferences {
   readonly routeLocationResolver?: rfStd.RouteLocationResolver;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
   readonly assetsMetricsWalkers?: (
-    config: Configuration,
+    config: Configuration<OperationalContext>,
   ) => fsT.FileSysAssetWalker[];
 }
 
-export class Configuration
-  implements Omit<Preferences, "assetsMetricsWalkers"> {
+export class Configuration<OperationalContext>
+  implements Omit<Preferences<OperationalContext>, "assetsMetricsWalkers"> {
+  readonly operationalCtx?: OperationalContext;
   readonly telemetry: telem.Instrumentation = new telem.Telemetry();
   readonly metrics = new gsm.TypicalMetrics();
   readonly envVarNamesPrefix: string;
@@ -77,7 +79,8 @@ export class Configuration
   readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
 
-  constructor(prefs: Preferences) {
+  constructor(prefs: Preferences<OperationalContext>) {
+    this.operationalCtx = prefs.operationalCtx;
     this.mGitResolvers = prefs.mGitResolvers;
     this.git = git.discoverGitWorktreeExecutiveSync(
       prefs.contentRootPath,
@@ -110,6 +113,43 @@ export class Configuration
         options: assetMetricsWalkOptions,
       }];
     this.rewriteMarkdownLink = prefs.rewriteMarkdownLink;
+  }
+
+  produceControlPanelContent(): boolean {
+    return true;
+  }
+
+  mirrorUnconsumedAssets(): boolean {
+    return true;
+  }
+
+  removeDestRootPath(): boolean {
+    return true;
+  }
+
+  async initProduce() {
+    // if we're running an experimental server, config will be subclassed and
+    // might not want to remove dest root path on refresh
+    if (this.removeDestRootPath()) {
+      try {
+        await Deno.remove(this.destRootPath, { recursive: true });
+        console.warn(
+          `Removed ${this.destRootPath} ${
+            colors.gray("[Configuration.initProduce()]")
+          }`,
+        );
+      } catch (err) {
+        if (!(err instanceof Deno.errors.NotFound)) {
+          throw err;
+        }
+      }
+    } else {
+      console.warn(
+        `Retained existing ${this.destRootPath} ${
+          colors.gray("[Configuration.initProduce()]")
+        }`,
+      );
+    }
   }
 }
 
@@ -339,19 +379,22 @@ export interface Publication {
   readonly state: PublicationState;
 }
 
-export abstract class TypicalPublication
+export abstract class TypicalPublication<OCState>
   implements Publication, rfGovn.ObservabilityHealthComponentStatusSupplier {
   readonly namespaceURIs = ["TypicalPublication<Resource>"];
   readonly state: PublicationState;
   readonly consumedFileSysWalkPaths = new Set<string>();
-  readonly persistedDestFiles = new Set<string>();
+  readonly persistedDestFiles = new Map<
+    string, // the filename written (e.g. public/**/*.html, etc.)
+    rfGovn.FileSysAfterPersistEventElaboration<unknown>
+  >();
   readonly fspEventsEmitter = new rfGovn.FileSysPersistenceEventsEmitter();
   readonly diagsOptions: DiagnosticsOptionsSupplier;
   // deno-lint-ignore no-explicit-any
   readonly ds: html.DesignSystemFactory<any, any, any, any>;
 
   constructor(
-    readonly config: Configuration,
+    readonly config: Configuration<OCState>,
     readonly routes = new PublicationRoutes(config.fsRouteFactory),
   ) {
     this.ds = this.constructDesignSystem(config, routes);
@@ -392,19 +435,22 @@ export abstract class TypicalPublication
     this.fspEventsEmitter.on(
       "afterPersistFlexibleFile",
       // deno-lint-ignore require-await
-      async (destFileName) => {
+      async (destFileName, elaboration) => {
         // TODO: warn if file written more than once either here or directly in persist
-        this.persistedDestFiles.add(destFileName);
+        this.persistedDestFiles.set(destFileName, elaboration);
       },
     );
-    this.fspEventsEmitter.on("afterPersistFlexibleFileSync", (destFileName) => {
-      // TODO: warn if file written more than once either here or directly in persist
-      this.persistedDestFiles.add(destFileName);
-    });
+    this.fspEventsEmitter.on(
+      "afterPersistFlexibleFileSync",
+      (destFileName, elaboration) => {
+        // TODO: warn if file written more than once either here or directly in persist
+        this.persistedDestFiles.set(destFileName, elaboration);
+      },
+    );
   }
 
   abstract constructDesignSystem(
-    config: Configuration,
+    config: Configuration<OCState>,
     routes: PublicationRoutes,
     // deno-lint-ignore no-explicit-any
   ): html.DesignSystemFactory<any, any, any, any>;
@@ -429,6 +475,9 @@ export abstract class TypicalPublication
    * directory structure as they exist in the source content path.
    */
   async mirrorUnconsumedAssets() {
+    // if we're running an experimental server, we may not want to mirror
+    // assets after a refresh so give config an opportunity to deny request
+    if (!this.config.mirrorUnconsumedAssets()) return;
     await Promise.all([
       fsLink.linkAssets(
         this.config.contentRootPath,
@@ -485,6 +534,9 @@ export abstract class TypicalPublication
   }
 
   controlPanelOriginators() {
+    // this is usually false for experimental server
+    if (!this.config.produceControlPanelContent()) return [];
+
     const { fsRouteFactory, diagnosticsRoute, observabilityRoute } =
       this.config;
     const diagnostics = this.state.diagnostics();
@@ -562,31 +614,37 @@ export abstract class TypicalPublication
   }
 
   persistersRefinery() {
+    const ees: rfGovn.FileSysPersistEventsEmitterSupplier = {
+      fspEE: this.fspEventsEmitter,
+    };
     return rfStd.pipelineUnitsRefineryUntyped(
       this.ds.designSystem.prettyUrlsHtmlProducer(
         this.config.destRootPath,
         this.ds.contentAdapter,
-        this.fspEventsEmitter,
+        ees,
       ),
       jrs.jsonTextProducer(this.config.destRootPath, {
         routeTree: this.routes.resourcesTree,
-      }, this.fspEventsEmitter),
+      }, ees),
       dtr.csvProducer<PublicationState>(
         this.config.destRootPath,
         this.state,
-        this.fspEventsEmitter,
+        ees,
       ),
       tfr.textFileProducer<PublicationState>(
         this.config.destRootPath,
         this.state,
         {
-          eventsEmitter: this.fspEventsEmitter,
+          eventsEmitter: ees,
         },
       ),
     );
   }
 
   async initProduce() {
+    // this usually just removes the dest root but could do other things too
+    await this.config.initProduce();
+
     // setup the cache and any other git-specific initialization
     if (this.ds.contentAdapter.git instanceof git.TypicalGit) {
       await this.ds.contentAdapter.git.init();
