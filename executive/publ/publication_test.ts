@@ -11,7 +11,7 @@ const testPath = path.relative(
   path.dirname(import.meta.url).substr("file://".length),
 );
 const docsPath = path.join(testPath, "../../", "docs");
-const prefs: mod.Preferences = {
+const prefs: mod.Preferences<unknown> = {
   contentRootPath: path.join(docsPath, "content"),
   persistClientCargo: async (publishDest) => {
     await fsLink.symlinkDirectoryChildren(
@@ -48,7 +48,10 @@ export class TestDesignSystem implements lds.LightningDesignSystemFactory {
   readonly designSystem: lds.LightingDesignSystem<lds.LightningLayout>;
   readonly contentAdapter: lds.LightingDesignSystemContentAdapter;
 
-  constructor(config: mod.Configuration, routes: mod.PublicationRoutes) {
+  constructor(
+    config: mod.Configuration<unknown>,
+    routes: mod.PublicationRoutes,
+  ) {
     this.designSystem = new lds.LightingDesignSystem();
     this.contentAdapter = {
       git: config.git,
@@ -72,9 +75,9 @@ export class TestDesignSystem implements lds.LightningDesignSystemFactory {
 
 const config = new mod.Configuration(prefs);
 const executive = new mod.Executive([
-  new class extends mod.TypicalPublication {
+  new class extends mod.TypicalPublication<unknown> {
     constructDesignSystem(
-      config: mod.Configuration,
+      config: mod.Configuration<unknown>,
       routes: mod.PublicationRoutes,
       // deno-lint-ignore no-explicit-any
     ): ds.DesignSystemFactory<any, any, any, any> {
