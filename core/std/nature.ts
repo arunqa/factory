@@ -208,7 +208,13 @@ export const htmlContentNature:
               resource as unknown as govn.RouteSupplier<govn.RouteNode>,
               rootPath,
             ),
-            { ensureDirSync: fs.ensureDirSync, functionArgs, eventsEmitter },
+            {
+              ensureDirSync: fs.ensureDirSync,
+              functionArgs,
+              eventsEmitter: eventsEmitter
+                ? { ...eventsEmitter, resource }
+                : undefined,
+            },
           );
         }
         return resource;

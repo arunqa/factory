@@ -612,7 +612,7 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
   prettyUrlsHtmlProducer(
     destRootPath: string,
     dsCtx: UntypedDesignSystemContentAdapter,
-    fspEE?: govn.FileSysPersistenceEventsEmitter,
+    fspEE?: govn.FileSysPersistEventsEmitterSupplier,
   ): govn.ResourceRefinery<govn.HtmlSupplier> {
     const producer = r.pipelineUnitsRefineryUntyped(
       this.pageRenderer(dsCtx),

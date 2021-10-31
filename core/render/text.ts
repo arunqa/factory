@@ -20,7 +20,7 @@ export function textFileProducer<State>(
     readonly namingStrategy?: persist.LocalFileSystemNamingStrategy<
       govn.RouteSupplier<govn.RouteNode>
     >;
-    readonly eventsEmitter?: govn.FileSysPersistenceEventsEmitter;
+    readonly eventsEmitter?: govn.FileSysPersistEventsEmitterSupplier;
   },
   // deno-lint-ignore no-explicit-any
 ): govn.ResourceRefinery<any> {

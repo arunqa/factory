@@ -10,7 +10,7 @@ export interface PersistOptions {
   readonly unhandledSync?: govn.FlexibleContentSync;
   readonly unhandled?: govn.FlexibleContent;
   readonly functionArgs?: unknown[];
-  readonly eventsEmitter?: govn.FileSysPersistenceEventsEmitter;
+  readonly eventsEmitter?: govn.FileSysPersistEventsEmitterSupplier;
 }
 
 export interface LocalFileSystemNamingStrategy<Resource> {
@@ -68,19 +68,18 @@ export async function persistFlexibleFileCustom(
   destFileName: LocalFileSystemDestination,
   options?: PersistOptions,
 ): Promise<false | "string" | "text" | "uint8array" | "writer"> {
-  const fspEE = options?.eventsEmitter;
+  const ees = options?.eventsEmitter;
   // always ensure in sync mode, never async
   if (options?.ensureDirSync) {
     options?.ensureDirSync(path.dirname(destFileName));
   }
   if (typeof contributor === "string") {
     await Deno.writeTextFile(destFileName, contributor);
-    if (fspEE) {
-      await fspEE.emit(
+    if (ees) {
+      await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        contributor,
-        "string",
+        { ...ees, contributor, contribution: "string" },
       );
     }
     return "string";
@@ -92,12 +91,11 @@ export async function persistFlexibleFileCustom(
         ? contributor.text
         : await contributor.text(...(options?.functionArgs || [])),
     );
-    if (fspEE) {
-      await fspEE.emit(
+    if (ees) {
+      await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        contributor,
-        "text",
+        { ...ees, contributor, contribution: "text" },
       );
     }
     return "text";
@@ -109,12 +107,11 @@ export async function persistFlexibleFileCustom(
         ? await contributor.uint8Array(...(options?.functionArgs || []))
         : contributor.uint8Array,
     );
-    if (fspEE) {
-      await fspEE.emit(
+    if (ees) {
+      await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        contributor,
-        "uint8array",
+        { ...ees, contributor, contribution: "uint8array" },
       );
     }
     return "uint8array";
@@ -123,12 +120,11 @@ export async function persistFlexibleFileCustom(
     const file = await Deno.open(destFileName, { write: true, create: true });
     await contributor.content(file);
     file.close();
-    if (fspEE) {
-      await fspEE.emit(
+    if (ees) {
+      await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        contributor,
-        "writer",
+        { ...ees, contributor, contribution: "writer" },
       );
     }
     return "writer";
@@ -148,13 +144,11 @@ export async function persistFlexibleFileCustom(
         unhandled: undefined,
       },
     );
-    if (recursed && fspEE) {
-      await fspEE.emit(
+    if (recursed && ees) {
+      await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        contributor,
-        recursed,
-        true,
+        { ...ees, unhandled: true, contributor, contribution: recursed },
       );
     }
     return recursed;
@@ -167,18 +161,17 @@ export function persistFlexibleFileSyncCustom(
   destFileName: LocalFileSystemDestination,
   options?: PersistOptions,
 ): false | "string" | "text" | "uint8array" | "writer" {
-  const fspEE = options?.eventsEmitter;
+  const ees = options?.eventsEmitter;
   if (options?.ensureDirSync) {
     options?.ensureDirSync(path.dirname(destFileName));
   }
   if (typeof contributor === "string") {
     Deno.writeTextFileSync(destFileName, contributor);
-    if (fspEE) {
-      fspEE.emitSync(
+    if (ees) {
+      ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        contributor,
-        "string",
+        { ...ees, contributor, contribution: "string" },
       );
     }
     return "string";
@@ -190,12 +183,11 @@ export function persistFlexibleFileSyncCustom(
         ? contributor.textSync
         : contributor.textSync(...(options?.functionArgs || [])),
     );
-    if (fspEE) {
-      fspEE.emitSync(
+    if (ees) {
+      ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        contributor,
-        "text",
+        { ...ees, contributor, contribution: "text" },
       );
     }
     return "text";
@@ -207,12 +199,11 @@ export function persistFlexibleFileSyncCustom(
         ? contributor.uint8ArraySync(...(options?.functionArgs || []))
         : contributor.uint8ArraySync,
     );
-    if (fspEE) {
-      fspEE.emitSync(
+    if (ees) {
+      ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        contributor,
-        "uint8array",
+        { ...ees, contributor, contribution: "uint8array" },
       );
     }
     return "uint8array";
@@ -221,12 +212,11 @@ export function persistFlexibleFileSyncCustom(
     const file = Deno.openSync(destFileName, { write: true, create: true });
     contributor.contentSync(file);
     file.close();
-    if (fspEE) {
-      fspEE.emitSync(
+    if (ees) {
+      ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        contributor,
-        "writer",
+        { ...ees, contributor, contribution: "writer" },
       );
     }
     return "writer";
@@ -240,13 +230,11 @@ export function persistFlexibleFileSyncCustom(
         unhandledSync: undefined,
       },
     );
-    if (recursed && fspEE) {
-      fspEE.emitSync(
+    if (recursed && ees) {
+      ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        contributor,
-        "writer",
-        true,
+        { ...ees, unhandled: true, contributor, contribution: recursed },
       );
     }
     return recursed;

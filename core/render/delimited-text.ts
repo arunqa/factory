@@ -43,7 +43,7 @@ export interface DelimitedTextProducerArguments<State> {
   readonly rowRenderer: (row: string[], state: State) => string;
   readonly headerRenderer?: (header: string[], state: State) => string;
   readonly rowsDelim: string;
-  readonly eventsEmitter?: govn.FileSysPersistenceEventsEmitter;
+  readonly eventsEmitter?: govn.FileSysPersistEventsEmitterSupplier;
 }
 
 export function delimitedTextProducer<State>(
@@ -175,7 +175,7 @@ export const csvContentNature:
 export function csvProducer<State>(
   destRootPath: string,
   state: State,
-  eventsEmitter?: govn.FileSysPersistenceEventsEmitter,
+  eventsEmitter?: govn.FileSysPersistEventsEmitterSupplier,
 ): govn.ResourceRefinery<DelimitedTextResource<State>> {
   return delimitedTextProducer({
     destRootPath,

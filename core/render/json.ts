@@ -40,7 +40,7 @@ export function structuredDataTextProducer(
     govn.RouteSupplier<govn.RouteNode>
   >,
   context: StructureDataRenderContext,
-  fspEE?: govn.FileSysPersistenceEventsEmitter,
+  fspEE?: govn.FileSysPersistEventsEmitterSupplier,
 ): govn.ResourceRefinery<govn.SerializedDataSupplier> {
   const producer = r.pipelineUnitsRefineryUntyped(
     async (resource) => {
@@ -126,7 +126,7 @@ export function structuredDataTextProducer(
 export function jsonTextProducer(
   destRootPath: string,
   context: StructureDataRenderContext,
-  fspEE?: govn.FileSysPersistenceEventsEmitter,
+  fspEE?: govn.FileSysPersistEventsEmitterSupplier,
 ): govn.ResourceRefinery<govn.SerializedDataSupplier> {
   return structuredDataTextProducer(
     n.jsonMediaTypeNature,
