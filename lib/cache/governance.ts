@@ -1,5 +1,11 @@
 import { govnSvcHealth as health } from "./deps.ts";
 
+declare global {
+  interface Window {
+    disableAllProxies: boolean;
+  }
+}
+
 export interface TextKeyProxy<Resource> {
   [key: string]: Resource;
 }
