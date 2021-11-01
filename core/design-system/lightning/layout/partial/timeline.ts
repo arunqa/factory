@@ -30,7 +30,7 @@ export function renderedTimelineActivity(
     <span class="slds-assistive-text">task</span>
     <div class="slds-media">
       <div class="slds-media__figure">
-        <button class="slds-button slds-button_icon" title="Toggle details for ${ta.subject}" aria-controls="task-item-expanded" aria-expanded="true">
+        <button class="slds-button slds-button_icon" title="Toggle details for ${ta.subject}" aria-controls="${Date.parse(ta.date)/1000}-expanded" aria-expanded="true">
           <svg class="slds-button__icon slds-timeline__details-action-icon" aria-hidden="true">
             <use xlink:href="/assets/icons/utility-sprite/svg/symbols.svg#switch"></use>
           </svg>
@@ -66,7 +66,7 @@ export function renderedTimelineActivity(
         </p>` : ''}
         ${ta.elaboration ? `<article
             class="slds-box slds-timeline__item_details slds-theme_shade slds-m-top_x-small slds-m-horizontal_xx-small slds-p-around_medium"
-            id="call-item-expanded" aria-hidden="false">
+            id="$${Date.parse(ta.date)/1000}-expanded" aria-hidden="false">
             ${ta.elaboration}
         </article>`: ''}
       </div>
@@ -83,7 +83,7 @@ export function _renderedTimelineActivity(
     <span class="slds-assistive-text">{assistive_text}</span>
     <div class="slds-media">
         <div class="slds-media__figure">
-            <button class="slds-button slds-button_icon slds-m-right_x-small slds-hidden" aria-expanded="true" aria-controls="${ta.itemIdentifier}-expanded" tabindex="-1" title="Expand ${ta.subject}">
+            <button class="slds-button slds-button_icon slds-m-right_x-small slds-hidden" aria-expanded="true" aria-controls="task-item-expanded" tabindex="-1" title="Expand ${ta.subject}">
               ${icon.renderedButtonIcon(layout, "switch")}
               <span class="slds-assistive-text">Expand ${ta.subject}</span>
             </button>
@@ -119,7 +119,7 @@ export function _renderedTimelineActivity(
             </p>` : ''}
             ${ta.elaboration ? `<article
                 class="slds-box slds-timeline__item_details slds-theme_shade slds-m-top_x-small slds-m-horizontal_xx-small slds-p-around_medium"
-                id="call-item-expanded" aria-hidden="false">
+                id="task-item-expanded" aria-hidden="false">
                 ${ta.elaboration}
             </article>`: ''}
         </div>

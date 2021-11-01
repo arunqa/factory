@@ -140,6 +140,29 @@ const lightningTabsActivate = (
   });
 };
 
+
+/**
+ * [ActivityTimeline](https://www.lightningdesignsystem.com/components/activity-timeline/)
+ */
+const activityTimelineRowButtons = () =>
+ document.querySelectorAll(
+   `button.slds-button`,
+ );
+
+const activityTimelineRowClick = (element) =>
+  element.parentNode.parentNode.classList.toggle("slds-is-open");
+const activityTimelineRowParentClick = (element) =>
+activityTimelineRowClick(element.parentNode);
+
+const activityTimelineActivate = (
+ buttons = Array.from(activityTimelineRowButtons()),
+) => {
+ buttons.forEach((btn) => {
+   btn.addEventListener("click", (event) => activityTimelineRowParentClick(event.currentTarget), false);
+ });
+};
+
+
 /**
  * [TreeGrid](https://www.lightningdesignsystem.com/components/tree-grid/)
  */
@@ -208,6 +231,7 @@ const lightningElemDirectives = (directives) => {
 const lightningActivateAllPageItems = {
   activateDropDownButtons: true,
   activateTabs: true,
+  activateActivityTimeline: true,
   activateTreeGrids: true,
   activateIconSvgUse: true,
   activateDirectives: [{
@@ -252,6 +276,7 @@ const lightningActivatePage = (
   if (options.activateTabs) lightningTabsActivate();
   if (options.activateTreeGrids) lightningTreeGridsActivate();
   if (options.activateDirectives) lightningElemDirectives(options.activateDirectives);
+  if (options.activateActivityTimeline) activityTimelineActivate();
 
   // Replace instances like <use href="..."> with proper location of assets:
   //   <svg class="slds-button__icon slds-button__icon_hint slds-button__icon_small" aria-hidden="true">
