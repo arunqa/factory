@@ -73,11 +73,20 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
         if (status == oak.Status.NotModified) {
           al.color = colors.gray;
         }
+        const followedSymLink = await Deno.realPath(target);
+        let symlink = "";
+        if (target != followedSymLink) {
+          const relativeSymlink = " -> " +
+            path.relative(staticRoot, followedSymLink);
+          symlink = al
+            ? al.color(relativeSymlink)
+            : colors.gray(relativeSymlink);
+        }
         console.info(
           status == oak.Status.OK
             ? colors.brightGreen(status.toString())
             : colors.gray(status.toString()),
-          `${al ? al.color(relative) : colors.gray(relative)}`,
+          `${al ? al.color(relative) : colors.gray(relative)}${symlink}`,
         );
       } else {
         // deno-fmt-ignore
@@ -193,9 +202,10 @@ export async function experimentalServerListen(
     }
 
     console.info(colors.brightMagenta(`*********************************`));
+    console.info(colors.brightMagenta(`* Refreshing experimental pages *`));
     console.info(
       colors.brightMagenta(
-        `* ${colors.brightBlue("Refreshing experimental pages")} *`,
+        `* ${colors.brightBlue(new Date().toString())} *`,
       ),
     );
     console.info(colors.brightMagenta(`*********************************`));
