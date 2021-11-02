@@ -212,10 +212,24 @@ export interface UniversalResourcesIndexFilterCache<Resource>
   readonly filtered: Resource[];
 }
 
+export const isResourceIndexKeysSupplier = safety.typeGuard<
+  govn.ResourceIndexKeysSupplier
+>("indexKeys");
+
+export type NamespacedKeysIndex<Resource> = Map<
+  govn.ResourceIndexKeyLiteral,
+  Resource[]
+>;
+
 export class UniversalResourcesIndex<Resource>
   implements govn.ResourcesIndexStrategy<Resource, void> {
   readonly isIndexable: safety.TypeGuard<Resource>;
   readonly resourcesIndex: Resource[] = [];
+  readonly globalNamespaceKeysIndex: NamespacedKeysIndex<Resource>;
+  readonly keyedResources = new Map<
+    govn.ResourceIndexKeyNamespace,
+    NamespacedKeysIndex<Resource>
+  >();
   readonly cachedFilter = new Map<
     govn.ResourcesIndexFilterCacheKey,
     UniversalResourcesIndexFilterCache<Resource>
@@ -223,6 +237,7 @@ export class UniversalResourcesIndex<Resource>
 
   constructor(isIndexable?: safety.TypeGuard<Resource>) {
     this.isIndexable = isIndexable || isIndexableResourceIfNotNull;
+    this.globalNamespaceKeysIndex = this.prepareNamespaceIndex(".GLOBAL");
   }
 
   resources(): Iterable<Resource> {
@@ -233,13 +248,66 @@ export class UniversalResourcesIndex<Resource>
   async index(r: Resource | unknown): Promise<void> {
     if (this.isIndexable(r)) {
       this.resourcesIndex.push(r);
+      if (isResourceIndexKeysSupplier(r)) {
+        this.registerKeys(r);
+      }
     }
   }
 
   indexSync(r: Resource | unknown): void {
     if (this.isIndexable(r)) {
       this.resourcesIndex.push(r);
+      if (isResourceIndexKeysSupplier(r)) {
+        this.registerKeys(r);
+      }
     }
+  }
+
+  prepareNamespaceIndex(
+    ns: govn.ResourceIndexKeyNamespace,
+  ): NamespacedKeysIndex<Resource> {
+    const result = new Map();
+    this.keyedResources.set(ns, result);
+    return result;
+  }
+
+  registerKeys(r: Resource & govn.ResourceIndexKeysSupplier) {
+    for (const key of r.indexKeys) {
+      const ns = key.namespace
+        ? (this.keyedResources.get(key.namespace) ||
+          this.prepareNamespaceIndex(key.namespace))
+        : this.globalNamespaceKeysIndex;
+      let resources = ns.get(key.literal);
+      if (!resources) {
+        resources = [];
+        ns.set(key.literal, resources);
+      }
+      resources.push(r);
+    }
+  }
+
+  keyed(key: govn.ResourceIndexKey): Resource[] | undefined {
+    const ns = key.namespace
+      ? this.keyedResources.get(key.namespace)
+      : this.globalNamespaceKeysIndex;
+    return ns?.get(key.literal);
+  }
+
+  keyedUnique(
+    key: govn.ResourceIndexKey,
+    onNotUnique?: (
+      r: Resource[],
+      key: govn.ResourceIndexKey,
+    ) => Resource | undefined,
+  ): Resource | undefined {
+    const keyed = this.keyed(key);
+    if (keyed) {
+      if (keyed.length == 1) {
+        return keyed[0];
+      }
+      return onNotUnique ? onNotUnique(keyed, key) : undefined;
+    }
+    return undefined;
   }
 
   // deno-lint-ignore require-await

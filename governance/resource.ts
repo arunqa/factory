@@ -74,6 +74,23 @@ export interface ResourcesIndexFilterOptions {
   ) => boolean;
 }
 
+export type ResourceIndexKeyNamespace = string;
+export type ResourceIndexKeyLiteral = string;
+
+export interface ResourceIndexKey {
+  readonly literal: ResourceIndexKeyLiteral;
+  readonly namespace?: ResourceIndexKeyNamespace;
+}
+
+export interface MutatableResourceIndexKeysSupplier {
+  indexKeys: ResourceIndexKey[];
+}
+
+export interface ResourceIndexKeysSupplier
+  extends MutatableResourceIndexKeysSupplier {
+  readonly indexKeys: ResourceIndexKey[];
+}
+
 export interface ResourcesIndexStrategy<Resource, IndexResult> {
   readonly index: (r: Resource) => Promise<IndexResult>;
   readonly indexSync: (r: Resource) => IndexResult;
@@ -86,4 +103,12 @@ export interface ResourcesIndexStrategy<Resource, IndexResult> {
     predicate: ResourcesIndexFilterPredicate<Resource>,
     options?: ResourcesIndexFilterOptions,
   ) => Iterable<Resource>;
+  readonly keyed: (key: ResourceIndexKey) => Resource[] | undefined;
+  readonly keyedUnique: (
+    key: ResourceIndexKey,
+    onNotUnique?: (
+      r: Resource[],
+      key: ResourceIndexKey,
+    ) => Resource | undefined,
+  ) => Resource | undefined;
 }
