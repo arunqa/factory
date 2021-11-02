@@ -15,6 +15,7 @@ import * as conf from "../../lib/conf/mod.ts";
 import * as fsA from "../../lib/fs/fs-analytics.ts";
 import * as fsT from "../../lib/fs/fs-tree.ts";
 import * as fsLink from "../../lib/fs/link.ts";
+import * as fsInspect from "../../lib/fs/inspect.ts";
 import * as git from "../../lib/git/mod.ts";
 import * as notif from "../../lib/notification/mod.ts";
 
@@ -119,7 +120,7 @@ export class Configuration<OperationalContext>
     return true;
   }
 
-  mirrorUnconsumedAssets(): boolean {
+  symlinkAssets(): boolean {
     return true;
   }
 
@@ -470,15 +471,21 @@ export abstract class TypicalPublication<OCState>
   }
 
   /**
-   * For any files that were not "consumed" (transformed or rendered) we will
-   * assume that they should be symlinked to the destination path in the same
-   * directory structure as they exist in the source content path.
+   * Create symlinks for files such as images, CSS style sheets, and other
+   * "assets".
    */
-  async mirrorUnconsumedAssets() {
+  async symlinkAssets() {
     // if we're running an experimental server, we may not want to mirror
     // assets after a refresh so give config an opportunity to deny request
-    if (!this.config.mirrorUnconsumedAssets()) return;
+    if (!this.config.symlinkAssets()) return;
+
     await Promise.all([
+      // For any files that are in the content directory but were not "consumed"
+      // (transformed or rendered) we will assume that they should be symlinked
+      // to the destination path in the same directory structure as they exist
+      // in the source content path. Images, and other assets sitting in same
+      // directories as *.html, *.ts, *.md, etc. will be symlink'd so that they
+      // do not need to be copied.
       fsLink.linkAssets(
         this.config.contentRootPath,
         this.config.destRootPath,
@@ -501,8 +508,32 @@ export abstract class TypicalPublication<OCState>
             we.isFile && !this.consumedFileSysWalkPaths.has(we.path),
         },
       ),
+
+      // Symlink any files that are considered "cargo" that must be carried to
+      // the client (known as "client-cargo").
       this.config.persistClientCargo(this.config.destRootPath),
     ]);
+  }
+
+  async inspectAssets(
+    inspector: (asset: fsInspect.InspectableAsset) => void,
+  ): Promise<void> {
+    // For any files that are in the content directory but were not "consumed"
+    // (transformed or rendered) we will assume that they should be inspected
+    for await (
+      const asset of fsInspect.discoverAssets(
+        {
+          // NOTE: this should match the content of this.linkAssets.
+          originRootPath: this.config.contentRootPath,
+          glob: "**/*",
+          options: { exclude: ["**/*.ts"] },
+          include: (we) =>
+            we.isFile && !this.consumedFileSysWalkPaths.has(we.path),
+        },
+      )
+    ) {
+      inspector(asset);
+    }
   }
 
   /**
@@ -772,7 +803,7 @@ export abstract class TypicalPublication<OCState>
 
   async finalizeProduce() {
     // any files that were not consumed should "mirrored" to the destination
-    await this.mirrorUnconsumedAssets();
+    await this.symlinkAssets();
 
     // produce metrics after the assets are mirrored in case we're walking the
     // destination path
