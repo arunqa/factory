@@ -62,7 +62,7 @@ export function renderedTimelineActivity(
         </div>
         ${ta.participants ? `<p class="slds-m-horizontal_xx-small">
             <a href="${ta.participants.href || '#'}">${ta.participants.label}</a> ${ta.participants.activity}
-            ${ta.participants.others?.map(o => `<a href="${o.href || '#'}">${o.label}</a>`)}
+            ${ta.participants.others ? ta.participants.others.map(o => `<a href="${o.href || '#'}">${o.label}</a>`) : ''}
         </p>` : ''}
         ${ta.elaboration ? `<article
             class="slds-box slds-timeline__item_details slds-theme_shade slds-m-top_x-small slds-m-horizontal_xx-small slds-p-around_medium"
@@ -72,57 +72,4 @@ export function renderedTimelineActivity(
       </div>
     </div>
   </div>`
-}
-
-export function _renderedTimelineActivity(
-  layout: ldsGovn.LightningLayout,
-  ta: TimelineActivity,
-): string {
-  // deno-fmt-ignore
-  return `<div class="slds-timeline__item_expandable slds-timeline__${ta.itemIdentifier} slds-is-open">
-    <span class="slds-assistive-text">{assistive_text}</span>
-    <div class="slds-media">
-        <div class="slds-media__figure">
-            <button class="slds-button slds-button_icon slds-m-right_x-small slds-hidden" aria-expanded="true" aria-controls="task-item-expanded" tabindex="-1" title="Expand ${ta.subject}">
-              ${icon.renderedButtonIcon(layout, "switch")}
-              <span class="slds-assistive-text">Expand ${ta.subject}</span>
-            </button>
-            ${ta.icon ? `<div class="slds-icon_container slds-icon-standard-log-a-call slds-timeline__icon" title="call">
-                ${icon.renderedIcon(layout, ta.icon)}
-            </div>`: ''}
-        </div>
-        <div class="slds-media__body">
-            <div class="slds-grid slds-grid_align-spread slds-timeline__trigger">
-                <div class="slds-grid slds-grid_vertical-align-center slds-truncate_container_75 slds-no-space">
-                    <h3 class="slds-truncate" title="${ta.subject}">
-                        <a href="${ta.href || '#'}">
-                            <strong>${ta.subject}</strong>
-                        </a>
-                    </h3>
-                </div>
-                <div class="slds-timeline__actions slds-timeline__actions_inline">
-                    <p class="slds-timeline__date">${ta.date}</p>
-                    <button
-                        class="slds-button slds-button_icon slds-button_icon-border-filled slds-button_icon-x-small"
-                        aria-haspopup="true" title="More Options for this item">
-                        <svg class="slds-button__icon" aria-hidden="true">
-                            <use xlink:href="/assets/icons/utility-sprite/svg/symbols.svg#down"></use>
-                        </svg>
-                        <span class="slds-assistive-text">More Options for this item</span>
-                    </button>
-                </div>
-            </div>
-            ${ta.participants ? `
-            <p class="slds-m-horizontal_xx-small">
-                <a href="${ta.participants.href || '#'}">${ta.participants.label}</a> ${ta.participants.activity}
-                ${ta.participants.others?.map(o => `<a href="${o.href || '#'}">${o.label}</a>`)}
-            </p>` : ''}
-            ${ta.elaboration ? `<article
-                class="slds-box slds-timeline__item_details slds-theme_shade slds-m-top_x-small slds-m-horizontal_xx-small slds-p-around_medium"
-                id="task-item-expanded" aria-hidden="false">
-                ${ta.elaboration}
-            </article>`: ''}
-        </div>
-    </div>
-</div>`
 }
