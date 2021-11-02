@@ -1,3 +1,4 @@
+import { safety } from "../../../deps.ts";
 import * as govn from "../../../../governance/mod.ts";
 import * as aiM from "../../../model/action-item.ts";
 import * as m from "../../../../core/std/model.ts";
@@ -13,6 +14,19 @@ export interface RegisterActionItemsOptions {
     ais: aiM.ActionItemsSupplier,
   ) => lds.LightningNavigationNotification | undefined;
   readonly onNotificationAssignmentFailed?: (diagnostic: string) => void;
+}
+
+export function registerActionItemsConsoleErrorReporter(
+  origin: string,
+): RegisterActionItemsOptions {
+  return {
+    onInvalidModel: (message) =>
+      console.error(`${message} (${origin} onInvalidModel)`),
+    onInvalidResource: (message) =>
+      console.error(`${message} (${origin} onInvalidModel)`),
+    onNotificationAssignmentFailed: (message) =>
+      console.error(`${message} (${origin} onInvalidModel)`),
+  };
 }
 
 export function registerActionItems<Resource>(
@@ -124,8 +138,13 @@ export class ActionItemDirective implements
 
 export interface RouteNodeActionItem {
   readonly node: govn.RouteTreeNode;
-  readonly todo: aiM.ActionItem;
+  readonly actionItem: aiM.ActionItem;
 }
+
+export const isRouteNodeActionItem = safety.typeGuard<RouteNodeActionItem>(
+  "node",
+  "actionItem",
+);
 
 export function routeNodesActionItems(
   nodes: govn.RouteTreeNode[],
@@ -142,7 +161,10 @@ export function routeNodesActionItems(
       parentRTN.walk((rtn) => {
         if (aiM.isActionItemsModelSupplier(rtn)) {
           accumulate.push(
-            ...(rtn.model.actionItems.map((todo) => ({ todo, node: rtn }))),
+            ...(rtn.model.actionItems.map((actionItem) => ({
+              actionItem,
+              node: rtn,
+            }))),
           );
         }
         return true;
@@ -151,8 +173,8 @@ export function routeNodesActionItems(
     if (notif.isNotificationsSupplier(parentRTN)) {
       if (aiM.isActionItemsModelSupplier(parentRTN)) {
         accumulate.push(
-          ...(parentRTN.model.actionItems.map((todo) => ({
-            todo,
+          ...(parentRTN.model.actionItems.map((actionItem) => ({
+            actionItem,
             node: parentRTN,
           }))),
         );
