@@ -2,6 +2,10 @@
 export interface UntypedModel extends Record<string, unknown> {
 }
 
+export interface MutatableModelSupplier<Model> {
+  model: Model;
+}
+
 /**
  * Models are portions of content in resources that are used to make decisions
  * about _behavior_ stemming _from content_. For example, routes use _models_
@@ -9,7 +13,7 @@ export interface UntypedModel extends Record<string, unknown> {
  * common behavior. Models are about determining behavior when the actual
  * text/content is less important than the _structure_ of the content.
  */
-export interface ModelSupplier<Model> {
+export interface ModelSupplier<Model> extends MutatableModelSupplier<Model> {
   readonly model: Model;
 }
 

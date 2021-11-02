@@ -4,9 +4,21 @@ import * as e from "./extension.ts";
 
 export const isModelSupplier = safety.typeGuard<
   govn.ModelSupplier<govn.UntypedModel>
->(
-  "model",
-);
+>("model");
+
+/**
+ * Ensure that the given resource is a ModelSupplier
+ * @param r the resource to test
+ * @returns r with an empty .model if it's not already present
+ */
+export function ensureModelSupplier<Resource>(
+  r: Resource,
+): govn.ModelSupplier<govn.UntypedModel> {
+  if (isModelSupplier(r) && r.model) return r;
+  const result = r as unknown as govn.MutatableModelSupplier<govn.UntypedModel>;
+  result.model = {};
+  return result;
+}
 
 /**
  * See if an object is a model supplier of the given shape
