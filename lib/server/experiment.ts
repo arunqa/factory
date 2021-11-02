@@ -35,7 +35,7 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
 
   // explcit routes defined here, anything not defined will be statically served
   router.get("/index.html", (ctx) => {
-    ctx.response.body = "SSR route";
+    ctx.response.body = "SSR test route in experimentalServer (don't use this)";
   });
 
   router.get("/error", (_ctx) => {
@@ -47,6 +47,7 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
 
   // static content
   const staticRoot = `${Deno.cwd()}/public`;
+  const showFilesRelativeTo = Deno.cwd();
   app.use(async (ctx, next) => {
     const accessLog: Record<string, { color: (text: string) => string }> = {
       ".html": { color: colors.green },
@@ -66,7 +67,7 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
       }
       const target = await ctx.send({ root: staticRoot, index: "index.html" });
       if (target) {
-        const relative = path.relative(staticRoot, target);
+        const relative = path.relative(showFilesRelativeTo, target);
         const extn = path.extname(target);
         const al = accessLog[extn];
         const status = ctx.response.status;
@@ -77,7 +78,7 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
         let symlink = "";
         if (target != followedSymLink) {
           const relativeSymlink = " -> " +
-            path.relative(staticRoot, followedSymLink);
+            path.relative(showFilesRelativeTo, followedSymLink);
           symlink = al
             ? al.color(relativeSymlink)
             : colors.gray(relativeSymlink);
