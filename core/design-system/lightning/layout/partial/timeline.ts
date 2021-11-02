@@ -26,7 +26,7 @@ export function renderedTimelineActivity(
   ta: TimelineActivity,
 ): string {
   // deno-fmt-ignore
-  return `<div class="slds-timeline__item_expandable slds-timeline__item_task slds-is-open">
+  return `<div class="slds-timeline__item_expandable slds-timeline__item_task">
     <span class="slds-assistive-text">task</span>
     <div class="slds-media">
       <div class="slds-media__figure">
