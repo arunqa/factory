@@ -145,21 +145,21 @@ const lightningTabsActivate = (
  * [ActivityTimeline](https://www.lightningdesignsystem.com/components/activity-timeline/)
  */
 const activityTimelineRowButtons = () =>
- document.querySelectorAll(
-   `button.slds-button`,
- );
+  document.querySelectorAll(
+    `button.slds-button`,
+  );
 
 const activityTimelineRowClick = (element) =>
   element.parentNode.parentNode.classList.toggle("slds-is-open");
 const activityTimelineRowParentClick = (element) =>
-activityTimelineRowClick(element.parentNode);
+  activityTimelineRowClick(element.parentNode);
 
 const activityTimelineActivate = (
- buttons = Array.from(activityTimelineRowButtons()),
+  buttons = Array.from(activityTimelineRowButtons()),
 ) => {
- buttons.forEach((btn) => {
-   btn.addEventListener("click", (event) => activityTimelineRowParentClick(event.currentTarget), false);
- });
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", (event) => activityTimelineRowParentClick(event.currentTarget), false);
+  });
 };
 
 
@@ -288,6 +288,28 @@ const lightningActivatePage = (
       cargo,
     );
   }
+
+  /**
+   * Any element can define a regular HTML class="Y" but also optionally
+   * specifiy a 'data-print-class="X"' attribute. If defined, data-print-class
+   * that "X" should be the class name for printing. We hook into before/after
+   * print events to dynamically change the class before/after printing.
+   */
+  window.addEventListener("beforeprint", () => {
+    for (const elem of document.querySelectorAll(`[data-print-class]`)) {
+      // save existing class name so we can replace it after printing complete
+      elem.dataset.beforePrintClass = elem.className;
+      elem.className = elem.dataset.printClass;
+    }
+  });
+  window.addEventListener("afterprint", () => {
+    for (const elem of document.querySelectorAll(`[data-print-class]`)) {
+      // if we saved the class name before printing, restore it after printing
+      if (elem.dataset.beforePrintClass) {
+        elem.className = elem.dataset.beforePrintClass;
+      }
+    }
+  });
 
   stickyFooter();
 

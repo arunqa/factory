@@ -29,7 +29,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
   }
   // we hide the footer using display:none and then stickyFooter() in lightning-tail.js will display it in the proper place
   // deno-fmt-ignore
-  return `<footer class="footer font-size-medium" style="position: absolute; bottom: 0; height: 60px; margin-top: 40px; width: 100%; display:none;">
+  return `<footer class="footer font-size-medium slds-no-print" style="position: absolute; bottom: 0; height: 60px; margin-top: 40px; width: 100%; display:none;">
     <div class="slds-container_x-large slds-container_center slds-p-left_small slds-p-right_small">      
       <article class="slds-text-align_center slds-p-top_small slds-p-bottom_large">
         <p class="slds-text-body_small">© 1997-<script>document.write(new Date().getFullYear())</script> Netspective Media LLC. All Rights Reserved.</p>        
@@ -48,7 +48,6 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
         <script>
           if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
             const htmlDataSet = document.documentElement.dataset;
-            console.dir(htmlDataSet);
             if(htmlDataSet.rfOriginLayoutSrc) {
               document.write(\`<p title="\${htmlDataSet.rfOriginLayoutSrc}" class="localhost-diags">
               Using layout <code class="localhost-diags-layout-origin">\${htmlDataSet.rfOriginLayoutName}</code> 

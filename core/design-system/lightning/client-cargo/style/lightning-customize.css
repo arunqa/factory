@@ -1,5 +1,12 @@
 /* HTML Core */
 
+@media print {
+    /* prevent anchor hrefs from being printed, such as with Kroki diagrams */
+    a[href]:after {
+        content: none !important;
+    }
+ }
+
 html {
     background: white!important;
 }
