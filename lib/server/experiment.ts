@@ -202,14 +202,12 @@ export async function experimentalServerListen(
       continue;
     }
 
-    console.info(colors.brightMagenta(`*********************************`));
-    console.info(colors.brightMagenta(`* Refreshing experimental pages *`));
+    console.info(colors.brightMagenta("*".repeat(79)));
+    console.info(colors.brightMagenta(`* Refreshing experimental pages `));
     console.info(
-      colors.brightMagenta(
-        `* ${colors.brightBlue(new Date().toString())} *`,
-      ),
+      colors.brightMagenta(`* ${colors.brightBlue(new Date().toString())}`),
     );
-    console.info(colors.brightMagenta(`*********************************`));
+    console.info(colors.brightMagenta("*".repeat(79)));
 
     isReloading = true;
     const oc: ExperimentalServerOperationalContext = {
