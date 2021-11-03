@@ -66,7 +66,7 @@ export function renderedTimelineActivity(
         </p>` : ''}
         ${ta.elaboration ? `<article
             class="slds-box slds-timeline__item_details slds-theme_shade slds-m-top_x-small slds-m-horizontal_xx-small slds-p-around_medium"
-            id="$${Date.parse(ta.date)/1000}-expanded" aria-hidden="false">
+            id="${Date.parse(ta.date)/1000}-expanded" aria-hidden="false">
             ${ta.elaboration}
         </article>`: ''}
       </div>
