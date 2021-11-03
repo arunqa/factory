@@ -172,6 +172,10 @@ JavaScript is best.
 - [Marko](https://markojs.com/) is a similar idea but only supports NPM
 - Evaluate [xstate](https://cdn.skypack.dev/xstate) to incorporate FSMs where
   appropriate.
+- Check out [PHP-based Grav](https://getgrav.org/features) for some great ideas
+  such as aggressive caching, package manager, multi-site capabilities, custom
+  page headers, automatic Page Link Handling, dynamic image manipulation and 
+  documentation.
 
 ### Bunders and Builders
 
