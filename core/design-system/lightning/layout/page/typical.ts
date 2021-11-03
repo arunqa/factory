@@ -28,7 +28,7 @@ export const typicalPageSurroundBodyPrePartial: ldsGovn.LightningPartial = (layo
   <body${p.bodyAttrsPartial(layout)}>
     ${p.redirectConsoleContainerPartial(layout)}
     ${p.resourceDiagnosticsPartial(layout)}
-    <header>
+    <header class="slds-no-print">
       ${p.contextBarPartial(layout)}
     </header>`
 
