@@ -23,6 +23,7 @@ const testGlobPrime = "**/*";
 const extensionsManager = new e.CachedExtensions();
 const fsRouteFactory = new r.FileSysRouteFactory(
   r.defaultRouteLocationResolver(),
+  r.defaultRouteWorkspaceEditorResolver(() => undefined),
 );
 const fsgo = new mod.FileSysGlobsOriginator<fs.WalkEntry>(
   [{

@@ -57,7 +57,10 @@ const m2Component1Service1Route: govn.RouteUnits = {
 };
 
 Deno.test(`tree nodes`, () => {
-  const rf = new r.TypicalRouteFactory(r.defaultRouteLocationResolver());
+  const rf = new r.TypicalRouteFactory(
+    r.defaultRouteLocationResolver(),
+    r.defaultRouteWorkspaceEditorResolver(() => undefined),
+  );
   const tree = new mod.TypicalRouteTree(rf);
   tree.consumeRoute(rf.route(homeRoute));
   tree.consumeRoute(rf.route(root2Route));
@@ -129,7 +132,10 @@ Deno.test(`tree nodes`, () => {
 });
 
 Deno.test(`tree nodes selector`, () => {
-  const rf = new r.TypicalRouteFactory(r.defaultRouteLocationResolver());
+  const rf = new r.TypicalRouteFactory(
+    r.defaultRouteLocationResolver(),
+    r.defaultRouteWorkspaceEditorResolver(() => undefined),
+  );
   const tree = new mod.TypicalRouteTree(rf);
   const homeNode = tree.consumeRoute(rf.route(homeRoute));
   tree.consumeRoute(rf.route(root2Route));

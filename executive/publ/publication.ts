@@ -18,6 +18,7 @@ import * as fsLink from "../../lib/fs/link.ts";
 import * as fsInspect from "../../lib/fs/inspect.ts";
 import * as git from "../../lib/git/mod.ts";
 import * as notif from "../../lib/notification/mod.ts";
+import * as ws from "../../lib/ws/mod.ts";
 
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
@@ -50,6 +51,9 @@ export interface Preferences<OperationalContext> {
     html.GitRemoteAnchor
   >;
   readonly routeLocationResolver?: rfStd.RouteLocationResolver;
+  readonly wsEditorResolver: ws.WorkspaceEditorTargetResolver<
+    ws.WorkspaceEditorTarget
+  >;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
   readonly assetsMetricsWalkers?: (
     config: Configuration<OperationalContext>,
@@ -77,6 +81,9 @@ export class Configuration<OperationalContext>
   readonly routeGitRemoteResolver: rfGovn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
+  readonly wsEditorResolver: ws.WorkspaceEditorTargetResolver<
+    ws.WorkspaceEditorTarget
+  >;
   readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
 
@@ -93,9 +100,11 @@ export class Configuration<OperationalContext>
     this.appName = prefs.appName;
     this.logger = log.getLogger();
     this.routeGitRemoteResolver = prefs.routeGitRemoteResolver;
+    this.wsEditorResolver = prefs.wsEditorResolver;
     this.routeLocationResolver = prefs.routeLocationResolver;
     this.fsRouteFactory = new rfStd.FileSysRouteFactory(
       this.routeLocationResolver || rfStd.defaultRouteLocationResolver(),
+      rfStd.defaultRouteWorkspaceEditorResolver(this.wsEditorResolver),
     );
     this.observabilityRoute = cpC.observabilityRoute(this.fsRouteFactory);
     this.diagnosticsRoute = cpC.diagnosticsRoute(this.fsRouteFactory);

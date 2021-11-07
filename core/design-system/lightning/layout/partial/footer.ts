@@ -1,6 +1,7 @@
 import * as html from "../../../../render/html/governance.ts";
 import * as ldsGovn from "../../governance.ts";
 import * as git from "../../../../../lib/git/mod.ts";
+import * as ws from "../../../../../lib/ws/mod.ts";
 
 export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
   layout,
@@ -27,6 +28,10 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
       )
       : undefined;
   }
+  let wsAsset: ws.WorkspaceEditorTarget | undefined;
+  if (layout.activeRoute) {
+    wsAsset = layout.dsCtx.wsEditorRouteResolver(layout.activeRoute);
+  }
   // we hide the footer using display:none and then stickyFooter() in lightning-tail.js will display it in the proper place
   // deno-fmt-ignore
   return `<footer class="footer font-size-medium slds-no-print" style="position: absolute; bottom: 0; height: 60px; margin-top: 40px; width: 100%; display:none;">
@@ -44,6 +49,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
         ${layout.activeRoute?.terminal?.lastModifiedAt 
           ? `modified <span is="time-ago" date="${layout.activeRoute?.terminal?.lastModifiedAt}" title="${layout.activeRoute?.terminal?.lastModifiedAt}"/>`
           : '<!-- no layout.activeRoute?.terminal?.lastModifiedAt -->'}
+        ${wsAsset?.openInWorkspaceHTML ? ` (🧑‍💻 ${wsAsset.openInWorkspaceHTML("workspace-editor-target")})` : "<!-- workspace editor not resolved -->"}
         ${layout.dsCtx.git ? ` 🌲 ${gitBranch}` : "<!-- not in Git work tree -->"}
         <script>
           if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {

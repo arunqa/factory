@@ -31,6 +31,7 @@ const m2Component1Service1: govn.RouteUnit = {
 Deno.test(`route file destinations`, () => {
   const routeFactory = new r.TypicalRouteFactory(
     r.defaultRouteLocationResolver(),
+    r.defaultRouteWorkspaceEditorResolver(() => undefined),
   );
   const homeRoute: govn.RouteUnits = { units: [root1] };
   const module2Route: govn.RouteUnits = {

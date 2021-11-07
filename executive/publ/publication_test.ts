@@ -42,6 +42,7 @@ const prefs: mod.Preferences<unknown> = {
       gitBranchOrTag,
     };
   },
+  wsEditorResolver: () => undefined,
 };
 
 export class TestDesignSystem implements lds.LightningDesignSystemFactory {
@@ -69,6 +70,8 @@ export class TestDesignSystem implements lds.LightningDesignSystemFactory {
       mGitResolvers: config.mGitResolvers,
       routeGitRemoteResolver: config.routeGitRemoteResolver,
       renderedAt: new Date(),
+      wsEditorResolver: () => undefined,
+      wsEditorRouteResolver: () => undefined,
     };
   }
 }

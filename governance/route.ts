@@ -4,6 +4,7 @@ import * as e from "./extension.ts";
 import * as render from "./render.ts";
 import * as fm from "./frontmatter.ts";
 import * as git from "../lib/git/mod.ts";
+import * as ws from "../lib/ws/mod.ts";
 
 export type RouteUnitName = string;
 export type RouteRelativeURL = string;
@@ -167,6 +168,12 @@ export interface RouteGitRemoteResolver<Remote> {
     branch: git.GitBranch,
     paths: git.GitPathsSupplier,
   ): Remote | undefined;
+}
+
+export interface RouteWorkspaceEditorResolver<
+  Target extends ws.WorkspaceEditorTarget,
+> {
+  (route: Route, line?: number): Target | undefined;
 }
 
 export interface RouteFactory {

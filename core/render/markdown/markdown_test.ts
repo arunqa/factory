@@ -8,6 +8,7 @@ import * as mod from "./mod.ts";
 
 const routeFactory = new route.TypicalRouteFactory(
   route.defaultRouteLocationResolver(),
+  route.defaultRouteWorkspaceEditorResolver(() => undefined),
 );
 const mds = new mod.MarkdownRenderStrategy(new mod.MarkdownLayouts());
 const renderer =

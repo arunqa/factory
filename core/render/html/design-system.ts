@@ -1,5 +1,6 @@
 import { safety } from "../../deps.ts";
 import * as git from "../../../lib/git/mod.ts";
+import * as ws from "../../../lib/ws/mod.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as fm from "../../std/frontmatter.ts";
 import * as html from "../../render/html/mod.ts";
@@ -220,6 +221,12 @@ export interface DesignSystemContentAdapter<
   readonly mGitResolvers: git.ManagedGitResolvers<string>;
   readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
+  >;
+  readonly wsEditorResolver: ws.WorkspaceEditorTargetResolver<
+    ws.WorkspaceEditorTarget
+  >;
+  readonly wsEditorRouteResolver: govn.RouteWorkspaceEditorResolver<
+    ws.WorkspaceEditorTarget
   >;
   readonly layoutText: LayoutText;
   readonly assets: AssetLocations;

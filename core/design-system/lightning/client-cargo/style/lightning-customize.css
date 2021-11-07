@@ -28,6 +28,10 @@ footer a.git-remote-commit {
     color: #cae6f1 !important
 }
 
+footer a.workspace-editor-target {
+    color: #cae6f1 !important
+}
+
 footer p.localhost-diags-warning {
     color: #FF7F7F;
 }

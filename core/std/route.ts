@@ -2,6 +2,7 @@ import { log, path, safety } from "../deps.ts";
 import * as govn from "../../governance/mod.ts";
 import * as c from "./content.ts";
 import * as e from "./extension.ts";
+import * as ws from "../../lib/ws/mod.ts";
 
 export const [isRouteUnit, isRouteUnitsArray] = safety.typeGuards<
   govn.RouteUnit,
@@ -317,9 +318,35 @@ export function defaultRouteLocationResolver(
     : routeNodeLocation;
 }
 
+export function defaultRouteWorkspaceEditorResolver(
+  wser: ws.WorkspaceEditorTargetResolver<ws.WorkspaceEditorTarget>,
+): govn.RouteWorkspaceEditorResolver<
+  ws.WorkspaceEditorTarget
+> {
+  return (route, line) => {
+    if (route.origin && isModuleRouteOrigin(route.origin)) {
+      const candidate = route.origin.moduleMetaURL;
+      if (candidate.startsWith("file:")) {
+        return wser(path.fromFileUrl(candidate), line);
+      }
+    }
+
+    const terminal = route.terminal;
+    if (terminal) {
+      if (isFileSysRouteUnit(terminal)) {
+        return wser(terminal.fileSysPath, line);
+      }
+    }
+    return undefined;
+  };
+}
+
 export class TypicalRouteFactory implements govn.RouteFactory {
   constructor(
     readonly routeLocationResolver: RouteLocationResolver,
+    readonly routeWSEditorResolver: govn.RouteWorkspaceEditorResolver<
+      ws.WorkspaceEditorTarget
+    >,
   ) {
   }
   /**

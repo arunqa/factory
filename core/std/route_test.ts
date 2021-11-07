@@ -11,6 +11,7 @@ const testPath = path.relative(
 
 const routeFactory = new mod.TypicalRouteFactory(
   mod.defaultRouteLocationResolver(),
+  mod.defaultRouteWorkspaceEditorResolver(() => undefined),
 );
 
 const root1: govn.RouteUnit = {
@@ -409,6 +410,7 @@ Deno.test(`FileSysRoutes`, async () => {
   const em = new CachedExtensions();
   const fsRouteFactory = new mod.FileSysRouteFactory(
     mod.defaultRouteLocationResolver(),
+    mod.defaultRouteWorkspaceEditorResolver(() => undefined),
   );
   const base = path.resolve(testPath, "route_test", "content");
   const index = await fsRouteFactory.fsRoute(
