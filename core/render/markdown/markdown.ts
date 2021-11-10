@@ -1,4 +1,4 @@
-import { safety } from "../../../deps.ts";
+import * as safety from "../../../lib/safety/mod.ts";
 import { default as markdownIt } from "https://jspm.dev/markdown-it@12.2.0";
 import { default as markdownItReplaceLink } from "https://jspm.dev/markdown-it-replace-link@1.1.0";
 import { default as markdownItFootnote } from "https://jspm.dev/markdown-it-footnote@3.0.3";

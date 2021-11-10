@@ -1,4 +1,4 @@
-import { safety } from "./deps.ts";
+import * as safety from "../safety/mod.ts";
 
 export interface ConfigurationSupplier<Configuration, Context> {
   readonly configure: (ctx?: Context) => Promise<Configuration>;

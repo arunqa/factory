@@ -1,4 +1,4 @@
-import { safety } from "../../deps.ts";
+import * as safety from "../safety/mod.ts";
 import * as govn from "./governance.ts";
 
 declare global {

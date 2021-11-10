@@ -1,4 +1,5 @@
-import { events, fs, govnSvcHealth as health, log, path } from "../../deps.ts";
+import { events, fs, log, path } from "../deps.ts";
+import * as health from "../../lib/health/mod.ts";
 import * as govn from "../../governance/mod.ts";
 import * as g from "../../lib/git/mod.ts";
 import * as r from "../std/route.ts";
@@ -104,10 +105,11 @@ export class FileSysGlobsOriginator<Resource>
     for (const topLevelPath of this.topLevelLfsPaths) {
       for (const lfsPath of topLevelPath.lfsPaths) {
         for (const glob of lfsPath.globs) {
-          const componentId =
-            `FileSysGlobsOriginator ${glob.humanFriendlyName ||
-              lfsPath.humanFriendlyName ||
-              topLevelPath.humanFriendlyName} ${glob.glob}`;
+          const componentId = `FileSysGlobsOriginator ${
+            glob.humanFriendlyName ||
+            lfsPath.humanFriendlyName ||
+            topLevelPath.humanFriendlyName
+          } ${glob.glob}`;
           const status = health.healthyComponent({
             componentId,
             componentType: "component",

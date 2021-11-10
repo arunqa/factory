@@ -2,12 +2,6 @@
 	"folders": [
 		{
 			"path": "github.com/resFactory/factory"
-		},
-		{
-			"path": "github.com/gov-suite/governed-service-helpers"
-		},
-		{
-			"path": "github.com/shah/ts-safety"
 		}
 	],
 	"extensions": {

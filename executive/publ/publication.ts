@@ -1,16 +1,11 @@
-import {
-  colors,
-  fs,
-  govnSvcHealth as health,
-  govnSvcMetrics as gsm,
-  govnSvcTelemetry as telem,
-  log,
-  path,
-  safety,
-} from "../../deps.ts";
+import { colors, fs, log, path } from "../../core/deps.ts";
 import * as rfGovn from "../../governance/mod.ts";
 import * as rfStd from "../../core/std/mod.ts";
 
+import * as safety from "../../lib/safety/mod.ts";
+import * as metrics from "../../lib/metrics/mod.ts";
+import * as telem from "../../lib/telemetry/mod.ts";
+import * as health from "../../lib/health/mod.ts";
 import * as conf from "../../lib/conf/mod.ts";
 import * as fsA from "../../lib/fs/fs-analytics.ts";
 import * as fsT from "../../lib/fs/fs-tree.ts";
@@ -64,7 +59,7 @@ export class Configuration<OperationalContext>
   implements Omit<Preferences<OperationalContext>, "assetsMetricsWalkers"> {
   readonly operationalCtx?: OperationalContext;
   readonly telemetry: telem.Instrumentation = new telem.Telemetry();
-  readonly metrics = new gsm.TypicalMetrics();
+  readonly metrics = new metrics.TypicalMetrics();
   readonly envVarNamesPrefix: string;
   readonly assetsMetricsWalkers: fsT.FileSysAssetWalker[];
   readonly git?: git.GitExecutive;

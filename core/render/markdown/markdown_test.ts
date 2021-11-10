@@ -1,4 +1,4 @@
-import { testingAsserts as ta } from "../../../deps-test.ts";
+import { testingAsserts as ta } from "../../deps-test.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as fm from "../../../core/std/frontmatter.ts";
 import * as route from "../../../core/std/route.ts";

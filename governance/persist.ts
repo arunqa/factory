@@ -1,4 +1,4 @@
-import { events } from "../deps.ts";
+import { events } from "./deps.ts";
 import * as c from "./content.ts";
 import * as r from "./resource.ts";
 import * as route from "./route.ts";

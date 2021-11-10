@@ -1,4 +1,5 @@
-import { events, safety } from "../deps.ts";
+import { events } from "../deps.ts";
+import * as safety from "../../lib/safety/mod.ts";
 import * as govn from "../../governance/mod.ts";
 
 export function event<Event, State>(

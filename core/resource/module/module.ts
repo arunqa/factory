@@ -1,4 +1,4 @@
-import { safety } from "../../deps.ts";
+import * as safety from "../../../lib/safety/mod.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as nature from "../../../core/std/nature.ts";
 import * as fsrf from "../../originate/file-sys-globs.ts";

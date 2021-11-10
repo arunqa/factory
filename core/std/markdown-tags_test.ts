@@ -1,4 +1,4 @@
-import { testingAsserts as ta } from "../../deps-test.ts";
+import { testingAsserts as ta } from "../deps-test.ts";
 import * as md from "./markdown-tags.ts";
 import * as tmpl from "./template.ts";
 

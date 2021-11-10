@@ -1,4 +1,5 @@
-import { colors, pg, pgQuery as pgq, safety } from "./deps.ts";
+import { colors, pg, pgQuery as pgq } from "./deps.ts";
+import * as safety from "../safety/mod.ts";
 import * as c from "../cache/mod.ts";
 import * as conf from "./conf.ts";
 

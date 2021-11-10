@@ -1,4 +1,4 @@
-import { safety } from "../../deps.ts";
+import * as safety from "../safety/mod.ts";
 
 export type NotificationIdentity = string;
 

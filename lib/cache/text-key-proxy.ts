@@ -1,4 +1,4 @@
-import { govnSvcHealth as health } from "./deps.ts";
+import * as health from "../health/mod.ts";
 import * as govn from "./governance.ts";
 
 /**

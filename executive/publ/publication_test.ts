@@ -1,4 +1,4 @@
-import { path } from "../../deps.ts";
+import { path } from "../../core/deps.ts";
 // import { testingAsserts as ta } from "../deps-test.ts";
 import * as mod from "./publication.ts";
 import * as fsLink from "../../lib/fs/link.ts";

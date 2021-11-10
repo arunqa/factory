@@ -1,4 +1,5 @@
-import { safety, yaml } from "../../deps.ts";
+import { yaml } from "../deps.ts";
+import * as safety from "../../lib/safety/mod.ts";
 import * as govn from "../../governance/mod.ts";
 import * as c from "./content.ts";
 import * as e from "./extension.ts";

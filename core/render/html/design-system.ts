@@ -1,4 +1,4 @@
-import { safety } from "../../deps.ts";
+import * as safety from "../../../lib/safety/mod.ts";
 import * as git from "../../../lib/git/mod.ts";
 import * as ws from "../../../lib/ws/mod.ts";
 import * as govn from "../../../governance/mod.ts";

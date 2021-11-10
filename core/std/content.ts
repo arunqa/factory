@@ -1,4 +1,5 @@
-import { io, safety } from "../deps.ts";
+import { io } from "../deps.ts";
+import * as safety from "../../lib/safety/mod.ts";
 import * as govn from "../../governance/mod.ts";
 import * as m from "./model.ts";
 

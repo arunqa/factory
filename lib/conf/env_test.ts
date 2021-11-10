@@ -1,5 +1,5 @@
-import { safety } from "./deps.ts";
 import { testingAsserts as ta } from "./deps-test.ts";
+import * as safety from "../safety/mod.ts";
 import * as mod from "./mod.ts";
 
 interface TestComplexConfigProperty {

@@ -1,4 +1,4 @@
-import { govnSvcMetrics as gsm } from "../../../deps.ts";
+import * as metrics from "../../../lib/metrics/mod.ts";
 import * as fsA from "../../../lib/fs/fs-analytics.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as dGovn from "./governance.ts";
@@ -115,7 +115,7 @@ export function metricsFactorySuppliers(
   return [{
     // deno-lint-ignore require-await
     resourceFactory: async () => {
-      const pm = gsm.prometheusDialect();
+      const pm = metrics.prometheusDialect();
       const text = pm.export(state.metrics.assets.collected.metrics.instances)
         .join("\n");
       const metricsPEF: tfr.TextFileResource & govn.RouteSupplier = {

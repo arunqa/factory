@@ -1,4 +1,5 @@
-import { path, safety } from "../../deps.ts";
+import { path } from "../deps.ts";
+import * as safety from "../../lib/safety/mod.ts";
 import * as govn from "../../governance/mod.ts";
 import * as c from "../../core/std/content.ts";
 

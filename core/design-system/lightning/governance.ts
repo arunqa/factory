@@ -1,4 +1,4 @@
-import { safety } from "../../deps.ts";
+import * as safety from "../../../lib/safety/mod.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as html from "../../render/html/mod.ts";
 import * as l from "./layout/mod.ts";

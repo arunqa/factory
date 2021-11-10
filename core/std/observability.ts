@@ -1,4 +1,5 @@
-import { govnSvcHealth as health, safety } from "../deps.ts";
+import * as safety from "../../lib/safety/mod.ts";
+import * as health from "../../lib/health/mod.ts";
 import * as govn from "../../governance/mod.ts";
 
 export const isObservabilityHealthComponentSupplier = safety.typeGuard<

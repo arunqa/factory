@@ -1,4 +1,5 @@
-import { colors, events, json5, safety } from "./deps.ts";
+import { colors, events, json5 } from "./deps.ts";
+import * as safety from "../safety/mod.ts";
 import * as govn from "./governance.ts";
 
 export class EnvConfigurationEventsEmitter<Configuration, Context>
@@ -98,8 +99,10 @@ export function envConfigurationEventsConsoleEmitter<
             : JSON.stringify(terminal.envVarValue);
           const typedValue = `${
             property.isValueSecret ? "******" : JSON.stringify(value)
-          }, type: ${typeof value}, isValueSecret: ${property
-            .isValueSecret || "no"}`;
+          }, type: ${typeof value}, isValueSecret: ${
+            property
+              .isValueSecret || "no"
+          }`;
           console.info(colors.brightBlue(
             `Searched environment for property '${name}' ${
               namespace ? `(namespace '${namespace || ""}') ` : ""
@@ -109,9 +112,9 @@ export function envConfigurationEventsConsoleEmitter<
                   `found envVarName: ${terminal.envVarName}, envVarValue: ${envVarValue}, value: ${typedValue}`,
                 )
                 : colors.brightMagenta(
-                  (defaulted
+                  defaulted
                     ? `not found, defaulted to value: ${typedValue}`
-                    : `not found, no default`),
+                    : `not found, no default`,
                 )
             }]`,
           ));
@@ -129,8 +132,10 @@ export function envConfigurationEventsConsoleEmitter<
           colors.brightBlue(
             `Property name ${name}${
               namespace
-                ? `(namespace: '${namespace ||
-                  ""})`
+                ? `(namespace: '${
+                  namespace ||
+                  ""
+                })`
                 : ""
             } was not handled (attempt(s): ${attempts.length}, ${
               attempts.map((a) => a.envVarName).join(", ")

@@ -1,5 +1,5 @@
-import { govnSvcHealth as health } from "./deps.ts";
 import { redis } from "./deps.ts";
+import * as health from "../health/mod.ts";
 import * as govn from "./governance.ts";
 import * as tkp from "./text-key-proxy.ts";
 

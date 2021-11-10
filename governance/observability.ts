@@ -1,4 +1,5 @@
-import { events, govnSvcHealth as health } from "../deps.ts";
+import { events } from "./deps.ts";
+import * as health from "../lib/health/mod.ts";
 
 export interface ObservabilityHealthComponentCategorySupplier {
   readonly category: string | string[];

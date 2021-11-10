@@ -1,4 +1,4 @@
-import { safety } from "../../deps.ts";
+import * as safety from "../../lib/safety/mod.ts";
 
 export interface TemplateLiteralContribution<T = unknown> {
   (literals: TemplateStringsArray, ...expressions: T[]): string;

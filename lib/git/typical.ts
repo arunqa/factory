@@ -1,4 +1,5 @@
-import { fs, path, safety } from "./deps.ts";
+import { fs, path } from "./deps.ts";
+import * as safety from "../safety/mod.ts";
 import * as govn from "./governance.ts";
 import * as gl from "./git-log.ts";
 
