@@ -8,6 +8,8 @@ export interface StaticAccessEvent {
 }
 
 export interface ExperimentalServerOperationalContext {
+  readonly processStartTimestamp: Date;
+  readonly iterationCount: number;
   readonly watching: string | string[];
   readonly isReloadRequest: boolean;
   readonly triggerEvent?: Deno.FsEvent;
@@ -129,6 +131,15 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
         }
       }
       console.info(`       Root: ${colors.yellow(staticRoot)}`);
+      if (options?.processStartTimestamp) {
+        const iteration = options?.iterationCount || -1;
+        const duration = new Date().valueOf() -
+          options?.processStartTimestamp.valueOf();
+        console.info(
+          // deno-fmt-ignore
+          `   Built in: ${colors.brightBlue((duration / 1000).toString())} seconds ${colors.dim(`(iteration ${iteration})`)}`,
+        );
+      }
       console.info(`    Address: ${colors.green(`http://localhost:${port}`)}`);
       console.info(`    ======== [${new Date()}] ========`);
     },
@@ -169,6 +180,10 @@ export async function experimentalServerListen(
   watchFS: string | string[],
   allowReload: (event: Deno.FsEvent, watcher: Deno.FsWatcher) => boolean,
   onReload: (oc: ExperimentalServerOperationalContext) => Promise<boolean>,
+  esoc: Pick<
+    ExperimentalServerOperationalContext,
+    "processStartTimestamp" | "iterationCount"
+  >,
   port = 8003,
 ) {
   let abortController: AbortController | undefined = undefined;
@@ -192,6 +207,7 @@ export async function experimentalServerListen(
   listen({
     watching: watchFS,
     isReloadRequest: false,
+    ...esoc,
   });
 
   const watcher = Deno.watchFs(watchFS, { recursive: true });
@@ -211,6 +227,8 @@ export async function experimentalServerListen(
 
     isReloading = true;
     const oc: ExperimentalServerOperationalContext = {
+      processStartTimestamp: new Date(),
+      iterationCount: esoc.iterationCount + 1,
       watching: watchFS,
       triggerEvent: event,
       isReloadRequest: true,
