@@ -53,6 +53,7 @@ export interface Preferences<OperationalContext> {
   readonly assetsMetricsWalkers?: (
     config: Configuration<OperationalContext>,
   ) => fsT.FileSysAssetWalker[];
+  readonly extensionsManager: rfGovn.ExtensionsManager;
 }
 
 export class Configuration<OperationalContext>
@@ -65,7 +66,7 @@ export class Configuration<OperationalContext>
   readonly git?: git.GitExecutive;
   readonly fsRouteFactory: rfStd.FileSysRouteFactory;
   readonly routeLocationResolver?: rfStd.RouteLocationResolver;
-  readonly extensionsManager = new rfStd.CachedExtensions();
+  readonly extensionsManager: rfGovn.ExtensionsManager;
   readonly observabilityRoute: rfGovn.Route;
   readonly diagnosticsRoute: rfGovn.Route;
   readonly contentRootPath: fsg.FileSysPathText;
@@ -118,6 +119,7 @@ export class Configuration<OperationalContext>
         options: assetMetricsWalkOptions,
       }];
     this.rewriteMarkdownLink = prefs.rewriteMarkdownLink;
+    this.extensionsManager = prefs.extensionsManager;
   }
 
   produceControlPanelContent(): boolean {

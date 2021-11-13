@@ -1,4 +1,5 @@
 import { colors, oak, oakUtil, path } from "./deps.ts";
+import * as human from "../text/human.ts";
 
 export interface StaticAccessEvent {
   // deno-lint-ignore no-explicit-any
@@ -140,6 +141,18 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
           `   Built in: ${colors.brightBlue((duration / 1000).toString())} seconds ${colors.dim(`(iteration ${iteration})`)}`,
         );
       }
+      const mem = Deno.memoryUsage();
+      console.info(
+        `     Memory: ${colors.gray("rss")} ${
+          human.humanFriendlyBytes(mem.rss)
+        } ${colors.gray("heapTotal")} ${
+          human.humanFriendlyBytes(mem.heapTotal)
+        } ${colors.gray("heapUsed")}: ${
+          human.humanFriendlyBytes(mem.heapUsed)
+        } ${colors.gray("external")}: ${
+          human.humanFriendlyBytes(mem.external)
+        }`,
+      );
       console.info(`    Address: ${colors.green(`http://localhost:${port}`)}`);
       console.info(`    ======== [${new Date()}] ========`);
     },
@@ -178,7 +191,10 @@ export async function willSendStatic(
 
 export async function experimentalServerListen(
   watchFS: string | string[],
-  allowReload: (event: Deno.FsEvent, watcher: Deno.FsWatcher) => boolean,
+  allowReload: (
+    event: Deno.FsEvent,
+    watcher: Deno.FsWatcher,
+  ) => Promise<boolean>,
   onReload: (oc: ExperimentalServerOperationalContext) => Promise<boolean>,
   esoc: Pick<
     ExperimentalServerOperationalContext,
@@ -213,7 +229,7 @@ export async function experimentalServerListen(
   const watcher = Deno.watchFs(watchFS, { recursive: true });
   let isReloading = false;
   for await (const event of watcher) {
-    if (!allowReload(event, watcher)) continue;
+    if (!(await allowReload(event, watcher))) continue;
     if (isReloading) {
       continue;
     }
