@@ -123,7 +123,7 @@ export class Configuration<OperationalContext>
   }
 
   produceControlPanelContent(): boolean {
-    return true;
+    return false;
   }
 
   symlinkAssets(): boolean {
@@ -285,7 +285,7 @@ export class PublicationRoutes {
 
   /**
    * Add the given route to this.resourcesTree. Subclasses can override this
-   * method if the route should be reject for some reason.
+   * method if the route should be rejected for some reason.
    * @param rs The route supplier whose route will be consumed or rejected
    * @returns the newly create tree node or undefined if route is rejected
    */
