@@ -42,7 +42,7 @@ export async function configureSqlGlobals() {
   }
 }
 
-export async function preparePostgreSqlGlobals() {
+export async function preparePostgreSqlGlobals(applicationName?: string) {
   await configureSqlGlobals();
 
   window.postgresSqlDbConnSpecValidity = (identity, envVarNamesPrefix) => {
@@ -57,6 +57,7 @@ export async function preparePostgreSqlGlobals() {
         envVarNamesPrefix,
       );
       conn = new TypicalDatabaseConnection({
+        applicationName,
         ...dbc,
         resultsCache: window.globalSqlResultsCache,
       });
