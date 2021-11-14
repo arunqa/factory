@@ -14,6 +14,7 @@ export interface ExperimentalServerOperationalContext {
   readonly watching: string | string[];
   readonly isReloadRequest: boolean;
   readonly triggerEvent?: Deno.FsEvent;
+  readonly liveReloadSockets: WebSocket[];
 }
 
 export interface ExperimentalServerOptions
@@ -40,6 +41,25 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
   router.get("/index.html", (ctx) => {
     ctx.response.body = "SSR test route in experimentalServer (don't use this)";
   });
+
+  if (options?.liveReloadSockets) {
+    const lrSockets = options?.liveReloadSockets;
+    // create the live-reload websocket endpoint; whenever the listener is
+    // restarted, the websocket will die on the client which will trigger a reload
+    // of the browser's web page; the actual websocket message is irrelevant
+    router.get("/ws/experiment/live-reload", async (ctx) => {
+      const socket = await ctx.upgrade();
+      socket.onopen = () => lrSockets.push(socket);
+      socket.onclose = () => {
+        const index = lrSockets.indexOf(socket);
+        if (index !== -1) {
+          lrSockets.splice(index, 1);
+        }
+      };
+      socket.onerror = (e) => console.log("Socket errored", e);
+      console.log(colors.gray(`    /ws/experiment/live-reload hook request`));
+    });
+  }
 
   router.get("/error", (_ctx) => {
     throw new Error("an error has been thrown");
@@ -204,6 +224,7 @@ export async function experimentalServerListen(
 ) {
   let abortController: AbortController | undefined = undefined;
   let listener: Promise<void> | undefined = undefined;
+  const liveReloadSockets: WebSocket[] = [];
 
   const listen = async (oc: ExperimentalServerOperationalContext) => {
     if (abortController && listener) {
@@ -213,6 +234,12 @@ export async function experimentalServerListen(
 
     abortController = new AbortController();
     const app = experimentalServer(oc);
+    for (const lrSocket of liveReloadSockets) {
+      // when the socket is closed, it will force reload on the client because
+      // the websocket closed signal is what is monitored
+      lrSocket.close(-1, "reload");
+      console.log("closed lrSocket, reload request sent to browser");
+    }
 
     listener = app.listen({
       port,
@@ -223,6 +250,7 @@ export async function experimentalServerListen(
   listen({
     watching: watchFS,
     isReloadRequest: false,
+    liveReloadSockets,
     ...esoc,
   });
 
@@ -248,6 +276,7 @@ export async function experimentalServerListen(
       watching: watchFS,
       triggerEvent: event,
       isReloadRequest: true,
+      liveReloadSockets,
     };
     const reload = await onReload(oc);
     if (reload) listen(oc);
