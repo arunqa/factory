@@ -24,10 +24,18 @@ export function envWorkspaceEditorResolver(
   prime: string,
 ): WorkspaceEditorTargetResolver<WorkspaceEditorTarget> {
   const type = Deno.env.get(prime);
-  if (type && type == "vscode") {
-    return vscodeWslRemoteEditorResolver(
-      Deno.env.get(`${prime}_VSCODE_REMOTE_DISTRO`) || "Debian",
-    );
+  if (type) {
+    switch(type){
+      case "vscode":
+      case "vscode-wsl":
+        return vscodeWslRemoteEditorResolver(
+          Deno.env.get(`${prime}_VSCODE_REMOTE_DISTRO`) || "Debian",
+        );
+      case "vscode-linux":
+          return vscodeLinuxRemoteEditorResolver();
+      case "vscode-mac":
+          return vscodeMacRemoteEditorResolver();
+    }
   }
   return () => undefined;
 }
@@ -49,6 +57,42 @@ export function vscodeWslRemoteEditorResolver(
     return {
       identity: "vscode",
       wslDistroName,
+      editableTargetURI,
+      // deno-fmt-ignore
+      openInWorkspaceHTML: (classes) =>`<a href="${editableTargetURI}" ${classes ? ` class="${classes}"` : ""} title="${editableTargetURI}">Open in VS Code</a>`,
+    };
+  };
+}
+
+export function vscodeLinuxRemoteEditorResolver(
+  ): WorkspaceEditorTargetResolver<WorkspaceEditorTarget> {
+  return (src, line) => {
+    if (src.startsWith("file:")) {
+      src = path.fromFileUrl(src);
+    }
+    if (!src.startsWith("/")) src = `/${src}`;
+    const editableTargetURI =
+      `vscode://file${src}:${line || 1}`;
+    return {
+      identity: "vscode-linux",
+      editableTargetURI,
+      // deno-fmt-ignore
+      openInWorkspaceHTML: (classes) =>`<a href="${editableTargetURI}" ${classes ? ` class="${classes}"` : ""} title="${editableTargetURI}">Open in VS Code</a>`,
+    };
+  };
+}
+
+export function vscodeMacRemoteEditorResolver(
+  ): WorkspaceEditorTargetResolver<WorkspaceEditorTarget> {
+  return (src, line) => {
+    if (src.startsWith("file:")) {
+      src = path.fromFileUrl(src);
+    }
+    if (!src.startsWith("/")) src = `/${src}`;
+    const editableTargetURI =
+      `vscode://file${src}:${line || 1}`;
+    return {
+      identity: "vscode-mac",
       editableTargetURI,
       // deno-fmt-ignore
       openInWorkspaceHTML: (classes) =>`<a href="${editableTargetURI}" ${classes ? ` class="${classes}"` : ""} title="${editableTargetURI}">Open in VS Code</a>`,
