@@ -1,5 +1,6 @@
 export * from "./badges-tags.ts";
 export * from "./card.ts";
+export * from "./tab.ts";
 export * from "./diagnostics.ts";
 export * from "./diagrams.ts";
 export * from "./icon.ts";
