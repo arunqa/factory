@@ -170,3 +170,7 @@ footer code.localhost-diags-layout-origin-src {
     padding: 15px;
     margin-top: -55px;
 } */
+
+article ol, article ul {
+    list-style: revert;
+}
