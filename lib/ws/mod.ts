@@ -25,28 +25,39 @@ export function envWorkspaceEditorResolver(
 ): WorkspaceEditorTargetResolver<WorkspaceEditorTarget> {
   const type = Deno.env.get(prime);
   if (type) {
-    switch(type){
-      case "vscode":
+    switch (type) {
+      case "vscode": // @deprecated: non-specific "vscode" is depracated, use specific vscode-* below
       case "vscode-wsl":
         return vscodeWslRemoteEditorResolver(
           Deno.env.get(`${prime}_VSCODE_REMOTE_DISTRO`) || "Debian",
         );
+      case "vscode-ssh-remote":
+        return vscodeSshRemoteEditorResolver(
+          Deno.env.get(`${prime}_VSCODE_REMOTE_HOSTNAME`) ||
+            `${prime}_VSCODE_REMOTE_HOSTNAME not supplied`,
+        );
+      case "vscode-windows":
+        return vscodeWindowsRemoteEditorResolver();
       case "vscode-linux":
-          return vscodeLinuxRemoteEditorResolver();
+        return vscodeLinuxRemoteEditorResolver();
       case "vscode-mac":
-          return vscodeMacRemoteEditorResolver();
+        return vscodeMacRemoteEditorResolver();
     }
   }
   return () => undefined;
 }
 
-export interface VsCodeWorkspaceEditorTarget extends WorkspaceEditorTarget {
+export interface VsCodeWslWorkspaceEditorTarget extends WorkspaceEditorTarget {
   readonly wslDistroName: string;
+}
+
+export interface VsCodeSshWorkspaceEditorTarget extends WorkspaceEditorTarget {
+  readonly sshHostName: string;
 }
 
 export function vscodeWslRemoteEditorResolver(
   wslDistroName: string,
-): WorkspaceEditorTargetResolver<VsCodeWorkspaceEditorTarget> {
+): WorkspaceEditorTargetResolver<VsCodeWslWorkspaceEditorTarget> {
   return (src, line) => {
     if (src.startsWith("file:")) {
       src = path.fromFileUrl(src);
@@ -64,15 +75,53 @@ export function vscodeWslRemoteEditorResolver(
   };
 }
 
-export function vscodeLinuxRemoteEditorResolver(
-  ): WorkspaceEditorTargetResolver<WorkspaceEditorTarget> {
+export function vscodeSshRemoteEditorResolver(
+  sshHostName: string,
+): WorkspaceEditorTargetResolver<VsCodeSshWorkspaceEditorTarget> {
   return (src, line) => {
     if (src.startsWith("file:")) {
       src = path.fromFileUrl(src);
     }
     if (!src.startsWith("/")) src = `/${src}`;
     const editableTargetURI =
-      `vscode://file${src}:${line || 1}`;
+      `vscode://vscode-remote/ssh-remote+${sshHostName}${src}:${line || 1}`;
+    return {
+      identity: "vscode",
+      sshHostName,
+      editableTargetURI,
+      // deno-fmt-ignore
+      openInWorkspaceHTML: (classes) =>`<a href="${editableTargetURI}" ${classes ? ` class="${classes}"` : ""} title="${editableTargetURI}">Open in VS Code</a>`,
+    };
+  };
+}
+
+export function vscodeWindowsRemoteEditorResolver(): WorkspaceEditorTargetResolver<
+  WorkspaceEditorTarget
+> {
+  return (src, line) => {
+    if (src.startsWith("file:")) {
+      src = path.fromFileUrl(src);
+    }
+    if (!src.startsWith("/")) src = `/${src}`;
+    const editableTargetURI = `vscode://file${src}:${line || 1}`;
+    return {
+      identity: "vscode-windows",
+      editableTargetURI,
+      // deno-fmt-ignore
+      openInWorkspaceHTML: (classes) =>`<a href="${editableTargetURI}" ${classes ? ` class="${classes}"` : ""} title="${editableTargetURI}">Open in VS Code</a>`,
+    };
+  };
+}
+
+export function vscodeLinuxRemoteEditorResolver(): WorkspaceEditorTargetResolver<
+  WorkspaceEditorTarget
+> {
+  return (src, line) => {
+    if (src.startsWith("file:")) {
+      src = path.fromFileUrl(src);
+    }
+    if (!src.startsWith("/")) src = `/${src}`;
+    const editableTargetURI = `vscode://file${src}:${line || 1}`;
     return {
       identity: "vscode-linux",
       editableTargetURI,
@@ -82,15 +131,15 @@ export function vscodeLinuxRemoteEditorResolver(
   };
 }
 
-export function vscodeMacRemoteEditorResolver(
-  ): WorkspaceEditorTargetResolver<WorkspaceEditorTarget> {
+export function vscodeMacRemoteEditorResolver(): WorkspaceEditorTargetResolver<
+  WorkspaceEditorTarget
+> {
   return (src, line) => {
     if (src.startsWith("file:")) {
       src = path.fromFileUrl(src);
     }
     if (!src.startsWith("/")) src = `/${src}`;
-    const editableTargetURI =
-      `vscode://file${src}:${line || 1}`;
+    const editableTargetURI = `vscode://file${src}:${line || 1}`;
     return {
       identity: "vscode-mac",
       editableTargetURI,
