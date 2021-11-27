@@ -5,12 +5,14 @@ import * as fsLink from "../../lib/fs/link.ts";
 import * as git from "../../lib/git/mod.ts";
 import * as ds from "../../core/render/html/mod.ts";
 import * as lds from "../../core/design-system/lightning/mod.ts";
+import * as extn from "../../core/std/extension.ts";
 
 const testPath = path.relative(
   Deno.cwd(),
   path.dirname(import.meta.url).substr("file://".length),
 );
 const docsPath = path.join(testPath, "../../", "docs");
+const extensionsManager = new extn.ReloadableCachedExtensions();
 const prefs: mod.Preferences<unknown> = {
   contentRootPath: path.join(docsPath, "content"),
   persistClientCargo: async (publishDest) => {
@@ -43,6 +45,7 @@ const prefs: mod.Preferences<unknown> = {
     };
   },
   wsEditorResolver: () => undefined,
+  extensionsManager,
 };
 
 export class TestDesignSystem implements lds.LightningDesignSystemFactory {
