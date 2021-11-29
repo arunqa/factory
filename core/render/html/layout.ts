@@ -3,6 +3,7 @@ import * as hGovn from "./governance.ts";
 import * as c from "../../../core/std/content.ts";
 import * as contrib from "../contributions.ts";
 import * as r from "../../../core/std/render.ts";
+import * as obs from "../../../core/std/observability.ts";
 
 export const htmlLayoutOriginDataAttrs:
   hGovn.HtmlLayoutOriginDomDataAttrsResolver = (
@@ -94,6 +95,23 @@ export function htmlLayoutTemplate<T, Layout extends hGovn.HtmlLayout>(
           : (c.isFlexibleContentSupplier(resource)
             ? await c.flexibleTextCustom(bodyAsync(resource), ftcOptions)
             : undefined);
+        if (layout.dsCtx.lintReporter) {
+          const lintReporter: govn.LintReporter = {
+            ...layout.dsCtx.lintReporter,
+            report: (ld) => {
+              layout.dsCtx.lintReporter!.report({
+                ...ld,
+                layout,
+              });
+            },
+          };
+          if (obs.isLintable(layout)) {
+            layout.lint(lintReporter);
+          }
+          if (obs.isLintable(layout.layoutSS)) {
+            layout.layoutSS.lint(lintReporter);
+          }
+        }
         return { ...resource, html: interpolate(layout, activeBody) };
       },
       renderedSync: (layout) => {
@@ -104,6 +122,23 @@ export function htmlLayoutTemplate<T, Layout extends hGovn.HtmlLayout>(
           : (c.isFlexibleContentSyncSupplier(resource)
             ? c.flexibleTextSyncCustom(bodySync(resource), ftcOptions)
             : undefined);
+        if (layout.dsCtx.lintReporter) {
+          const lintReporter: govn.LintReporter = {
+            ...layout.dsCtx.lintReporter,
+            report: (ld) => {
+              layout.dsCtx.lintReporter!.report({
+                ...ld,
+                layout,
+              });
+            },
+          };
+          if (obs.isLintable(layout)) {
+            layout.lint(lintReporter);
+          }
+          if (obs.isLintable(layout.layoutSS)) {
+            layout.layoutSS.lint(lintReporter);
+          }
+        }
         return { ...resource, html: interpolate(layout, activeBody) };
       },
     };

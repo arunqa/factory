@@ -89,7 +89,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       ...dsAssets,
       ldsIcons: (relURL) => `${this.dsAssetsBaseURL}/image/slds-icons${relURL}`,
       clientCargoValue: () => {
-        return `{ 
+        return `{
           ${
           this.clientCargoAssetsJS(
             base,
@@ -151,6 +151,16 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       origin: html.htmlLayoutOriginDataAttrs,
       ...layoutArgs,
     };
+    if (dsCtx.lintReporter && layoutArgs?.diagnostics) {
+      (result as unknown as govn.Lintable).lint = (reporter) => {
+        reporter.report(
+          dsCtx.lintReporter!.diagnostic(
+            dsCtx.lintReporter!.diagsShouldBeTemporary,
+            result,
+          ),
+        );
+      };
+    }
     return result as Layout; // TODO: consider not casting to type
   }
 }

@@ -211,6 +211,25 @@ export interface DesignSystemNavigationAdapter<
   ) => DesignSystemNotifications<Notification> | undefined;
 }
 
+export interface DesignSystemLintDiagnostic<Layout extends html.HtmlLayout>
+  extends govn.LintDiagnostic {
+  readonly layout: Layout;
+}
+
+export const isDesignSystemLintDiagnostic = safety.typeGuard<
+  // deno-lint-ignore no-explicit-any
+  DesignSystemLintDiagnostic<any>
+>("rule", "layout");
+
+export interface DesignSystemLintReporter<Layout extends html.HtmlLayout>
+  extends govn.LintReporter<DesignSystemLintDiagnostic<Layout>> {
+  readonly diagnostic: (
+    rule: govn.LintRule,
+    layout: Layout,
+  ) => DesignSystemLintDiagnostic<Layout>;
+  readonly diagsShouldBeTemporary: govn.LintRule;
+}
+
 export interface DesignSystemContentAdapter<
   Layout extends html.HtmlLayout,
   LayoutText extends html.HtmlLayoutText<Layout>,
@@ -232,6 +251,7 @@ export interface DesignSystemContentAdapter<
   readonly assets: AssetLocations;
   readonly navigation: Navigation;
   readonly renderedAt: Date;
+  readonly lintReporter?: DesignSystemLintReporter<Layout>;
 }
 
 export type UntypedDesignSystemContentAdapter = DesignSystemContentAdapter<
