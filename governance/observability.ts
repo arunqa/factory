@@ -21,3 +21,25 @@ export class ObservabilityEventsEmitter extends events.EventEmitter<{
 export interface ObservabilityEventsEmitterSupplier {
   readonly events: ObservabilityEventsEmitter;
 }
+
+export interface LintRule {
+  readonly code: string;
+  readonly humanFriendly: string;
+  readonly namespace?: string;
+}
+
+export interface LintRuleSupplier<Rule = LintRule> {
+  (code: string, namespace?: string): Rule;
+}
+
+export interface LintDiagnostic {
+  readonly rule: LintRule;
+}
+
+export interface LintReporter<Diagnostic = LintDiagnostic> {
+  readonly report: (ld: Diagnostic) => void;
+}
+
+export interface Lintable<Diagnostic = LintDiagnostic> {
+  lint: (reporter: LintReporter<Diagnostic>) => void;
+}
