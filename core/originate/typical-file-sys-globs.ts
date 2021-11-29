@@ -30,9 +30,10 @@ export function staticMarkdownFileSysGlob(
 export function markdownModuleFileSysGlob(
   mdrs: mdDS.MarkdownRenderStrategy,
   routeParser = route.humanFriendlyFileSysRouteParser,
+  stage?: string,
 ): fsg.FileSysPathGlob<md.MarkdownResource> {
   return {
-    glob: "**/*.md.ts",
+    glob: stage ? `**/*.md${stage}.ts` : "**/*.md.ts",
     routeParser,
     factory: md.markdownModuleFileSysResourceFactory(
       // deno-lint-ignore no-explicit-any
@@ -101,11 +102,12 @@ export function htmlFileSysGlobs(
 export function resourceModuleFileSysGlob<State>(
   state: State,
   routeParser = route.humanFriendlyFileSysRouteParser,
+  stage?: string,
 ): fsg.FileSysPathGlob<
   govn.ModuleResource
 > {
   return {
-    glob: "**/*.rf.ts",
+    glob: stage ? `**/*.rf${stage}.ts` : "**/*.rf.ts",
     exclude: ["deps.ts"],
     routeParser,
     factory: module.moduleFileSysResourceFactory(state),
@@ -114,11 +116,12 @@ export function resourceModuleFileSysGlob<State>(
 
 export function jsonModuleFileSysGlob(
   routeParser = route.humanFriendlyFileSysRouteParser,
+  stage?: string,
 ): fsg.FileSysPathGlob<
   govn.StructuredDataInstanceSupplier
 > {
   return {
-    glob: "**/*.json.ts",
+    glob: stage ? `**/*.json${stage}.ts` : "**/*.json.ts",
     exclude: ["deps.ts"],
     routeParser,
     factory: jsonM.jsonFileSysResourceFactory(),
@@ -131,6 +134,7 @@ export function moduleFileSysGlobs<State>(
   mdrs: mdDS.MarkdownRenderStrategy,
   state: State,
   routeParser = route.humanFriendlyFileSysRouteParser,
+  stage?: string,
 ): fsg.FileSysPaths<govn.ModuleResource> {
   return {
     humanFriendlyName: "Module Content",
@@ -139,13 +143,21 @@ export function moduleFileSysGlobs<State>(
       humanFriendlyName: `Module Content (${originRootPath})`,
       fileSysPath: originRootPath,
       globs: [
-        resourceModuleFileSysGlob(state, routeParser) as fsg.FileSysPathGlob<
+        resourceModuleFileSysGlob(
+          state,
+          routeParser,
+          stage,
+        ) as fsg.FileSysPathGlob<
           // deno-lint-ignore no-explicit-any
           any
         >,
         // deno-lint-ignore no-explicit-any
-        jsonModuleFileSysGlob(routeParser) as fsg.FileSysPathGlob<any>,
-        markdownModuleFileSysGlob(mdrs, routeParser) as fsg.FileSysPathGlob<
+        jsonModuleFileSysGlob(routeParser, stage) as fsg.FileSysPathGlob<any>,
+        markdownModuleFileSysGlob(
+          mdrs,
+          routeParser,
+          stage,
+        ) as fsg.FileSysPathGlob<
           // deno-lint-ignore no-explicit-any
           any
         >,

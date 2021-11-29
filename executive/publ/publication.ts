@@ -636,6 +636,11 @@ export abstract class TypicalPublication<OCState>
     ];
   }
 
+  // deno-lint-ignore no-explicit-any
+  postProduceOriginators(): rfGovn.ResourcesFactoriesSupplier<any>[] {
+    return [];
+  }
+
   originationRefinery() {
     return this.routes.resourcesTreePopulatorSync();
   }
@@ -808,6 +813,19 @@ export abstract class TypicalPublication<OCState>
   }
 
   async finalizeProduce() {
+    const resourcesIndex = this.state.resourcesIndex;
+    const originationRefinery = this.originationRefinery();
+    const persist = this.persistersRefinery();
+    for (const ppo of this.postProduceOriginators()) {
+      for await (
+        const resource of this.originate(ppo, originationRefinery)
+      ) {
+        // we need to persist these ourselves because by the time finalizeProduce()
+        // is called, all other resources have already been persisted
+        resourcesIndex.index(await persist(resource));
+      }
+    }
+
     // any files that were not consumed should "mirrored" to the destination
     await this.symlinkAssets();
 
