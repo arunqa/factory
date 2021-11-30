@@ -1,12 +1,12 @@
 import * as govn from "../../../governance/mod.ts";
 import * as html from "../../render/html/mod.ts";
-import * as ce from "../../render/markdown/directive/custom-elements.ts";
+import * as direc from "../../render/markdown/directive/mod.ts";
 import * as c from "../../../core/std/content.ts";
 import * as m from "../../../core/std/model.ts";
 import * as fm from "../../../core/std/frontmatter.ts";
 import * as ldsGovn from "./governance.ts";
 import * as l from "./layout/mod.ts";
-import * as direc from "./directive/mod.ts";
+import * as ldsDirec from "./directive/mod.ts";
 import * as route from "../../../core/std/route.ts";
 
 export class LightingDesignSystemLayouts<
@@ -60,11 +60,13 @@ const defaultContentModel: () => govn.ContentModel = () => {
 export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   extends html.DesignSystem<Layout> {
   readonly lightningAssetsPathUnits = ["lightning"];
-  readonly directives = [
-    new direc.ActionItemDirective(),
-    ...ce.allCustomElements,
+  // deno-lint-ignore no-explicit-any
+  readonly directives: govn.DirectiveExpectation<any, any>[] = [
+    new ldsDirec.ActionItemDirective(),
+    ...direc.allCustomElements,
   ];
   constructor(
+    readonly extnManager: govn.ExtensionsManager,
     readonly emptyContentModelLayoutSS:
       & govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier>
       & govn.ModelLayoutStrategySupplier<Layout, govn.HtmlSupplier> = {
@@ -75,6 +77,9 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       },
   ) {
     super("LightningDS", new LightingDesignSystemLayouts(), "/lightning");
+    this.directives.push(
+      new direc.ProxiedContentInfuseInterpolateDirective(this.extnManager),
+    );
   }
 
   allowedDirectives(filter?: (DE: html.DesignSystemDirective) => boolean) {
