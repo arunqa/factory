@@ -1,7 +1,7 @@
 import * as govn from "../../../../governance/mod.ts";
 import * as mdr from "../../../render/markdown/markdown.ts";
 
-export type LightningCustomElementMarkdownDirective =
+export type CustomElementMarkdownDirective =
   & govn.DirectiveExpectation<
     mdr.MarkdownClientCustomElementDirective,
     void
@@ -13,7 +13,7 @@ export type LightningCustomElementMarkdownDirective =
 // TODO: we might want to track these in the future for diagnostics, though.
 const encountered = () => {};
 
-export const agGridCE: LightningCustomElementMarkdownDirective = {
+export const agGridCE: CustomElementMarkdownDirective = {
   identity: "ag-grid",
   present: "inline",
   name: "ag-grid",
@@ -22,7 +22,7 @@ export const agGridCE: LightningCustomElementMarkdownDirective = {
   encountered,
 };
 
-export const apacheEChartsCE: LightningCustomElementMarkdownDirective = {
+export const apacheEChartsCE: CustomElementMarkdownDirective = {
   identity: "apache-echarts",
   present: "inline",
   name: "apache-echarts",
@@ -31,7 +31,7 @@ export const apacheEChartsCE: LightningCustomElementMarkdownDirective = {
   encountered,
 };
 
-export const chartJsCE: LightningCustomElementMarkdownDirective = {
+export const chartJsCE: CustomElementMarkdownDirective = {
   identity: "chart-js",
   present: "inline",
   name: "chart-js",
@@ -40,7 +40,7 @@ export const chartJsCE: LightningCustomElementMarkdownDirective = {
   encountered,
 };
 
-export const krokiCE: LightningCustomElementMarkdownDirective = {
+export const krokiCE: CustomElementMarkdownDirective = {
   identity: "kroki-diagram",
   present: "block",
   name: "kroki-diagram",
@@ -49,7 +49,7 @@ export const krokiCE: LightningCustomElementMarkdownDirective = {
   encountered,
 };
 
-export const markmapCE: LightningCustomElementMarkdownDirective = {
+export const markmapCE: CustomElementMarkdownDirective = {
   identity: "markmap",
   present: "block",
   name: "markmap",
@@ -58,7 +58,7 @@ export const markmapCE: LightningCustomElementMarkdownDirective = {
   encountered,
 };
 
-export const timeAgoCE: LightningCustomElementMarkdownDirective = {
+export const timeAgoCE: CustomElementMarkdownDirective = {
   identity: "time-ago",
   present: "inline",
   name: "time-ago",
@@ -67,7 +67,7 @@ export const timeAgoCE: LightningCustomElementMarkdownDirective = {
   encountered,
 };
 
-export const allCustomElements: LightningCustomElementMarkdownDirective[] = [
+export const allCustomElements: CustomElementMarkdownDirective[] = [
   agGridCE,
   apacheEChartsCE,
   chartJsCE,

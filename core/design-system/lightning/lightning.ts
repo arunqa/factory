@@ -1,5 +1,6 @@
 import * as govn from "../../../governance/mod.ts";
 import * as html from "../../render/html/mod.ts";
+import * as ce from "../../render/markdown/directive/custom-elements.ts";
 import * as c from "../../../core/std/content.ts";
 import * as m from "../../../core/std/model.ts";
 import * as fm from "../../../core/std/frontmatter.ts";
@@ -61,7 +62,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   readonly lightningAssetsPathUnits = ["lightning"];
   readonly directives = [
     new direc.ActionItemDirective(),
-    ...direc.allCustomElements,
+    ...ce.allCustomElements,
   ];
   constructor(
     readonly emptyContentModelLayoutSS:
