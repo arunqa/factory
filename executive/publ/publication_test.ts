@@ -56,7 +56,7 @@ export class TestDesignSystem implements lds.LightningDesignSystemFactory {
     config: mod.Configuration<unknown>,
     routes: mod.PublicationRoutes,
   ) {
-    this.designSystem = new lds.LightingDesignSystem();
+    this.designSystem = new lds.LightingDesignSystem(config.extensionsManager);
     this.contentAdapter = {
       git: config.git,
       layoutText: new lds.LightingDesignSystemText(),

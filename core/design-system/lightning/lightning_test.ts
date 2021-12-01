@@ -1,6 +1,7 @@
 import { testingAsserts as ta } from "../../deps-test.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as content from "../../../core/std/content.ts";
+import * as extn from "../../../core/std/extension.ts";
 import * as modGovn from "./governance.ts";
 import * as rt from "../../../core/std/route.ts";
 import * as rtree from "../../../core/std/route-tree.ts";
@@ -10,7 +11,7 @@ import * as mod from "./lightning.ts";
 export type Resource = govn.TextSyncSupplier;
 
 Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
-  const lds = new mod.LightingDesignSystem();
+  const lds = new mod.LightingDesignSystem(new extn.CachedExtensions());
   const lss = lds.layoutStrategies.defaultLayoutStrategySupplier;
   const ls = lss.layoutStrategy;
   const resource: govn.TextSyncSupplier = {
