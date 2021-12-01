@@ -1,5 +1,5 @@
-import { Transformer } from 'https://jspm.dev/markmap-lib';
-import { Markmap } from 'https://jspm.dev/markmap-view';
+import { Transformer } from 'https://jspm.dev/markmap-lib@0.11.6';
+import { Markmap } from 'https://jspm.dev/markmap-view@0.2.6';
 
 class MarkmapComponent extends HTMLElement {
     static diagnoseAttrName = "diagnose";
