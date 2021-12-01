@@ -4,6 +4,7 @@ import * as r from "../std/resource.ts";
 import * as route from "../std/route.ts";
 import * as fm from "../std/frontmatter.ts";
 import * as md from "../resource/markdown.ts";
+import * as b from "../resource/module/bundle.ts";
 import * as html from "../resource/html.ts";
 import * as module from "../resource/module/module.ts";
 import * as jsonM from "../resource/module/json.ts";
@@ -128,6 +129,39 @@ export function jsonModuleFileSysGlob(
   };
 }
 
+export function jsBundleFileSysGlob(
+  routeParser = route.humanFriendlyFileSysRouteParser,
+  stage?: string,
+): fsg.FileSysPathGlob<b.BundleResource> {
+  return {
+    glob: stage ? `**/*.js${stage}.ts` : "**/*.js.ts",
+    routeParser,
+    factory: b.bundleFileSysResourceFactory(true),
+  };
+}
+
+export function pciiServerOnlyBundleFileSysGlob(
+  routeParser = route.humanFriendlyFileSysRouteParser,
+  stage?: string,
+): fsg.FileSysPathGlob<b.BundleResource> {
+  return {
+    glob: stage ? `**/*.pcii${stage}.ts` : "**/*.pcii.ts",
+    routeParser,
+    factory: b.bundleFileSysResourceFactory(false),
+  };
+}
+
+export function pciiClientAndServerBundleFileSysGlob(
+  routeParser = route.humanFriendlyFileSysRouteParser,
+  stage?: string,
+): fsg.FileSysPathGlob<b.BundleResource> {
+  return {
+    glob: stage ? `**/*.client.pcii${stage}.ts` : "**/*.client.pcii.ts",
+    routeParser,
+    factory: b.bundleFileSysResourceFactory(true),
+  };
+}
+
 export function moduleFileSysGlobs<State>(
   originRootPath: fsg.FileSysPathText,
   fsRouteFactory: route.FileSysRouteFactory,
@@ -147,20 +181,28 @@ export function moduleFileSysGlobs<State>(
           state,
           routeParser,
           stage,
-        ) as fsg.FileSysPathGlob<
           // deno-lint-ignore no-explicit-any
-          any
-        >,
+        ) as fsg.FileSysPathGlob<any>,
         // deno-lint-ignore no-explicit-any
         jsonModuleFileSysGlob(routeParser, stage) as fsg.FileSysPathGlob<any>,
         markdownModuleFileSysGlob(
           mdrs,
           routeParser,
           stage,
-        ) as fsg.FileSysPathGlob<
           // deno-lint-ignore no-explicit-any
-          any
-        >,
+        ) as fsg.FileSysPathGlob<any>,
+        // deno-lint-ignore no-explicit-any
+        jsBundleFileSysGlob(routeParser, stage) as fsg.FileSysPathGlob<any>,
+        pciiServerOnlyBundleFileSysGlob(
+          routeParser,
+          stage,
+          // deno-lint-ignore no-explicit-any
+        ) as fsg.FileSysPathGlob<any>,
+        pciiClientAndServerBundleFileSysGlob(
+          routeParser,
+          stage,
+          // deno-lint-ignore no-explicit-any
+        ) as fsg.FileSysPathGlob<any>,
       ],
       fileSysGitPaths: g.discoverGitWorkTree(originRootPath),
     }],

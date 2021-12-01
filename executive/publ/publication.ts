@@ -21,6 +21,7 @@ import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
 import * as html from "../../core/render/html/mod.ts";
 import * as jrs from "../../core/render/json.ts";
 import * as tfr from "../../core/render/text.ts";
+import * as br from "../../core/render/bundle.ts";
 import * as dtr from "../../core/render/delimited-text.ts";
 import * as mdr from "../../core/render/markdown/mod.ts";
 
@@ -674,6 +675,13 @@ export abstract class TypicalPublication<OCState>
         ees,
       ),
       tfr.textFileProducer<PublicationState>(
+        this.config.destRootPath,
+        this.state,
+        {
+          eventsEmitter: ees,
+        },
+      ),
+      br.bundleProducer<PublicationState>(
         this.config.destRootPath,
         this.state,
         {
