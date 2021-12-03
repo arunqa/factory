@@ -79,7 +79,7 @@ export const contextBarPartial: ldsGovn.LightningPartial = (layout) => {
         <div class="slds-grid slds-gutters slds-wrap slds-m-top_xx-small top-right-widget">
           <div class="slds-col">
             <div style="position: relative; top:-2px;"><span class="slds-avatar slds-avatar_circle">
-              <img alt="Person name" src="/asset/image/shahid-shah.png" title="Shahid Shah">
+              <img alt="Shahid Shah" src="/asset/image/shahid-shah.png" title="Shahid Shah">
             </span>
             <span style="display: inline-block; font-size: 11px; line-height: 13px; position: absolute; top: 2px;">Published by<br> <a target="_blank" href="http://shahidshah.com/">@ShahidNShah</a></span></div>
           </div>
