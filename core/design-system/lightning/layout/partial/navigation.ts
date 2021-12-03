@@ -29,28 +29,65 @@ export const contextBarPartial: ldsGovn.LightningPartial = (layout) => {
   }
   // deno-fmt-ignore (because we don't want ${...} wrapped)
   return `
-  <!-- Primary Navigation (see https://www.lightningdesignsystem.com/components/global-navigation) -->
-  ${layout.dsCtx.navigation.routeTree ? `
-  <div class="slds-context-bar">
-    <div class="slds-context-bar__primary">
-      <div class="slds-context-bar__icon-action">
-        <a href="${subjectImgSrcHref}"><img src="${subjectImgSrcText}" alt="" class="site-brand-prime-logo"></a>
+  <article style="background-color: #fff; border-bottom: 3px solid #1589ee;">
+    <section class="slds-container_x-large slds-container_center slds-p-left_small slds-p-right_small">
+  <!-- top section - 1 -->
+    <div class="slds-clearfix">
+      <div class="slds-float_left">
+        <div class="slds-context-bar__primary">
+          <div class="slds-context-bar__icon-action">
+            <a href="${subjectImgSrcHref}"><img src="${subjectImgSrcText}" width="30" height="30" alt="" class="slds-m-top_xx-small"></a>
+          </div>
+          <span class="slds-context-bar__label-action slds-context-bar__app-name slds-m-top_xx-small">
+          <span class="slds-truncate" title="${subjectLabel}"><a style="color: #000;" href="${subjectHref}">${subjectLabel}</a></span></span>
       </div>
-      <span class="slds-context-bar__label-action slds-context-bar__app-name">
-        <span class="slds-truncate" title="${subjectLabel}"><a href="${subjectHref}">${subjectLabel}</a></span>
-      </span>
+      </div>
+      <div class="slds-float_left">
+      </div>
+      <div class="slds-float_right">
+        <div class="slds-grid slds-gutters slds-wrap slds-m-top_xx-small slds-text-align_right">
+          <div class="slds-col slds-m-vertical_xxx-small">
+            <div class="slds-form-element">
+              <div class="slds-form-element__control slds-input-has-icon slds-input-has-icon_right">
+              <svg class="slds-icon slds-input__icon slds-input__icon_right slds-icon-text-default" aria-hidden="true">
+              <use href="/lightning/image/slds-icons/utility-sprite/svg/symbols.svg#search"></use>
+              </svg>
+              <input type="text" id="text-input-id-1" placeholder="Search" class="slds-input">
+              </div>
+              </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <nav class="slds-context-bar__primary" role="navigation">
+    <hr class="slds-m-vertical_xxx-small">
+  <!-- top section - 2 -->
+    <div class="slds-clearfix">
+      <div class="slds-float_left">
+      <nav class="slds-context-bar__primary" role="navigation">
       <ul class="slds-grid">
         ${layout.dsCtx.navigation.contextBarItems(layout).map(item => { return `
         <li class="slds-context-bar__item${layout.activeRoute?.inRoute(item) ? ' slds-is-active' : ''}">
           <a href="${layout.dsCtx.navigation.location(item)}" class="slds-context-bar__label-action" ${item.hint ? `title="${item.hint}"` : '' }">
             <span class="slds-truncate"${item.hint ? ` title="${item.hint}"` : '' }>${item.label}</span>
           </a>
-        </li>`}).join("\n")} 
+        </li>`}).join("\n")}
       </ul>
     </nav>
-  </div>` : '<!-- contextBar: No ctx, state, or route tree -->'}`
+
+      </div>
+      <div class="slds-float_right" style="width: 125px;">
+        <div class="slds-grid slds-gutters slds-wrap slds-m-top_xx-small top-right-widget">
+          <div class="slds-col">
+            <div style="position: relative; top:-2px;"><span class="slds-avatar slds-avatar_circle">
+              <img alt="Person name" src="/asset/image/shahid-shah.png" title="Shahid Shah">
+            </span>
+            <span style="display: inline-block; font-size: 11px; line-height: 13px; position: absolute; top: 2px;">Published by<br> <a target="_blank" href="http://shahidshah.com/">@ShahidNShah</a></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </section>
+  </article>`
 };
 
 export function routeTreePartial(
@@ -84,7 +121,7 @@ export const contentTreePartial: ldsGovn.LightningPartial = (layout) => {
     <div class="slds-tree_container">
       <h4 class="slds-tree__group-header" id="treeheading">${contentTree.label}</h4>
       <ul aria-labelledby="treeheading" class="slds-tree" role="tree">
-      ${routeTreePartial(contentTree, layout)} 
+      ${routeTreePartial(contentTree, layout)}
       <ul>
     </div>
     </aside>
@@ -97,7 +134,7 @@ export const verticalNavigationPartial: ldsGovn.LightningPartial = (layout) => {
   return contentTree ? `<nav class="slds-nav-vertical" aria-label="Sub page">
     <div class="slds-nav-vertical__section">
       <h2 id="entity-header" class="slds-nav-vertical__title">${contentTree.label}</h2>
-      <ul aria-describedby="entity-header">        
+      <ul aria-describedby="entity-header">
         ${contentTree.children.map(rtn => {
           const isActive = layout.activeTreeNode && rtn.qualifiedPath == layout.activeTreeNode.qualifiedPath;
           return `<li class="slds-nav-vertical__item ${isActive ? 'slds-is-active' : ''}">
@@ -118,7 +155,7 @@ export const verticalNavigationShadedPartial: ldsGovn.LightningPartial = (
     <div class="slds-nav-vertical__section">
       <div>
       <fieldset class="slds-nav-vertical slds-nav-vertical_compact slds-nav-vertical_shade">
-        <legend class="slds-nav-vertical__title">${contentTree.label}</legend>               
+        <legend class="slds-nav-vertical__title">${contentTree.label}</legend>
         ${contentTree.children.map(rtn => {
           const isActive = layout.activeTreeNode && rtn.qualifiedPath == layout.activeTreeNode.qualifiedPath;
           const notifications = layout.dsCtx.navigation?.descendantsNotifications<ldsGovn.LightningNavigationNotification>(rtn);
@@ -126,7 +163,7 @@ export const verticalNavigationShadedPartial: ldsGovn.LightningPartial = (
             <input type="radio" id="unique-id-03-recent" value="unique-id-03-recent" name="unique-id-shade"${isActive ? ' checked=""' : ''} />
             <label class="slds-nav-vertical__action" for="unique-id-03-recent">
               <a href="${layout.dsCtx.navigation.location(rtn)}">
-                <span class="slds-nav-vertical_radio-faux">${rtn.label}</span>               
+                <span class="slds-nav-vertical_radio-faux">${rtn.label}</span>
               </a>
               ${notifications ? notifications.collection.map(lnn => `<span class="slds-badge slds-col_bump-left">
                 ${lnn.icon ? icon.renderedIconContainer(layout, lnn.icon, "slds-icon_xx-small slds-icon-text-default slds-m-right_xx-small") : ''}<span class="slds-assistive-text">:</span>${lnn.count()}
@@ -134,10 +171,10 @@ export const verticalNavigationShadedPartial: ldsGovn.LightningPartial = (
               </span>`).join("\n") : '<!-- no notifications -->'}
             </label>
           </span>`;
-        }).join('\n')}                
+        }).join('\n')}
       </fieldset>
       </div>
-    </div>  
+    </div>
   </div>` : `<!-- no vertical shaded navigation -->`
 };
 
@@ -149,7 +186,7 @@ ${layout?.activeRoute ?
   <ol class="slds-breadcrumb slds-list_horizontal slds-wrap">
     ${layout?.activeTreeNode?.ancestors.reverse().map(r => {
       return r.qualifiedPath == layout.activeTreeNode?.qualifiedPath ? '' : `<li class="slds-breadcrumb__item"><a href="${layout.dsCtx.navigation.location(r)}">${r.label}</a></li>`
-    }).join("\n")} 
+    }).join("\n")}
   </ol>
 </nav>`: '<!-- no breadcrumbs -->'}`
 
@@ -161,6 +198,6 @@ ${layout?.activeRoute ?
   <ol class="slds-breadcrumb slds-list_horizontal slds-wrap">
     ${layout?.activeTreeNode?.ancestors.slice(1).reverse().map(r => {
       return r.qualifiedPath == layout.activeTreeNode?.qualifiedPath ? '' : `<li class="slds-breadcrumb__item"><a href="${layout.dsCtx.navigation.location(r)}">${r.label}</a></li>`
-    }).join("\n")} 
+    }).join("\n")}
   </ol>
 </nav>`: '<!-- no breadcrumbs -->'}`
