@@ -1,6 +1,8 @@
 import { path } from "../../core/deps.ts";
 // import { testingAsserts as ta } from "../deps-test.ts";
 import * as mod from "./publication.ts";
+import * as govn from "../../governance/mod.ts";
+import * as obs from "../../core/std/observability.ts";
 import * as fsLink from "../../lib/fs/link.ts";
 import * as git from "../../lib/git/mod.ts";
 import * as ds from "../../core/render/html/mod.ts";
@@ -13,7 +15,11 @@ const testPath = path.relative(
 );
 const docsPath = path.join(testPath, "../../", "docs");
 const extensionsManager = new extn.ReloadableCachedExtensions();
+const observability = new obs.Observability(
+  new govn.ObservabilityEventsEmitter(),
+);
 const prefs: mod.Preferences<unknown> = {
+  observability,
   contentRootPath: path.join(docsPath, "content"),
   persistClientCargo: async (publishDest) => {
     await fsLink.symlinkDirectoryChildren(

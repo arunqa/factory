@@ -100,7 +100,9 @@ export class FileSysGlobsOriginator<Resource>
     };
   }
 
-  *obsHealthStatus(): Generator<govn.ObservabilityHealthComponentStatus> {
+  async *obsHealthStatus(): AsyncGenerator<
+    govn.ObservabilityHealthComponentStatus
+  > {
     const time = new Date();
     for (const topLevelPath of this.topLevelLfsPaths) {
       for (const lfsPath of topLevelPath.lfsPaths) {

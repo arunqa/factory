@@ -50,9 +50,8 @@ export function observabilityPostProduceResources<
       }
       if (state.health.emitResources()) {
         yield {
-          // deno-lint-ignore require-await
           resourceFactory: async () => {
-            const health = state.observability.serviceHealth();
+            const health = await state.observability.serviceHealth();
             const healthJSON = JSON.stringify(health, undefined, "  ");
             const resource:
               & govn.PersistableStructuredDataResource

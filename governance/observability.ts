@@ -11,7 +11,9 @@ export interface ObservabilityHealthComponentStatus
 }
 
 export interface ObservabilityHealthComponentStatusSupplier {
-  readonly obsHealthStatus: () => Generator<ObservabilityHealthComponentStatus>;
+  readonly obsHealthStatus: () => AsyncGenerator<
+    ObservabilityHealthComponentStatus
+  >;
 }
 
 export class ObservabilityEventsEmitter extends events.EventEmitter<{

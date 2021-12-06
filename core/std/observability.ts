@@ -16,7 +16,7 @@ export class Observability implements govn.ObservabilityEventsEmitterSupplier {
     events.on("healthStatusSupplier", (rf) => this.suppliers.push(rf));
   }
 
-  serviceHealthComponentsDetails() {
+  async serviceHealthComponentsDetails() {
     const details: Record<string, health.ServiceHealthComponentStatus[]> = {};
     const storeDetail = (
       category: string,
@@ -30,7 +30,7 @@ export class Observability implements govn.ObservabilityEventsEmitterSupplier {
       }
     };
     for (const supplier of this.suppliers) {
-      for (const status of supplier.obsHealthStatus()) {
+      for await (const status of supplier.obsHealthStatus()) {
         if (Array.isArray(status.category)) {
           for (const category of status.category) {
             storeDetail(category, status.status);
@@ -43,12 +43,12 @@ export class Observability implements govn.ObservabilityEventsEmitterSupplier {
     return details;
   }
 
-  serviceHealth() {
+  async serviceHealth() {
     return health.healthyService({
       serviceID: import.meta.url,
       releaseID: "releaseID",
       description: "TODO: ObservabilityEvents description",
-      details: this.serviceHealthComponentsDetails(),
+      details: await this.serviceHealthComponentsDetails(),
       version: "TODO: ObservabilityEvents version",
     });
   }

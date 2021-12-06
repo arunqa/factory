@@ -37,6 +37,7 @@ export const assetMetricsWalkOptions: fs.WalkOptions = {
 
 export interface Preferences<OperationalContext> {
   readonly operationalCtx?: OperationalContext;
+  readonly observability: rfStd.Observability;
   readonly contentRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
@@ -60,6 +61,7 @@ export interface Preferences<OperationalContext> {
 export class Configuration<OperationalContext>
   implements Omit<Preferences<OperationalContext>, "assetsMetricsWalkers"> {
   readonly operationalCtx?: OperationalContext;
+  readonly observability: rfStd.Observability;
   readonly telemetry: telem.Instrumentation = new telem.Telemetry();
   readonly metrics = new metrics.TypicalMetrics();
   readonly envVarNamesPrefix: string;
@@ -86,6 +88,7 @@ export class Configuration<OperationalContext>
 
   constructor(prefs: Preferences<OperationalContext>) {
     this.operationalCtx = prefs.operationalCtx;
+    this.observability = prefs.observability;
     this.mGitResolvers = prefs.mGitResolvers;
     this.git = git.discoverGitWorktreeExecutiveSync(
       prefs.contentRootPath,
@@ -424,9 +427,7 @@ export abstract class TypicalPublication<OCState>
     this.config.mGitResolvers.registerResolver(routes.gitAssetPublUrlResolver);
     this.diagsOptions = diagsConfig.configureSync();
     this.state = {
-      observability: new rfStd.Observability(
-        new rfGovn.ObservabilityEventsEmitter(),
-      ),
+      observability: config.observability,
       resourcesTree: routes.resourcesTree,
       resourcesIndex: new rfStd.UniversalResourcesIndex(),
       diagnostics: () => ({
@@ -463,7 +464,9 @@ export abstract class TypicalPublication<OCState>
     // deno-lint-ignore no-explicit-any
   ): html.DesignSystemFactory<any, any, any, any>;
 
-  *obsHealthStatus(): Generator<rfGovn.ObservabilityHealthComponentStatus> {
+  async *obsHealthStatus(): AsyncGenerator<
+    rfGovn.ObservabilityHealthComponentStatus
+  > {
     const time = new Date();
     const status = health.healthyComponent({
       componentId: this.namespaceURIs.join(", "),

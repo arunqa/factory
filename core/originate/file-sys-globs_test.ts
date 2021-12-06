@@ -46,7 +46,6 @@ const fsgo = new mod.FileSysGlobsOriginator<fs.WalkEntry>(
     ...observability,
   },
 );
-// console.dir(observability.serviceHealth());
 
 Deno.test(`FileSysGlobsOriginator for fs.WalkEntry (async) in ${contentPathRel}`, async () => {
   ta.assert(fs.existsSync(contentPathRel), `${contentPathRel} should exist`);
