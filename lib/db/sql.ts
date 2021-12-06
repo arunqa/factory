@@ -42,11 +42,35 @@ export async function configureSqlGlobals() {
   }
 }
 
-export async function preparePostgreSqlGlobals(applicationName?: string) {
+export async function preparePostgreSqlGlobals(
+  options?: {
+    readonly applicationName?: string;
+    readonly decorateDbConnValidityArgs?: (
+      suggested: conf.DatabaseConnectionArguments,
+      origin: string,
+      envVarNamesPrefix?: string,
+    ) => conf.DatabaseConnectionArguments;
+    readonly decorateDbConnAcquireArgs?: (
+      suggested: conf.DatabaseConnectionArguments,
+      origin: string,
+      envVarNamesPrefix?: string,
+    ) => conf.DatabaseConnectionArguments;
+    readonly decorateDbConn?: (
+      conn: DatabaseConnection,
+      dcArgs: conf.DatabaseConnectionArguments,
+      origin: string,
+      envVarNamesPrefix?: string,
+    ) => DatabaseConnection;
+  },
+) {
   await configureSqlGlobals();
 
   window.postgresSqlDbConnSpecValidity = (identity, envVarNamesPrefix) => {
-    return conf.envConfiguredDatabaseConnection(identity, envVarNamesPrefix);
+    return conf.envConfiguredDatabaseConnection(
+      identity,
+      envVarNamesPrefix,
+      options?.decorateDbConnValidityArgs,
+    );
   };
 
   window.acquirePostgresSqlDbConn = (identity, envVarNamesPrefix) => {
@@ -55,12 +79,16 @@ export async function preparePostgreSqlGlobals(applicationName?: string) {
       const dbc = conf.envConfiguredDatabaseConnection(
         identity,
         envVarNamesPrefix,
+        options?.decorateDbConnAcquireArgs,
       );
       conn = new TypicalDatabaseConnection({
-        applicationName,
+        applicationName: options?.applicationName,
         ...dbc,
         resultsCache: window.globalSqlResultsCache,
       });
+      if (options?.decorateDbConn) {
+        conn = options?.decorateDbConn(conn, dbc, identity, envVarNamesPrefix);
+      }
       window.globalSqlDbConns.set(identity, conn);
     }
     return conn;

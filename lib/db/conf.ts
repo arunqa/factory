@@ -10,9 +10,15 @@ export interface DatabaseConnectionArguments
 export function envConfiguredDatabaseConnection(
   origin: string,
   envVarNamesPrefix?: string,
+  decorate?: (
+    suggested: DatabaseConnectionArguments,
+    origin: string,
+    envVarNamesPrefix?: string,
+  ) => DatabaseConnectionArguments,
 ): DatabaseConnectionArguments {
   const dbccc = databaseConnectionConfigContext(origin, envVarNamesPrefix);
-  return typicalCachedDbConnEnvConfig.configureSync(dbccc);
+  const result = typicalCachedDbConnEnvConfig.configureSync(dbccc);
+  return decorate ? decorate(result, origin, envVarNamesPrefix) : result;
 }
 
 export interface DatabaseConnectionConfigContext
