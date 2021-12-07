@@ -24,8 +24,10 @@ export const typicalPageSurroundBodyPrePartial: ldsGovn.LightningPartial = (layo
     ${p.typicalHeadPartial(layout)}
     ${layout.contributions.scripts.contributions().contributions.join("\n")}
     ${layout.contributions.stylesheets.contributions().contributions.join("\n")}
+    ${layout.contributions.head.contributions("aft").contributions.join("\n")}
   </head>
   <body${p.bodyAttrsPartial(layout)}>
+    ${layout.contributions.body.contributions("fore").contributions.join("\n")}
     ${p.redirectConsoleContainerPartial(layout)}
     ${p.resourceDiagnosticsPartial(layout)}
     <header class="slds-no-print">
@@ -37,14 +39,15 @@ export const typicalPageSurroundBodyPostPartial: ldsGovn.LightningPartial = (lay
     ${p.footerFixedCopyrightBuildPartial(layout)}
     ${p.typicalTailPartial(layout)}
     ${p.redirectConsolePartial(layout)}
+    ${layout.contributions.body.contributions("aft").contributions.join("\n")}
   </body>`
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const homePage = lightningTemplate("lds/page/home")`<!DOCTYPE html>
 <html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "homePage")}>
     ${typicalPageSurroundBodyPrePartial}
-  
-    <main class="container flex slds-m-vertical_small slds-container--center"> 
+
+    <main class="container flex slds-m-vertical_small slds-container--center">
       <div class="slds-container--xlarge slds-container--center">
       ${p.typicalBodyPartial}
       </div>
@@ -58,7 +61,7 @@ export const homePage = lightningTemplate("lds/page/home")`<!DOCTYPE html>
 export const innerIndexPage = lightningTemplate("lds/page/inner-index")`<!DOCTYPE html>
 <html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "innerIndexPage")}>
     ${typicalPageSurroundBodyPrePartial}
-  
+
     <main class="slds-container_x-large slds-container_center slds-p-around_medium">
         <div>
             ${p.breadcrumbsPartial}
@@ -77,7 +80,7 @@ export const innerIndexPage = lightningTemplate("lds/page/inner-index")`<!DOCTYP
 export const innerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto")`<!DOCTYPE html>
 <html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "innerIndexAutoPage")}>
     ${typicalPageSurroundBodyPrePartial}
-  
+
     <main class="slds-container_x-large slds-container_center slds-p-around_medium">
         <div>
           ${p.breadcrumbsWithoutTerminalPartial}
@@ -102,6 +105,7 @@ export const noDefinitiveLayoutPage = lightningTemplate("lds/page/no-layout")`<!
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/highlight.min.js"></script>
     <script>hljs.highlightAll();</script>
     <title>SLDS Diagnostics</title>
+    ${(layout) => layout.contributions.head.contributions("aft")}
   </head>
   <body${p.bodyAttrsPartial}>
     ${p.redirectConsoleContainerPartial}

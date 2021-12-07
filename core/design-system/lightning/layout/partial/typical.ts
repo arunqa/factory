@@ -41,7 +41,7 @@ export const clientCargoPartial: ldsGovn.LightningPartial = (layout) => {
         return this.assets.ldsIcons(
           \`/\${collection}-sprite/svg/symbols.svg#\${name}\`,
         );
-      }      
+      }
     };
     </script>`;
 };
@@ -51,6 +51,7 @@ export const bodyAttrsPartial: ldsGovn.LightningPartial = (layout) =>
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const typicalHeadPartial: ldsGovn.LightningPartial = (layout) => `
+${layout.contributions.head.contributions("fore").contributions.join("\n")}
 <meta charset="utf-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -65,7 +66,7 @@ export const typicalHeadPartial: ldsGovn.LightningPartial = (layout) => `
 <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
 <script src="${layout.dsCtx.assets.dsScript("/lightning.js")}"></script>
 ${dia.clientDiagramsContributionsPartial(layout)}
-${clientCargoPartial(layout)} 
+${clientCargoPartial(layout)}
 <link rel="shortcut icon" href="${layout.dsCtx.assets.favIcon("/asset/image/favicon.ico")}"/>
 <title>${layout.layoutText.title(layout)}</title>
 `;

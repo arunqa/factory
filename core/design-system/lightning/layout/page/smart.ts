@@ -8,15 +8,17 @@ export const smartNavigationPage = t.lightningTemplate("lds/page/default")`<!DOC
     ${p.typicalHeadPartial}
     ${(layout) => layout.contributions.scripts.contributions()}
     ${(layout) => layout.contributions.stylesheets.contributions()}
+    ${(layout) => layout.contributions.head.contributions("aft")}
   </head>
   <body${p.bodyAttrsPartial}>
-  ${p.redirectConsoleContainerPartial} 
+  ${(layout) => layout.contributions.body.contributions("fore")}
+  ${p.redirectConsoleContainerPartial}
   ${p.resourceDiagnosticsPartial}
   <header class="slds-no-print">
   ${p.contextBarPartial}
   </header>
-  
-  <main class="slds-container_x-large slds-container_center slds-p-around_medium"> 
+
+  <main class="slds-container_x-large slds-container_center slds-p-around_medium">
     <div class="slds-grid slds-grid_align-left slds-gutters">
       <div class="slds-col slds-size_3-of-12 slds-no-print">
       ${p.verticalNavigationShadedPartial}
@@ -41,7 +43,7 @@ export const smartNavigationPage = t.lightningTemplate("lds/page/default")`<!DOC
           <div class="toc"></div> <!-- filled in by tocbot in asideTOC -->
           <div class="slds-p-top_large">
             ${p.frontmatterTagsPartial}
-          </div>          
+          </div>
         </aside>
       </div>
     </div>
@@ -50,5 +52,6 @@ export const smartNavigationPage = t.lightningTemplate("lds/page/default")`<!DOC
   ${p.footerFixedCopyrightBuildPartial}
   ${p.typicalTailPartial}
   ${p.redirectConsolePartial}
+  ${(layout) => layout.contributions.body.contributions("aft")}
   </body>
 </html>`;
