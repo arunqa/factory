@@ -230,6 +230,12 @@ export interface DesignSystemLintReporter<Layout extends html.HtmlLayout>
   readonly diagsShouldBeTemporary: govn.LintRule;
 }
 
+export interface DesignSystemLayoutContribsInitializer<
+  Layout extends html.HtmlLayout,
+> {
+  (layout: Omit<Layout, "contributions">): html.HtmlLayoutContributions;
+}
+
 export interface DesignSystemContentAdapter<
   Layout extends html.HtmlLayout,
   LayoutText extends html.HtmlLayoutText<Layout>,
@@ -252,6 +258,7 @@ export interface DesignSystemContentAdapter<
   readonly navigation: Navigation;
   readonly renderedAt: Date;
   readonly lintReporter?: DesignSystemLintReporter<Layout>;
+  readonly initContributions?: DesignSystemLayoutContribsInitializer<Layout>;
 }
 
 export type UntypedDesignSystemContentAdapter = DesignSystemContentAdapter<

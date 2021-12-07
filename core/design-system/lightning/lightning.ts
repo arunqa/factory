@@ -152,7 +152,22 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       frontmatter,
       activeRoute,
       activeTreeNode,
-      contributions: this.contributions(),
+      contributions: dsCtx.initContributions
+        ? dsCtx.initContributions({
+          dsCtx,
+          bodySource,
+          model,
+          layoutText: dsCtx.layoutText,
+          designSystem: this,
+          layoutSS,
+          frontmatter,
+          activeRoute,
+          activeTreeNode,
+          clientCargoPropertyName: "clientLayout",
+          origin: html.htmlLayoutOriginDataAttrs,
+          ...layoutArgs,
+        })
+        : this.contributions(),
       clientCargoPropertyName: "clientLayout",
       origin: html.htmlLayoutOriginDataAttrs,
       ...layoutArgs,
