@@ -11,11 +11,22 @@ export const frontmatterTagsPartial: ldsGovn.LightningPartial = (layout) => {
       : `<span class="slds-badge slds-badge_lightest">${tm.termLabel(term)}</span>`;
   };
 
-  // deno-fmt-ignore (because we don't want ${...} wrapped)
-  return `${layout?.frontmatter?.folksonomy && tm.isFolksonomy(layout.frontmatter.folksonomy)
-    ? (tm.isTerm(layout.frontmatter.folksonomy) ? badge(layout.frontmatter.folksonomy) : layout.frontmatter.folksonomy.map(term => badge(term)).join(' '))
-    : '<!-- no folksonomy in frontmatter -->'}
-  ${layout?.frontmatter?.taxonomy && tm.isTaxonomy(layout.frontmatter.taxonomy)
-    ?  (tm.isTerm(layout.frontmatter.taxonomy) ? badge(layout.frontmatter.taxonomy) : layout.frontmatter.taxonomy.map(term => badge(term)).join(' '))
-    : '<!-- no taxonomy in frontmatter -->'}`
+  const badges = (terms: k.Term | k.Term[]) => {
+    // check for array first since a term can also be an array
+    return Array.isArray(terms)
+      ? terms.map((term) => badge(term!)).join(" ")
+      : badge(terms);
+  };
+
+  return `${
+    layout?.frontmatter?.folksonomy &&
+      tm.isFolksonomy(layout.frontmatter.folksonomy)
+      ? badges(layout.frontmatter.folksonomy)
+      : "<!-- no folksonomy in frontmatter -->"
+  }
+  ${
+    layout?.frontmatter?.taxonomy && tm.isTaxonomy(layout.frontmatter.taxonomy)
+      ? badges(layout.frontmatter.taxonomy)
+      : "<!-- no taxonomy in frontmatter -->"
+  }`;
 };
