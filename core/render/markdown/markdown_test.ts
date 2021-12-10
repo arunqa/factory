@@ -47,7 +47,7 @@ Deno.test(`markdownHTML without frontmatter and integrated styles through data U
 
 const testTextWithFrontmatter = `
 ---
-tags: [a, b, c]
+folksonomy: [a, b, c]
 custom: value
 layout: slds/prime
 route:
