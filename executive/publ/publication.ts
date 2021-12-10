@@ -7,6 +7,7 @@ import * as metrics from "../../lib/metrics/mod.ts";
 import * as telem from "../../lib/telemetry/mod.ts";
 import * as health from "../../lib/health/mod.ts";
 import * as conf from "../../lib/conf/mod.ts";
+import * as k from "../../lib/knowledge/mod.ts";
 import * as fsA from "../../lib/fs/fs-analytics.ts";
 import * as fsT from "../../lib/fs/fs-tree.ts";
 import * as fsLink from "../../lib/fs/link.ts";
@@ -56,6 +57,7 @@ export interface Preferences<OperationalContext> {
     config: Configuration<OperationalContext>,
   ) => fsT.FileSysAssetWalker[];
   readonly extensionsManager: rfGovn.ExtensionsManager;
+  readonly termsManager: k.TermsManager;
 }
 
 export class Configuration<OperationalContext>
@@ -70,6 +72,7 @@ export class Configuration<OperationalContext>
   readonly fsRouteFactory: rfStd.FileSysRouteFactory;
   readonly routeLocationResolver?: rfStd.RouteLocationResolver;
   readonly extensionsManager: rfGovn.ExtensionsManager;
+  readonly termsManager: k.TermsManager;
   readonly observabilityRoute: rfGovn.Route;
   readonly diagnosticsRoute: rfGovn.Route;
   readonly contentRootPath: fsg.FileSysPathText;
@@ -124,6 +127,7 @@ export class Configuration<OperationalContext>
       }];
     this.rewriteMarkdownLink = prefs.rewriteMarkdownLink;
     this.extensionsManager = prefs.extensionsManager;
+    this.termsManager = prefs.termsManager;
   }
 
   produceControlPanelContent(): boolean {

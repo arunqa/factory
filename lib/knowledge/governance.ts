@@ -18,3 +18,18 @@ export type Term = TermIdentity | TermDefn | TermElaboration;
 
 export type Folksonomy = Term | Term[];
 export type Taxonomy = Term | Term[];
+
+export interface TermsManager {
+  readonly termLabel: (
+    term: Term,
+    onInvalid?: (t: Term) => TermLabel,
+  ) => TermLabel;
+  readonly termNamespace: (
+    term: Term,
+    onInvalid?: (t: Term) => TermNamespace | undefined,
+  ) => TermNamespace | undefined;
+
+  readonly isTerm: (o: unknown) => o is Term;
+  readonly isFolksonomy: (o: unknown) => o is Folksonomy;
+  readonly isTaxonomy: (o: unknown) => o is Taxonomy;
+}

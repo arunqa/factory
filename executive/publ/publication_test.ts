@@ -5,6 +5,7 @@ import * as govn from "../../governance/mod.ts";
 import * as obs from "../../core/std/observability.ts";
 import * as fsLink from "../../lib/fs/link.ts";
 import * as git from "../../lib/git/mod.ts";
+import * as k from "../../lib/knowledge/mod.ts";
 import * as ds from "../../core/render/html/mod.ts";
 import * as lds from "../../core/design-system/lightning/mod.ts";
 import * as extn from "../../core/std/extension.ts";
@@ -15,6 +16,7 @@ const testPath = path.relative(
 );
 const docsPath = path.join(testPath, "../../", "docs");
 const extensionsManager = new extn.ReloadableCachedExtensions();
+const termsManager = new k.TypicalTermsManager();
 const observability = new obs.Observability(
   new govn.ObservabilityEventsEmitter(),
 );
@@ -52,6 +54,7 @@ const prefs: mod.Preferences<unknown> = {
   },
   wsEditorResolver: () => undefined,
   extensionsManager,
+  termsManager,
 };
 
 export class TestDesignSystem implements lds.LightningDesignSystemFactory {
@@ -81,6 +84,7 @@ export class TestDesignSystem implements lds.LightningDesignSystemFactory {
       renderedAt: new Date(),
       wsEditorResolver: () => undefined,
       wsEditorRouteResolver: () => undefined,
+      termsManager,
     };
   }
 }

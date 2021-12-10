@@ -6,6 +6,7 @@ import * as modGovn from "./governance.ts";
 import * as rt from "../../../core/std/route.ts";
 import * as rtree from "../../../core/std/route-tree.ts";
 import * as git from "../../../lib/git/mod.ts";
+import * as k from "../../../lib/knowledge/mod.ts";
 import * as mod from "./lightning.ts";
 
 export type Resource = govn.TextSyncSupplier;
@@ -57,6 +58,7 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
     },
     wsEditorResolver: () => undefined,
     wsEditorRouteResolver: () => undefined,
+    termsManager: new k.TypicalTermsManager(),
   };
   const syncResult = ls.renderedSync(
     lds.layout(resource, lss, dsCtx),

@@ -13,6 +13,7 @@ import * as nature from "../../../core/std/nature.ts";
 import * as persist from "../../../core/std/persist.ts";
 import * as rtree from "../../../core/std/route-tree.ts";
 import * as notif from "../../../lib/notification/mod.ts";
+import * as k from "../../../lib/knowledge/mod.ts";
 
 export const indexUnitName = "index";
 
@@ -256,6 +257,7 @@ export interface DesignSystemContentAdapter<
   readonly layoutText: LayoutText;
   readonly assets: AssetLocations;
   readonly navigation: Navigation;
+  readonly termsManager: k.TermsManager;
   readonly renderedAt: Date;
   readonly lintReporter?: DesignSystemLintReporter<Layout>;
   readonly initContributions?: DesignSystemLayoutContribsInitializer<Layout>;

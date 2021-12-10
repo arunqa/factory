@@ -21,14 +21,30 @@ taxonomy:
     namespace: namespace
 `;
 
+const tm = new mod.TypicalTermsManager();
+
 Deno.test(`YAML Knowledge Representation (single)`, () => {
   const testSingle = yaml.parse(fmSingle) as Record<string, unknown>;
-  ta.assert(mod.isFolksonomy(testSingle.folksonomy));
-  ta.assert(mod.isTaxonomy(testSingle.taxonomy));
+  ta.assert(tm.isFolksonomy(testSingle.folksonomy));
+  ta.assert(tm.isTerm(testSingle.folksonomy));
+  ta.assert(typeof testSingle.folksonomy === "string");
+  ta.assertEquals(testSingle.folksonomy, "untyped-tag-1");
+
+  ta.assert(tm.isTaxonomy(testSingle.taxonomy));
+  ta.assert(tm.isTerm(testSingle.taxonomy));
+  ta.assert(typeof testSingle.taxonomy === "string");
+  ta.assertEquals(testSingle.taxonomy, "typed-tag-1");
 });
 
 Deno.test(`YAML Knowledge Representation (array)`, () => {
   const testArray = yaml.parse(fmArray) as Record<string, unknown>;
-  ta.assert(mod.isFolksonomy(testArray.folksonomy));
-  ta.assert(mod.isTaxonomy(testArray.taxonomy));
+  ta.assert(tm.isFolksonomy(testArray.folksonomy));
+  ta.assert(Array.isArray(testArray.folksonomy));
+  ta.assertEquals(testArray.folksonomy.length, 4);
+  ta.assertEquals(testArray.folksonomy[0], "untyped-tag-1");
+
+  ta.assert(tm.isTaxonomy(testArray.taxonomy));
+  ta.assert(Array.isArray(testArray.taxonomy));
+  ta.assertEquals(testArray.taxonomy.length, 4);
+  ta.assertEquals(testArray.taxonomy[0], "typed-tag-1");
 });
