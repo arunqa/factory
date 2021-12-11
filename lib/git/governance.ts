@@ -55,11 +55,19 @@ export interface GitRemoteCommitResolver<Field extends CommitField> {
   ): GitRemoteCommit<Field> | undefined;
 }
 
+export interface GitRemoteChangelogReportHref<Field extends CommitField> {
+  (
+    commit?: GitCommitBase<Field> | GitCommitBaseWithFiles<Field>,
+  ): string | undefined;
+}
+
 export interface ManagedGitResolvers<Identity extends string>
   extends GitWorkTreeAssetUrlResolvers<Identity> {
   readonly workTreeAsset: GitWorkTreeAssetResolver;
   // deno-lint-ignore no-explicit-any
   readonly remoteCommit: GitRemoteCommitResolver<any>;
+  // deno-lint-ignore no-explicit-any
+  readonly changelogReportAnchorHref: GitRemoteChangelogReportHref<any>;
 }
 
 export interface GitPathsSupplier {

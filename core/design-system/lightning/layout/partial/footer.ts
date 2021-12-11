@@ -11,6 +11,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
   let remoteCommit:
     | git.GitRemoteCommit<"hash" | "authorName" | "subject">
     | undefined;
+  let changelogReportHref: string | undefined;
   if (layout.dsCtx.git) {
     const cached = layout.dsCtx.git.cached;
     gitBranch = cached.currentBranch || "??";
@@ -27,6 +28,11 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
         layout.dsCtx.git,
       )
       : undefined;
+    changelogReportHref = cached.mostRecentCommit
+      ? layout.dsCtx.mGitResolvers.changelogReportAnchorHref(
+        cached.mostRecentCommit,
+      )
+      : undefined;
   }
   let wsAsset: ws.WorkspaceEditorTarget | undefined;
   if (layout.activeRoute) {
@@ -40,7 +46,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
         <p class="slds-text-body_small">© 1997-<script>document.write(new Date().getFullYear())</script> Netspective Media LLC. All Rights Reserved.</p>
         <p class="slds-text-body_small">
           Publication created <span is="time-ago" date="${layout.dsCtx.renderedAt}"/>
-          ${remoteCommit ? ` (triggered by <a href="${remoteCommit.remoteURL}" class="git-remote-commit" title="${remoteCommit.commit.subject}">${remoteCommit.commit.authorName}</a>)` : ''}
+          ${remoteCommit ? ` (${changelogReportHref ? `<a href="${changelogReportHref}" class="git-changelog">triggered</a>`: 'triggered'} by <a href="${remoteCommit.remoteURL}" class="git-remote-commit" title="${remoteCommit.commit.subject}">${remoteCommit.commit.authorName}</a>)` : ''}
         </p>
         <p class="slds-text-body_small">
         ${remoteAsset

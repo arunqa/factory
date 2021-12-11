@@ -42,6 +42,7 @@ const prefs: mod.Preferences<unknown> = {
       paths,
     }),
     workTreeAsset: git.typicalGitWorkTreeAssetResolver,
+    changelogReportAnchorHref: () => "/activity-log/git-changelog/",
   },
   routeGitRemoteResolver: (route, gitBranchOrTag, paths) => {
     return {

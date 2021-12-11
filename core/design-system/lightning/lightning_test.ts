@@ -46,6 +46,7 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
         paths,
       }),
       workTreeAsset: git.typicalGitWorkTreeAssetResolver,
+      changelogReportAnchorHref: () => "/activity-log/git-changelog/",
     },
     routeGitRemoteResolver: (route, gitBranchOrTag, paths) => {
       return {
