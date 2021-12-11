@@ -198,6 +198,20 @@ const parseCommits = <T extends string>(
       }
     });
 
+    if (parsed.files && parsed.status) {
+      // git emits status and files arrays separately but we want them in a
+      // single array since it's more convenient
+      const assets: { path: string; status: string }[] = [];
+      for (let i = 0; i < parsed.files.length; i++) {
+        assets.push({
+          path: parsed.files[i],
+          status: parsed.status[i],
+        });
+      }
+      // deno-lint-ignore no-explicit-any
+      (parsed as any).assets = assets;
+    }
+
     return parsed as Commit;
   });
 };
