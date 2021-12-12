@@ -104,6 +104,16 @@ export const designSystemNoDecorationPage = designSystemTemplate(
   "ds/page/no-decoration",
 )`${typicalDesignSystemBodyPartial}`;
 
+export function layoutFrontmatter(
+  layout: DesignSystemLayoutArgumentsSupplier,
+):
+  & govn.UntypedFrontmatter
+  & DesignSystemLayoutArgumentsSupplier {
+  return layout as
+    & govn.UntypedFrontmatter
+    & DesignSystemLayoutArgumentsSupplier;
+}
+
 export class DesignSystemLayouts<Layout extends html.HtmlLayout>
   implements govn.LayoutStrategies<Layout, govn.HtmlSupplier> {
   readonly layouts: Map<
