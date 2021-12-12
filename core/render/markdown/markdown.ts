@@ -7,6 +7,7 @@ import { default as markdownItTitle } from "https://jspm.dev/markdown-it-title@4
 import { default as markdownItDirective } from "https://jspm.dev/markdown-it-directive@1.0.1";
 import { default as markdownItDirectiveWC } from "https://jspm.dev/markdown-it-directive-webcomponents@1.2.0";
 import { default as markdownItHashtag } from "https://jspm.dev/markdown-it-hashtag@0.4.0";
+import { default as markdownItTaskCheckbox } from "https://jspm.dev/markdown-it-task-checkbox";
 import * as govn from "../../../governance/mod.ts";
 import * as c from "../../../core/std/content.ts";
 import * as m from "../../../core/std/model.ts";
@@ -123,6 +124,7 @@ export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
     this.mdiRenderer.use(markdownItAnchor); // TODO: use callback to track headings?
     this.mdiRenderer.use(markdownItTitle, { level: 0 }); // TODO: grab excerpts too?
     this.mdiRenderer.use(markdownItHashtag);
+    this.mdiRenderer.use(markdownItTaskCheckbox);
     if (this.mpl?.directiveExpectations) {
       this.mdiRenderer.use(markdownItDirective)
         // deno-lint-ignore no-explicit-any
