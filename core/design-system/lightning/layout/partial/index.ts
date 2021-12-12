@@ -2,7 +2,6 @@ import * as govn from "../../../../../governance/mod.ts";
 import * as ds from "../../../../render/html/mod.ts";
 import * as ldsGovn from "../../governance.ts";
 import * as card from "./card.ts";
-import * as tab from "./tab.ts";
 
 export const autoIndexCardsBodyPartial: ldsGovn.LightningPartial = (layout) => {
   const contentTree = layout.contentStrategy.navigation.contentTree(layout);
