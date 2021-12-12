@@ -32,7 +32,7 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
     contextBarSubject: "test",
     contextBarSubjectImageSrc: "test",
   };
-  const dsCtx: modGovn.LightingDesignSystemContentAdapter = {
+  const contentStrategy: modGovn.LightingDesignSystemContentStrategy = {
     layoutText,
     navigation,
     assets,
@@ -62,7 +62,7 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
     termsManager: new k.TypicalTermsManager(),
   };
   const syncResult = ls.renderedSync(
-    lds.layout(resource, lss, dsCtx),
+    lds.layout(resource, lss, contentStrategy),
   );
   ta.assert(content.isHtmlSupplier(syncResult));
   // console.dir(syncResult);
@@ -74,7 +74,7 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
   // ***** TODO ****
   // ***** REPLACE surface in context ****
   const asyncResult = await ls.rendered(
-    lds.layout(resource, lss, dsCtx),
+    lds.layout(resource, lss, contentStrategy),
   );
   ta.assert(content.isHtmlSupplier(asyncResult));
   // console.dir(asyncResult);

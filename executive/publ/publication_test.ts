@@ -60,14 +60,14 @@ const prefs: mod.Preferences<unknown> = {
 
 export class TestDesignSystem implements lds.LightningDesignSystemFactory {
   readonly designSystem: lds.LightingDesignSystem<lds.LightningLayout>;
-  readonly contentAdapter: lds.LightingDesignSystemContentAdapter;
+  readonly contentStrategy: lds.LightingDesignSystemContentStrategy;
 
   constructor(
     config: mod.Configuration<unknown>,
     routes: mod.PublicationRoutes,
   ) {
     this.designSystem = new lds.LightingDesignSystem(config.extensionsManager);
-    this.contentAdapter = {
+    this.contentStrategy = {
       git: config.git,
       layoutText: new lds.LightingDesignSystemText(),
       navigation: new lds.LightingDesignSystemNavigation(

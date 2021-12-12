@@ -2,7 +2,7 @@ import * as ldsGovn from "../../governance.ts";
 import * as k from "../../../../../lib/knowledge/mod.ts";
 
 export const frontmatterTagsPartial: ldsGovn.LightningPartial = (layout) => {
-  const tm = layout.dsCtx.termsManager;
+  const tm = layout.contentStrategy.termsManager;
   const badge = (term: k.Term) => {
     const ns = tm.termNamespace(term);
     // deno-fmt-ignore (because we don't want ${...} wrapped)

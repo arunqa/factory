@@ -670,7 +670,7 @@ export abstract class TypicalPublication<OCState>
     return rfStd.pipelineUnitsRefineryUntyped(
       this.ds.designSystem.prettyUrlsHtmlProducer(
         this.config.destRootPath,
-        this.ds.contentAdapter,
+        this.ds.contentStrategy,
         ees,
       ),
       jrs.jsonTextProducer(this.config.destRootPath, {
@@ -703,8 +703,8 @@ export abstract class TypicalPublication<OCState>
     await this.config.initProduce();
 
     // setup the cache and any other git-specific initialization
-    if (this.ds.contentAdapter.git instanceof git.TypicalGit) {
-      await this.ds.contentAdapter.git.init();
+    if (this.ds.contentStrategy.git instanceof git.TypicalGit) {
+      await this.ds.contentStrategy.git.init();
     }
   }
 

@@ -95,11 +95,11 @@ export function htmlLayoutTemplate<T, Layout extends hGovn.HtmlLayout>(
           : (c.isFlexibleContentSupplier(resource)
             ? await c.flexibleTextCustom(bodyAsync(resource), ftcOptions)
             : undefined);
-        if (layout.dsCtx.lintReporter) {
+        if (layout.contentStrategy.lintReporter) {
           const lintReporter: govn.LintReporter = {
-            ...layout.dsCtx.lintReporter,
+            ...layout.contentStrategy.lintReporter,
             report: (ld) => {
-              layout.dsCtx.lintReporter!.report({
+              layout.contentStrategy.lintReporter!.report({
                 ...ld,
                 layout,
               });
@@ -122,11 +122,11 @@ export function htmlLayoutTemplate<T, Layout extends hGovn.HtmlLayout>(
           : (c.isFlexibleContentSyncSupplier(resource)
             ? c.flexibleTextSyncCustom(bodySync(resource), ftcOptions)
             : undefined);
-        if (layout.dsCtx.lintReporter) {
+        if (layout.contentStrategy.lintReporter) {
           const lintReporter: govn.LintReporter = {
-            ...layout.dsCtx.lintReporter,
+            ...layout.contentStrategy.lintReporter,
             report: (ld) => {
-              layout.dsCtx.lintReporter!.report({
+              layout.contentStrategy.lintReporter!.report({
                 ...ld,
                 layout,
               });

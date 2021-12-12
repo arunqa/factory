@@ -42,7 +42,7 @@ export interface LightningNavigationNotifications
 }
 
 export interface LightningNavigation
-  extends html.DesignSystemNavigationAdapter<LightningLayout> {
+  extends html.DesignSystemNavigationStrategy<LightningLayout> {
   readonly contextBarItems: (
     layout: LightningLayout,
   ) => govn.RouteNode[];
@@ -74,9 +74,9 @@ export interface LightningLayoutText
   extends html.HtmlLayoutText<LightningLayout> {
 }
 
-export interface LightingDesignSystemContentAdapter
+export interface LightingDesignSystemContentStrategy
   extends
-    html.DesignSystemContentAdapter<
+    html.DesignSystemContentStrategy<
       LightningLayout,
       LightningLayoutText,
       LightningAssetLocations,
@@ -89,7 +89,7 @@ export interface LightningLayout
   extends
     html.HtmlLayout<LightningLayoutText>,
     govn.ModelSupplier<govn.ContentModel> {
-  readonly dsCtx: LightingDesignSystemContentAdapter;
+  readonly contentStrategy: LightingDesignSystemContentStrategy;
 }
 
 // deno-lint-ignore no-empty-interface

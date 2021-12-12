@@ -191,7 +191,7 @@ export interface DesignSystemNotifications<T extends DesignSystemNotification>
   extends notif.Notifications<T> {
 }
 
-export interface DesignSystemNavigationAdapter<
+export interface DesignSystemNavigationStrategy<
   Layout extends html.HtmlLayout,
 > extends govn.RouteTreeSupplier, html.HtmlLayoutClientCargoValueSupplier {
   readonly home: govn.RouteLocation;
@@ -237,11 +237,11 @@ export interface DesignSystemLayoutContribsInitializer<
   (layout: Omit<Layout, "contributions">): html.HtmlLayoutContributions;
 }
 
-export interface DesignSystemContentAdapter<
+export interface DesignSystemContentStrategy<
   Layout extends html.HtmlLayout,
   LayoutText extends html.HtmlLayoutText<Layout>,
   AssetLocations extends DesignSystemAssetLocations,
-  Navigation extends DesignSystemNavigationAdapter<Layout>,
+  Navigation extends DesignSystemNavigationStrategy<Layout>,
 > {
   readonly git?: git.GitExecutive;
   readonly mGitResolvers: git.ManagedGitResolvers<string>;
@@ -263,7 +263,7 @@ export interface DesignSystemContentAdapter<
   readonly initContributions?: DesignSystemLayoutContribsInitializer<Layout>;
 }
 
-export type UntypedDesignSystemContentAdapter = DesignSystemContentAdapter<
+export type UntypedDesignSystemContentStrategy = DesignSystemContentStrategy<
   // deno-lint-ignore no-explicit-any
   any,
   // deno-lint-ignore no-explicit-any
@@ -278,10 +278,10 @@ export interface DesignSystemFactory<
   Layout extends html.HtmlLayout,
   LayoutText extends html.HtmlLayoutText<Layout>,
   AssetLocations extends DesignSystemAssetLocations,
-  Navigation extends DesignSystemNavigationAdapter<Layout>,
+  Navigation extends DesignSystemNavigationStrategy<Layout>,
 > {
   readonly designSystem: html.DesignSystem<Layout>;
-  readonly contentAdapter: html.DesignSystemContentAdapter<
+  readonly contentStrategy: html.DesignSystemContentStrategy<
     Layout,
     LayoutText,
     AssetLocations,
@@ -290,7 +290,7 @@ export interface DesignSystemFactory<
 }
 
 export class DesignSystemNavigation<Layout extends html.HtmlLayout>
-  implements html.DesignSystemNavigationAdapter<Layout> {
+  implements html.DesignSystemNavigationStrategy<Layout> {
   constructor(
     readonly prettyURLs: boolean,
     readonly routeTree: rtree.TypicalRouteTree,
@@ -422,7 +422,7 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
   abstract layout(
     body: html.HtmlLayoutBody | (() => html.HtmlLayoutBody),
     supplier: html.HtmlLayoutStrategySupplier<Layout>,
-    dsCtx: UntypedDesignSystemContentAdapter,
+    contentStrategy: UntypedDesignSystemContentStrategy,
     ...args: unknown[]
   ): Layout;
 
@@ -608,7 +608,7 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
   }
 
   pageRenderer(
-    dsCtx: UntypedDesignSystemContentAdapter,
+    contentStrategy: UntypedDesignSystemContentStrategy,
     refine?: govn.ResourceRefinery<html.HtmlLayoutBody>,
   ): govn.ResourceRefinery<govn.HtmlSupplier> {
     return async (resource) => {
@@ -621,13 +621,13 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
       return await lss.layoutStrategy.rendered(this.layout(
         refine ? await refine(resource) : resource,
         lss,
-        dsCtx,
+        contentStrategy,
       ));
     };
   }
 
   pageRendererSync(
-    dsCtx: UntypedDesignSystemContentAdapter,
+    contentStrategy: UntypedDesignSystemContentStrategy,
     refine?: govn.ResourceRefinerySync<html.HtmlLayoutBody>,
   ): govn.ResourceRefinerySync<govn.HtmlSupplier> {
     return (resource) => {
@@ -640,18 +640,18 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
       return lss.layoutStrategy.renderedSync(this.layout(
         refine ? refine(resource) : resource,
         lss,
-        dsCtx,
+        contentStrategy,
       ));
     };
   }
 
   prettyUrlsHtmlProducer(
     destRootPath: string,
-    dsCtx: UntypedDesignSystemContentAdapter,
+    contentStrategy: UntypedDesignSystemContentStrategy,
     fspEE?: govn.FileSysPersistEventsEmitterSupplier,
   ): govn.ResourceRefinery<govn.HtmlSupplier> {
     const producer = r.pipelineUnitsRefineryUntyped(
-      this.pageRenderer(dsCtx),
+      this.pageRenderer(contentStrategy),
       nature.htmlContentNature.persistFileSysRefinery(
         destRootPath,
         persist.routePersistPrettyUrlHtmlNamingStrategy((ru) =>

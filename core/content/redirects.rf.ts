@@ -19,8 +19,10 @@ export function redirectResources(
           // deno-lint-ignore require-await
           resourceFactory: async () => {
             const redirectHTML: ds.HtmlLayoutBodySupplier = (layout) => {
-              const targetURL = layout.dsCtx.navigation.redirectUrl(alias);
-              return `<!DOCTYPE HTML>  
+              const targetURL = layout.contentStrategy.navigation.redirectUrl(
+                alias,
+              );
+              return `<!DOCTYPE HTML>
               <html lang="en-US">
                   <head>
                       <meta charset="UTF-8">
@@ -29,7 +31,7 @@ export function redirectResources(
                       <title>Redirect to ${alias.label}</title>
                   </head>
                   <body>
-                      If you are not redirected automatically, follow <a href='${targetURL}'>${alias.label}</a>.                      
+                      If you are not redirected automatically, follow <a href='${targetURL}'>${alias.label}</a>.
                   </body>
               </html>`;
             };

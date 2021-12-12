@@ -12,31 +12,31 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
     | git.GitRemoteCommit<"hash" | "authorName" | "subject">
     | undefined;
   let changelogReportHref: string | undefined;
-  if (layout.dsCtx.git) {
-    const cached = layout.dsCtx.git.cached;
+  if (layout.contentStrategy.git) {
+    const cached = layout.contentStrategy.git.cached;
     gitBranch = cached.currentBranch || "??";
     remoteCommit = cached.mostRecentCommit
-      ? layout.dsCtx.mGitResolvers.remoteCommit(
+      ? layout.contentStrategy.mGitResolvers.remoteCommit(
         cached.mostRecentCommit,
-        layout.dsCtx.git,
+        layout.contentStrategy.git,
       )
       : undefined;
     remoteAsset = layout.activeRoute
-      ? layout.dsCtx.routeGitRemoteResolver(
+      ? layout.contentStrategy.routeGitRemoteResolver(
         layout.activeRoute,
         gitBranch,
-        layout.dsCtx.git,
+        layout.contentStrategy.git,
       )
       : undefined;
     changelogReportHref = cached.mostRecentCommit
-      ? layout.dsCtx.mGitResolvers.changelogReportAnchorHref(
+      ? layout.contentStrategy.mGitResolvers.changelogReportAnchorHref(
         cached.mostRecentCommit,
       )
       : undefined;
   }
   let wsAsset: ws.WorkspaceEditorTarget | undefined;
   if (layout.activeRoute) {
-    wsAsset = layout.dsCtx.wsEditorRouteResolver(layout.activeRoute);
+    wsAsset = layout.contentStrategy.wsEditorRouteResolver(layout.activeRoute);
   }
   // we hide the footer using display:none and then stickyFooter() in lightning-tail.js will display it in the proper place
   // deno-fmt-ignore
@@ -45,7 +45,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
       <article class="slds-text-align_center slds-p-top_small slds-p-bottom_large">
         <p class="slds-text-body_small">© 1997-<script>document.write(new Date().getFullYear())</script> Netspective Media LLC. All Rights Reserved.</p>
         <p class="slds-text-body_small">
-          Publication created <span is="time-ago" date="${layout.dsCtx.renderedAt}"/>
+          Publication created <span is="time-ago" date="${layout.contentStrategy.renderedAt}"/>
           ${remoteCommit ? ` (${changelogReportHref ? `<a href="${changelogReportHref}" class="git-changelog">triggered</a>`: 'triggered'} by <a href="${remoteCommit.remoteURL}" class="git-remote-commit" title="${remoteCommit.commit.subject}">${remoteCommit.commit.authorName}</a>)` : ''}
         </p>
         <p class="slds-text-body_small">
@@ -56,7 +56,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
           ? `modified <span is="time-ago" date="${layout.activeRoute?.terminal?.lastModifiedAt}" title="${layout.activeRoute?.terminal?.lastModifiedAt}"/>`
           : '<!-- no layout.activeRoute?.terminal?.lastModifiedAt -->'}
         ${wsAsset?.openInWorkspaceHTML ? ` (🧑‍💻 ${wsAsset.openInWorkspaceHTML("workspace-editor-target")})` : "<!-- workspace editor not resolved -->"}
-        ${layout.dsCtx.git ? ` 🌲 ${gitBranch}` : "<!-- not in Git work tree -->"}
+        ${layout.contentStrategy.git ? ` 🌲 ${gitBranch}` : "<!-- not in Git work tree -->"}
         <script>
           if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
             const htmlDataSet = document.documentElement.dataset;

@@ -123,7 +123,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   layout(
     body: html.HtmlLayoutBody | (() => html.HtmlLayoutBody),
     layoutSS: html.HtmlLayoutStrategySupplier<Layout>,
-    dsCtx: ldsGovn.LightingDesignSystemContentAdapter,
+    contentStrategy: ldsGovn.LightingDesignSystemContentStrategy,
   ): Layout {
     const bodySource = typeof body === "function" ? body() : body;
     const frontmatter = fm.isFrontmatterSupplier(bodySource)
@@ -134,7 +134,9 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       ? bodySource.route
       : undefined;
     const activeTreeNode = activeRoute?.terminal
-      ? dsCtx.navigation.routeTree.node(activeRoute?.terminal.qualifiedPath)
+      ? contentStrategy.navigation.routeTree.node(
+        activeRoute?.terminal.qualifiedPath,
+      )
       : undefined;
     const model = c.contentModel(
       defaultContentModel,
@@ -143,21 +145,21 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       bodySource,
     );
     const result: ldsGovn.LightningLayout = {
-      dsCtx,
+      contentStrategy,
       bodySource,
       model,
-      layoutText: dsCtx.layoutText,
+      layoutText: contentStrategy.layoutText,
       designSystem: this,
       layoutSS,
       frontmatter,
       activeRoute,
       activeTreeNode,
-      contributions: dsCtx.initContributions
-        ? dsCtx.initContributions({
-          dsCtx,
+      contributions: contentStrategy.initContributions
+        ? contentStrategy.initContributions({
+          contentStrategy,
           bodySource,
           model,
-          layoutText: dsCtx.layoutText,
+          layoutText: contentStrategy.layoutText,
           designSystem: this,
           layoutSS,
           frontmatter,
@@ -172,11 +174,11 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       origin: html.htmlLayoutOriginDataAttrs,
       ...layoutArgs,
     };
-    if (dsCtx.lintReporter && layoutArgs?.diagnostics) {
+    if (contentStrategy.lintReporter && layoutArgs?.diagnostics) {
       (result as unknown as govn.Lintable).lint = (reporter) => {
         reporter.report(
-          dsCtx.lintReporter!.diagnostic(
-            dsCtx.lintReporter!.diagsShouldBeTemporary,
+          contentStrategy.lintReporter!.diagnostic(
+            contentStrategy.lintReporter!.diagsShouldBeTemporary,
             result,
           ),
         );
