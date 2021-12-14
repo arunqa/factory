@@ -1,4 +1,4 @@
-import { yaml } from "../deps.ts";
+import { toml, yaml } from "../deps.ts";
 import * as safety from "../../lib/safety/mod.ts";
 import * as govn from "../../governance/mod.ts";
 import * as c from "./content.ts";
@@ -12,19 +12,31 @@ export const isFrontmatterConsumer = safety.typeGuard<
   govn.FrontmatterConsumer<govn.UntypedFrontmatter>
 >("consumeParsedFrontmatter");
 
-export const yamlMarkdownFrontmatterRE = /^---([\s\S]*?)^---$([\s\S]*)/m;
+export const yamlTomlMarkdownFrontmatterRE =
+  /^[\-\+][\-\+][\-\+]([\s\S]*?)^[\-\+][\-\+][\-\+]$([\s\S]*)/m;
+
 export const yamlHtmlFrontmatterRE = /^<!---([\s\S]*?)^--->$([\s\S]*)/m;
 
-export function parseYamlFrontmatter(
+/**
+ * Frontmatter is metadata attached to the start of text. If text is prefaced
+ * by opening and closing +++ it the metadata is considered TOML-formatted
+ * otherwise it's considered YAML-formatted.
+ * @param frontmatterRE the regular expression to use
+ * @param text The text to search and extract frontmatter from
+ * @returns The parsed, raw, frontmatter as a JS object and the remaining text
+ */
+export function parseYamlTomlFrontmatter(
   frontmatterRE: RegExp,
   text?: string,
 ): govn.FrontmatterParseResult<govn.UntypedFrontmatter> | undefined {
   if (text) {
     try {
-      const yfmMatch = text.match(frontmatterRE)!;
-      if (yfmMatch) {
-        const [_, yamlFM, content] = yfmMatch;
-        const fm = yaml.parse(yamlFM.trim());
+      const fmMatch = text.match(frontmatterRE);
+      if (fmMatch) {
+        const [_, fmText, content] = fmMatch;
+        const fm = text.startsWith("+++")
+          ? toml.parse(fmText.trim())
+          : yaml.parse(fmText.trim());
         return {
           frontmatter: typeof fm === "object"
             ? fm as Record<string, unknown>
@@ -283,7 +295,7 @@ export function prepareFrontmatter(
   return async (resource) => {
     if (isFrontmatterConsumer(resource)) {
       if (c.isFlexibleContentSupplier(resource)) {
-        const fmResult = parseYamlFrontmatter(
+        const fmResult = parseYamlTomlFrontmatter(
           frontmatterRE,
           await c.flexibleTextCustom(resource),
         );
@@ -291,7 +303,7 @@ export function prepareFrontmatter(
           resource.consumeParsedFrontmatter(fmResult);
         }
       } else if (c.isHtmlSupplier(resource)) {
-        const fmResult = parseYamlFrontmatter(
+        const fmResult = parseYamlTomlFrontmatter(
           frontmatterRE,
           await c.flexibleTextCustom(resource.html),
         );
@@ -316,7 +328,7 @@ export function prepareFrontmatterSync(
       isFrontmatterConsumer(resource) &&
       c.isFlexibleContentSupplier(resource)
     ) {
-      const fmResult = parseYamlFrontmatter(
+      const fmResult = parseYamlTomlFrontmatter(
         frontmatterRE,
         c.flexibleTextSyncCustom(resource),
       );

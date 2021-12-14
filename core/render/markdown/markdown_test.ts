@@ -96,7 +96,9 @@ Deno.test(`markdownHTML with typed frontmatter`, async () => {
   ta.assertEquals(asset.frontmatter?.preParse, "value");
 
   // should mutate the above with new frontmatter and content
-  const fmr = fm.prepareFrontmatterSync(fm.yamlMarkdownFrontmatterRE)(asset);
+  const fmr = fm.prepareFrontmatterSync(fm.yamlTomlMarkdownFrontmatterRE)(
+    asset,
+  );
   ta.assert(fmr);
   ta.assert(fmr.frontmatter);
   ta.assert(route.isRouteSupplier(fmr));

@@ -21,7 +21,7 @@ export function staticMarkdownFileSysGlob(
     factory: md.staticMarkdownFileSysResourceFactory(
       // deno-lint-ignore no-explicit-any
       r.pipelineUnitsRefinery<any>(
-        fm.prepareFrontmatter(fm.yamlMarkdownFrontmatterRE),
+        fm.prepareFrontmatter(fm.yamlTomlMarkdownFrontmatterRE),
         mdrs.renderer(),
       ),
     ),
@@ -39,7 +39,7 @@ export function markdownModuleFileSysGlob(
     factory: md.markdownModuleFileSysResourceFactory(
       // deno-lint-ignore no-explicit-any
       r.pipelineUnitsRefinery<any>(
-        fm.prepareFrontmatter(fm.yamlMarkdownFrontmatterRE),
+        fm.prepareFrontmatter(fm.yamlTomlMarkdownFrontmatterRE),
         mdrs.renderer(),
       ),
     ),

@@ -24,7 +24,9 @@ Deno.test(`prepareFrontmatterSync`, () => {
 
   let encounteredConsumeParsedFrontmatter = false;
   ta.assert(asset.frontmatter.preParse, "value");
-  const syncResult = mod.prepareFrontmatterSync(mod.yamlMarkdownFrontmatterRE)(
+  const syncResult = mod.prepareFrontmatterSync(
+    mod.yamlTomlMarkdownFrontmatterRE,
+  )(
     asset,
   );
   ta.assert(syncResult);
@@ -61,7 +63,7 @@ Deno.test(`prepareFrontmatter`, async () => {
   let encounteredConsumeParsedFrontmatter = false;
   ta.assert(asset.frontmatter.preParse, "value");
   const asyncResult = await mod.prepareFrontmatter(
-    mod.yamlMarkdownFrontmatterRE,
+    mod.yamlTomlMarkdownFrontmatterRE,
   )(asset);
   ta.assert(asyncResult);
   ta.assert(mod.isFrontmatterSupplier(asyncResult));

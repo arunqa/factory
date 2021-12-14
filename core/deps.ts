@@ -7,6 +7,7 @@ export * as io from "https://deno.land/std@0.114.0/io/mod.ts";
 export * as log from "https://deno.land/std@0.114.0/log/mod.ts";
 export * as path from "https://deno.land/std@0.114.0/path/mod.ts";
 export * as yaml from "https://deno.land/std@0.114.0/encoding/yaml.ts";
+export * as toml from "https://deno.land/std@0.114.0/encoding/toml.ts";
 export * as uuid from "https://deno.land/std@0.114.0/uuid/mod.ts";
 
 export * as mediaTypes from "https://denopkg.com/oakserver/media_types@v2.10.2/mod.ts";
