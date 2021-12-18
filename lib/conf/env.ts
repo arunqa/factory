@@ -640,7 +640,7 @@ export abstract class AsyncEnvConfiguration<Configuration, Context = never>
   }
 
   async configure(ctx?: Context): Promise<Configuration> {
-    let config = await this.construct(ctx);
+    let config: Configuration = await this.construct(ctx);
     for (const property of this.ps.properties) {
       const tryNames = property.aliases
         ? [property.name, ...property.aliases]
