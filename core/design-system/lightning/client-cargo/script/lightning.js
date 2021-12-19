@@ -426,7 +426,11 @@ function getWordCount(rootElement) {
 customElements.define('word-count',
   class WordCountElement extends HTMLSpanElement {
     static get observedAttributes() { return ['element-id']; }
-    connectedCallback() { this.innerHTML = getWordCount(document.getElementById("content")); }
+    connectedCallback() {
+      window.addEventListener("load", () => {
+        this.innerHTML = getWordCount(document.getElementById("content"));
+      });
+    }
   },
   { extends: 'span' }
 );
