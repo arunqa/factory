@@ -254,6 +254,35 @@ const lightningActivateAllPageItems = {
 };
 
 /**
+ * References like <img src="figure-01.png"> need to be relative to the parent
+ * directory if pretty URLs are enabled (e.g. if document URL ends with '/').
+ * This method will look for all tags that could be hand-created (for example
+ * from Markdown) and will auto correct them. If a tag is machine-generated
+ * and auto-correction should not be performed then auto-correct="no" should
+ * be passed like <img src="figure-01.png" auto-correct="no">.
+ */
+const autoCorrectPrettyUrlReferences = () => {
+  const isAbsoluteUrlRE = new RegExp('^(?:[a-z]+:)?//', 'i');
+
+  const makeRelativeIfNotAbsolute = (img, refAttrName) => {
+    const href = img.getAttribute(refAttrName);
+    const autoCorrect = img.getAttribute("auto-correct");
+    if (href && (!autoCorrect || autoCorrect == "yes")) {
+      if (!isAbsoluteUrlRE.test(href) && !href.startsWith('/')) {
+        img.setAttribute(refAttrName, `../${href}`);
+      }
+    }
+  };
+
+  if (window.location.pathname.endsWith('/')) {
+    // find images in Markdown and correct the src based on pretty URL path
+    document.querySelectorAll("img").forEach((img) => {
+      makeRelativeIfNotAbsolute(img, "src");
+    });
+  }
+};
+
+/**
  * lightningActivatePage is the "entry point" that is usually called in
  * <body onload=""> if Lightning Design System interactivity is desired.
  * When the page is activated, a cargo object that contains the "client
@@ -319,6 +348,8 @@ const lightningActivatePage = (
     //old IE
     setInterval(stickyFooter, 500);
   }
+
+  autoCorrectPrettyUrlReferences();
 
   if (typeof cargo?.finalize === "function") {
     // TODO: pass anything else constructed that cargo might find help
