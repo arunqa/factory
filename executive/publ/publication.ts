@@ -574,6 +574,11 @@ export abstract class TypicalPublication<OCState>
       new mdr.MarkdownLayouts({
         directiveExpectations: this.directiveExpectationsSupplier(),
         rewriteURL: this.config.rewriteMarkdownLink,
+        customize: (mdi) => {
+          mdi.renderer.rules.image = mdr.autoCorrectPrettyUrlImagesRule(
+            mdi.renderer.rules.image,
+          );
+        },
       }),
     );
   }

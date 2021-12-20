@@ -98,6 +98,39 @@ export interface MarkdownLayoutPreferences {
     resource: md.MarkdownResource,
   ) => string;
   readonly topLevelMarkdownClassName?: string;
+  // deno-lint-ignore no-explicit-any
+  readonly customize?: (mdiRenderer: any) => void;
+}
+
+/**
+ * References like <img src="figure-01.png"> need to be relative to the parent
+ * directory if pretty URLs are enabled (e.g. if document URL ends with '/').
+ * For any images referenced like ![label](url) check to see if the url is a
+ * local reference and, if it is, change it to '../url' because Pretty URLs
+ * require the relative location.
+ * Ref: https://github.com/markdown-it/markdown-it/blob/master/docs/architecture.md#renderer
+ * @param defaultRender the default md.renderer.rules.image rule
+ * @returns
+ */
+// deno-lint-ignore no-explicit-any
+export function autoCorrectPrettyUrlImagesRule(defaultRender: any) {
+  const isAbsoluteUrlRE = new RegExp("^(?:[a-z]+:)?//", "i");
+
+  // deno-lint-ignore no-explicit-any
+  return (tokens: any, idx: any, options: any, env: any, self: any) => {
+    const imgToken = tokens[idx], srcIndex = imgToken.attrIndex("src");
+    const srcAttr = imgToken.attrs[srcIndex][1];
+
+    // if the src URL is absolute don't touch it
+    if (!isAbsoluteUrlRE.test(srcAttr) && !srcAttr.startsWith("/")) {
+      // src URL is not absolute, assume that it's "local" to the markdown
+      // file but for Pretty URLs the markdown will generate an HTML which
+      // is one level down so we correct the reference
+      imgToken.attrs[srcIndex][1] = `../${srcAttr}`;
+    }
+
+    return defaultRender(tokens, idx, options, env, self);
+  };
 }
 
 export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
@@ -178,6 +211,9 @@ export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
           isMarkdownClientCustomElementDirective(d)
         ),
       });
+      if (this.mpl?.customize) {
+        this.mpl.customize(this.mdiRenderer);
+      }
     }
   }
 
