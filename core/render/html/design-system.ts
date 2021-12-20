@@ -180,6 +180,10 @@ export interface DesignSystemAssetLocations
   readonly dsScript: DesignSystemAssetLocationSupplier; // design system
   readonly dsStylesheet: DesignSystemAssetLocationSupplier; // design system
   readonly dsComponent: DesignSystemAssetLocationSupplier; // design system
+  readonly uImage: DesignSystemAssetLocationSupplier; // universal design system
+  readonly uScript: DesignSystemAssetLocationSupplier; // universal design system
+  readonly uStylesheet: DesignSystemAssetLocationSupplier; // universal design system
+  readonly uComponent: DesignSystemAssetLocationSupplier; // universal design system
   readonly image: DesignSystemAssetLocationSupplier; // local site
   readonly favIcon: DesignSystemAssetLocationSupplier; // local site
   readonly script: DesignSystemAssetLocationSupplier; // local site
@@ -426,6 +430,7 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
     readonly identity: govn.RenderStrategyIdentity,
     readonly layoutStrategies: DesignSystemLayouts<Layout>,
     readonly dsAssetsBaseURL: string,
+    readonly universalAssetsBaseURL: string,
   ) {
   }
 
@@ -569,6 +574,11 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
       `dsStylesheet(relURL) { return \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/style\${relURL}\`; }`,
       `dsComponent(relURL) { return \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/component\${relURL}\`; }`,
       `dsModel(relURL) { return \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/model\${relURL}\`; }`,
+      `uImage(relURL) { return \`\${this.assetsBaseAbsURL()}${this.universalAssetsBaseURL}/image\${relURL}\`; }`,
+      `uScript(relURL) { return  \`\${this.assetsBaseAbsURL()}${this.universalAssetsBaseURL}/script\${relURL}\`; }`,
+      `uStylesheet(relURL) { return \`\${this.assetsBaseAbsURL()}${this.universalAssetsBaseURL}/style\${relURL}\`; }`,
+      `uComponent(relURL) { return \`\${this.assetsBaseAbsURL()}${this.universalAssetsBaseURL}/component\${relURL}\`; }`,
+      `uModel(relURL) { return \`\${this.assetsBaseAbsURL()}${this.universalAssetsBaseURL}/model\${relURL}\`; }`,
       `brandImage(relURL) { return this.image(\`/brand/\${relURL}\`); }`,
       `brandScript(relURL) { return this.script(\`/brand/\${relURL}\`); }`,
       `brandStylesheet(relURL) { return this.stylesheet(\`/brand/\${relURL}\`); }`,
@@ -598,6 +608,11 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
       dsScript: (relURL) => `${this.dsAssetsBaseURL}/script${relURL}`,
       dsStylesheet: (relURL) => `${this.dsAssetsBaseURL}/style${relURL}`,
       dsComponent: (relURL) => `${this.dsAssetsBaseURL}/component${relURL}`,
+      uImage: (relURL) => `${this.universalAssetsBaseURL}/image${relURL}`,
+      uScript: (relURL) => `${this.universalAssetsBaseURL}/script${relURL}`,
+      uStylesheet: (relURL) => `${this.universalAssetsBaseURL}/style${relURL}`,
+      uComponent: (relURL) =>
+        `${this.universalAssetsBaseURL}/component${relURL}`,
       image: (relURL) => `${base}${relURL}`,
       favIcon: (relURL) => `${base}${relURL}`,
       script: (relURL) => `${base}${relURL}`,

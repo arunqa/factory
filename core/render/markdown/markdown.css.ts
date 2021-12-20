@@ -1,6 +1,6 @@
 import { base64 } from "../../deps.ts";
 
-// If you change any CSS in here, you'll need to manually update ../../design-system/lightning/client-cargo/style/markdown.auto.css
+// If you change any CSS in here, you'll need to manually update ../../design-system/universal/client-cargo/style/markdown.auto.css
 // by running the Justfile acquire-markdown-css target
 
 export const CSS = (className: string) =>

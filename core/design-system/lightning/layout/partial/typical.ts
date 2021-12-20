@@ -59,7 +59,7 @@ ${layout.contributions.head.contributions("fore").contributions.join("\n")}
 <link href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/design-system/2.14.2/styles/salesforce-lightning-design-system.min.css" integrity="sha512-v9eTZELqSZcRlIRltjIbpM55zkTQ9azkDAjI0IByyjHLWty1U2+CSPtnNxGpC3FFkpsKwAOfciCv4PWhW/pQGw==" crossorigin="anonymous" />
 <link rel="stylesheet" href="${layout.contentStrategy.assets.dsStylesheet("/lightning-customize.css")}">
-<link rel="stylesheet" href="${layout.contentStrategy.assets.dsStylesheet("/markdown.auto.css")}">
+<link rel="stylesheet" href="${layout.contentStrategy.assets.uStylesheet("/markdown.auto.css")}">
 <!-- [script.js](https://github.com/ded/script.js) is a JavaScript loader
      and dependency manager. You should use this instead of <script> tags.
      TODO: consider https://addyosmani.com/basket.js/ as well -->

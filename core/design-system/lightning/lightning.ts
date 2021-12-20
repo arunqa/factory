@@ -67,6 +67,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   ];
   constructor(
     readonly extnManager: govn.ExtensionsManager,
+    readonly universalAssetsBaseURL: string,
     readonly emptyContentModelLayoutSS:
       & govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier>
       & govn.ModelLayoutStrategySupplier<Layout, govn.HtmlSupplier> = {
@@ -76,7 +77,12 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
         modelLayoutStrategyDiagnostic: "no content available",
       },
   ) {
-    super("LightningDS", new LightingDesignSystemLayouts(), "/lightning");
+    super(
+      "LightningDS",
+      new LightingDesignSystemLayouts(),
+      "/lightning",
+      universalAssetsBaseURL,
+    );
     this.directives.push(
       new direc.ProxiedContentInfuseInterpolateDirective(this.extnManager),
     );

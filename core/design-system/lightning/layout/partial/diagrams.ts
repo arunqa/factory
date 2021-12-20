@@ -31,7 +31,7 @@ function diagramScripts(fmProperty: unknown): string {
         case kroki:
           // TODO: fix /lighting so that it uses baseURL
           html.push(
-            `<script type="module" src="/lightning/component/kroki-diagram.js"></script>`,
+            `<script type="module" src="/universal-cc/component/kroki-diagram.js"></script>`,
           );
           break;
 
@@ -43,7 +43,7 @@ function diagramScripts(fmProperty: unknown): string {
           importD3();
           // TODO: fix /lighting so that it uses baseURL
           html.push(
-            `<script type="module" src="/lightning/component/markmap-diagram.js"></script>`,
+            `<script type="module" src="/universal-cc/component/markmap-diagram.js"></script>`,
           );
           break;
       }
@@ -59,6 +59,6 @@ function diagramScripts(fmProperty: unknown): string {
  * @returns diagrams scripts for <head> component
  */
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const clientDiagramsContributionsPartial: ldsGovn.LightningPartial = (layout) => 
-(layout?.frontmatter?.diagrams ? diagramScripts(layout.frontmatter.diagrams) 
+export const clientDiagramsContributionsPartial: ldsGovn.LightningPartial = (layout) =>
+(layout?.frontmatter?.diagrams ? diagramScripts(layout.frontmatter.diagrams)
   : '<!-- layout.frontmatter.diagrams is false -->');
