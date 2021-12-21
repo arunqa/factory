@@ -14,8 +14,13 @@ acquire-markdown-css:
 acquire-tonic:
     #!/bin/bash
     set -euo pipefail
-    SRC_URL=https://denopkg.com/optoolco/tonic@v13.3.5/src/index.js
-    FINAL_URL=`curl -Ls -o /dev/null -w %{url_effective} $SRC_URL`
-    TONIC="./client-cargo/script/tonic.js"
-    echo -e "// deno-lint-ignore-file\n// deno-fmt-ignore-file\n// acquired on $(hostname) by $(whoami) at $(date) from $FINAL_URL\n" > "$TONIC"
-    curl -s $FINAL_URL >> "$TONIC"
+    DEST=./client-cargo/script
+    VERSION=v14.0.0
+    assetBaseName=(tonic.min.js tonic.min.esm.js)
+    assetAcqName=(tonic-$VERSION.min.js tonic-$VERSION.min.esm.js)
+    for i in ${!assetBaseName[@]}; do
+        assetBaseName=${assetBaseName[$i]}
+        SRC_URL=https://denopkg.com/optoolco/tonic@$VERSION/dist/$assetBaseName
+        FINAL_URL=`curl -Ls -o /dev/null -w %{url_effective} $SRC_URL`
+        curl -s -o "$DEST/${assetAcqName[$i]}" $FINAL_URL
+    done
