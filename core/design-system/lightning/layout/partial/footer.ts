@@ -12,6 +12,8 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
     | git.GitRemoteCommit<"hash" | "authorName" | "subject">
     | undefined;
   let changelogReportHref: string | undefined;
+  const buildStatusHTML = layout.contentStrategy.mGitResolvers
+    .cicdBuildStatusHTML(layout);
   if (layout.contentStrategy.git) {
     const cached = layout.contentStrategy.git.cached;
     gitBranch = cached.currentBranch || "??";
@@ -47,6 +49,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
         <p class="slds-text-body_small">
           Publication created <span is="time-ago" date="${layout.contentStrategy.renderedAt}"/>
           ${remoteCommit ? ` (${changelogReportHref ? `<a href="${changelogReportHref}" class="git-changelog">triggered</a>`: 'triggered'} by <a href="${remoteCommit.remoteURL}" class="git-remote-commit" title="${remoteCommit.commit.subject}">${remoteCommit.commit.authorName}</a>)` : ''}
+          ${buildStatusHTML}
         </p>
         <p class="slds-text-body_small">
         ${remoteAsset

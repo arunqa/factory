@@ -68,6 +68,7 @@ export interface ManagedGitResolvers<Identity extends string>
   readonly remoteCommit: GitRemoteCommitResolver<any>;
   // deno-lint-ignore no-explicit-any
   readonly changelogReportAnchorHref: GitRemoteChangelogReportHref<any>;
+  readonly cicdBuildStatusHTML: (...args: unknown[]) => string;
 }
 
 export interface GitPathsSupplier {
