@@ -70,7 +70,13 @@ ${dia.clientDiagramsContributionsPartial(layout)}
 ${clientCargoPartial(layout)}
 <link rel="shortcut icon" href="${layout.contentStrategy.assets.favIcon("/asset/image/favicon.ico")}"/>
 <title>${layout.layoutText.title(layout)}</title>
-`;
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-MX2G8XW');</script>
+<!-- End Google Tag Manager -->`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const typicalTailPartial: ldsGovn.LightningPartial = (layout) => `
@@ -78,7 +84,11 @@ export const typicalTailPartial: ldsGovn.LightningPartial = (layout) => `
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const redirectConsoleContainerPartial: ldsGovn.LightningPartial = (layout) => layout.redirectConsoleToHTML ? `
-<ul id="container_redirectConsole"></ul>` : `<!-- layout.redirectConsoleToHTML is false -->`;
+<ul id="container_redirectConsole"></ul>` : `<!-- layout.redirectConsoleToHTML is false -->
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MX2G8XW"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const redirectConsolePartial: ldsGovn.LightningPartial = (layout) => layout.redirectConsoleToHTML ? `
