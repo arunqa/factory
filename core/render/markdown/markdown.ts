@@ -140,81 +140,130 @@ export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
   constructor(
     readonly identity: string,
     readonly mpl?: MarkdownLayoutPreferences,
+    readonly mdiOptions?: MarkdownItOptions,
+  ) {
+    this.mdiRenderer = this.prepareMarkdownItRendererPrime(
+      this.mpl,
+      this.mdiOptions,
+    );
+  }
+
+  /**
+   * Prepare the primary markdown-it instance for rendering HTML from markdown.
+   * @param mdiOptions Optional markdown-it instance options defaults
+   * @returns markdown-it renderer instance
+   */
+  prepareMarkdownItRendererPrime(
+    mpl?: MarkdownLayoutPreferences,
     mdiOptions?: MarkdownItOptions,
   ) {
     // @ts-ignore: This expression is not callable.
-    this.mdiRenderer = markdownIt({
+    const result = markdownIt({
       html: true,
       linkify: true,
       typographer: true,
       ...mdiOptions,
-      replaceLink: this.mpl?.rewriteURL,
+      replaceLink: mpl?.rewriteURL,
     });
-    if (this.mpl?.rewriteURL) {
-      this.mdiRenderer.use(markdownItReplaceLink);
+    if (mpl?.rewriteURL) {
+      result.use(markdownItReplaceLink);
     }
-    this.mdiRenderer.use(markdownItFootnote);
-    this.mdiRenderer.use(markdownItAnchor); // TODO: use callback to track headings?
-    this.mdiRenderer.use(markdownItTitle, { level: 0 }); // TODO: grab excerpts too?
-    this.mdiRenderer.use(markdownItHashtag);
-    this.mdiRenderer.use(markdownItTaskCheckbox);
-    if (this.mpl?.directiveExpectations) {
-      this.mdiRenderer.use(markdownItDirective)
+    result.use(markdownItFootnote);
+    result.use(markdownItAnchor); // TODO: use callback to track headings?
+    result.use(markdownItTitle, { level: 0 }); // TODO: grab excerpts too?
+    result.use(markdownItHashtag);
+    result.use(markdownItTaskCheckbox);
+    if (mpl?.directiveExpectations) {
+      this.registerMarkdownItDirectives(result, mpl?.directiveExpectations);
+    }
+    if (mpl?.customize) {
+      mpl.customize(result);
+    }
+    return result;
+  }
+
+  postProcessDirectiveResult(
+    directive: MarkdownContentInlineDirective<Record<string, string>>,
+    // deno-lint-ignore no-explicit-any
+    result: any,
+  ) {
+    if (typeof result === "string") {
+      directive.markdownRenderEnv.isDirectivePostProcess = directive;
+      // TODO: this.mdiRenderer should be re-entrant (recursion-safe) but not
+      // sure so we'll need to some testing
+      result = this.mdiRenderer.render(result, directive.markdownRenderEnv);
+      delete directive.markdownRenderEnv.isDirectivePostProcess;
+    }
+    return result;
+  }
+
+  registerMarkdownItDirectives(
+    // deno-lint-ignore no-explicit-any
+    renderer: any,
+    directiveExpectations: govn.DirectiveExpectationsSupplier<
+      govn.DirectiveExpectation<
         // deno-lint-ignore no-explicit-any
-        .use((md: any) => {
-          for (
-            const de of this.mpl!.directiveExpectations!.allowedDirectives((
-              d,
-            ) => !isMarkdownClientCustomElementDirective(d))
-          ) {
-            md.inlineDirectives[de.identity] = (
-              // deno-lint-ignore no-explicit-any
-              state: any,
-              // deno-lint-ignore no-explicit-any
-              content: any,
-              // deno-lint-ignore no-explicit-any
-              dests: any,
-              // deno-lint-ignore no-explicit-any
-              attrs: any,
-            ) => {
-              const token = state.push("html_inline", "", 0);
-              const directive: MarkdownContentInlineDirective<
-                Record<string, string>
-              > = {
-                isMarkdownContentDirective: true,
-                isMarkdownContentInlineDirective: true,
-                markdownRenderEnv: state.env,
-                identity: de.identity,
-                content: content,
-                destinations: dests
-                  ? (Array.isArray(dests) ? dests : undefined)
+        MarkdownContentDirective<any>,
+        string | undefined
+      >
+    >,
+  ) {
+    renderer.use(markdownItDirective)
+      // deno-lint-ignore no-explicit-any
+      .use((md: any) => {
+        for (
+          const de of directiveExpectations.allowedDirectives((d) =>
+            !isMarkdownClientCustomElementDirective(d)
+          )
+        ) {
+          md.inlineDirectives[de.identity] = (
+            // deno-lint-ignore no-explicit-any
+            state: any,
+            // deno-lint-ignore no-explicit-any
+            content: any,
+            // deno-lint-ignore no-explicit-any
+            dests: any,
+            // deno-lint-ignore no-explicit-any
+            attrs: any,
+          ) => {
+            const token = state.push("html_inline", "", 0);
+            const directive: MarkdownContentInlineDirective<
+              Record<string, string>
+            > = {
+              isMarkdownContentDirective: true,
+              isMarkdownContentInlineDirective: true,
+              markdownRenderEnv: state.env,
+              identity: de.identity,
+              content: content,
+              destinations: dests
+                ? (Array.isArray(dests) ? dests : undefined)
+                : undefined,
+              attributes:
+                typeof attrs === "object" && Object.keys(attrs).length > 0
+                  ? attrs
                   : undefined,
-                attributes:
-                  typeof attrs === "object" && Object.keys(attrs).length > 0
-                    ? attrs
-                    : undefined,
-              };
-              const result = de.encountered(directive);
-              token.content = typeof result === "string"
-                ? result
-                : JSON.stringify({
-                  directive: de.identity,
-                  content,
-                  dests,
-                  attrs,
-                });
             };
-          }
-        });
-      this.mdiRenderer.use(markdownItDirectiveWC, {
-        components: this.mpl.directiveExpectations.allowedDirectives((d) =>
-          isMarkdownClientCustomElementDirective(d)
-        ),
+            let result = de.encountered(directive);
+            const pp = attrs && attrs["post-process"];
+            if (pp && (pp == "md" || pp == "markdown")) {
+              result = this.postProcessDirectiveResult(directive, result);
+            }
+            token.content = typeof result === "string"
+              ? result
+              : JSON.stringify({
+                directive: de.identity,
+                content,
+                dests,
+                attrs,
+              });
+          };
+        }
       });
-      if (this.mpl?.customize) {
-        this.mpl.customize(this.mdiRenderer);
-      }
-    }
+    renderer.use(markdownItDirectiveWC, {
+      components: directiveExpectations.allowedDirectives((d) =>
+        isMarkdownClientCustomElementDirective(d)
+      ),
+    });
   }
 
   renderedMarkdownResource(
