@@ -1,4 +1,4 @@
-import * as ta from "https://deno.land/std@0.114.0/testing/asserts.ts";
+import * as ta from "https://deno.land/std@0.121.0/testing/asserts.ts";
 import * as mod from "./govn-tree.ts";
 
 export interface Terminal {
