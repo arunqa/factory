@@ -25,6 +25,7 @@ Deno.test(`Git in ${testPath}`, async () => {
     remoteCommit: () => undefined,
     workTreeAsset: mod.typicalGitWorkTreeAssetResolver,
     changelogReportAnchorHref: () => "/activity-log/git-changelog/",
+    cicdBuildStatusHTML: () => `TODO`,
   });
   await git.init();
   const currentBranch = await git.currentBranch();
@@ -44,6 +45,7 @@ Deno.test(`Git Executive in ${testPath}`, async () => {
     remoteCommit: () => undefined,
     workTreeAsset: mod.typicalGitWorkTreeAssetResolver,
     changelogReportAnchorHref: () => "/activity-log/git-changelog/",
+    cicdBuildStatusHTML: () => `TODO`,
   });
   ta.assert(git);
 

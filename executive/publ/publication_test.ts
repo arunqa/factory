@@ -43,6 +43,7 @@ const prefs: mod.Preferences<unknown> = {
     }),
     workTreeAsset: git.typicalGitWorkTreeAssetResolver,
     changelogReportAnchorHref: () => "/activity-log/git-changelog/",
+    cicdBuildStatusHTML: () => `TODO`,
   },
   routeGitRemoteResolver: (route, gitBranchOrTag, paths) => {
     return {
@@ -66,7 +67,10 @@ export class TestDesignSystem implements lds.LightningDesignSystemFactory {
     config: mod.Configuration<unknown>,
     routes: mod.PublicationRoutes,
   ) {
-    this.designSystem = new lds.LightingDesignSystem(config.extensionsManager);
+    this.designSystem = new lds.LightingDesignSystem(
+      config.extensionsManager,
+      `/universal-cc`,
+    );
     this.contentStrategy = {
       git: config.git,
       layoutText: new lds.LightingDesignSystemText(),

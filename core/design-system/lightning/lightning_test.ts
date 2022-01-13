@@ -12,7 +12,10 @@ import * as mod from "./lightning.ts";
 export type Resource = govn.TextSyncSupplier;
 
 Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
-  const lds = new mod.LightingDesignSystem(new extn.CachedExtensions());
+  const lds = new mod.LightingDesignSystem(
+    new extn.CachedExtensions(),
+    `/universal-cc`,
+  );
   const lss = lds.layoutStrategies.defaultLayoutStrategySupplier;
   const ls = lss.layoutStrategy;
   const resource: govn.TextSyncSupplier = {
@@ -47,6 +50,7 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
       }),
       workTreeAsset: git.typicalGitWorkTreeAssetResolver,
       changelogReportAnchorHref: () => "/activity-log/git-changelog/",
+      cicdBuildStatusHTML: () => `TODO`,
     },
     routeGitRemoteResolver: (route, gitBranchOrTag, paths) => {
       return {
