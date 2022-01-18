@@ -101,7 +101,7 @@ export function infoMetric<T extends TypedObject>(
       };
       return instance;
     },
-    declare: (dest: string[], options: MetricsDialect): void => {
+    declare: (dest, _options): void => {
       dest.push(`# HELP ${metric.name} ${metric.help}`);
       dest.push(`# TYPE ${metric.name} gauge`);
     },
@@ -148,7 +148,7 @@ export function gaugeMetric<T extends TypedObject>(
       };
       return instance;
     },
-    declare: (dest: string[], options: MetricsDialect): void => {
+    declare: (dest, _options): void => {
       dest.push(`# HELP ${metric.name} ${metric.help}`);
       dest.push(`# TYPE ${metric.name} gauge`);
     },

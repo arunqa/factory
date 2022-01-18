@@ -16,7 +16,7 @@ Deno.test("TODO: fileSysAnalytics", async () => {
   const srcRoot = `/home/${
     Deno.env.get("USER")
   }/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/content`;
-  const src = await assetsTree.consumeAssets({
+  await assetsTree.consumeAssets({
     identity: "content",
     root: srcRoot,
     rootIsAbsolute: path.isAbsolute(srcRoot),
@@ -24,7 +24,7 @@ Deno.test("TODO: fileSysAnalytics", async () => {
   const destRoot = `/home/${
     Deno.env.get("USER")
   }/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/public`;
-  const dest = await assetsTree.consumeAssets({
+  await assetsTree.consumeAssets({
     identity: "public",
     root: destRoot,
     rootIsAbsolute: path.isAbsolute(destRoot),
