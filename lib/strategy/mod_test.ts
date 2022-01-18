@@ -5,7 +5,19 @@ Deno.test(`OKRs`, async () => {
   const okrsF = mod.typicalOkrFactory();
   const okrs = await okrsF.objectives(async function* (f) {
     yield await f.objective("objective 1", async function* (o) {
-      yield await f.keyResult(`${o.objective} KR 1`);
+      yield await f.keyResult(`${o.objective} KR 1 (with children)`, {
+        keyResultOKRs: await f.objectives(async function* (f) {
+          yield await f.objective(
+            `sub objective 1 for ${o.objective}`,
+            async function* (kr1O) {
+              yield await f.keyResult(`${kr1O.objective} KR 1`);
+              yield await f.keyResult(`${kr1O.objective} KR 2`);
+            },
+          );
+        }),
+      });
+      yield await f.keyResult(`${o.objective} KR 2 (no children)`);
+      yield await f.keyResult(`${o.objective} KR 3 (no children)`);
     });
   });
 
@@ -14,5 +26,5 @@ Deno.test(`OKRs`, async () => {
   const objectives = Array.from(okrs.objectives);
   const kr1 = Array.from(objectives[0].keyResults);
   ta.assertEquals(objectives.length, 1);
-  ta.assertEquals(kr1.length, 1);
+  ta.assertEquals(kr1.length, 3);
 });

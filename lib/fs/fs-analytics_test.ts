@@ -1,6 +1,6 @@
 import { path } from "./deps.ts";
 import { testingAsserts as ta } from "./deps-test.ts";
-import * as m from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.3/metrics.ts";
+import * as m from "https://raw.githubusercontent.com/gov-suite/governed-service-helpers/v0.4.3/metrics.ts";
 import * as fst from "./fs-tree.ts";
 import * as mod from "./fs-analytics.ts";
 
@@ -13,15 +13,17 @@ const _testPathRel = path.relative(Deno.cwd(), testPathAbs);
 
 Deno.test("TODO: fileSysAnalytics", async () => {
   const assetsTree = new fst.FileSysAssetsTree();
-  const srcRoot =
-    `/home/${Deno.env.get("USER")}/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/content`;
+  const srcRoot = `/home/${
+    Deno.env.get("USER")
+  }/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/content`;
   const src = await assetsTree.consumeAssets({
     identity: "content",
     root: srcRoot,
     rootIsAbsolute: path.isAbsolute(srcRoot),
   });
-  const destRoot =
-    `/home/${Deno.env.get("USER")}/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/public`;
+  const destRoot = `/home/${
+    Deno.env.get("USER")
+  }/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/public`;
   const dest = await assetsTree.consumeAssets({
     identity: "public",
     root: destRoot,

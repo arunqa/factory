@@ -20,7 +20,7 @@ acquire-tonic:
     assetAcqName=(tonic-$VERSION.min.js tonic-$VERSION.min.esm.js)
     for i in ${!assetBaseName[@]}; do
         assetBaseName=${assetBaseName[$i]}
-        SRC_URL=https://denopkg.com/optoolco/tonic@$VERSION/dist/$assetBaseName
+        SRC_URL=https://raw.githubusercontent.com/optoolco/tonic/$VERSION/dist/$assetBaseName
         FINAL_URL=`curl -Ls -o /dev/null -w %{url_effective} $SRC_URL`
         curl -s -o "$DEST/${assetAcqName[$i]}" $FINAL_URL
     done

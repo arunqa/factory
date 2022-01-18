@@ -14,6 +14,7 @@ export interface KeyResultText extends String {
 export interface KeyResult<Namespace extends string>
   extends govn.InstrumentableExpectation<Namespace> {
   readonly keyResult: KeyResultText;
+  readonly keyResultOKRs?: ObjectivesAndKeyResults<Namespace>;
 }
 
 // deno-lint-ignore no-empty-interface
@@ -37,9 +38,7 @@ export interface ObjectivesAndKeyResults<Namespace extends string>
 
 export const isObjectivesAndKeyResults = safety.typeGuard<
   ObjectivesAndKeyResults<OkrNamespace>
->(
-  "objectives",
-);
+>("objectives");
 
 export function okrsIdentitySupplier(
   uuidV5NS: id.Identity = okrNamespaceUUIDv5,
@@ -87,7 +86,7 @@ export function typicalOkrFactory(
     objective: async (text, defaults) => {
       const objective: Omit<Objective<OkrNamespace>, "keyResults"> = {
         identity: {
-          UUID: await ids.derivedNamespacedID(text as string),
+          UUID: await ids.idempotentNamespacedID(text as string),
         },
         // deno-lint-ignore no-explicit-any
         objective: text as any as ObjectiveText,
@@ -110,7 +109,7 @@ export function typicalOkrFactory(
     keyResult: async (text, defaults) => {
       return {
         identity: {
-          UUID: await ids.derivedNamespacedID(text as string),
+          UUID: await ids.idempotentNamespacedID(text as string),
         },
         // deno-lint-ignore no-explicit-any
         keyResult: text as any as KeyResultText,

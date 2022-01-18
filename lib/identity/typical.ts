@@ -29,7 +29,7 @@ export function typicalNamespacedUuidFactory<
     randomNamespacedID: () => {
       return uuidsSupplier.namespacedUuidV4Random();
     },
-    derivedNamespacedID: async (from) => {
+    idempotentNamespacedID: async (from) => {
       return await uuidsSupplier.namespacedUuidV5FromText(from);
     },
   };

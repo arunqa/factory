@@ -1,5 +1,5 @@
 import { path } from "./deps.ts";
-import * as gsm from "https://denopkg.com/gov-suite/governed-service-helpers@v0.4.3/metrics.ts";
+import * as gsm from "https://raw.githubusercontent.com/gov-suite/governed-service-helpers/v0.4.3/metrics.ts";
 import * as fst from "./fs-tree.ts";
 
 export interface TransactionIdSupplier {

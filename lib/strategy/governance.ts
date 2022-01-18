@@ -29,14 +29,34 @@ export interface InstrumentableExpectation<Namespace extends string>
   extends Instrumentable<Namespace>, Expectation<Namespace> {
 }
 
-export interface Expression<Namespace extends string> {
+export interface Demand<Namespace extends string> {
   readonly identity: StrategyIdentitySupplier<Namespace>;
 }
 
-export type ExpressionsSupplier<T> = Iterables<T>;
+export type DemandsSupplier<T> = Iterables<T>;
 
-export interface Purpose<Namespace extends string> {
+export interface Initiative<Namespace extends string> {
   readonly identity: StrategyIdentitySupplier<Namespace>;
 }
 
-export type PurposesSupplier<T> = Iterables<T>;
+export type InitiativesSupplier<T> = Iterables<T>;
+
+export interface Deliverable<Namespace extends string> {
+  readonly identity: StrategyIdentitySupplier<Namespace>;
+}
+
+export type DeliverablesSupplier<T> = Iterables<T>;
+
+export interface MilestoneText extends String {
+  // see [nominal typing](https://basarat.gitbook.io/typescript/main-1/nominaltyping#using-interfaces)
+  readonly _milestoneTextBrand: string; // To prevent type errors that could mix strings
+}
+
+export interface Milestone<Namespace extends string> {
+  readonly identity: StrategyIdentitySupplier<Namespace>;
+  readonly milestone: MilestoneText;
+  readonly initiate: Date;
+  readonly terminate?: Date;
+}
+
+export type MilestonesSupplier<T> = Iterables<T>;

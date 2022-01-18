@@ -10,12 +10,12 @@ export interface IdentityFactory {
   readonly randomID: () => Identity;
 }
 
-export type NamespacedIdentity<N extends string> = `${N}::${Identity}`;
+export type NamespacedIdentity<NS extends string> = `${NS}::${Identity}`;
 
 export interface NamespacedIdentityFactory<Namespace extends string>
   extends IdentityFactory {
   readonly randomNamespacedID: () => NamespacedIdentity<Namespace>;
-  readonly derivedNamespacedID: (
+  readonly idempotentNamespacedID: (
     deriveFrom: string,
   ) => Promise<NamespacedIdentity<Namespace>>;
 }
