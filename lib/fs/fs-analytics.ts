@@ -1,5 +1,5 @@
 import { path } from "./deps.ts";
-import * as gsm from "https://raw.githubusercontent.com/gov-suite/governed-service-helpers/v0.4.3/metrics.ts";
+import * as m from "../metrics/mod.ts";
 import * as fst from "./fs-tree.ts";
 
 export interface TransactionIdSupplier {
@@ -10,12 +10,12 @@ export interface TransactionIdSupplier {
 export interface AssetsObservabilityArguments
   extends Partial<TransactionIdSupplier> {
   readonly assetsTree: fst.FileSysAssetsTree;
-  readonly metrics: gsm.TypicalMetrics;
+  readonly metrics: m.TypicalMetrics;
 }
 
 export interface AssetsMetricsResult {
   readonly assetsTree: fst.FileSysAssetsTree;
-  readonly metrics: gsm.Metrics;
+  readonly metrics: m.Metrics;
   readonly pathExtnsColumnHeaders: [
     string,
     string,
@@ -174,7 +174,7 @@ export async function fileSysAnalytics(
 export const jsonMetricsReplacer = (key: string, value: unknown) => {
   if (key == "value" && typeof value === "function") return value();
   if (key == "metric") {
-    return (value as gsm.Metric).name;
+    return (value as m.Metric).name;
   }
   if (value && typeof value === "object") {
     if ("object" in value) {
@@ -182,10 +182,10 @@ export const jsonMetricsReplacer = (key: string, value: unknown) => {
       return (value as any).object;
     }
     if ("instances" in value) {
-      const metricsDefnMap = new Map<string, gsm.Metric>();
+      const metricsDefnMap = new Map<string, m.Metric>();
       // deno-lint-ignore no-explicit-any
-      const instances = ((value as any).instances) as gsm.MetricInstance<
-        gsm.Metric
+      const instances = ((value as any).instances) as m.MetricInstance<
+        m.Metric
       >[];
       for (const instance of instances) {
         const found = metricsDefnMap.get(instance.metric.name);

@@ -1,6 +1,6 @@
 import { path } from "./deps.ts";
 import { testingAsserts as ta } from "./deps-test.ts";
-import * as m from "https://raw.githubusercontent.com/gov-suite/governed-service-helpers/v0.4.3/metrics.ts";
+import * as m from "../metrics/mod.ts";
 import * as fst from "./fs-tree.ts";
 import * as mod from "./fs-analytics.ts";
 
