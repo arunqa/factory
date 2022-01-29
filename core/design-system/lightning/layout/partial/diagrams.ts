@@ -4,6 +4,7 @@ const d3 = "d3";
 const mermaid = "mermaid";
 const kroki = "kroki";
 const markmap = "markmap";
+const diagramsNet = "diagrams-net";
 
 function diagramScripts(fmProperty: unknown): string {
   const html: string[] = [];
@@ -44,6 +45,13 @@ function diagramScripts(fmProperty: unknown): string {
           // TODO: fix /lighting so that it uses baseURL
           html.push(
             `<script type="module" src="/universal-cc/component/markmap-diagram.js"></script>`,
+          );
+          break;
+
+        case diagramsNet:
+          // TODO: fix /lighting so that it uses baseURL
+          html.push(
+            `<script type="module" src="/universal-cc/component/diagrams-net.js"></script>`,
           );
           break;
       }

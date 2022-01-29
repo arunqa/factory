@@ -58,6 +58,15 @@ export const markmapCE: CustomElementMarkdownDirective = {
   encountered,
 };
 
+export const diagramsNetViewerCE: CustomElementMarkdownDirective = {
+  identity: "diagrams-net-viewer",
+  present: "block",
+  name: "diagrams-net-viewer",
+  tag: "diagrams-net-viewer",
+  allowedAttrs: ["diagnose", "drawio-url", "diagram-title", "width", "height"],
+  encountered,
+};
+
 export const timeAgoCE: CustomElementMarkdownDirective = {
   identity: "time-ago",
   present: "inline",
@@ -74,6 +83,7 @@ export const allCustomElements: CustomElementMarkdownDirective[] = [
   krokiCE,
   markmapCE,
   timeAgoCE,
+  diagramsNetViewerCE,
 ];
 
 export default allCustomElements;
