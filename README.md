@@ -122,8 +122,10 @@ JavaScript is best.
 
 ## Software Supply Chain
 
-- Regularly run `just maintain` at the top level of this library. This will help
-  update and maintain dependencies and perform other library-specific maintenance.
+- Regularly run `deno-task update-deno-deps` at the top level of this library. That command runs a target in `Taskfile.ts` which helps update and maintain dependencies and perform other library-specific maintenance.
+
+> deno-task update-deno-deps
+> deno-test
 
 ## TODOs
 

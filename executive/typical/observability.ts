@@ -1,4 +1,4 @@
-import * as colors from "https://deno.land/std@0.121.0/fmt/colors.ts";
+import * as colors from "https://deno.land/std@0.123.0/fmt/colors.ts";
 import * as rfGovn from "../../governance/mod.ts";
 import * as rfStd from "../../core/std/mod.ts";
 import * as rflHealth from "../../lib/health/mod.ts";
