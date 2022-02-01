@@ -75,13 +75,16 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
     const accessLog: Record<string, { color: (text: string) => string }> = {
       ".html": { color: colors.green },
       ".png": { color: colors.cyan },
+      ".drawio.png": { color: colors.green },
       ".jpg": { color: colors.cyan },
       ".gif": { color: colors.cyan },
       ".ico": { color: colors.cyan },
       ".svg": { color: colors.cyan },
+      ".drawio.svg": { color: colors.green },
       ".css": { color: colors.magenta },
       ".js": { color: colors.yellow },
       ".json": { color: colors.white },
+      ".pdf": { color: colors.green },
     };
     try {
       if (options?.beforeStaticAccess) {
