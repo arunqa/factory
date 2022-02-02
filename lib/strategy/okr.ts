@@ -14,7 +14,7 @@ export interface KeyResultText extends String {
 export interface KeyResult<Namespace extends string>
   extends govn.InstrumentableExpectation<Namespace> {
   readonly keyResult: KeyResultText;
-  readonly keyResultOKRs?: ObjectivesAndKeyResults<Namespace>;
+  readonly keyResultOKRs: ObjectivesAndKeyResults<Namespace>;
 }
 
 // deno-lint-ignore no-empty-interface
@@ -29,6 +29,7 @@ export interface ObjectiveText extends String {
 export interface Objective<Namespace extends string>
   extends govn.Intention<OkrNamespace>, KeyResults<Namespace> {
   readonly objective: ObjectiveText;
+  readonly childOKRs: ObjectivesAndKeyResults<Namespace>;
 }
 
 // deno-lint-ignore no-empty-interface
@@ -90,6 +91,9 @@ export function typicalOkrFactory(
         },
         // deno-lint-ignore no-explicit-any
         objective: text as any as ObjectiveText,
+        childOKRs: typeof defaults === "function"
+          ? { objectives: [] }
+          : (defaults?.childOKRs || { objectives: [] }),
       };
       let keyResults: Iterable<KeyResult<OkrNamespace>>;
       if (typeof defaults === "function") {
@@ -113,6 +117,7 @@ export function typicalOkrFactory(
         },
         // deno-lint-ignore no-explicit-any
         keyResult: text as any as KeyResultText,
+        keyResultOKRs: defaults?.keyResultOKRs || { objectives: [] },
         ...defaults,
       };
     },

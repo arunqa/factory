@@ -6,7 +6,7 @@ export interface StrategyIdentitySupplier<Namespace extends string> {
 }
 
 export type Iterables<T> = {
-  [P in keyof T as `${string & P}s`]: Iterable<T[P]>;
+  readonly [P in keyof T as `${string & P}s`]: Iterable<T[P]>;
 };
 
 /**
@@ -31,11 +31,22 @@ export interface Expectation<Namespace extends string> {
 export type ExpectationsSupplier<T> = Iterables<T>;
 
 /**
+ * Measurable is something that can be quantified but may have differences of
+ * opinions.
+ */
+export interface Measurable<Namespace extends string> {
+  readonly identity: StrategyIdentitySupplier<Namespace>;
+}
+
+/**
  * Instrumentable is most often used for expecations which can be measured but
  * could also be used for anything whose value can be derived from a machine or
- * other calculation.
+ * other calculation. The difference between measurable and instrumentable is
+ * that instrumentables can be machine probe-able and should not have human
+ * opinions injected.
  */
-export interface Instrumentable<Namespace extends string> {
+export interface Instrumentable<Namespace extends string>
+  extends Measurable<Namespace> {
   readonly identity: StrategyIdentitySupplier<Namespace>;
 }
 
@@ -71,7 +82,13 @@ export interface Instrumentable<Namespace extends string> {
  *   CLV = (T1 + T2 + ... + Tn) * AGM - Historical CLV Calculation
  *
  * These are other business-style metrics tied to utilization measurements:
- * - Domain Authority (DA)
+ * - [Lighthouse](https://lighthouse-dot-webdotdevsite.appspot.com/) score
+ * - [PageSpeed](https://pagespeed.web.dev) score
+ * - [GTmetrix](https://gtmetrix.com) score
+ * - [WepageTest](https://webpagetest.org) score
+ * - [SecurityHeaders](https://securityheaders.com) score
+ * - [HSTS score](https://hstspreload.org)
+ * - Domain Authority (DA) [can come from multiple sources so we need agreement]
  * - Traffic sources
  * - Bounce rate
  * - Conversion rate
@@ -79,6 +96,12 @@ export interface Instrumentable<Namespace extends string> {
  * - Exit pages
  * - Network referrals
  * - Average time on site
+ *
+ * These are some metrics used by [Y Combinator](https://ycombinator.june.so/):
+ * - Revenue
+ * - Active users
+ * - Letters of Interest
+ * - Milestones
  */
 export interface InstrumentableExpectation<Namespace extends string>
   extends Instrumentable<Namespace>, Expectation<Namespace> {
@@ -112,7 +135,8 @@ export type InitiativesSupplier<T> = Iterables<T>;
  * a deliverable. If an initiative can be expressed as something that a human
  * or machine can use it becomes a deliverable.
  */
-export interface Deliverable<Namespace extends string> {
+export interface Deliverable<Namespace extends string>
+  extends Initiative<Namespace> {
   readonly identity: StrategyIdentitySupplier<Namespace>;
 }
 

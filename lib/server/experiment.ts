@@ -11,9 +11,7 @@ export interface StaticAccessEvent {
 export interface ExperimentalServerOperationalContext {
   readonly processStartTimestamp: Date;
   readonly iterationCount: number;
-  readonly watching: string | string[];
   readonly isReloadRequest: boolean;
-  readonly triggerEvent?: Deno.FsEvent;
   readonly liveReloadSockets: WebSocket[];
 }
 
@@ -134,26 +132,6 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
   app.addEventListener(
     "listen",
     ({ port }) => {
-      const event = options?.triggerEvent;
-      if (event) {
-        console.info(
-          ` Trigger(s): ${
-            event.paths.map((p) =>
-              `${colors.underline(colors.brightBlue(event.kind))} ${
-                colors.yellow(path.resolve(p))
-              }`
-            ).join("\n             ")
-          }`,
-        );
-      }
-      if (options?.watching) {
-        const watchFS = typeof options?.watching === "string"
-          ? [options?.watching]
-          : options?.watching;
-        for (const watching of watchFS) {
-          console.info(`   Watching: ${colors.yellow(path.resolve(watching))}`);
-        }
-      }
       console.info(`       Root: ${colors.yellow(staticRoot)}`);
       if (options?.processStartTimestamp) {
         const iteration = options?.iterationCount || -1;
@@ -213,21 +191,11 @@ export async function willSendStatic(
 }
 
 export async function experimentalServerListen(
-  watchFS: string | string[],
-  allowReload: (
-    event: Deno.FsEvent,
-    watcher: Deno.FsWatcher,
-  ) => Promise<boolean>,
-  onReload: (oc: ExperimentalServerOperationalContext) => Promise<boolean>,
-  esoc: Pick<
-    ExperimentalServerOperationalContext,
-    "processStartTimestamp" | "iterationCount"
-  >,
+  esoc: ExperimentalServerOperationalContext,
   port = 8003,
 ) {
   let abortController: AbortController | undefined = undefined;
   let listener: Promise<void> | undefined = undefined;
-  const liveReloadSockets: WebSocket[] = [];
 
   const listen = async (oc: ExperimentalServerOperationalContext) => {
     if (abortController && listener) {
@@ -237,7 +205,7 @@ export async function experimentalServerListen(
 
     abortController = new AbortController();
     const app = experimentalServer(oc);
-    for (const lrSocket of liveReloadSockets) {
+    for (const lrSocket of esoc.liveReloadSockets) {
       // when the socket is closed, it will force reload on the client because
       // the websocket closed signal is what is monitored
       lrSocket.close(-1, "reload");
@@ -250,41 +218,5 @@ export async function experimentalServerListen(
     });
   };
 
-  listen({
-    watching: watchFS,
-    isReloadRequest: false,
-    liveReloadSockets,
-    ...esoc,
-  });
-
-  const watcher = Deno.watchFs(watchFS, { recursive: true });
-  let isReloading = false;
-  for await (const event of watcher) {
-    if (!(await allowReload(event, watcher))) continue;
-    if (isReloading) {
-      continue;
-    }
-
-    console.info(colors.brightMagenta("*".repeat(79)));
-    console.info(colors.brightMagenta(`* Refreshing experimental pages `));
-    console.info(
-      colors.brightMagenta(`* ${colors.brightBlue(new Date().toString())}`),
-    );
-    console.info(colors.brightMagenta("*".repeat(79)));
-
-    isReloading = true;
-    const oc: ExperimentalServerOperationalContext = {
-      processStartTimestamp: new Date(),
-      iterationCount: esoc.iterationCount + 1,
-      watching: watchFS,
-      triggerEvent: event,
-      isReloadRequest: true,
-      liveReloadSockets,
-    };
-    const reload = await onReload(oc);
-    if (reload) listen(oc);
-
-    // TODO: set a timeout to wait a little while between update events
-    setTimeout(() => (isReloading = false), 500);
-  }
+  await listen(esoc);
 }
