@@ -92,51 +92,66 @@ function stickyFooter() {
 */
 
 if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+    let lrSocket, lrReconnectionTimerId;
+    const lrIntervalSeconds = 1;
+    const lrIntervalMS = lrIntervalSeconds * 1000;
+    const lrMaxAttempts = 60;
+
+    const refreshPage = (_event, _lrSocketUrl) => {
+        location.reload();
+    }
+
+    const liveReloadStatus = (message) => {
+        const messenger = document.getElementById("live-reload-message-container");
+        if (messenger) {
+            messenger.innerHTML = message;
+        } else {
+            console.log(message);
+        }
+    }
+
     // if we're running as a local service, see if live-reload is enabled.
-    // if a websocket is available, at the socketUrl it means that we support
+    // if a websocket is available, at the lrSocketUrl it means that we support
     // live reload using a simple rule: when the web socket closes, it triggers
     // a notification that tells us we should reload the current page and then
     // hook back in.
-    (() => {
-        const socketUrl = `ws://${document.location.host}/ws/experiment/live-reload`;
-        let socket = new WebSocket(socketUrl);
-        socket.addEventListener('open', () => {
-            const messenger = document.getElementById("live-reload-message-container");
-            if (messenger) {
-                messenger.innerHTML = `Live reload enabled for ${socketUrl}`;
-            } else {
-                console.log(`live reload socket connected at ${socketUrl}`);
-            }
-        });
-        socket.addEventListener('close', () => {
-            // If we get here it means the server has been turned off, either
-            // due to file-change-triggered web server restart or to truly
-            // being turned off.
+    const liveReloadConnect = (onConnect, lrSocketUrl = `ws://${document.location.host}/ws/experiment/live-reload`, reloadAttempt = 0) => {
+        // If one is already open, allow the last socket to be garbage collected
+        if (lrSocket) lrSocket.close();
+        lrSocket = null;
 
-            console.log(`live reload socket ${socketUrl} closed, will reload the page shortly`);
+        liveReloadStatus(`Waiting for live reload server to start at ${lrSocketUrl} (attempt ${reloadAttempt} of ${lrMaxAttempts}). <a href="javascript:location.reload()">Force Reload</a>.`);
+        lrSocket = new WebSocket(lrSocketUrl);
+        lrSocket.addEventListener("open", (event) => { onConnect(event, lrSocketUrl) });
 
-            // Attempt to re-establish a connection until it works,
-            // failing after a few seconds (at that point things are likely
-            // turned off/permanantly broken instead of rebooting)
-            const interAttemptTimeoutMilliseconds = 100;
-            const maxDisconnectedTimeMilliseconds = 3000;
-            const maxAttempts = Math.round(maxDisconnectedTimeMilliseconds / interAttemptTimeoutMilliseconds);
-            let attempts = 0;
-            const reloadIfCanConnect = () => {
-                attempts++;
-                if (attempts > maxAttempts) {
-                    console.error(`Could not reconnect to experimental server at ${socketUrl}.`);
+        lrSocket.addEventListener("close", () => {
+            const nextReloadAttempt = reloadAttempt + 1;
+            liveReloadStatus(`Server at ${lrSocketUrl} has been closed (restarted?), reconnecting (attempt ${nextReloadAttempt} in ${lrIntervalMS}ms). <a href="javascript:location.reload()">Force Reload</a>.`);
+            clearInterval(lrReconnectionTimerId);
+            lrReconnectionTimerId = setInterval(() => {
+                if (nextReloadAttempt > lrMaxAttempts) {
+                    liveReloadStatus(`Server did not restart after ${lrMaxAttempts * lrIntervalSeconds} seconds and ${reloadAttempt} attempts, giving up. <a href="javascript:location.reload()">Force Reload</a>.`);
+                    clearInterval(lrReconnectionTimerId);
                     return;
                 }
-                socket = new WebSocket(socketUrl);
-                socket.addEventListener('error', () => {
-                    setTimeout(reloadIfCanConnect, interAttemptTimeoutMilliseconds);
-                });
-                socket.addEventListener('open', () => {
-                    location.reload();
-                });
-            };
-            reloadIfCanConnect();
+                liveReloadConnect((event) => {
+                    clearInterval(lrReconnectionTimerId);
+                    refreshPage(event, lrSocketUrl)
+                }, lrSocketUrl, nextReloadAttempt);
+            }, lrIntervalMS);
         });
-    })();
+
+        // Add a listener for messages from the server.
+        lrSocket.addEventListener("message", (event) => {
+            // Check whether we should refresh the browser.
+            if (event.data === "reload") {
+                liveReloadStatus(`Received live reload request from ${lrSocketUrl}.`);
+                liveReload(event, lrSocketUrl);
+            }
+        });
+    }
+
+    liveReloadConnect((_event, lrSocketUrl) => {
+        liveReloadStatus(`Live reload enabled for ${lrSocketUrl}`);
+    });
 }

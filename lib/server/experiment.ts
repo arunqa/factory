@@ -8,45 +8,19 @@ export interface StaticAccessEvent {
   readonly candidate?: [string, Deno.FileInfo];
 }
 
-export interface ExperimentalServerOperationalContext {
-  readonly processStartTimestamp: Date;
-  readonly iterationCount: number;
-  readonly isReloadRequest: boolean;
-  readonly liveReloadSockets: WebSocket[];
+export interface LiveReloadState {
+  readonly endpointURL: string;
+  readonly lrSockets: WebSocket[];
+  readonly register: (socket: WebSocket) => void;
+  readonly cleanup: () => void;
 }
 
-export interface ExperimentalServerOptions
-  extends ExperimentalServerOperationalContext {
-  readonly beforeStaticAccess?: (event: StaticAccessEvent) => Promise<void>;
-}
-
-export const experimentalServer = (options?: ExperimentalServerOptions) => {
-  const app = new oak.Application({
-    serverConstructor: oak.HttpServerNative,
-  });
-  const router = new oak.Router();
-
-  // error handler
-  app.use(async (_ctx, next) => {
-    try {
-      await next();
-    } catch (err) {
-      console.log(err);
-    }
-  });
-
-  // explcit routes defined here, anything not defined will be statically served
-  router.get("/index.html", (ctx) => {
-    ctx.response.body = "SSR test route in experimentalServer (don't use this)";
-  });
-
-  if (options?.liveReloadSockets) {
-    const lrSockets = options?.liveReloadSockets;
-    // create the live-reload websocket endpoint; whenever the listener is
-    // restarted, the websocket will die on the client which will trigger a reload
-    // of the browser's web page; the actual websocket message is irrelevant
-    router.get("/ws/experiment/live-reload", async (ctx) => {
-      const socket = await ctx.upgrade();
+export function typicalLiveReloadState(endpointURL: string): LiveReloadState {
+  const lrSockets: WebSocket[] = [];
+  return {
+    endpointURL,
+    lrSockets,
+    register: (socket) => {
       socket.onopen = () => lrSockets.push(socket);
       socket.onclose = () => {
         const index = lrSockets.indexOf(socket);
@@ -55,7 +29,61 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
         }
       };
       socket.onerror = (e) => console.log("Socket errored", e);
-      console.log(colors.gray(`    /ws/experiment/live-reload hook request`));
+    },
+    cleanup: () => {
+      for (const lrSocket of lrSockets) {
+        // when the socket is closed, it will force reload on the client because
+        // the websocket closed signal is what is monitored
+        lrSocket.close(-1, "reload");
+        console.log("closed lrSocket, reload request sent to browser");
+      }
+    },
+  };
+}
+
+export interface ExperimentalServerOperationalContext {
+  readonly processStartTimestamp: Date;
+  readonly iterationCount: number;
+  readonly isReloadRequest: boolean;
+  readonly staticAssetsHome: string;
+  readonly liveReloadState?: LiveReloadState;
+}
+
+export interface ExperimentalServerOptions
+  extends ExperimentalServerOperationalContext {
+  readonly beforeStaticAccess?: (event: StaticAccessEvent) => Promise<void>;
+}
+
+export const experimentalServer = (options: ExperimentalServerOptions) => {
+  const app = new oak.Application({
+    serverConstructor: oak.HttpServerNative,
+  });
+  const router = new oak.Router();
+  const { staticAssetsHome, liveReloadState } = options;
+
+  // error handler
+  app.use(async (_ctx, next) => {
+    try {
+      await next();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  // explcit routes defined here, anything not defined will be statically served
+  router.get("/index.html", (ctx) => {
+    ctx.response.body = "SSR test route in experimentalServer (don't use this)";
+  });
+
+  if (liveReloadState) {
+    // create the live-reload websocket endpoint; whenever the listener is
+    // restarted, the websocket will die on the client which will trigger a reload
+    // of the browser's web page; the actual websocket message is irrelevant
+    router.get(liveReloadState.endpointURL, (ctx) => {
+      liveReloadState.register(ctx.upgrade());
+      console.log(
+        colors.gray(`    ${liveReloadState.endpointURL} hook request`),
+      );
     });
   }
 
@@ -67,7 +95,6 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
   app.use(router.allowedMethods());
 
   // static content
-  const staticRoot = `${Deno.cwd()}/public`;
   const showFilesRelativeTo = Deno.cwd();
   app.use(async (ctx, next) => {
     const accessLog: Record<string, { color: (text: string) => string }> = {
@@ -86,10 +113,21 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
     };
     try {
       if (options?.beforeStaticAccess) {
-        const candidate = await willSendStatic(ctx, staticRoot, "index.html");
-        options.beforeStaticAccess({ oakCtx: ctx, staticRoot, candidate });
+        const candidate = await willSendStatic(
+          ctx,
+          staticAssetsHome,
+          "index.html",
+        );
+        options.beforeStaticAccess({
+          oakCtx: ctx,
+          staticRoot: staticAssetsHome,
+          candidate,
+        });
       }
-      const target = await ctx.send({ root: staticRoot, index: "index.html" });
+      const target = await ctx.send({
+        root: staticAssetsHome,
+        index: "index.html",
+      });
       if (target) {
         const relative = path.relative(showFilesRelativeTo, target);
         const extn = path.extname(target);
@@ -117,7 +155,9 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
         // deno-fmt-ignore
         console.error(colors.red(`oak ctx.send('${colors.brightRed(ctx.request.url.pathname)}') was not served`));
       }
-    } catch {
+    } catch (err) {
+      // deno-fmt-ignore
+      console.error(colors.red(`oak ctx.send('${colors.brightRed(ctx.request.url.pathname)}') error: ${err}`));
       next();
     }
   });
@@ -132,7 +172,7 @@ export const experimentalServer = (options?: ExperimentalServerOptions) => {
   app.addEventListener(
     "listen",
     ({ port }) => {
-      console.info(`       Root: ${colors.yellow(staticRoot)}`);
+      console.info(`       Root: ${colors.yellow(staticAssetsHome)}`);
       if (options?.processStartTimestamp) {
         const iteration = options?.iterationCount || -1;
         const duration = new Date().valueOf() -
@@ -191,32 +231,9 @@ export async function willSendStatic(
 }
 
 export async function experimentalServerListen(
-  esoc: ExperimentalServerOperationalContext,
+  oc: ExperimentalServerOperationalContext,
   port = 8003,
 ) {
-  let abortController: AbortController | undefined = undefined;
-  let listener: Promise<void> | undefined = undefined;
-
-  const listen = async (oc: ExperimentalServerOperationalContext) => {
-    if (abortController && listener) {
-      abortController.abort();
-      await listener;
-    }
-
-    abortController = new AbortController();
-    const app = experimentalServer(oc);
-    for (const lrSocket of esoc.liveReloadSockets) {
-      // when the socket is closed, it will force reload on the client because
-      // the websocket closed signal is what is monitored
-      lrSocket.close(-1, "reload");
-      console.log("closed lrSocket, reload request sent to browser");
-    }
-
-    listener = app.listen({
-      port,
-      signal: abortController.signal,
-    });
-  };
-
-  await listen(esoc);
+  const app = experimentalServer(oc);
+  await app.listen({ port });
 }
