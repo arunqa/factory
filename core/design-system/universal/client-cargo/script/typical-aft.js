@@ -101,10 +101,10 @@ if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
         location.reload();
     }
 
-    const liveReloadStatus = (message) => {
+    const liveReloadStatus = (message, appendForceReload = false) => {
         const messenger = document.getElementById("live-reload-message-container");
         if (messenger) {
-            messenger.innerHTML = message;
+            messenger.innerHTML = appendForceReload ? `${message} <a href="javascript:location.reload()" class="localhost-diags localhost-diags-live-reload-force">Force Reload</a>.` : message;
         } else {
             console.log(message);
         }
@@ -120,17 +120,17 @@ if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
         if (lrSocket) lrSocket.close();
         lrSocket = null;
 
-        liveReloadStatus(`Waiting for live reload server to start at ${lrSocketUrl} (attempt ${reloadAttempt} of ${lrMaxAttempts}). <a href="javascript:location.reload()">Force Reload</a>.`);
+        liveReloadStatus(`Waiting for live reload server to start at ${lrSocketUrl} (attempt ${reloadAttempt} of ${lrMaxAttempts}).`, true);
         lrSocket = new WebSocket(lrSocketUrl);
         lrSocket.addEventListener("open", (event) => { onConnect(event, lrSocketUrl) });
 
         lrSocket.addEventListener("close", () => {
             const nextReloadAttempt = reloadAttempt + 1;
-            liveReloadStatus(`Server at ${lrSocketUrl} has been closed (restarted?), reconnecting (attempt ${nextReloadAttempt} in ${lrIntervalMS}ms). <a href="javascript:location.reload()">Force Reload</a>.`);
+            liveReloadStatus(`Server at ${lrSocketUrl} has been closed (restarted?), reconnecting (attempt ${nextReloadAttempt} in ${lrIntervalMS}ms).`, true);
             clearInterval(lrReconnectionTimerId);
             lrReconnectionTimerId = setInterval(() => {
                 if (nextReloadAttempt > lrMaxAttempts) {
-                    liveReloadStatus(`Server did not restart after ${lrMaxAttempts * lrIntervalSeconds} seconds and ${reloadAttempt} attempts, giving up. <a href="javascript:location.reload()">Force Reload</a>.`);
+                    liveReloadStatus(`Server did not restart after ${lrMaxAttempts * lrIntervalSeconds} seconds and ${reloadAttempt} attempts, giving up.`, true);
                     clearInterval(lrReconnectionTimerId);
                     return;
                 }

@@ -48,6 +48,11 @@ footer code.localhost-diags-layout-origin-src {
     color: yellowgreen;
 }
 
+footer a.localhost-diags-live-reload-force {
+    color: lightgoldenrodyellow;
+    text-decoration: underline;
+}
+
 /* SLDS */
 
 .slds-context-bar {
