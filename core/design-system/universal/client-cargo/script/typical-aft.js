@@ -93,6 +93,7 @@ function stickyFooter() {
 
 if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
     let lrSocket, lrReconnectionTimerId;
+    const originServer = `${location.protocol}//${location.hostname}:${location.port}`;
     const lrIntervalSeconds = 1;
     const lrIntervalMS = lrIntervalSeconds * 1000;
     const lrMaxAttempts = 60;
@@ -115,18 +116,18 @@ if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
     // live reload using a simple rule: when the web socket closes, it triggers
     // a notification that tells us we should reload the current page and then
     // hook back in.
-    const liveReloadConnect = (onConnect, lrSocketUrl = `ws://${document.location.host}/ws/experiment/live-reload`, reloadAttempt = 0) => {
+    const liveReloadConnect = (onConnect, lrSocketUrl = `ws://${document.location.host}/ws/experiment/live-reload?origin-pathname=${location.pathname}`, reloadAttempt = 0) => {
         // If one is already open, allow the last socket to be garbage collected
         if (lrSocket) lrSocket.close();
         lrSocket = null;
 
-        liveReloadStatus(`Waiting for live reload server to start at ${lrSocketUrl} (attempt ${reloadAttempt} of ${lrMaxAttempts}).`, true);
+        liveReloadStatus(`Waiting for ${originServer} server to start (attempt ${reloadAttempt} of ${lrMaxAttempts}).`, true);
         lrSocket = new WebSocket(lrSocketUrl);
         lrSocket.addEventListener("open", (event) => { onConnect(event, lrSocketUrl) });
 
         lrSocket.addEventListener("close", () => {
             const nextReloadAttempt = reloadAttempt + 1;
-            liveReloadStatus(`Server at ${lrSocketUrl} has been closed (restarted?), reconnecting (attempt ${nextReloadAttempt} in ${lrIntervalMS}ms).`, true);
+            liveReloadStatus(`Server at ${originServer} has been closed (restarted?), reconnecting (attempt ${nextReloadAttempt} in ${lrIntervalMS}ms).`, true);
             clearInterval(lrReconnectionTimerId);
             lrReconnectionTimerId = setInterval(() => {
                 if (nextReloadAttempt > lrMaxAttempts) {
@@ -145,13 +146,13 @@ if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
         lrSocket.addEventListener("message", (event) => {
             // Check whether we should refresh the browser.
             if (event.data === "reload") {
-                liveReloadStatus(`Received live reload request from ${lrSocketUrl}.`);
+                liveReloadStatus(`Received live reload request from ${originServer}.`);
                 liveReload(event, lrSocketUrl);
             }
         });
     }
 
     liveReloadConnect((_event, lrSocketUrl) => {
-        liveReloadStatus(`Live reload enabled for ${lrSocketUrl}`);
+        liveReloadStatus(`<span title="${lrSocketUrl}">Live reload enabled for ${originServer}.</a>`);
     });
 }
