@@ -1,4 +1,4 @@
-import { colors, oak, oakUtil, path } from "./deps.ts";
+import { colors, oak, path } from "./deps.ts";
 import * as human from "../text/human.ts";
 
 export interface LiveReloadState {
