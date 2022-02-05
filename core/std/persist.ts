@@ -69,6 +69,14 @@ export async function persistFlexibleFileCustom(
   destFileName: LocalFileSystemDestination,
   options?: PersistOptions,
 ): Promise<false | "string" | "text" | "uint8array" | "writer"> {
+  const beforePersist = Date.now();
+  const measure = () => {
+    return performance.measure(destFileName, {
+      start: beforePersist,
+      end: Date.now(),
+      detail: { isSync: false, isPersistFlexibleFile: true },
+    });
+  };
   const ees = options?.eventsEmitter;
   // always ensure in sync mode, never async
   if (options?.ensureDirSync) {
@@ -80,7 +88,7 @@ export async function persistFlexibleFileCustom(
       await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        { ...ees, contributor, contribution: "string" },
+        { ...ees, contributor, contribution: "string", measure: measure() },
       );
     }
     return "string";
@@ -96,7 +104,7 @@ export async function persistFlexibleFileCustom(
       await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        { ...ees, contributor, contribution: "text" },
+        { ...ees, contributor, contribution: "text", measure: measure() },
       );
     }
     return "text";
@@ -112,7 +120,7 @@ export async function persistFlexibleFileCustom(
       await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        { ...ees, contributor, contribution: "uint8array" },
+        { ...ees, contributor, contribution: "uint8array", measure: measure() },
       );
     }
     return "uint8array";
@@ -125,7 +133,7 @@ export async function persistFlexibleFileCustom(
       await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        { ...ees, contributor, contribution: "writer" },
+        { ...ees, contributor, contribution: "writer", measure: measure() },
       );
     }
     return "writer";
@@ -149,7 +157,13 @@ export async function persistFlexibleFileCustom(
       await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        { ...ees, unhandled: true, contributor, contribution: recursed },
+        {
+          ...ees,
+          unhandled: true,
+          contributor,
+          contribution: recursed,
+          measure: measure(),
+        },
       );
     }
     return recursed;
@@ -162,6 +176,14 @@ export function persistFlexibleFileSyncCustom(
   destFileName: LocalFileSystemDestination,
   options?: PersistOptions,
 ): false | "string" | "text" | "uint8array" | "writer" {
+  const beforePersist = Date.now();
+  const measure = () => {
+    return performance.measure(destFileName, {
+      start: beforePersist,
+      end: Date.now(),
+      detail: { isSync: true, isPersistFlexibleFile: true },
+    });
+  };
   const ees = options?.eventsEmitter;
   if (options?.ensureDirSync) {
     options?.ensureDirSync(path.dirname(destFileName));
@@ -172,7 +194,7 @@ export function persistFlexibleFileSyncCustom(
       ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        { ...ees, contributor, contribution: "string" },
+        { ...ees, contributor, contribution: "string", measure: measure() },
       );
     }
     return "string";
@@ -188,7 +210,7 @@ export function persistFlexibleFileSyncCustom(
       ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        { ...ees, contributor, contribution: "text" },
+        { ...ees, contributor, contribution: "text", measure: measure() },
       );
     }
     return "text";
@@ -204,7 +226,7 @@ export function persistFlexibleFileSyncCustom(
       ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        { ...ees, contributor, contribution: "uint8array" },
+        { ...ees, contributor, contribution: "uint8array", measure: measure() },
       );
     }
     return "uint8array";
@@ -217,7 +239,7 @@ export function persistFlexibleFileSyncCustom(
       ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        { ...ees, contributor, contribution: "writer" },
+        { ...ees, contributor, contribution: "writer", measure: measure() },
       );
     }
     return "writer";
@@ -235,7 +257,13 @@ export function persistFlexibleFileSyncCustom(
       ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        { ...ees, unhandled: true, contributor, contribution: recursed },
+        {
+          ...ees,
+          unhandled: true,
+          contributor,
+          contribution: recursed,
+          measure: measure(),
+        },
       );
     }
     return recursed;

@@ -34,7 +34,6 @@ export function typicalLiveReloadState(endpointURL: string): LiveReloadState {
 }
 
 export interface ExperimentalServerOperationalContext {
-  readonly processStartTimestamp: Date;
   readonly iterationCount: number;
   readonly isReloadRequest: boolean;
   readonly staticAssetsHome: string;

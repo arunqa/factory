@@ -179,7 +179,7 @@ export function* metricsFactorySuppliers(
     };
   }
 
-  if (metrics.assets.renderCSV) {
+  if (metrics.assets && metrics.assets.renderCSV) {
     yield {
       // deno-lint-ignore require-await
       resourceFactory: async () => {
@@ -204,12 +204,12 @@ export function* metricsFactorySuppliers(
               nature: dtr.csvContentNature,
             },
             isDelimitedTextSupplier: true,
-            header: metrics.assets.results.pathExtnsColumnHeaders.map((
+            header: metrics.assets!.results.pathExtnsColumnHeaders.map((
               h,
             ) => `"${h}"`).join(
               ",",
             ),
-            rows: metrics.assets.results.pathExtnsColumns.map((row) =>
+            rows: metrics.assets!.results.pathExtnsColumns.map((row) =>
               row.join(",")
             ),
           };

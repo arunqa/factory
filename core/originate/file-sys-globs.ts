@@ -64,7 +64,7 @@ export class FileSysGlobsOriginatorEventEmitter<Resource>
     beforeYieldWalkEntry(we: FileSysGlobWalkEntry<Resource>): Promise<void>;
     afterConstructResource(
       r: Resource,
-      we: FileSysGlobWalkEntry<Resource>,
+      lcMetrics: govn.ResourceLifecycleMetrics,
     ): Promise<void>;
   }> {}
 
@@ -205,7 +205,7 @@ export class FileSysGlobsOriginator<Resource>
                   await this.fsee.emit(
                     "afterConstructResource",
                     resource,
-                    lfswe,
+                    lcMetrics,
                   );
                 }
                 return resource;

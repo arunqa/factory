@@ -37,7 +37,6 @@ Deno.test("TODO: fileSysAnalytics", async () => {
     metrics: new m.TypicalMetrics(),
   });
   ta.assert(analytics);
-  ta.assert(analytics.metrics);
   // Deno.writeTextFileSync(
   //   "test.csv",
   //   metrics.pathExtnsColumnHeaders.join(",") + "\n" +

@@ -20,7 +20,7 @@ const termsManager = new k.TypicalTermsManager();
 const observability = new obs.Observability(
   new govn.ObservabilityEventsEmitter(),
 );
-const prefs: mod.Preferences<unknown> = {
+const prefs: mod.Preferences<mod.PublicationOperationalContext> = {
   observability,
   contentRootPath: path.join(docsPath, "content"),
   persistClientCargo: async (publishDest) => {
@@ -57,6 +57,7 @@ const prefs: mod.Preferences<unknown> = {
   wsEditorResolver: () => undefined,
   extensionsManager,
   termsManager,
+  operationalCtx: { processStartTimestamp: new Date() },
 };
 
 export class TestDesignSystem implements lds.LightningDesignSystemFactory {
@@ -64,7 +65,7 @@ export class TestDesignSystem implements lds.LightningDesignSystemFactory {
   readonly contentStrategy: lds.LightingDesignSystemContentStrategy;
 
   constructor(
-    config: mod.Configuration<unknown>,
+    config: mod.Configuration<mod.PublicationOperationalContext>,
     routes: mod.PublicationRoutes,
   ) {
     this.designSystem = new lds.LightingDesignSystem(
@@ -96,9 +97,9 @@ export class TestDesignSystem implements lds.LightningDesignSystemFactory {
 
 const config = new mod.Configuration(prefs);
 const executive = new mod.Executive([
-  new class extends mod.TypicalPublication<unknown> {
+  new class extends mod.TypicalPublication<mod.PublicationOperationalContext> {
     constructDesignSystem(
-      config: mod.Configuration<unknown>,
+      config: mod.Configuration<mod.PublicationOperationalContext>,
       routes: mod.PublicationRoutes,
       // deno-lint-ignore no-explicit-any
     ): ds.DesignSystemFactory<any, any, any, any> {

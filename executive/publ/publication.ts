@@ -15,6 +15,8 @@ import * as fsInspect from "../../lib/fs/inspect.ts";
 import * as git from "../../lib/git/mod.ts";
 import * as notif from "../../lib/notification/mod.ts";
 import * as ws from "../../lib/ws/mod.ts";
+import * as gi from "../../lib/structure/govn-index.ts";
+import * as m from "../../lib/metrics/mod.ts";
 
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
@@ -36,8 +38,128 @@ export const assetMetricsWalkOptions: fs.WalkOptions = {
   skip: [/\.git/],
 };
 
-export interface Preferences<OperationalContext> {
-  readonly operationalCtx?: OperationalContext;
+export interface PublicationMeasures {
+  readonly initProduceStartMS: number;
+  readonly originateStartMS: number;
+  readonly finalizePrePersistStartMS: number;
+  readonly persistStartMS: number;
+  readonly finalizeProduceStartMS: number;
+}
+
+export class PublicationResourcesIndex<Resource>
+  extends gi.UniversalIndex<Resource> {
+  // deno-lint-ignore no-explicit-any
+  populateMetrics(metrics: m.Metrics, baggage: any) {
+    let totalConstructMS = 0;
+    let totalRendered = 0;
+    let totalRenderedMS = 0;
+    for (const r of this.resourcesIndex) {
+      if (rfStd.isResourceLifecycleMetricsSupplier(r)) {
+        const cpm = r.lifecycleMetrics.constructPM;
+        totalConstructMS += cpm.duration;
+      }
+      if (rfStd.isRenderMetricsSupplier(r)) {
+        const rpm = r.renderMeasure;
+        if (rpm) {
+          totalRendered++;
+          totalRenderedMS += rpm.duration;
+        }
+      }
+    }
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_resources_index_entries_total",
+        "Count of total resources constructed",
+      ).instance(this.resourcesIndex.length, baggage),
+    );
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_resources_index_lc_construction_milliseconds",
+        "Aggregated construction time of all resources in milliseconds",
+      ).instance(totalConstructMS, baggage),
+    );
+    const meanConstructMS = totalConstructMS / this.resourcesIndex.length;
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_resources_index_lc_construction_mean_milliseconds",
+        "Average (mean) construction time of all resources in milliseconds",
+      ).instance(meanConstructMS, baggage),
+    );
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_resources_index_entries_rendered_total",
+        "Count of total resources who supplied their rendering metrics",
+      ).instance(totalRendered, baggage),
+    );
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_resources_index_lc_rendered_milliseconds",
+        "Aggregated rendering time of all resources in milliseconds",
+      ).instance(totalRenderedMS, baggage),
+    );
+    const meanRenderedMS = totalRenderedMS / totalRendered;
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_resources_index_lc_rendered_mean_milliseconds",
+        "Average (mean) rendering time of all resources in milliseconds",
+      ).instance(meanRenderedMS, baggage),
+    );
+  }
+}
+
+export class PublicationPersistedIndex {
+  readonly persistedDestFiles = new Map<
+    string, // the filename written (e.g. public/**/*.html, etc.)
+    rfGovn.FileSysAfterPersistEventElaboration<unknown>
+  >();
+
+  index(
+    destFileName: string,
+    fsapee: rfGovn.FileSysAfterPersistEventElaboration<unknown>,
+  ): void {
+    this.persistedDestFiles.set(destFileName, fsapee);
+  }
+
+  has(destFileName: string): boolean {
+    return this.persistedDestFiles.has(destFileName);
+  }
+
+  // deno-lint-ignore no-explicit-any
+  populateMetrics(metrics: m.Metrics, baggage: any) {
+    let totalPersistMS = 0;
+    this.persistedDestFiles.forEach((v) => {
+      totalPersistMS += v.measure.duration;
+    });
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_persisted_index_entries_total",
+        "Count of total resources persisted",
+      ).instance(this.persistedDestFiles.size, baggage),
+    );
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_persisted_index_lc_persistence_milliseconds",
+        "Aggregated persistence time of all resources in milliseconds",
+      ).instance(totalPersistMS, baggage),
+    );
+    const meanConstructMS = totalPersistMS / this.persistedDestFiles.size;
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_persisted_index_lc_persistence_mean_milliseconds",
+        "Average (mean) persistenced time of all resources in milliseconds",
+      ).instance(meanConstructMS, baggage),
+    );
+  }
+}
+
+export interface PublicationOperationalContext {
+  readonly processStartTimestamp: Date;
+}
+
+export interface Preferences<
+  OperationalContext extends PublicationOperationalContext,
+> {
+  readonly operationalCtx: OperationalContext;
   readonly observability: rfStd.Observability;
   readonly contentRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
@@ -60,9 +182,10 @@ export interface Preferences<OperationalContext> {
   readonly termsManager: k.TermsManager;
 }
 
-export class Configuration<OperationalContext>
-  implements Omit<Preferences<OperationalContext>, "assetsMetricsWalkers"> {
-  readonly operationalCtx?: OperationalContext;
+export class Configuration<
+  OperationalContext extends PublicationOperationalContext,
+> implements Omit<Preferences<OperationalContext>, "assetsMetricsWalkers"> {
+  readonly operationalCtx: OperationalContext;
   readonly observability: rfStd.Observability;
   readonly telemetry: telem.Instrumentation<telem.UntypedBaggage> = new telem
     .Telemetry();
@@ -212,7 +335,9 @@ export interface DiagnosticsOptionsSupplier {
   readonly metrics: {
     readonly universalPEF: boolean;
     readonly universalJSON: boolean;
+    readonly assetsPEF: boolean;
     readonly assetsCSV: boolean;
+    readonly persistence: boolean;
   };
   readonly renderers: boolean;
   readonly routes: boolean;
@@ -225,7 +350,8 @@ export const isDiagnosticsOptionsSupplier = safety.typeGuard<
 export interface PublicationState {
   readonly observability: rfStd.Observability;
   readonly resourcesTree: rfGovn.RouteTree;
-  readonly resourcesIndex: rfStd.UniversalResourcesIndex<unknown>;
+  readonly resourcesIndex: PublicationResourcesIndex<unknown>;
+  readonly persistedIndex: PublicationPersistedIndex;
   readonly diagnostics: () => diagC.DiagnosticsResourcesState;
   assetsMetrics?: fsA.AssetsMetricsResult;
 }
@@ -401,15 +527,12 @@ export interface Publication {
   readonly state: PublicationState;
 }
 
-export abstract class TypicalPublication<OCState>
-  implements Publication, rfGovn.ObservabilityHealthComponentStatusSupplier {
+export abstract class TypicalPublication<
+  OCState extends PublicationOperationalContext,
+> implements Publication, rfGovn.ObservabilityHealthComponentStatusSupplier {
   readonly namespaceURIs = ["TypicalPublication<Resource>"];
   readonly state: PublicationState;
   readonly consumedFileSysWalkPaths = new Set<string>();
-  readonly persistedDestFiles = new Map<
-    string, // the filename written (e.g. public/**/*.html, etc.)
-    rfGovn.FileSysAfterPersistEventElaboration<unknown>
-  >();
   readonly fspEventsEmitter = new rfGovn.FileSysPersistenceEventsEmitter();
   readonly diagsOptions: DiagnosticsOptionsSupplier;
   // deno-lint-ignore no-explicit-any
@@ -425,7 +548,9 @@ export abstract class TypicalPublication<OCState>
       metrics: {
         universalPEF: true,
         assetsCSV: true,
+        assetsPEF: true,
         universalJSON: true,
+        persistence: true,
       },
       renderers: true,
     };
@@ -441,10 +566,12 @@ export abstract class TypicalPublication<OCState>
     );
     this.config.mGitResolvers.registerResolver(routes.gitAssetPublUrlResolver);
     this.diagsOptions = diagsConfig.configureSync();
+    const persistedIndex = new PublicationPersistedIndex();
     this.state = {
       observability: config.observability,
       resourcesTree: routes.resourcesTree,
-      resourcesIndex: new rfStd.UniversalResourcesIndex(),
+      resourcesIndex: new PublicationResourcesIndex(),
+      persistedIndex,
       diagnostics: () => ({
         routes: {
           resourcesTree: routes.resourcesTree,
@@ -459,14 +586,14 @@ export abstract class TypicalPublication<OCState>
       // deno-lint-ignore require-await
       async (destFileName, elaboration) => {
         // TODO: warn if file written more than once either here or directly in persist
-        this.persistedDestFiles.set(destFileName, elaboration);
+        persistedIndex.index(destFileName, elaboration);
       },
     );
     this.fspEventsEmitter.on(
       "afterPersistFlexibleFileSync",
       (destFileName, elaboration) => {
         // TODO: warn if file written more than once either here or directly in persist
-        this.persistedDestFiles.set(destFileName, elaboration);
+        persistedIndex.index(destFileName, elaboration);
       },
     );
   }
@@ -515,7 +642,7 @@ export abstract class TypicalPublication<OCState>
         {
           destExistsHandler: (src, dest) => {
             // if we wrote the file ourselves, don't warn - otherwise, warn and skip
-            if (!this.persistedDestFiles.has(dest)) {
+            if (!this.state.persistedIndex.has(dest)) {
               console.warn(
                 colors.red(
                   `unable to symlink ${src.path} to ${dest}: cannot overwrite destination`,
@@ -759,18 +886,92 @@ export abstract class TypicalPublication<OCState>
     }
   }
 
-  async produceMetrics() {
+  async produceMetrics(measures: PublicationMeasures) {
     const assetsTree = new fsT.FileSysAssetsTree();
     for (const walker of this.config.assetsMetricsWalkers) {
       await assetsTree.consumeAssets(walker);
     }
-    this.state.resourcesIndex.populateMetrics(this.config.metrics);
-    this.state.assetsMetrics = await fsA.fileSysAnalytics({
-      assetsTree,
-      metrics: this.config.metrics,
+    const commonMetricsBaggage = {
       txID: "transactionID",
       txHost: Deno.hostname(),
-    });
+    };
+    const metrics = this.config.metrics;
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_lc_init_produce_milliseconds",
+        "Time it took to initialize production",
+      ).instance(
+        measures.originateStartMS - measures.initProduceStartMS,
+        commonMetricsBaggage,
+      ),
+    );
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_lc_originate_milliseconds",
+        "Time it took to originate and construct resources",
+      ).instance(
+        measures.finalizePrePersistStartMS - measures.originateStartMS,
+        commonMetricsBaggage,
+      ),
+    );
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_lc_render_milliseconds",
+        "Time it took to render and prepare for persistence",
+      ).instance(
+        measures.persistStartMS - measures.finalizePrePersistStartMS,
+        commonMetricsBaggage,
+      ),
+    );
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_lc_persist_milliseconds",
+        "Time it took to persist rendered resources",
+      ).instance(
+        measures.finalizeProduceStartMS - measures.persistStartMS,
+        commonMetricsBaggage,
+      ),
+    );
+    const metricsOp = this.diagsOptions.metrics;
+    if (metricsOp.universalPEF || metricsOp.universalJSON) {
+      this.state.resourcesIndex.populateMetrics(metrics, commonMetricsBaggage);
+    }
+    if (metricsOp.persistence) {
+      this.state.persistedIndex.populateMetrics(metrics, commonMetricsBaggage);
+    }
+    if (metricsOp.assetsPEF || metricsOp.assetsCSV) {
+      const beforeFSA = Date.now();
+      this.state.assetsMetrics = await fsA.fileSysAnalytics({
+        assetsTree,
+        metrics,
+        metricsNamePrefix: "publ_asset_name_extension_analytics_",
+        ...commonMetricsBaggage,
+      });
+      metrics.record(
+        metrics.gaugeMetric(
+          "publ_lc_asset_name_extension_analytics_compute_duration_milliseconds",
+          "Time it took to compute file system assets analytics",
+        ).instance(Date.now() - beforeFSA, commonMetricsBaggage),
+      );
+    }
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_lc_produce_milliseconds",
+        "Total time it took to produce all resources",
+      ).instance(
+        Date.now() - measures.originateStartMS,
+        commonMetricsBaggage,
+      ),
+    );
+    metrics.record(
+      metrics.gaugeMetric(
+        "publ_lc_publish_milliseconds",
+        "Total time it took to produce all resources and perform all other process functions",
+      ).instance(
+        Date.now() - this.config.operationalCtx.processStartTimestamp.getTime(),
+        commonMetricsBaggage,
+      ),
+    );
 
     const { fsRouteFactory, observabilityRoute } = this.config;
     const resourcesIndex = this.state.resourcesIndex;
@@ -787,13 +988,17 @@ export abstract class TypicalPublication<OCState>
           {
             renderHealth: true,
             metrics: {
-              universal: this.config.metrics,
-              renderUniversalJSON: this.diagsOptions.metrics.universalJSON,
-              renderUniversalPEF: this.diagsOptions.metrics.universalPEF,
-              assets: {
-                results: this.state.assetsMetrics,
-                renderCSV: this.diagsOptions.metrics.assetsCSV,
-              },
+              universal: metrics,
+              renderUniversalJSON: metricsOp.universalJSON,
+              renderUniversalPEF: metricsOp.universalPEF,
+              assets: metricsOp.assetsPEF ||
+                  metricsOp.assetsCSV
+                ? {
+                  results: this.state.assetsMetrics!,
+                  renderPEF: metricsOp.assetsPEF,
+                  renderCSV: metricsOp.assetsCSV,
+                }
+                : undefined,
             },
             observability: this.state.observability,
           },
@@ -808,7 +1013,7 @@ export abstract class TypicalPublication<OCState>
   }
 
   async inspectResources(
-    resourcesIndex: rfStd.UniversalResourcesIndex<unknown>,
+    resourcesIndex: PublicationResourcesIndex<unknown>,
   ): Promise<void> {
     const inspectSync = this.inspectionRefinerySync();
     if (inspectSync) {
@@ -829,7 +1034,7 @@ export abstract class TypicalPublication<OCState>
     originationRefinery: rfGovn.ResourceRefinerySync<
       rfGovn.RouteSupplier<rfGovn.RouteNode>
     >,
-    resourcesIndex: rfStd.UniversalResourcesIndex<unknown>,
+    resourcesIndex: PublicationResourcesIndex<unknown>,
   ) {
     // the first found of all resources are now available, but haven't yet been
     // persisted so let's prepare the navigation trees before we persist
@@ -847,7 +1052,7 @@ export abstract class TypicalPublication<OCState>
     }
   }
 
-  async finalizeProduce() {
+  async finalizeProduce(measures: PublicationMeasures) {
     const resourcesIndex = this.state.resourcesIndex;
     const originationRefinery = this.originationRefinery();
     const persist = this.persistersRefinery();
@@ -866,11 +1071,12 @@ export abstract class TypicalPublication<OCState>
 
     // produce metrics after the assets are mirrored in case we're walking the
     // destination path
-    await this.produceMetrics();
+    await this.produceMetrics(measures);
   }
 
   async produce() {
     // give opportunity for subclasses to intialize the production pipeline
+    const initProduceStartMS = Date.now();
     await this.initProduce();
 
     // we store all our resources in this index, as they are produced;
@@ -881,6 +1087,7 @@ export abstract class TypicalPublication<OCState>
     // sources; as each resource is prepared, store it in the index -- each
     // resource create child resources recursively and this loop handles all
     // "fanned out" resources as well
+    const originateStartMS = Date.now();
     const originationRefinery = this.originationRefinery();
     for await (const resource of this.resources(originationRefinery)) {
       resourcesIndex.index(resource);
@@ -889,17 +1096,25 @@ export abstract class TypicalPublication<OCState>
     // the first found of all resources are now available, but haven't yet been
     // persisted so let's do any routes finalization, new resources construction
     // or any other pre-persist activities
+    const finalizePrePersistStartMS = Date.now();
     await this.finalizePrePersist(originationRefinery, resourcesIndex);
 
     // now all resources, child resources, redirect pages, etc. have been
     // created so we can persist all pages that are in our index
+    const persistStartMS = Date.now();
     const persist = this.persistersRefinery();
     for (const resource of resourcesIndex.resources()) {
       await persist(resource);
     }
 
     // give opportunity for subclasses to finalize the production pipeline
-    await this.finalizeProduce();
+    await this.finalizeProduce({
+      initProduceStartMS,
+      originateStartMS,
+      finalizePrePersistStartMS,
+      persistStartMS,
+      finalizeProduceStartMS: Date.now(),
+    });
   }
 }
 

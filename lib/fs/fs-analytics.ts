@@ -11,6 +11,7 @@ export interface AssetsObservabilityArguments
   extends Partial<TransactionIdSupplier> {
   readonly assetsTree: fst.FileSysAssetsTree;
   readonly metrics: m.TypicalMetrics;
+  readonly metricsNamePrefix?: string;
 }
 
 export interface AssetsMetricsResult {
@@ -53,13 +54,14 @@ export interface DateSupplier {
 export async function fileSysAnalytics(
   aapo: AssetsObservabilityArguments,
 ): Promise<AssetsMetricsResult> {
+  const metricsNamePrefix = aapo.metricsNamePrefix || "asset_name_extension_";
   const countByPathGauge = aapo.metrics.gaugeMetric<
     & AssetExtensionSupplier
     & AssetPathSupplier
     & Partial<TransactionIdSupplier>
     & DateSupplier
   >(
-    "asset_name_extension_in_path",
+    `${metricsNamePrefix}in_path`,
     "Count of asset name extensions encountered in path",
   );
   const totalBytesByPathGauge = aapo.metrics.gaugeMetric<
@@ -68,7 +70,7 @@ export async function fileSysAnalytics(
     & Partial<TransactionIdSupplier>
     & DateSupplier
   >(
-    "asset_name_extension_bytes_in_path",
+    `${metricsNamePrefix}bytes_in_path`,
     "Total bytes of asset name extensions encountered in path",
   );
 

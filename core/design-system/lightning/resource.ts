@@ -3,6 +3,7 @@ import * as html from "../../render/html/mod.ts";
 import * as lds from "./governance.ts";
 import * as ldsL from "./layout/mod.ts";
 import * as n from "../../std/nature.ts";
+import * as gi from "../../../lib/structure/govn-index.ts";
 
 export function typicalHtmlResource(
   rf: govn.RouteFactory,
@@ -13,7 +14,7 @@ export function typicalHtmlResource(
     & html.DesignSystemLayoutArgumentsSupplier,
   HTML: lds.LightningLayoutBodySupplier,
   origin?: govn.ModuleRouteOrigin,
-  indexKeys?: govn.ResourceIndexKey[],
+  indexKeys?: gi.GovnIndexKey[],
 ): [
   route: govn.Route,
   factory: govn.PersistableHtmlResource,
@@ -41,7 +42,7 @@ export function typicalHtmlResource(
       },
     };
   if (indexKeys) {
-    (htmlResource as unknown as govn.MutatableResourceIndexKeysSupplier)
+    (htmlResource as unknown as gi.MutatableGovnIndexKeysSupplier)
       .indexKeys = indexKeys;
   }
   return [route, htmlResource];
@@ -53,7 +54,7 @@ export function smartNavigationPageHtmlFactory(
   childUnit: govn.RouteUnit,
   HTML: lds.LightningLayoutBodySupplier,
   origin?: govn.ModuleRouteOrigin,
-  indexKeys?: govn.ResourceIndexKey[],
+  indexKeys?: gi.GovnIndexKey[],
 ): [
   route: govn.Route,
   factory: govn.ResourceFactorySupplier<govn.HtmlResource>,
@@ -86,7 +87,7 @@ export function typicalHtmlFactory(
     & html.DesignSystemLayoutArgumentsSupplier,
   HTML: lds.LightningLayoutBodySupplier,
   origin?: govn.ModuleRouteOrigin,
-  indexKeys?: govn.ResourceIndexKey[],
+  indexKeys?: gi.GovnIndexKey[],
 ): [
   route: govn.Route,
   factory: govn.ResourceFactorySupplier<govn.HtmlResource>,
@@ -113,7 +114,7 @@ export function autoIndexHtmlFactory(
   parentRoute: govn.Route,
   label: string,
   origin?: govn.ModuleRouteOrigin,
-  indexKeys?: govn.ResourceIndexKey[],
+  indexKeys?: gi.GovnIndexKey[],
 ): [
   route: govn.Route,
   factory: govn.ResourceFactorySupplier<govn.HtmlResource>,
@@ -153,7 +154,7 @@ export function autoIndexHtmlFactory(
           },
         };
       if (indexKeys) {
-        (htmlResource as unknown as govn.MutatableResourceIndexKeysSupplier)
+        (htmlResource as unknown as gi.MutatableGovnIndexKeysSupplier)
           .indexKeys = indexKeys;
       }
       return htmlResource;

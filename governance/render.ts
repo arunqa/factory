@@ -1,6 +1,12 @@
 import * as fm from "./frontmatter.ts";
 import * as m from "./model.ts";
 
+export interface MutableRenderMetricsSupplier {
+  renderMeasure: PerformanceMeasure;
+}
+
+export type RenderMetricsSupplier = Readonly<MutableRenderMetricsSupplier>;
+
 export interface RenderTargetsSupplier<Nature> {
   readonly renderTargets: Nature | Nature[];
 }

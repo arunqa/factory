@@ -25,7 +25,8 @@ export interface PostProduceObservabilityState {
     readonly universal: m.Metrics;
     readonly renderUniversalPEF: boolean;
     readonly renderUniversalJSON: boolean;
-    readonly assets: {
+    readonly assets?: {
+      readonly renderPEF: boolean;
       readonly renderCSV: boolean;
       readonly results: fsA.AssetsMetricsResult;
     };

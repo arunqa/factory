@@ -2,6 +2,10 @@ import * as safety from "../../lib/safety/mod.ts";
 import * as govn from "../../governance/mod.ts";
 import * as fm from "./frontmatter.ts";
 
+export const isRenderMetricsSupplier = safety.typeGuard<
+  govn.RenderMetricsSupplier
+>("renderMeasure");
+
 export function isRenderTargetsSupplier<Nature>(
   o: unknown,
 ): o is govn.RenderTargetsSupplier<Nature> {
