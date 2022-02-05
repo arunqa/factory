@@ -19,11 +19,11 @@ export function diagnosticsResources<
 ): govn.ResourcesFactoriesSupplier<any> {
   return {
     resourcesFactories: async function* () {
-      if (state.routes.emitResources()) {
+      if (state.routes.renderRoutes) {
         yield routes.routesHtmlFactorySupplier(parentRoute, rf, state);
         yield routes.routesJsonFactorySupplier(parentRoute, rf, state);
       }
-      if (state.renderers.emitResources()) {
+      if (state.renderers) {
         yield renderers.renderersHtmlFactorySupplier(parentRoute, rf);
       }
     },

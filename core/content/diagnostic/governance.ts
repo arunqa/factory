@@ -3,29 +3,33 @@ import * as govn from "../../../governance/mod.ts";
 import * as o from "../../std/observability.ts";
 import * as m from "../../../lib/metrics/mod.ts";
 
-export interface EmitOptionalResourcesSupplier {
-  readonly emitResources: () => boolean;
-}
-
 export interface DiagnosticsResourcesState {
-  readonly routes: EmitOptionalResourcesSupplier & {
+  readonly routes: {
+    readonly renderRoutes: boolean;
     readonly resourcesTree: govn.RouteTree;
   };
-  readonly renderers: EmitOptionalResourcesSupplier;
+  readonly renderers: boolean;
 }
 
 export interface PreProduceObservabilityState {
-  readonly metrics: EmitOptionalResourcesSupplier & {
+  readonly metrics?: {
     readonly universal: m.Metrics;
+    readonly renderUniversalPEF: boolean;
+    readonly renderUniversalJSON: boolean;
   };
   readonly observability: o.Observability;
 }
 
 export interface PostProduceObservabilityState {
-  readonly metrics: EmitOptionalResourcesSupplier & {
+  readonly metrics?: {
     readonly universal: m.Metrics;
-    readonly assets: fsA.AssetsMetricsResult;
+    readonly renderUniversalPEF: boolean;
+    readonly renderUniversalJSON: boolean;
+    readonly assets: {
+      readonly renderCSV: boolean;
+      readonly results: fsA.AssetsMetricsResult;
+    };
   };
-  readonly health: EmitOptionalResourcesSupplier;
+  readonly renderHealth: boolean;
   readonly observability: o.Observability;
 }

@@ -1,4 +1,4 @@
-import * as metrics from "../../../lib/metrics/mod.ts";
+import * as m from "../../../lib/metrics/mod.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as dGovn from "./governance.ts";
 import * as nature from "../../std/nature.ts";
@@ -105,103 +105,116 @@ export function metricsHtmlFactorySupplier(
  * @param parentRoute Where you want the resources generated
  * @returns resources factories to be included as originators
  */
-export function metricsFactorySuppliers(
+export function* metricsFactorySuppliers(
   parentRoute: govn.Route,
   rf: govn.RouteFactory,
   state: dGovn.PostProduceObservabilityState,
   // deno-lint-ignore no-explicit-any
-): govn.ResourceFactorySupplier<any>[] {
-  return [{
-    // deno-lint-ignore require-await
-    resourceFactory: async () => {
-      const pm = metrics.prometheusDialect();
-      const text = pm.export(state.metrics.universal.instances).join("\n");
-      const metricsPEF: tfr.TextFileResource & govn.RouteSupplier = {
-        nature: nature.textContentNature,
-        route: {
-          ...rf.childRoute(
-            { unit: "metrics", label: "Assets OpenMetrics" },
-            parentRoute,
-            false,
-          ),
-          nature: nature.jsonContentNature,
-        },
-        isTextFileResource: true,
-        text,
-        textSync: text,
-      };
-      return metricsPEF;
-    },
-  }, {
-    // deno-lint-ignore require-await
-    resourceFactory: async () => {
-      const dts:
-        & dtr.DelimitedTextSupplier<dGovn.PostProduceObservabilityState>
-        & govn.NatureSupplier<
-          govn.MediaTypeNature<
-            dtr.DelimitedTextResource<dGovn.PostProduceObservabilityState>
-          >
-        >
-        & govn.RouteSupplier = {
-          nature: dtr.csvContentNature,
+): Generator<govn.ResourceFactorySupplier<any>> {
+  const metrics = state.metrics;
+  if (!metrics) return;
+
+  if (metrics.renderUniversalPEF) {
+    yield {
+      // deno-lint-ignore require-await
+      resourceFactory: async () => {
+        const pm = m.prometheusDialect();
+        const text = pm.export(metrics.universal.instances).join("\n");
+        const metricsPEF: tfr.TextFileResource & govn.RouteSupplier = {
+          nature: nature.textContentNature,
           route: {
             ...rf.childRoute(
-              {
-                unit: "analytics-paths-extensions",
-                label: "Analytics Paths Extensions CSV",
-              },
-              parentRoute,
-              false,
-            ),
-            nature: dtr.csvContentNature,
-          },
-          isDelimitedTextSupplier: true,
-          header: state.metrics.assets.pathExtnsColumnHeaders.map((
-            h,
-          ) => `"${h}"`).join(
-            ",",
-          ),
-          rows: state.metrics.assets.pathExtnsColumns.map((row) =>
-            row.join(",")
-          ),
-        };
-      return dts;
-    },
-  }, {
-    // deno-lint-ignore require-await
-    resourceFactory: async () => {
-      const metricsJSON:
-        & govn.PersistableStructuredDataResource
-        & govn.RouteSupplier = {
-          nature: nature.jsonContentNature,
-          route: {
-            ...rf.childRoute(
-              { unit: "metrics", label: "Metrics JSON" },
+              { unit: "metrics", label: "Assets OpenMetrics" },
               parentRoute,
               false,
             ),
             nature: nature.jsonContentNature,
           },
-          structuredDataInstance: () => state.metrics.universal,
-          serializedData: {
-            // deno-lint-ignore require-await
-            text: async () => {
-              return JSON.stringify(
-                state.metrics.universal,
-                metrics.jsonMetricsReplacer,
-                "  ",
-              );
-            },
-            textSync: () => {
-              return JSON.stringify(
-                state.metrics.universal,
-                metrics.jsonMetricsReplacer,
-                "  ",
-              );
-            },
-          },
+          isTextFileResource: true,
+          text,
+          textSync: text,
         };
-      return metricsJSON;
-    },
-  }];
+        return metricsPEF;
+      },
+    };
+  }
+
+  if (metrics.renderUniversalJSON) {
+    yield {
+      // deno-lint-ignore require-await
+      resourceFactory: async () => {
+        const metricsJSON:
+          & govn.PersistableStructuredDataResource
+          & govn.RouteSupplier = {
+            nature: nature.jsonContentNature,
+            route: {
+              ...rf.childRoute(
+                { unit: "metrics", label: "Metrics JSON" },
+                parentRoute,
+                false,
+              ),
+              nature: nature.jsonContentNature,
+            },
+            structuredDataInstance: () => metrics.universal,
+            serializedData: {
+              // deno-lint-ignore require-await
+              text: async () => {
+                return JSON.stringify(
+                  metrics.universal,
+                  m.jsonMetricsReplacer,
+                  "  ",
+                );
+              },
+              textSync: () => {
+                return JSON.stringify(
+                  metrics.universal,
+                  m.jsonMetricsReplacer,
+                  "  ",
+                );
+              },
+            },
+          };
+        return metricsJSON;
+      },
+    };
+  }
+
+  if (metrics.assets.renderCSV) {
+    yield {
+      // deno-lint-ignore require-await
+      resourceFactory: async () => {
+        const dts:
+          & dtr.DelimitedTextSupplier<dGovn.PostProduceObservabilityState>
+          & govn.NatureSupplier<
+            govn.MediaTypeNature<
+              dtr.DelimitedTextResource<dGovn.PostProduceObservabilityState>
+            >
+          >
+          & govn.RouteSupplier = {
+            nature: dtr.csvContentNature,
+            route: {
+              ...rf.childRoute(
+                {
+                  unit: "analytics-paths-extensions",
+                  label: "Analytics Paths Extensions CSV",
+                },
+                parentRoute,
+                false,
+              ),
+              nature: dtr.csvContentNature,
+            },
+            isDelimitedTextSupplier: true,
+            header: metrics.assets.results.pathExtnsColumnHeaders.map((
+              h,
+            ) => `"${h}"`).join(
+              ",",
+            ),
+            rows: metrics.assets.results.pathExtnsColumns.map((row) =>
+              row.join(",")
+            ),
+          };
+        return dts;
+      },
+    };
+  }
 }

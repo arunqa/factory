@@ -206,8 +206,14 @@ export const isPublicationRouteEventsHandler = safety.typeGuard<
   PublicationRouteEventsHandler<any>
 >("prepareResourceRoute", "prepareResourceTreeNode");
 
+// IMPORTANT: if the structure of this interface is changed, be sure to update
+// PUBCTL_DIAGNOSTICS in .envrc.example and .envrc
 export interface DiagnosticsOptionsSupplier {
-  readonly metrics: boolean;
+  readonly metrics: {
+    readonly universalPEF: boolean;
+    readonly universalJSON: boolean;
+    readonly assetsCSV: boolean;
+  };
   readonly renderers: boolean;
   readonly routes: boolean;
 }
@@ -416,7 +422,11 @@ export abstract class TypicalPublication<OCState>
     this.ds = this.constructDesignSystem(config, routes);
     const defaultDiagsOptions: DiagnosticsOptionsSupplier = {
       routes: true,
-      metrics: true,
+      metrics: {
+        universalPEF: true,
+        assetsCSV: true,
+        universalJSON: true,
+      },
       renderers: true,
     };
     const diagsConfig = new conf.OmnibusEnvJsonArgConfiguration<
@@ -438,11 +448,9 @@ export abstract class TypicalPublication<OCState>
       diagnostics: () => ({
         routes: {
           resourcesTree: routes.resourcesTree,
-          emitResources: () => this.diagsOptions.routes,
+          renderRoutes: this.diagsOptions.routes,
         },
-        renderers: {
-          emitResources: () => this.diagsOptions.renderers,
-        },
+        renderers: this.diagsOptions.renderers,
       }),
     };
     this.state.observability.events.emit("healthStatusSupplier", this);
@@ -603,7 +611,8 @@ export abstract class TypicalPublication<OCState>
         {
           metrics: {
             universal: this.config.metrics,
-            emitResources: () => this.diagsOptions.metrics,
+            renderUniversalJSON: this.diagsOptions.metrics.universalJSON,
+            renderUniversalPEF: this.diagsOptions.metrics.universalPEF,
           },
           observability: this.state.observability,
         },
@@ -776,11 +785,15 @@ export abstract class TypicalPublication<OCState>
           // be constructed as part of urWatcher.on("afterProduce", ...) so we
           // do a type-assertion
           {
-            health: { emitResources: () => true },
+            renderHealth: true,
             metrics: {
               universal: this.config.metrics,
-              emitResources: () => this.diagsOptions.metrics,
-              assets: this.state.assetsMetrics,
+              renderUniversalJSON: this.diagsOptions.metrics.universalJSON,
+              renderUniversalPEF: this.diagsOptions.metrics.universalPEF,
+              assets: {
+                results: this.state.assetsMetrics,
+                renderCSV: this.diagsOptions.metrics.assetsCSV,
+              },
             },
             observability: this.state.observability,
           },
