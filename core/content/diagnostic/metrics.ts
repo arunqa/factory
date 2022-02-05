@@ -1,5 +1,4 @@
 import * as metrics from "../../../lib/metrics/mod.ts";
-import * as fsA from "../../../lib/fs/fs-analytics.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as dGovn from "./governance.ts";
 import * as nature from "../../std/nature.ts";
@@ -47,7 +46,7 @@ const metricsHTML: ds.HtmlLayoutBodySupplier = () => `
 <h1>Publication Results</h1>
 <h2>TODO: assets metrics do not properly count contents of <code>public</code> because of symlinks instead of hardlinks</h2>
 <div>
-    <a href="./assets-metrics.json">View <code>metrics.json</code></a><br>
+    <a href="./metrics.json">View <code>metrics.json</code></a><br>
     <a href="./health.json">View <code>health.json</code></a><br>
     <a href="./metrics.txt">View Exported OpenMetrics (in Prometheus Exposition Format)</a>
 </div>
@@ -116,8 +115,7 @@ export function metricsFactorySuppliers(
     // deno-lint-ignore require-await
     resourceFactory: async () => {
       const pm = metrics.prometheusDialect();
-      const text = pm.export(state.metrics.assets.collected.metrics.instances)
-        .join("\n");
+      const text = pm.export(state.metrics.universal.instances).join("\n");
       const metricsPEF: tfr.TextFileResource & govn.RouteSupplier = {
         nature: nature.textContentNature,
         route: {
@@ -138,10 +136,10 @@ export function metricsFactorySuppliers(
     // deno-lint-ignore require-await
     resourceFactory: async () => {
       const dts:
-        & dtr.DelimitedTextSupplier<dGovn.PostProduceMetricsResourcesState>
+        & dtr.DelimitedTextSupplier<dGovn.PostProduceObservabilityState>
         & govn.NatureSupplier<
           govn.MediaTypeNature<
-            dtr.DelimitedTextResource<dGovn.PostProduceMetricsResourcesState>
+            dtr.DelimitedTextResource<dGovn.PostProduceObservabilityState>
           >
         >
         & govn.RouteSupplier = {
@@ -158,12 +156,12 @@ export function metricsFactorySuppliers(
             nature: dtr.csvContentNature,
           },
           isDelimitedTextSupplier: true,
-          header: state.metrics.assets.collected.pathExtnsColumnHeaders.map((
+          header: state.metrics.assets.pathExtnsColumnHeaders.map((
             h,
           ) => `"${h}"`).join(
             ",",
           ),
-          rows: state.metrics.assets.collected.pathExtnsColumns.map((row) =>
+          rows: state.metrics.assets.pathExtnsColumns.map((row) =>
             row.join(",")
           ),
         };
@@ -178,26 +176,26 @@ export function metricsFactorySuppliers(
           nature: nature.jsonContentNature,
           route: {
             ...rf.childRoute(
-              { unit: "assets-metrics", label: "Assets Metrics JSON" },
+              { unit: "metrics", label: "Metrics JSON" },
               parentRoute,
               false,
             ),
             nature: nature.jsonContentNature,
           },
-          structuredDataInstance: () => state.metrics.assets.collected.metrics,
+          structuredDataInstance: () => state.metrics.universal,
           serializedData: {
             // deno-lint-ignore require-await
             text: async () => {
               return JSON.stringify(
-                state.metrics.assets.collected.metrics,
-                fsA.jsonMetricsReplacer,
+                state.metrics.universal,
+                metrics.jsonMetricsReplacer,
                 "  ",
               );
             },
             textSync: () => {
               return JSON.stringify(
-                state.metrics.assets.collected.metrics,
-                fsA.jsonMetricsReplacer,
+                state.metrics.universal,
+                metrics.jsonMetricsReplacer,
                 "  ",
               );
             },

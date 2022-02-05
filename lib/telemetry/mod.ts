@@ -1,41 +1,47 @@
-export type InstrumentBaggage = Record<string, unknown>;
+export type UntypedBaggage = Record<string, unknown>;
 
-export interface Instrumentable {
+export interface Instrumentable<Baggage> {
   readonly mark: () => PerformanceMark;
-  readonly measure: () => Instrument;
-  readonly baggage?: InstrumentBaggage;
+  readonly measure: () => Instrument<Baggage>;
+  readonly baggage?: Baggage;
 }
 
-export interface Instrument extends Instrumentable {
+export interface Instrument<Baggage> extends Instrumentable<Baggage> {
   readonly performanceMeasure: PerformanceMeasure;
 }
 
 export type InstrumentIdentity = string;
 
-export interface InstrumentationOptions {
+export interface InstrumentationOptions<Baggage> {
   readonly identity?: InstrumentIdentity;
-  readonly baggage?: InstrumentBaggage;
+  readonly baggage?: Baggage;
 }
 
-export interface Instrumentation {
-  readonly instruments: Instrument[];
+export interface InstrumentationSupplier<Baggage> {
+  readonly instruments: Instrument<Baggage>[];
+}
+
+export interface Instrumentation<Baggage>
+  extends InstrumentationSupplier<Baggage> {
   readonly prepareInstrument: (
-    options?: InstrumentationOptions,
-  ) => Instrumentable;
+    options?: InstrumentationOptions<Baggage>,
+  ) => Instrumentable<Baggage>;
 }
 
-export class Telemetry implements Instrumentation {
-  readonly instruments: Instrument[] = [];
+export class Telemetry<Baggage> implements Instrumentation<Baggage> {
+  readonly instruments: Instrument<Baggage>[] = [];
 
   constructor(readonly prefix?: InstrumentIdentity) {
   }
 
-  prepareInstrument(options?: InstrumentationOptions): Instrumentable {
+  prepareInstrument(
+    options?: InstrumentationOptions<Baggage>,
+  ): Instrumentable<Baggage> {
     const identity = options?.identity ||
       `instrument_${this.instruments.length}`;
     const name = this.prefix ? `${this.prefix}${identity}` : identity;
     const mark = performance.mark(identity, { detail: options?.baggage });
-    const result: Instrumentable = {
+    const result: Instrumentable<Baggage> = {
       mark: () => mark,
       measure: () => {
         const performanceMeasure = performance.measure(name, {

@@ -2,6 +2,19 @@ export interface ResourceSupplier<Resource> {
   readonly resource: Resource;
 }
 
+export interface ResourceLifecycleMetrics {
+  readonly constructPM: PerformanceMeasure;
+  readonly refinePM?: PerformanceMeasure;
+}
+
+export interface MutableResourceLifecycleMetricsSupplier {
+  lifecycleMetrics: ResourceLifecycleMetrics;
+}
+
+export type ResourceLifecycleMetricsSupplier = Readonly<
+  MutableResourceLifecycleMetricsSupplier
+>;
+
 export interface ResourceFactorySupplier<Resource> {
   readonly resourceFactory: () => Promise<Resource>;
 }

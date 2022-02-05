@@ -157,7 +157,7 @@ export function gaugeMetric<T extends TypedObject>(
 }
 
 export interface Metrics {
-  readonly instances: MetricInstance<Metric>[];
+  readonly instances: Iterable<MetricInstance<Metric>>;
   readonly infoMetric: <T extends TypedObject>(
     name: MetricName,
     help: string,
@@ -166,15 +166,16 @@ export interface Metrics {
     name: MetricName,
     help: string,
   ) => GaugeMetric<T>;
+  readonly record: (instance: MetricInstance<Metric>) => MetricInstance<Metric>;
 }
 
 export interface MetricsDialect {
-  export(instances: MetricInstance<Metric>[]): string[];
+  export(instances: Iterable<MetricInstance<Metric>>): string[];
 }
 
 export function prometheusDialect(): MetricsDialect {
   const dialect: MetricsDialect = {
-    export: (instances: MetricInstance<Metric>[]) => {
+    export: (instances: Iterable<MetricInstance<Metric>>) => {
       const encounteredMetrics = new Map<MetricLabelName, boolean>();
       const result: string[] = [];
       for (const instance of instances) {
@@ -227,3 +228,60 @@ export class TypicalMetrics implements Metrics {
     return this;
   }
 }
+
+/**
+ * jsonMetricsReplacer is used for text transformation using something like:
+ *
+ *     JSON.stringify(metrics, jsonMetricsReplacer, "  ")
+ *
+ * Without jsonMetricsReplacer each metric looks like this:
+ * {
+ *    "metric": {
+ *      "name": "asset_name_extension",
+ *      "help": "Count of asset name extension encountered"
+ *    },
+ *    "labels": {
+ *      "object": { // we do not want "object", just the labels
+ *        "assetExtn": ".txt"
+ *      }
+ *    },
+ *    // value will be missing because it's a function and JSON won't emit
+ * }
+ *
+ * With jsonMetricsReplacer it will look much nicer, like this:
+ * {
+ *    "metric": "asset_name_extension",
+ *    "labels": {
+ *      "assetExtn": ".txt"
+ *    },
+ *    "value": 6
+ * }
+ */
+export const jsonMetricsReplacer = (key: string, value: unknown) => {
+  if (key == "value" && typeof value === "function") return value();
+  if (key == "metric") {
+    return (value as Metric).name;
+  }
+  if (value && typeof value === "object") {
+    if ("object" in value) {
+      // deno-lint-ignore no-explicit-any
+      return (value as any).object;
+    }
+    if ("instances" in value) {
+      const metricsDefnMap = new Map<string, Metric>();
+      // deno-lint-ignore no-explicit-any
+      const instances = ((value as any).instances) as MetricInstance<Metric>[];
+      for (const instance of instances) {
+        const found = metricsDefnMap.get(instance.metric.name);
+        if (!found) {
+          metricsDefnMap.set(instance.metric.name, instance.metric);
+        }
+      }
+      return {
+        instances,
+        metrics: Array.from(metricsDefnMap.values()),
+      };
+    }
+  }
+  return value;
+};

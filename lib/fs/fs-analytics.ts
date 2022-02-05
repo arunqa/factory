@@ -14,8 +14,6 @@ export interface AssetsObservabilityArguments
 }
 
 export interface AssetsMetricsResult {
-  readonly assetsTree: fst.FileSysAssetsTree;
-  readonly metrics: m.Metrics;
   readonly pathExtnsColumnHeaders: [
     string,
     string,
@@ -75,8 +73,6 @@ export async function fileSysAnalytics(
   );
 
   const result: AssetsMetricsResult = {
-    assetsTree: aapo.assetsTree,
-    metrics: aapo.metrics,
     pathExtnsColumnHeaders: [
       "Scope",
       "Date",
@@ -142,62 +138,3 @@ export async function fileSysAnalytics(
   }
   return result;
 }
-
-/**
- * jsonMetricsReplacer is used for text transformation using something like:
- *
- *     JSON.stringify(metrics, jsonMetricsReplacer, "  ")
- *
- * Without jsonMetricsReplacer each metric looks like this:
- * {
- *    "metric": {
- *      "name": "asset_name_extension",
- *      "help": "Count of asset name extension encountered"
- *    },
- *    "labels": {
- *      "object": { // we do not want "object", just the labels
- *        "assetExtn": ".txt"
- *      }
- *    },
- *    // value will be missing because it's a function and JSON won't emit
- * }
- *
- * With jsonMetricsReplacer it will look much nicer, like this:
- * {
- *    "metric": "asset_name_extension",
- *    "labels": {
- *      "assetExtn": ".txt"
- *    },
- *    "value": 6
- * }
- */
-export const jsonMetricsReplacer = (key: string, value: unknown) => {
-  if (key == "value" && typeof value === "function") return value();
-  if (key == "metric") {
-    return (value as m.Metric).name;
-  }
-  if (value && typeof value === "object") {
-    if ("object" in value) {
-      // deno-lint-ignore no-explicit-any
-      return (value as any).object;
-    }
-    if ("instances" in value) {
-      const metricsDefnMap = new Map<string, m.Metric>();
-      // deno-lint-ignore no-explicit-any
-      const instances = ((value as any).instances) as m.MetricInstance<
-        m.Metric
-      >[];
-      for (const instance of instances) {
-        const found = metricsDefnMap.get(instance.metric.name);
-        if (!found) {
-          metricsDefnMap.set(instance.metric.name, instance.metric);
-        }
-      }
-      return {
-        instances,
-        metrics: Array.from(metricsDefnMap.values()),
-      };
-    }
-  }
-  return value;
-};

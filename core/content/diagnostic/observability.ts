@@ -19,7 +19,7 @@ export function observabilityPreProduceResources<
 ): govn.ResourcesFactoriesSupplier<any> {
   return {
     resourcesFactories: async function* () {
-      if (state.metrics.assets.emitResources()) {
+      if (state.metrics.emitResources()) {
         yield m.metricsHtmlFactorySupplier(parentRoute, rf, state);
       }
     },
@@ -41,7 +41,7 @@ export function observabilityPostProduceResources<
 ): govn.ResourcesFactoriesSupplier<any> {
   return {
     resourcesFactories: async function* () {
-      if (state.metrics.assets.emitResources()) {
+      if (state.metrics.emitResources()) {
         for (
           const factory of m.metricsFactorySuppliers(parentRoute, rf, state)
         ) {

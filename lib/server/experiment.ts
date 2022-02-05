@@ -1,5 +1,4 @@
-import { colors, oak, path } from "./deps.ts";
-import * as human from "../text/human.ts";
+import { colors, oak, oakApp, path } from "./deps.ts";
 
 export interface LiveReloadState {
   readonly endpointURL: string;
@@ -68,6 +67,9 @@ export type StaticAccessErrorEventHandler = (
 export interface ExperimentalServerOptions
   extends ExperimentalServerOperationalContext {
   readonly staticIndex: "index.html" | string;
+  readonly onServerListen?: (
+    event: oakApp.ApplicationListenEvent,
+  ) => Promise<void>;
   readonly onServedStatic?: StaticAccessEventHandler;
   readonly onStaticServeError?: StaticAccessErrorEventHandler;
 }
@@ -207,35 +209,9 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     ctx.response.body = `"${ctx.request.url}" not found`;
   });
 
-  app.addEventListener(
-    "listen",
-    ({ port }) => {
-      console.info(`       Root: ${colors.yellow(staticAssetsHome)}`);
-      if (options?.processStartTimestamp) {
-        const iteration = options?.iterationCount || -1;
-        const duration = new Date().valueOf() -
-          options?.processStartTimestamp.valueOf();
-        console.info(
-          // deno-fmt-ignore
-          `   Built in: ${colors.brightBlue((duration / 1000).toString())} seconds ${colors.dim(`(iteration ${iteration})`)}`,
-        );
-      }
-      const mem = Deno.memoryUsage();
-      console.info(
-        `     Memory: ${colors.gray("rss")} ${
-          human.humanFriendlyBytes(mem.rss)
-        } ${colors.gray("heapTotal")} ${
-          human.humanFriendlyBytes(mem.heapTotal)
-        } ${colors.gray("heapUsed")}: ${
-          human.humanFriendlyBytes(mem.heapUsed)
-        } ${colors.gray("external")}: ${
-          human.humanFriendlyBytes(mem.external)
-        }`,
-      );
-      console.info(`    Address: ${colors.green(`http://localhost:${port}`)}`);
-      console.info(`    ======== Ready to serve [${new Date()}] ========`);
-    },
-  );
+  if (options.onServerListen) {
+    app.addEventListener("listen", options.onServerListen);
+  }
 
   return app;
 };

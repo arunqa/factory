@@ -64,7 +64,8 @@ export class Configuration<OperationalContext>
   implements Omit<Preferences<OperationalContext>, "assetsMetricsWalkers"> {
   readonly operationalCtx?: OperationalContext;
   readonly observability: rfStd.Observability;
-  readonly telemetry: telem.Instrumentation = new telem.Telemetry();
+  readonly telemetry: telem.Instrumentation<telem.UntypedBaggage> = new telem
+    .Telemetry();
   readonly metrics = new metrics.TypicalMetrics();
   readonly envVarNamesPrefix: string;
   readonly assetsMetricsWalkers: fsT.FileSysAssetWalker[];
@@ -206,7 +207,7 @@ export const isPublicationRouteEventsHandler = safety.typeGuard<
 >("prepareResourceRoute", "prepareResourceTreeNode");
 
 export interface DiagnosticsOptionsSupplier {
-  readonly metrics: { readonly assets: boolean };
+  readonly metrics: boolean;
   readonly renderers: boolean;
   readonly routes: boolean;
 }
@@ -415,7 +416,7 @@ export abstract class TypicalPublication<OCState>
     this.ds = this.constructDesignSystem(config, routes);
     const defaultDiagsOptions: DiagnosticsOptionsSupplier = {
       routes: true,
-      metrics: { assets: true },
+      metrics: true,
       renderers: true,
     };
     const diagsConfig = new conf.OmnibusEnvJsonArgConfiguration<
@@ -601,7 +602,8 @@ export abstract class TypicalPublication<OCState>
         fsRouteFactory,
         {
           metrics: {
-            assets: { emitResources: () => this.diagsOptions.metrics.assets },
+            universal: this.config.metrics,
+            emitResources: () => this.diagsOptions.metrics,
           },
           observability: this.state.observability,
         },
@@ -753,6 +755,7 @@ export abstract class TypicalPublication<OCState>
     for (const walker of this.config.assetsMetricsWalkers) {
       await assetsTree.consumeAssets(walker);
     }
+    this.state.resourcesIndex.populateMetrics(this.config.metrics);
     this.state.assetsMetrics = await fsA.fileSysAnalytics({
       assetsTree,
       metrics: this.config.metrics,
@@ -775,10 +778,9 @@ export abstract class TypicalPublication<OCState>
           {
             health: { emitResources: () => true },
             metrics: {
-              assets: {
-                collected: this.state.assetsMetrics,
-                emitResources: () => this.diagsOptions.metrics.assets,
-              },
+              universal: this.config.metrics,
+              emitResources: () => this.diagsOptions.metrics,
+              assets: this.state.assetsMetrics,
             },
             observability: this.state.observability,
           },

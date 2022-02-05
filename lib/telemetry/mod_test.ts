@@ -2,8 +2,8 @@ import { testingAsserts as ta } from "./deps-test.ts";
 import * as mod from "./mod.ts";
 
 Deno.test("typical Telemetry", () => {
-  const telemNoPrefix = new mod.Telemetry();
-  const telemPrefixed = new mod.Telemetry("prefix-");
+  const telemNoPrefix = new mod.Telemetry<mod.UntypedBaggage>();
+  const telemPrefixed = new mod.Telemetry<mod.UntypedBaggage>("prefix-");
 
   const instrNP1 = telemNoPrefix.prepareInstrument();
   const instrP1 = telemPrefixed.prepareInstrument({

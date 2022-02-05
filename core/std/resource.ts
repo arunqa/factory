@@ -1,5 +1,10 @@
 import * as safety from "../../lib/safety/mod.ts";
 import * as govn from "../../governance/mod.ts";
+import * as m from "../../lib/metrics/mod.ts";
+
+export const isResourceLifecycleMetricsSupplier = safety.typeGuard<
+  govn.ResourceLifecycleMetricsSupplier
+>("lifecycleMetrics");
 
 export const isResourceFactorySupplierUntyped = safety.typeGuard<
   govn.ResourceFactorySupplier<unknown>
@@ -352,5 +357,34 @@ export class UniversalResourcesIndex<Resource>
       });
     }
     return filtered;
+  }
+
+  populateMetrics(metrics: m.Metrics) {
+    let totalConstructMS = 0;
+    for (const r of this.resourcesIndex) {
+      if (isResourceLifecycleMetricsSupplier(r)) {
+        const cpm = r.lifecycleMetrics.constructPM;
+        totalConstructMS += cpm.duration;
+      }
+    }
+    metrics.record(
+      metrics.gaugeMetric(
+        "resources_index_entries_total",
+        "Count of total resources constructed",
+      ).instance(this.resourcesIndex.length, {}),
+    );
+    metrics.record(
+      metrics.gaugeMetric(
+        "resources_index_lc_construction_milliseconds",
+        "Aggregated construction time of all resources in milliseconds",
+      ).instance(totalConstructMS, {}),
+    );
+    const meanConstructMS = totalConstructMS / this.resourcesIndex.length;
+    metrics.record(
+      metrics.gaugeMetric(
+        "resources_index_lc_construction_mean_milliseconds",
+        "Average (mean) construction time of all resources in milliseconds",
+      ).instance(meanConstructMS, {}),
+    );
   }
 }

@@ -179,8 +179,28 @@ export class FileSysGlobsOriginator<Resource>
                 fsrOptions,
               ),
               resourceFactory: async () => {
+                const beforeConstruct = Date.now();
                 let resource = await construct(lfswe, fsrOptions);
+                const afterConstruct = Date.now();
                 if (refine) resource = await refine(resource);
+
+                // convert the resource to a ResourceLifecycleMetricsSupplier
+                const lcMetrics = {
+                  fsgWalkEntry: lfswe,
+                  constructPM: performance.measure(we.path, {
+                    start: beforeConstruct,
+                    end: afterConstruct,
+                  }),
+                  refinePM: refine
+                    ? performance.measure(we.path, {
+                      start: afterConstruct,
+                    })
+                    : undefined,
+                };
+                // deno-lint-ignore no-explicit-any
+                ((resource as any) as govn.MutableResourceLifecycleMetricsSupplier)
+                  .lifecycleMetrics = lcMetrics;
+
                 if (this.fsee) {
                   await this.fsee.emit(
                     "afterConstructResource",
