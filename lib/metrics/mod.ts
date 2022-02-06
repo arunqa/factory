@@ -287,8 +287,16 @@ export const jsonMetricsReplacer = (key: string, value: unknown) => {
 };
 
 export interface ScalarStatisticsEncounterOptions {
-  readonly onNewMin?: () => void;
-  readonly onNewMax?: () => void;
+  readonly onNewMinValue?: (
+    prevMinValue: number,
+    changeCount: number,
+    valueCount: number,
+  ) => void;
+  readonly onNewMaxValue?: (
+    prevMaxValue: number,
+    changeCount: number,
+    valueCount: number,
+  ) => void;
 }
 
 /**
@@ -302,6 +310,8 @@ export class ScalarStatistics {
   protected oldVariance = 0;
   protected currentMin = 0;
   protected currentMax = 0;
+  protected minChangedCount = 0;
+  protected maxChangedCount = 0;
   protected currentSum = 0;
   protected valueCount = 0;
 
@@ -310,8 +320,14 @@ export class ScalarStatistics {
     if (this.valueCount == 1) {
       this.oldMean = this.newMean = this.currentMin = this.currentMax = value;
       this.oldVariance = 0;
-      if (options?.onNewMin) options.onNewMin();
-      if (options?.onNewMax) options.onNewMax();
+      this.minChangedCount = 1;
+      this.maxChangedCount = 1;
+      if (options?.onNewMinValue) {
+        options.onNewMinValue(0, this.minChangedCount, this.valueCount);
+      }
+      if (options?.onNewMaxValue) {
+        options.onNewMaxValue(0, this.maxChangedCount, this.valueCount);
+      }
     } else {
       this.newMean = this.oldMean +
         (value - this.oldMean) / this.valueCount;
@@ -319,13 +335,27 @@ export class ScalarStatistics {
         (value - this.oldMean) * (value - this.newMean);
       this.oldMean = this.newMean;
       this.oldVariance = this.newVariance;
-      if (this.currentMin >= value) {
+      if (this.currentMin > value) {
+        this.minChangedCount++;
+        if (options?.onNewMinValue) {
+          options.onNewMinValue(
+            this.currentMin,
+            this.minChangedCount,
+            this.valueCount,
+          );
+        }
         this.currentMin = value;
-        if (options?.onNewMin) options.onNewMin();
       }
-      if (value >= this.currentMax) {
+      if (value > this.currentMax) {
+        this.maxChangedCount++;
+        if (options?.onNewMaxValue) {
+          options.onNewMaxValue(
+            this.currentMax,
+            this.maxChangedCount,
+            this.valueCount,
+          );
+        }
         this.currentMax = value;
-        if (options?.onNewMax) options.onNewMax();
       }
       this.currentSum += value;
     }

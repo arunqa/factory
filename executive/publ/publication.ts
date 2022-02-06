@@ -60,7 +60,7 @@ export class RankedStatistics<T extends { rank: number }>
 
   rank(value: T): void {
     this.encounter(value.rank, {
-      onNewMax: () => {
+      onNewMaxValue: () => {
         const queue = this.ranked;
         queue.push(value);
         if (queue.items.length > this.maxRanks) queue.pop();
@@ -104,13 +104,10 @@ export class PublicationResourcesIndex<Resource>
   ): void {
     const duration = lcMetrics.constructDurationMS;
     if (duration) {
-      this.constructionDurationStats.encounter(duration, {
-        onNewMax: () =>
-          this.constructionDurationStats.rank({
-            resource,
-            rank: duration,
-            provenance: lcMetrics.fsgwe.path,
-          }),
+      this.constructionDurationStats.rank({
+        resource,
+        rank: duration,
+        provenance: lcMetrics.fsgwe.path,
       });
     }
   }
@@ -171,7 +168,7 @@ export class PublicationPersistedIndex {
     const duration = fsapee.persistDurationMS;
     if (duration) {
       this.persistDurationStats.encounter(duration, {
-        onNewMax: () =>
+        onNewMaxValue: () =>
           this.persistDurationStats.rank({ destFileName, rank: duration }),
       });
     }
