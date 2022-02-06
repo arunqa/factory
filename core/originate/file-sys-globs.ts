@@ -12,6 +12,7 @@ export interface FileSysGlobWalkEntryLifecycleMetrics<Resource> {
   readonly fsgwe: FileSysGlobWalkEntry<Resource>;
   readonly constructDurationMS: number;
   readonly refineDurationMS?: number;
+  readonly originateDurationMS: number;
 }
 
 export interface FileSysGlobWalkEntryFactory<Resource> {
@@ -194,10 +195,11 @@ export class FileSysGlobsOriginator<Resource>
                   // deno-lint-ignore no-explicit-any
                   const lcMetrics: FileSysGlobWalkEntryLifecycleMetrics<any> = {
                     fsgwe,
-                    constructDurationMS: Date.now() - beforeConstruct,
+                    constructDurationMS: afterConstruct - beforeConstruct,
                     refineDurationMS: refine
                       ? (Date.now() - afterConstruct)
                       : undefined,
+                    originateDurationMS: Date.now() - beforeConstruct,
                   };
 
                   await this.fsee.emit(

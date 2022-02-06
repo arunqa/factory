@@ -56,7 +56,7 @@ export class PublicationResourcesIndex<Resource>
     resource: Resource,
     lcMetrics: fsg.FileSysGlobWalkEntryLifecycleMetrics<Resource>,
   ): void {
-    const duration = lcMetrics.constructDurationMS;
+    const duration = lcMetrics.originateDurationMS;
     if (duration) {
       this.constructionDurationStats.rank({
         resource,
@@ -71,21 +71,21 @@ export class PublicationResourcesIndex<Resource>
     metrics.record(
       metrics.gaugeMetric(
         "publ_resources_index_entries_total",
-        "Count of total resources constructed",
+        "Count of total resources originated",
       ).instance(this.resourcesIndex.length, baggage),
     );
     this.constructionDurationStats.populateMetrics(
       metrics,
       baggage,
-      "publ_resources_construction_duration",
-      "resource construction duration",
+      "publ_resources_origination_duration",
+      "resource origination duration",
       "milliseconds",
     );
     this.constructionDurationStats.populateRankMetrics(
       metrics,
       baggage,
-      "publ_resources_construction_duration",
-      "resource construction duration",
+      "publ_resources_origination_duration",
+      "resource origination duration",
       "milliseconds",
       (item, index) => {
         const resource = item.resource;
