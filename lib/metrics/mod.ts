@@ -382,19 +382,19 @@ export class ScalarStatistics {
   ) {
     metrics.record(
       metrics.gaugeMetric(
-        `${subjectKey}_${subjectKey}_count_${units}`,
+        `${subjectKey}_count_${units}`,
         `Count of ${subjectHuman} in ${units}`,
       ).instance(this.count(), baggage),
     );
     metrics.record(
       metrics.gaugeMetric(
-        `${subjectKey}_${subjectKey}_sum_${units}`,
+        `${subjectKey}_sum_${units}`,
         `Sum of ${subjectHuman} in ${units}`,
       ).instance(this.sum(), baggage),
     );
     metrics.record(
       metrics.gaugeMetric(
-        `${subjectKey}_${subjectKey}_mean_${units}`,
+        `${subjectKey}_mean_${units}`,
         `Average (mean) of ${subjectHuman} in ${units}`,
       ).instance(this.mean(), baggage),
     );
@@ -403,7 +403,7 @@ export class ScalarStatistics {
     if (min !== undefined) {
       metrics.record(
         metrics.gaugeMetric(
-          `${subjectKey}_${subjectKey}_min_${units}`,
+          `${subjectKey}_min_${units}`,
           `Minimum of ${subjectHuman} in ${units}`,
         ).instance(min, baggage),
       );
@@ -411,14 +411,14 @@ export class ScalarStatistics {
     if (max !== undefined) {
       metrics.record(
         metrics.gaugeMetric(
-          `${subjectKey}_${subjectKey}_max_${units}`,
+          `${subjectKey}_max_${units}`,
           `Maximum of ${subjectHuman} in ${units}`,
         ).instance(max, baggage),
       );
     }
     metrics.record(
       metrics.gaugeMetric(
-        `${subjectKey}_${subjectKey}_stddev_${units}`,
+        `${subjectKey}_stddev_${units}`,
         `Standard deviation from mean of ${subjectHuman} in ${units}`,
       ).instance(this.standardDeviation(), baggage),
     );
@@ -468,7 +468,7 @@ export class RankedStatistics<T extends { statistic: number }>
     this.#ranked.forEach((item, index) => {
       metrics.record(
         metrics.gaugeMetric(
-          `${subjectKey}_${subjectKey}_ranked_${units}`,
+          `${subjectKey}_ranked_${units}`,
           `Rank of ${subjectHuman} in ${units}`,
         ).instance(item.statistic, {
           ...baggage,

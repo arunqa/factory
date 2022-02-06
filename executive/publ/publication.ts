@@ -105,6 +105,32 @@ export class PublicationResourcesIndex<Resource>
   }
 }
 
+export class PublicationProducersStatistics {
+  readonly producers = new Map<string, m.ScalarStatistics>();
+
+  encounter(identity: string, value: number) {
+    let stats = this.producers.get(identity);
+    if (!stats) {
+      stats = new m.ScalarStatistics();
+      this.producers.set(identity, stats);
+    }
+    stats.encounter(value);
+  }
+
+  // deno-lint-ignore no-explicit-any
+  populateMetrics(metrics: m.Metrics, baggage: any) {
+    this.producers.forEach((stats, identity) => {
+      stats.populateMetrics(
+        metrics,
+        baggage,
+        `publ_producer_${identity}_duration`,
+        `${identity} duration`,
+        "milliseconds",
+      );
+    });
+  }
+}
+
 export class PublicationPersistedIndex {
   readonly persistedDestFiles = new Map<
     string, // the filename written (e.g. public/**/*.html, etc.)
@@ -340,6 +366,7 @@ export interface DiagnosticsOptionsSupplier {
     readonly universalJSON: boolean;
     readonly assetsPEF: boolean;
     readonly assetsCSV: boolean;
+    readonly producers: boolean;
     readonly persistence: boolean;
   };
   readonly renderers: boolean;
@@ -355,6 +382,7 @@ export interface PublicationState {
   readonly resourcesTree: rfGovn.RouteTree;
   readonly resourcesIndex: PublicationResourcesIndex<unknown>;
   readonly persistedIndex: PublicationPersistedIndex;
+  readonly producerStats: PublicationProducersStatistics;
   readonly diagnostics: () => diagC.DiagnosticsResourcesState;
   assetsMetrics?: fsA.AssetsMetricsResult;
 }
@@ -554,6 +582,7 @@ export abstract class TypicalPublication<
         assetsPEF: true,
         universalJSON: true,
         persistence: true,
+        producers: true,
       },
       renderers: true,
     };
@@ -574,6 +603,7 @@ export abstract class TypicalPublication<
       observability: config.observability,
       resourcesTree: routes.resourcesTree,
       resourcesIndex: new PublicationResourcesIndex(),
+      producerStats: new PublicationProducersStatistics(),
       persistedIndex,
       diagnostics: () => ({
         routes: {
@@ -819,34 +849,79 @@ export abstract class TypicalPublication<
     const ees: rfGovn.FileSysPersistEventsEmitterSupplier = {
       fspEE: this.fspEventsEmitter,
     };
-    return rfStd.pipelineUnitsRefineryUntyped(
-      this.ds.designSystem.prettyUrlsHtmlProducer(
-        this.config.destRootPath,
-        this.ds.contentStrategy,
-        ees,
-      ),
-      jrs.jsonTextProducer(this.config.destRootPath, {
-        routeTree: this.routes.resourcesTree,
-      }, ees),
-      dtr.csvProducer<PublicationState>(
-        this.config.destRootPath,
-        this.state,
-        ees,
-      ),
-      tfr.textFileProducer<PublicationState>(
-        this.config.destRootPath,
-        this.state,
-        {
-          eventsEmitter: ees,
-        },
-      ),
-      br.bundleProducer<PublicationState>(
-        this.config.destRootPath,
-        this.state,
-        {
-          eventsEmitter: ees,
-        },
-      ),
+    return rfStd.pipelineUnitsRefineryUntypedObservable<
+      { readonly startMS: number },
+      {
+        readonly identity: string;
+        // deno-lint-ignore no-explicit-any
+        readonly refinery: rfGovn.ResourceRefinery<any>;
+        startMS?: number;
+      }
+    >(
+      // deno-lint-ignore require-await
+      async () => ({ startMS: Date.now() }),
+      // deno-lint-ignore require-await
+      async function (eachCtx) {
+        eachCtx.startMS = Date.now();
+      },
+      // deno-lint-ignore require-await
+      async (eachCtx) => {
+        if (eachCtx.startMS) {
+          this.state.producerStats.encounter(
+            eachCtx.identity,
+            Date.now() - eachCtx.startMS,
+          );
+        }
+      },
+      // deno-lint-ignore require-await
+      async (ctx) => {
+        this.state.producerStats.encounter(
+          "cumulative",
+          Date.now() - ctx.startMS,
+        );
+      },
+      {
+        identity: "prettyUrlsHtmlProducer",
+        refinery: this.ds.designSystem.prettyUrlsHtmlProducer(
+          this.config.destRootPath,
+          this.ds.contentStrategy,
+          ees,
+        ),
+      },
+      {
+        identity: "jsonTextProducer",
+        refinery: jrs.jsonTextProducer(this.config.destRootPath, {
+          routeTree: this.routes.resourcesTree,
+        }, ees),
+      },
+      {
+        identity: "csvProducer",
+        refinery: dtr.csvProducer<PublicationState>(
+          this.config.destRootPath,
+          this.state,
+          ees,
+        ),
+      },
+      {
+        identity: "textFileProducer",
+        refinery: tfr.textFileProducer<PublicationState>(
+          this.config.destRootPath,
+          this.state,
+          {
+            eventsEmitter: ees,
+          },
+        ),
+      },
+      {
+        identity: "bundleProducer",
+        refinery: br.bundleProducer<PublicationState>(
+          this.config.destRootPath,
+          this.state,
+          {
+            eventsEmitter: ees,
+          },
+        ),
+      },
     );
   }
 
@@ -944,6 +1019,9 @@ export abstract class TypicalPublication<
     const metricsOp = this.diagsOptions.metrics;
     if (metricsOp.universalPEF || metricsOp.universalJSON) {
       this.state.resourcesIndex.populateMetrics(metrics, commonMetricsBaggage);
+    }
+    if (metricsOp.producers) {
+      this.state.producerStats.populateMetrics(metrics, commonMetricsBaggage);
     }
     if (metricsOp.persistence) {
       this.state.persistedIndex.populateMetrics(metrics, commonMetricsBaggage);

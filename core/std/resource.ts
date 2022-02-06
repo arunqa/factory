@@ -132,6 +132,32 @@ export function pipelineUnitsRefineryUntyped(
   };
 }
 
+export function pipelineUnitsRefineryUntypedObservable<
+  Context,
+  // deno-lint-ignore no-explicit-any
+  EachContext extends { refinery: govn.ResourceRefinery<any> },
+>(
+  fore: () => Promise<Context>,
+  foreEach: (ctx: EachContext) => Promise<void>,
+  aftEach: (ctx: EachContext) => Promise<void>,
+  aft: (ctx: Context) => Promise<void>,
+  ...units: EachContext[]
+  // deno-lint-ignore no-explicit-any
+): govn.ResourceRefinery<any> {
+  return async (operateOn) => {
+    let resource = operateOn;
+    const ctx = await fore();
+    for (const plUnit of units) {
+      const eachCtx = { resource, ...plUnit };
+      await foreEach(eachCtx);
+      resource = await plUnit.refinery(resource);
+      await aftEach(eachCtx);
+    }
+    aft(ctx);
+    return resource;
+  };
+}
+
 export function pipelineUnitsRefinerySyncUntyped(
   // deno-lint-ignore no-explicit-any
   ...units: ResourcePipelineSync<any>
