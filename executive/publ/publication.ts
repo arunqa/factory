@@ -17,7 +17,6 @@ import * as notif from "../../lib/notification/mod.ts";
 import * as ws from "../../lib/ws/mod.ts";
 import * as gi from "../../lib/structure/govn-index.ts";
 import * as m from "../../lib/metrics/mod.ts";
-import * as sq from "../../lib/structure/sorted-queue.ts";
 
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
@@ -47,55 +46,10 @@ export interface PublicationMeasures {
   readonly finalizeProduceStartMS: number;
 }
 
-export class RankedStatistics<T extends { rank: number }>
-  extends m.ScalarStatistics {
-  constructor(
-    readonly ranked: sq.SortedQueue<T> = new sq.SortedQueue<T>((a, b) =>
-      a.rank - b.rank
-    ),
-    readonly maxRanks = 10,
-  ) {
-    super();
-  }
-
-  rank(value: T): void {
-    this.encounter(value.rank, {
-      onNewMaxValue: () => {
-        const queue = this.ranked;
-        queue.push(value);
-        if (queue.items.length > this.maxRanks) queue.pop();
-      },
-    });
-  }
-
-  populateRankMetrics(
-    metrics: m.Metrics,
-    // deno-lint-ignore no-explicit-any
-    baggage: any,
-    subjectKey: string,
-    subjectHuman: string,
-    units: string,
-    // deno-lint-ignore no-explicit-any
-    rankBaggage: (item: T, index: number) => any,
-  ) {
-    for (const item of this.ranked.items) {
-      metrics.record(
-        metrics.gaugeMetric(
-          `${subjectKey}_${subjectKey}_ranked_${units}`,
-          `Rank of ${subjectHuman} in ${units}`,
-        ).instance(item.value.rank, {
-          ...baggage,
-          ...rankBaggage(item.value, item.index),
-        }),
-      );
-    }
-  }
-}
-
 export class PublicationResourcesIndex<Resource>
   extends gi.UniversalIndex<Resource> {
-  readonly constructionDurationStats = new RankedStatistics<
-    { resource: unknown; rank: number; provenance: string }
+  readonly constructionDurationStats = new m.RankedStatistics<
+    { resource: unknown; statistic: number; provenance: string }
   >();
 
   onConstructResource<Resource>(
@@ -106,7 +60,7 @@ export class PublicationResourcesIndex<Resource>
     if (duration) {
       this.constructionDurationStats.rank({
         resource,
-        rank: duration,
+        statistic: duration,
         provenance: lcMetrics.fsgwe.path,
       });
     }
@@ -156,8 +110,8 @@ export class PublicationPersistedIndex {
     string, // the filename written (e.g. public/**/*.html, etc.)
     rfGovn.FileSysAfterPersistEventElaboration<unknown>
   >();
-  readonly persistDurationStats = new RankedStatistics<
-    { destFileName: string; rank: number }
+  readonly persistDurationStats = new m.RankedStatistics<
+    { destFileName: string; statistic: number }
   >();
 
   index(
@@ -167,10 +121,7 @@ export class PublicationPersistedIndex {
     this.persistedDestFiles.set(destFileName, fsapee);
     const duration = fsapee.persistDurationMS;
     if (duration) {
-      this.persistDurationStats.encounter(duration, {
-        onNewMaxValue: () =>
-          this.persistDurationStats.rank({ destFileName, rank: duration }),
-      });
+      this.persistDurationStats.rank({ destFileName, statistic: duration });
     }
   }
 

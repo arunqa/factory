@@ -310,24 +310,14 @@ export class ScalarStatistics {
   protected oldVariance = 0;
   protected currentMin = 0;
   protected currentMax = 0;
-  protected minChangedCount = 0;
-  protected maxChangedCount = 0;
   protected currentSum = 0;
   protected valueCount = 0;
 
-  encounter(value: number, options?: ScalarStatisticsEncounterOptions) {
+  encounter(value: number) {
     this.valueCount++;
     if (this.valueCount == 1) {
       this.oldMean = this.newMean = this.currentMin = this.currentMax = value;
       this.oldVariance = 0;
-      this.minChangedCount = 1;
-      this.maxChangedCount = 1;
-      if (options?.onNewMinValue) {
-        options.onNewMinValue(0, this.minChangedCount, this.valueCount);
-      }
-      if (options?.onNewMaxValue) {
-        options.onNewMaxValue(0, this.maxChangedCount, this.valueCount);
-      }
     } else {
       this.newMean = this.oldMean +
         (value - this.oldMean) / this.valueCount;
@@ -335,28 +325,8 @@ export class ScalarStatistics {
         (value - this.oldMean) * (value - this.newMean);
       this.oldMean = this.newMean;
       this.oldVariance = this.newVariance;
-      if (this.currentMin > value) {
-        this.minChangedCount++;
-        if (options?.onNewMinValue) {
-          options.onNewMinValue(
-            this.currentMin,
-            this.minChangedCount,
-            this.valueCount,
-          );
-        }
-        this.currentMin = value;
-      }
-      if (value > this.currentMax) {
-        this.maxChangedCount++;
-        if (options?.onNewMaxValue) {
-          options.onNewMaxValue(
-            this.currentMax,
-            this.maxChangedCount,
-            this.valueCount,
-          );
-        }
-        this.currentMax = value;
-      }
+      this.currentMin = Math.min(this.currentMin, value);
+      this.currentMax = Math.max(this.currentMax, value);
       this.currentSum += value;
     }
   }
@@ -452,5 +422,59 @@ export class ScalarStatistics {
         `Standard deviation from mean of ${subjectHuman} in ${units}`,
       ).instance(this.standardDeviation(), baggage),
     );
+  }
+}
+
+export class RankedStatistics<T extends { statistic: number }>
+  extends ScalarStatistics {
+  readonly maxRanks: number;
+  #ranked: T[] = [];
+  #compareFn: (a: T, b: T) => number;
+
+  constructor(
+    options?: {
+      readonly maxRanks: number;
+      readonly compareFn?: (a: T, b: T) => number;
+    },
+  ) {
+    super();
+    this.maxRanks = options?.maxRanks || 10;
+    this.#compareFn = options?.compareFn ||
+      ((a, b) => b.statistic - a.statistic);
+  }
+
+  rank(value: T): void {
+    // compute continuous statistics
+    this.encounter(value.statistic);
+
+    // maintain "top X" of value.rank
+    this.#ranked.push(value);
+    this.#ranked = this.#ranked.sort(this.#compareFn);
+    if (this.#ranked.length > this.maxRanks) {
+      this.#ranked.length = this.maxRanks;
+    }
+  }
+
+  populateRankMetrics(
+    metrics: Metrics,
+    // deno-lint-ignore no-explicit-any
+    baggage: any,
+    subjectKey: string,
+    subjectHuman: string,
+    units: string,
+    // deno-lint-ignore no-explicit-any
+    rankBaggage: (item: T, index: number) => any,
+  ) {
+    this.#ranked.forEach((item, index) => {
+      metrics.record(
+        metrics.gaugeMetric(
+          `${subjectKey}_${subjectKey}_ranked_${units}`,
+          `Rank of ${subjectHuman} in ${units}`,
+        ).instance(item.statistic, {
+          ...baggage,
+          ...rankBaggage(item, index),
+        }),
+      );
+    });
   }
 }
