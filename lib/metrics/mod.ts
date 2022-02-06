@@ -285,3 +285,142 @@ export const jsonMetricsReplacer = (key: string, value: unknown) => {
   }
   return value;
 };
+
+export interface ScalarStatisticsEncounterOptions {
+  readonly onNewMin?: () => void;
+  readonly onNewMax?: () => void;
+}
+
+/**
+ * ScalarStatistics allows a stream of values to be "encountered" and will
+ * compute common statistics on the stream of scalar values.
+ */
+export class ScalarStatistics {
+  protected newMean = 0;
+  protected newVariance = 0;
+  protected oldMean = 0;
+  protected oldVariance = 0;
+  protected currentMin = 0;
+  protected currentMax = 0;
+  protected currentSum = 0;
+  protected valueCount = 0;
+
+  encounter(value: number, options?: ScalarStatisticsEncounterOptions) {
+    this.valueCount++;
+    if (this.valueCount == 1) {
+      this.oldMean = this.newMean = this.currentMin = this.currentMax = value;
+      this.oldVariance = 0;
+      if (options?.onNewMin) options.onNewMin();
+      if (options?.onNewMax) options.onNewMax();
+    } else {
+      this.newMean = this.oldMean +
+        (value - this.oldMean) / this.valueCount;
+      this.newVariance = this.oldVariance +
+        (value - this.oldMean) * (value - this.newMean);
+      this.oldMean = this.newMean;
+      this.oldVariance = this.newVariance;
+      if (this.currentMin >= value) {
+        this.currentMin = value;
+        if (options?.onNewMin) options.onNewMin();
+      }
+      if (value >= this.currentMax) {
+        this.currentMax = value;
+        if (options?.onNewMax) options.onNewMax();
+      }
+      this.currentSum += value;
+    }
+  }
+
+  clear() {
+    this.valueCount = 0;
+    this.newMean = 0;
+    this.oldMean = 0;
+    this.newVariance = 0;
+    this.oldVariance = 0;
+    this.currentMin = 0;
+    this.currentMax = 0;
+  }
+
+  count() {
+    return this.valueCount;
+  }
+
+  sum() {
+    return this.currentSum;
+  }
+
+  mean() {
+    return (this.valueCount > 0) ? this.newMean : 0;
+  }
+
+  variance() {
+    return ((this.valueCount > 1)
+      ? this.newVariance / (this.valueCount - 1)
+      : 0.0);
+  }
+
+  //What is the standard deviation of the items?s
+  standardDeviation() {
+    return Math.sqrt(this.variance());
+  }
+
+  min() {
+    return this.currentMin;
+  }
+
+  max() {
+    return this.currentMax;
+  }
+
+  populateMetrics(
+    metrics: Metrics,
+    // deno-lint-ignore no-explicit-any
+    baggage: any,
+    subjectKey: string,
+    subjectHuman: string,
+    units: string,
+  ) {
+    metrics.record(
+      metrics.gaugeMetric(
+        `${subjectKey}_${subjectKey}_count_${units}`,
+        `Count of ${subjectHuman} in ${units}`,
+      ).instance(this.count(), baggage),
+    );
+    metrics.record(
+      metrics.gaugeMetric(
+        `${subjectKey}_${subjectKey}_sum_${units}`,
+        `Sum of ${subjectHuman} in ${units}`,
+      ).instance(this.sum(), baggage),
+    );
+    metrics.record(
+      metrics.gaugeMetric(
+        `${subjectKey}_${subjectKey}_mean_${units}`,
+        `Average (mean) of ${subjectHuman} in ${units}`,
+      ).instance(this.mean(), baggage),
+    );
+    const min = this.min();
+    const max = this.max();
+    if (min !== undefined) {
+      metrics.record(
+        metrics.gaugeMetric(
+          `${subjectKey}_${subjectKey}_min_${units}`,
+          `Minimum of ${subjectHuman} in ${units}`,
+        ).instance(min, baggage),
+      );
+    }
+    if (max !== undefined) {
+      metrics.record(
+        metrics.gaugeMetric(
+          `${subjectKey}_${subjectKey}_max_${units}`,
+          `Maximum of ${subjectHuman} in ${units}`,
+        ).instance(max, baggage),
+      );
+    }
+    metrics.record(
+      metrics.gaugeMetric(
+        `${subjectKey}_${subjectKey}_stddev_${units}`,
+        `Standard deviation from mean of ${subjectHuman} in ${units}`,
+      ).instance(this.standardDeviation(), baggage),
+    );
+  }
+}

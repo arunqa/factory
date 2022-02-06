@@ -1,10 +1,6 @@
 import * as safety from "../../lib/safety/mod.ts";
 import * as govn from "../../governance/mod.ts";
 
-export const isResourceLifecycleMetricsSupplier = safety.typeGuard<
-  govn.ResourceLifecycleMetricsSupplier
->("lifecycleMetrics");
-
 export const isResourceFactorySupplierUntyped = safety.typeGuard<
   govn.ResourceFactorySupplier<unknown>
 >("resourceFactory");

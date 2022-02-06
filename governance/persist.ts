@@ -23,7 +23,7 @@ export interface FileSysAfterPersistEventElaboration<Resource> {
     | "text"
     | "uint8array"
     | "writer";
-  readonly measure: PerformanceMeasure;
+  readonly persistDurationMS: number;
   readonly unhandled?: boolean;
   readonly resource?: Resource;
 }

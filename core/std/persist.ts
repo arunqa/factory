@@ -70,13 +70,6 @@ export async function persistFlexibleFileCustom(
   options?: PersistOptions,
 ): Promise<false | "string" | "text" | "uint8array" | "writer"> {
   const beforePersist = Date.now();
-  const measure = () => {
-    return performance.measure(destFileName, {
-      start: beforePersist,
-      end: Date.now(),
-      detail: { isSync: false, isPersistFlexibleFile: true },
-    });
-  };
   const ees = options?.eventsEmitter;
   // always ensure in sync mode, never async
   if (options?.ensureDirSync) {
@@ -88,7 +81,12 @@ export async function persistFlexibleFileCustom(
       await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        { ...ees, contributor, contribution: "string", measure: measure() },
+        {
+          ...ees,
+          contributor,
+          contribution: "string",
+          persistDurationMS: Date.now() - beforePersist,
+        },
       );
     }
     return "string";
@@ -104,7 +102,12 @@ export async function persistFlexibleFileCustom(
       await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        { ...ees, contributor, contribution: "text", measure: measure() },
+        {
+          ...ees,
+          contributor,
+          contribution: "text",
+          persistDurationMS: Date.now() - beforePersist,
+        },
       );
     }
     return "text";
@@ -120,7 +123,12 @@ export async function persistFlexibleFileCustom(
       await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        { ...ees, contributor, contribution: "uint8array", measure: measure() },
+        {
+          ...ees,
+          contributor,
+          contribution: "uint8array",
+          persistDurationMS: Date.now() - beforePersist,
+        },
       );
     }
     return "uint8array";
@@ -133,7 +141,12 @@ export async function persistFlexibleFileCustom(
       await ees.fspEE.emit(
         "afterPersistFlexibleFile",
         destFileName,
-        { ...ees, contributor, contribution: "writer", measure: measure() },
+        {
+          ...ees,
+          contributor,
+          contribution: "writer",
+          persistDurationMS: Date.now() - beforePersist,
+        },
       );
     }
     return "writer";
@@ -162,7 +175,7 @@ export async function persistFlexibleFileCustom(
           unhandled: true,
           contributor,
           contribution: recursed,
-          measure: measure(),
+          persistDurationMS: Date.now() - beforePersist,
         },
       );
     }
@@ -177,13 +190,6 @@ export function persistFlexibleFileSyncCustom(
   options?: PersistOptions,
 ): false | "string" | "text" | "uint8array" | "writer" {
   const beforePersist = Date.now();
-  const measure = () => {
-    return performance.measure(destFileName, {
-      start: beforePersist,
-      end: Date.now(),
-      detail: { isSync: true, isPersistFlexibleFile: true },
-    });
-  };
   const ees = options?.eventsEmitter;
   if (options?.ensureDirSync) {
     options?.ensureDirSync(path.dirname(destFileName));
@@ -194,7 +200,12 @@ export function persistFlexibleFileSyncCustom(
       ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        { ...ees, contributor, contribution: "string", measure: measure() },
+        {
+          ...ees,
+          contributor,
+          contribution: "string",
+          persistDurationMS: Date.now() - beforePersist,
+        },
       );
     }
     return "string";
@@ -210,7 +221,12 @@ export function persistFlexibleFileSyncCustom(
       ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        { ...ees, contributor, contribution: "text", measure: measure() },
+        {
+          ...ees,
+          contributor,
+          contribution: "text",
+          persistDurationMS: Date.now() - beforePersist,
+        },
       );
     }
     return "text";
@@ -226,7 +242,12 @@ export function persistFlexibleFileSyncCustom(
       ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        { ...ees, contributor, contribution: "uint8array", measure: measure() },
+        {
+          ...ees,
+          contributor,
+          contribution: "uint8array",
+          persistDurationMS: Date.now() - beforePersist,
+        },
       );
     }
     return "uint8array";
@@ -239,7 +260,12 @@ export function persistFlexibleFileSyncCustom(
       ees.fspEE.emitSync(
         "afterPersistFlexibleFileSync",
         destFileName,
-        { ...ees, contributor, contribution: "writer", measure: measure() },
+        {
+          ...ees,
+          contributor,
+          contribution: "writer",
+          persistDurationMS: Date.now() - beforePersist,
+        },
       );
     }
     return "writer";
@@ -262,7 +288,7 @@ export function persistFlexibleFileSyncCustom(
           unhandled: true,
           contributor,
           contribution: recursed,
-          measure: measure(),
+          persistDurationMS: Date.now() - beforePersist,
         },
       );
     }

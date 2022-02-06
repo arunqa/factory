@@ -17,6 +17,7 @@ import * as notif from "../../lib/notification/mod.ts";
 import * as ws from "../../lib/ws/mod.ts";
 import * as gi from "../../lib/structure/govn-index.ts";
 import * as m from "../../lib/metrics/mod.ts";
+import * as sq from "../../lib/structure/sorted-queue.ts";
 
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
@@ -46,63 +47,109 @@ export interface PublicationMeasures {
   readonly finalizeProduceStartMS: number;
 }
 
+export class RankedStatistics<T extends { rank: number }>
+  extends m.ScalarStatistics {
+  constructor(
+    readonly ranked: sq.SortedQueue<T> = new sq.SortedQueue<T>((a, b) =>
+      a.rank - b.rank
+    ),
+    readonly maxRanks = 10,
+  ) {
+    super();
+  }
+
+  rank(value: T): void {
+    this.encounter(value.rank, {
+      onNewMax: () => {
+        const queue = this.ranked;
+        queue.push(value);
+        if (queue.items.length > this.maxRanks) queue.pop();
+      },
+    });
+  }
+
+  populateRankMetrics(
+    metrics: m.Metrics,
+    // deno-lint-ignore no-explicit-any
+    baggage: any,
+    subjectKey: string,
+    subjectHuman: string,
+    units: string,
+    // deno-lint-ignore no-explicit-any
+    rankBaggage: (item: T, index: number) => any,
+  ) {
+    for (const item of this.ranked.items) {
+      metrics.record(
+        metrics.gaugeMetric(
+          `${subjectKey}_${subjectKey}_ranked_${units}`,
+          `Rank of ${subjectHuman} in ${units}`,
+        ).instance(item.value.rank, {
+          ...baggage,
+          ...rankBaggage(item.value, item.index),
+        }),
+      );
+    }
+  }
+}
+
 export class PublicationResourcesIndex<Resource>
   extends gi.UniversalIndex<Resource> {
+  readonly constructionDurationStats = new RankedStatistics<
+    { resource: unknown; rank: number; provenance: string }
+  >();
+
+  onConstructResource<Resource>(
+    resource: Resource,
+    lcMetrics: fsg.FileSysGlobWalkEntryLifecycleMetrics<Resource>,
+  ): void {
+    const duration = lcMetrics.constructDurationMS;
+    if (duration) {
+      this.constructionDurationStats.encounter(duration, {
+        onNewMax: () =>
+          this.constructionDurationStats.rank({
+            resource,
+            rank: duration,
+            provenance: lcMetrics.fsgwe.path,
+          }),
+      });
+    }
+  }
+
   // deno-lint-ignore no-explicit-any
   populateMetrics(metrics: m.Metrics, baggage: any) {
-    let totalConstructMS = 0;
-    let totalRendered = 0;
-    let totalRenderedMS = 0;
-    for (const r of this.resourcesIndex) {
-      if (rfStd.isResourceLifecycleMetricsSupplier(r)) {
-        const cpm = r.lifecycleMetrics.constructPM;
-        totalConstructMS += cpm.duration;
-      }
-      if (rfStd.isRenderMetricsSupplier(r)) {
-        const rpm = r.renderMeasure;
-        if (rpm) {
-          totalRendered++;
-          totalRenderedMS += rpm.duration;
-        }
-      }
-    }
     metrics.record(
       metrics.gaugeMetric(
         "publ_resources_index_entries_total",
         "Count of total resources constructed",
       ).instance(this.resourcesIndex.length, baggage),
     );
-    metrics.record(
-      metrics.gaugeMetric(
-        "publ_resources_index_lc_construction_milliseconds",
-        "Aggregated construction time of all resources in milliseconds",
-      ).instance(totalConstructMS, baggage),
+    this.constructionDurationStats.populateMetrics(
+      metrics,
+      baggage,
+      "publ_resources_construction_duration",
+      "resource construction duration",
+      "milliseconds",
     );
-    const meanConstructMS = totalConstructMS / this.resourcesIndex.length;
-    metrics.record(
-      metrics.gaugeMetric(
-        "publ_resources_index_lc_construction_mean_milliseconds",
-        "Average (mean) construction time of all resources in milliseconds",
-      ).instance(meanConstructMS, baggage),
-    );
-    metrics.record(
-      metrics.gaugeMetric(
-        "publ_resources_index_entries_rendered_total",
-        "Count of total resources who supplied their rendering metrics",
-      ).instance(totalRendered, baggage),
-    );
-    metrics.record(
-      metrics.gaugeMetric(
-        "publ_resources_index_lc_rendered_milliseconds",
-        "Aggregated rendering time of all resources in milliseconds",
-      ).instance(totalRenderedMS, baggage),
-    );
-    const meanRenderedMS = totalRenderedMS / totalRendered;
-    metrics.record(
-      metrics.gaugeMetric(
-        "publ_resources_index_lc_rendered_mean_milliseconds",
-        "Average (mean) rendering time of all resources in milliseconds",
-      ).instance(meanRenderedMS, baggage),
+    this.constructionDurationStats.populateRankMetrics(
+      metrics,
+      baggage,
+      "publ_resources_construction_duration",
+      "resource construction duration",
+      "milliseconds",
+      (item, index) => {
+        const resource = item.resource;
+        if (rfStd.isRouteSupplier(resource) && resource.route.terminal) {
+          const terminal = resource.route.terminal;
+          return {
+            provenance: item.provenance,
+            route: terminal.qualifiedPath,
+            routeLabel: terminal.label,
+            index,
+          };
+        } else {
+          return { provenance: item.provenance, index };
+        }
+      },
     );
   }
 }
@@ -112,12 +159,22 @@ export class PublicationPersistedIndex {
     string, // the filename written (e.g. public/**/*.html, etc.)
     rfGovn.FileSysAfterPersistEventElaboration<unknown>
   >();
+  readonly persistDurationStats = new RankedStatistics<
+    { destFileName: string; rank: number }
+  >();
 
   index(
     destFileName: string,
     fsapee: rfGovn.FileSysAfterPersistEventElaboration<unknown>,
   ): void {
     this.persistedDestFiles.set(destFileName, fsapee);
+    const duration = fsapee.persistDurationMS;
+    if (duration) {
+      this.persistDurationStats.encounter(duration, {
+        onNewMax: () =>
+          this.persistDurationStats.rank({ destFileName, rank: duration }),
+      });
+    }
   }
 
   has(destFileName: string): boolean {
@@ -126,28 +183,26 @@ export class PublicationPersistedIndex {
 
   // deno-lint-ignore no-explicit-any
   populateMetrics(metrics: m.Metrics, baggage: any) {
-    let totalPersistMS = 0;
-    this.persistedDestFiles.forEach((v) => {
-      totalPersistMS += v.measure.duration;
-    });
     metrics.record(
       metrics.gaugeMetric(
         "publ_persisted_index_entries_total",
         "Count of total resources persisted",
       ).instance(this.persistedDestFiles.size, baggage),
     );
-    metrics.record(
-      metrics.gaugeMetric(
-        "publ_persisted_index_lc_persistence_milliseconds",
-        "Aggregated persistence time of all resources in milliseconds",
-      ).instance(totalPersistMS, baggage),
+    this.persistDurationStats.populateMetrics(
+      metrics,
+      baggage,
+      "publ_resources_persist_duration",
+      "resource persist duration",
+      "milliseconds",
     );
-    const meanConstructMS = totalPersistMS / this.persistedDestFiles.size;
-    metrics.record(
-      metrics.gaugeMetric(
-        "publ_persisted_index_lc_persistence_mean_milliseconds",
-        "Average (mean) persistenced time of all resources in milliseconds",
-      ).instance(meanConstructMS, baggage),
+    this.persistDurationStats.populateRankMetrics(
+      metrics,
+      baggage,
+      "publ_resources_persist_duration",
+      "resource persist duration",
+      "milliseconds",
+      (item, index) => ({ destFileName: item.destFileName, index }),
     );
   }
 }
@@ -752,6 +807,12 @@ export abstract class TypicalPublication<
   originators(): rfGovn.ResourcesFactoriesSupplier<any>[] {
     const { contentRootPath, fsRouteFactory } = this.config;
     const watcher = new fsg.FileSysGlobsOriginatorEventEmitter();
+    // deno-lint-ignore require-await
+    watcher.on("afterConstructResource", async (resource, lcMetrics) => {
+      // if we "consumed" (handled) the resource it means we do not want it to
+      // go to the destination directory so let's track it
+      this.state.resourcesIndex.onConstructResource(resource, lcMetrics);
+    });
     // deno-lint-ignore require-await
     watcher.on("beforeYieldWalkEntry", async (we) => {
       // if we "consumed" (handled) the resource it means we do not want it to

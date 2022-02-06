@@ -8,6 +8,12 @@ export type FileSysPathText = string;
 export type FileSysFileNameOnly = string;
 export type FileSysGlobText = string;
 
+export interface FileSysGlobWalkEntryLifecycleMetrics<Resource> {
+  readonly fsgwe: FileSysGlobWalkEntry<Resource>;
+  readonly constructDurationMS: number;
+  readonly refineDurationMS?: number;
+}
+
 export interface FileSysGlobWalkEntryFactory<Resource> {
   readonly construct: (
     we: FileSysGlobWalkEntry<Resource>,
@@ -64,7 +70,7 @@ export class FileSysGlobsOriginatorEventEmitter<Resource>
     beforeYieldWalkEntry(we: FileSysGlobWalkEntry<Resource>): Promise<void>;
     afterConstructResource(
       r: Resource,
-      lcMetrics: govn.ResourceLifecycleMetrics,
+      lcMetrics: FileSysGlobWalkEntryLifecycleMetrics<Resource>,
     ): Promise<void>;
   }> {}
 
@@ -168,7 +174,7 @@ export class FileSysGlobsOriginator<Resource>
               continue;
             }
 
-            const lfswe: FileSysGlobWalkEntry<Resource> = {
+            const fsgwe: FileSysGlobWalkEntry<Resource> = {
               ...we,
               ownerFileSysPath: tllfsPath.ownerFileSysPath,
               lfsPath,
@@ -180,28 +186,20 @@ export class FileSysGlobsOriginator<Resource>
               ),
               resourceFactory: async () => {
                 const beforeConstruct = Date.now();
-                let resource = await construct(lfswe, fsrOptions);
+                let resource = await construct(fsgwe, fsrOptions);
                 const afterConstruct = Date.now();
                 if (refine) resource = await refine(resource);
 
-                // convert the resource to a ResourceLifecycleMetricsSupplier
-                const lcMetrics = {
-                  fsgWalkEntry: lfswe,
-                  constructPM: performance.measure(we.path, {
-                    start: beforeConstruct,
-                    end: afterConstruct,
-                  }),
-                  refinePM: refine
-                    ? performance.measure(we.path, {
-                      start: afterConstruct,
-                    })
-                    : undefined,
-                };
-                // deno-lint-ignore no-explicit-any
-                ((resource as any) as govn.MutableResourceLifecycleMetricsSupplier)
-                  .lifecycleMetrics = lcMetrics;
-
                 if (this.fsee) {
+                  // deno-lint-ignore no-explicit-any
+                  const lcMetrics: FileSysGlobWalkEntryLifecycleMetrics<any> = {
+                    fsgwe,
+                    constructDurationMS: Date.now() - beforeConstruct,
+                    refineDurationMS: refine
+                      ? (Date.now() - afterConstruct)
+                      : undefined,
+                  };
+
                   await this.fsee.emit(
                     "afterConstructResource",
                     resource,
@@ -211,8 +209,8 @@ export class FileSysGlobsOriginator<Resource>
                 return resource;
               },
             };
-            if (this.fsee) await this.fsee.emit("beforeYieldWalkEntry", lfswe);
-            yield lfswe;
+            if (this.fsee) await this.fsee.emit("beforeYieldWalkEntry", fsgwe);
+            yield fsgwe;
           }
         }
       }
