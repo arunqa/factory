@@ -36,9 +36,19 @@ function typicalProxyableFileSysModelArguments<Model, OriginContext>(
     ),
     proxyStrategy: cache.modelProxyEnvVarAgeStrategy(args.envVarNamesPrefix),
     constructFromCachedProxy: async (pfsr) => {
-      return JSON.parse(
-        await Deno.readTextFile(pfsr.proxyStrategyResult.proxyFilePathAndName),
-      );
+      try {
+        return JSON.parse(
+          await Deno.readTextFile(
+            pfsr.proxyStrategyResult.proxyFilePathAndName,
+          ),
+        );
+      } catch (err) {
+        console.error(
+          colors.red(
+            `Error attempting to construct from cached proxy ${pfsr.proxyStrategyResult.proxyFilePathAndName} in typicalProxyableFileSysModelArguments: ${err}`,
+          ),
+        );
+      }
     },
     cacheProxied: async (model, fsmpsr) => {
       await rfStd.persistFlexibleFileCustom(
