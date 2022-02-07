@@ -1,4 +1,5 @@
 import { events, fs, log, path } from "../deps.ts";
+import * as safety from "../../lib/safety/mod.ts";
 import * as health from "../../lib/health/mod.ts";
 import * as govn from "../../governance/mod.ts";
 import * as g from "../../lib/git/mod.ts";
@@ -55,6 +56,20 @@ export interface FileSysGlobWalkEntry<Resource>
   readonly lfsPath: FileSysPath<Resource>;
   readonly glob: FileSysPathGlob<Resource>;
 }
+
+export interface MutableFileSysGlobWalkProvenanceSupplier<Resource> {
+  fileSysGlobWalkProvenance: FileSysGlobWalkEntry<Resource>;
+}
+
+// deno-lint-ignore no-empty-interface
+export interface FileSysGlobWalkProvenanceSupplier<Resource>
+  extends Readonly<MutableFileSysGlobWalkProvenanceSupplier<Resource>> {
+}
+
+export const isFileSysGlobWalkEntrySupplier = safety.typeGuard<
+  // deno-lint-ignore no-explicit-any
+  FileSysGlobWalkProvenanceSupplier<any>
+>("fileSysGlobWalkProvenance");
 
 export interface FileSysPaths<Resource>
   extends
@@ -190,6 +205,10 @@ export class FileSysGlobsOriginator<Resource>
                 let resource = await construct(fsgwe, fsrOptions);
                 const afterConstruct = Date.now();
                 if (refine) resource = await refine(resource);
+
+                ((resource as unknown) as MutableFileSysGlobWalkProvenanceSupplier<
+                  Resource
+                >).fileSysGlobWalkProvenance = fsgwe;
 
                 if (this.fsee) {
                   // deno-lint-ignore no-explicit-any
