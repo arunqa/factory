@@ -48,6 +48,15 @@ export interface PublicationMeasures {
 
 export class PublicationResourcesIndex<Resource>
   extends gi.UniversalIndex<Resource> {
+  readonly memoizedProducers = new Map<
+    rfGovn.RouteLocation,
+    {
+      readonly unit: rfStd.FileSysRouteNode;
+      readonly isReloadRequired: () => boolean;
+      // deno-lint-ignore no-explicit-any
+      readonly replay: () => Promise<any>;
+    }
+  >();
   readonly constructionDurationStats = new m.RankedStatistics<
     { resource: unknown; statistic: number; provenance: string }
   >();
@@ -64,6 +73,61 @@ export class PublicationResourcesIndex<Resource>
         provenance: lcMetrics.fsgwe.path,
       });
     }
+  }
+
+  memoizeProducer<Resource>(
+    // deno-lint-ignore no-explicit-any
+    ds: html.DesignSystemFactory<any, any, any, any>,
+    resource: Resource,
+    producer: (resource: Resource) => Promise<Resource>,
+  ) {
+    if (rfStd.isRouteSupplier(resource)) {
+      if (resource.route.terminal) {
+        if (rfStd.isFileSysRouteUnit(resource.route.terminal)) {
+          const unit = resource.route.terminal;
+          if (unit.lastModifiedAt) {
+            if (fsg.isFileSysGlobWalkEntrySupplier(resource)) {
+              this.memoizedProducers.set(
+                ds.contentStrategy.navigation.location(unit),
+                {
+                  unit,
+                  isReloadRequired: () => unit.isModifiedInFileSys(),
+                  replay: async () => {
+                    const cloned = await resource.fileSysGlobWalkProvenance
+                      .resourceFactory();
+                    return producer(cloned);
+                  },
+                },
+              );
+            }
+          } else {
+            // deno-fmt-ignore
+            console.warn(colors.red(`Memoizing a resource producer without lastModifiedAt will not work`));
+            console.warn(colors.brightRed(Deno.inspect(unit)));
+          }
+        }
+      } else {
+        // deno-fmt-ignore
+        console.warn(colors.red(`Memoizing a resource producer without terminal route will not work`));
+        console.warn(colors.brightRed(Deno.inspect(resource.route)));
+      }
+    } else {
+      // deno-fmt-ignore
+      console.warn(colors.red(`Memoizing a resource producer without a route will not work`));
+      console.warn(resource);
+    }
+  }
+
+  async replayMemoizedProducer<Resource>(
+    qualifiedPath: rfGovn.RouteLocation,
+  ): Promise<false | Resource> {
+    const producer = this.memoizedProducers.get(qualifiedPath);
+    if (producer) {
+      if (producer.isReloadRequired()) {
+        return await producer.replay();
+      }
+    }
+    return false;
   }
 
   // deno-lint-ignore no-explicit-any
@@ -209,6 +273,7 @@ export interface Preferences<
   ) => fsT.FileSysAssetWalker[];
   readonly extensionsManager: rfGovn.ExtensionsManager;
   readonly termsManager: k.TermsManager;
+  readonly memoizeProducers: boolean;
 }
 
 export class Configuration<
@@ -241,6 +306,7 @@ export class Configuration<
   >;
   readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
+  readonly memoizeProducers: boolean;
 
   constructor(prefs: Preferences<OperationalContext>) {
     this.operationalCtx = prefs.operationalCtx;
@@ -281,6 +347,7 @@ export class Configuration<
     this.rewriteMarkdownLink = prefs.rewriteMarkdownLink;
     this.extensionsManager = prefs.extensionsManager;
     this.termsManager = prefs.termsManager;
+    this.memoizeProducers = prefs.memoizeProducers;
   }
 
   produceControlPanelContent(): boolean {
@@ -849,6 +916,7 @@ export abstract class TypicalPublication<
     const ees: rfGovn.FileSysPersistEventsEmitterSupplier = {
       fspEE: this.fspEventsEmitter,
     };
+    const memoize = this.config.memoizeProducers;
     return rfStd.pipelineUnitsRefineryUntypedObservable<
       { readonly startMS: number },
       {
@@ -885,7 +953,19 @@ export abstract class TypicalPublication<
         refinery: this.ds.designSystem.prettyUrlsHtmlProducer(
           this.config.destRootPath,
           this.ds.contentStrategy,
-          ees,
+          {
+            fspEE: ees,
+            memoize: memoize
+              // deno-lint-ignore require-await
+              ? (async (resource, producer) => {
+                this.state.resourcesIndex.memoizeProducer(
+                  this.ds,
+                  resource,
+                  producer,
+                );
+              })
+              : undefined,
+          },
         ),
       },
       {

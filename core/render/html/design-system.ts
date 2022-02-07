@@ -673,7 +673,13 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
   prettyUrlsHtmlProducer(
     destRootPath: string,
     contentStrategy: UntypedDesignSystemContentStrategy,
-    fspEE?: govn.FileSysPersistEventsEmitterSupplier,
+    options?: {
+      readonly fspEE?: govn.FileSysPersistEventsEmitterSupplier;
+      readonly memoize?: (
+        resource: govn.HtmlSupplier,
+        producer: (replay: govn.HtmlSupplier) => Promise<govn.HtmlSupplier>,
+      ) => Promise<void>;
+    },
   ): govn.ResourceRefinery<govn.HtmlSupplier> {
     const producer = r.pipelineUnitsRefineryUntyped(
       this.pageRenderer(contentStrategy),
@@ -682,7 +688,7 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
         persist.routePersistPrettyUrlHtmlNamingStrategy((ru) =>
           ru.unit === this.prettyUrlIndexUnitName
         ),
-        fspEE,
+        options?.fspEE,
       ),
     );
 
@@ -693,6 +699,11 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
           nature.htmlMediaTypeNature.mediaType,
         )
       ) {
+        if (options?.memoize) {
+          options?.memoize(resource, async (replay) => {
+            return await producer(replay);
+          });
+        }
         return await producer(resource);
       }
       // we cannot handle this type of rendering target, no change to resource
