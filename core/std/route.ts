@@ -551,6 +551,7 @@ export interface FileSysRouteNode extends govn.RouteNode {
   readonly isDirectory: boolean;
   readonly isSymlink: boolean;
   readonly size: number;
+  readonly isModifiedInFileSys: () => boolean;
 }
 
 export const isFileSysRouteUnit = safety.typeGuard<FileSysRouteNode>(
@@ -647,6 +648,13 @@ export class FileSysRouteFactory extends TypicalRouteFactory {
       resolve: (relative) => resolveRouteUnit(relative, level, result),
       location: (options) => this.routeLocationResolver(routeUnit, options),
       inRoute: (route) => route.inRoute(routeUnit) ? true : false,
+      isModifiedInFileSys: () => {
+        const reStat = Deno.statSync(fileSysPath);
+        if (reStat.mtime && stat.mtime) {
+          return reStat.mtime > stat.mtime;
+        }
+        return false;
+      },
     };
     result.units.push(routeUnit);
     // deno-lint-ignore no-explicit-any
