@@ -1,13 +1,15 @@
 import { colors, oak, oakApp, path } from "./deps.ts";
 
-export interface LiveReloadState {
+export interface LiveReloadClientState {
   readonly endpointURL: string;
   readonly lrSockets: WebSocket[];
   readonly register: (socket: WebSocket) => void;
   readonly cleanup: () => void;
 }
 
-export function typicalLiveReloadState(endpointURL: string): LiveReloadState {
+export function typicalLiveReloadClientState(
+  { endpointURL }: Pick<LiveReloadClientState, "endpointURL">,
+): LiveReloadClientState {
   const lrSockets: WebSocket[] = [];
   return {
     endpointURL,
@@ -33,11 +35,34 @@ export function typicalLiveReloadState(endpointURL: string): LiveReloadState {
   };
 }
 
+export interface LiveReloadServerState {
+  readonly clientState: LiveReloadClientState;
+  readonly watchFS: string | string[];
+  readonly onFileSysEvent: (
+    event: Deno.FsEvent,
+    watcher: Deno.FsWatcher,
+  ) => Promise<void>;
+  readonly onFileSysWatcherEvent?: (stage: "start") => Promise<void>;
+}
+
+export function typicalLiveReloadServerState(
+  { watchFS, onFileSysEvent, clientState, onFileSysWatcherEvent }: Pick<
+    LiveReloadServerState,
+    "watchFS" | "onFileSysEvent" | "clientState" | "onFileSysWatcherEvent"
+  >,
+): LiveReloadServerState {
+  return {
+    watchFS,
+    onFileSysEvent,
+    clientState,
+    onFileSysWatcherEvent,
+  };
+}
+
 export interface ExperimentalServerOperationalContext {
   readonly iterationCount: number;
-  readonly isReloadRequest: boolean;
   readonly staticAssetsHome: string;
-  readonly liveReloadState?: LiveReloadState;
+  readonly isLiveReloadRequest: boolean;
 }
 
 export interface StaticAccessEvent {
@@ -66,11 +91,14 @@ export type StaticAccessErrorEventHandler = (
 export interface ExperimentalServerOptions
   extends ExperimentalServerOperationalContext {
   readonly staticIndex: "index.html" | string;
+  // deno-lint-ignore no-explicit-any
+  readonly onBeforeStaticServe?: (oakCtx: oak.Context<any>) => Promise<void>;
   readonly onServerListen?: (
     event: oakApp.ApplicationListenEvent,
   ) => Promise<void>;
   readonly onServedStatic?: StaticAccessEventHandler;
   readonly onStaticServeError?: StaticAccessErrorEventHandler;
+  readonly liveReloadClientState?: LiveReloadClientState;
 }
 
 export function staticAccessColoredConsoleEmitter(
@@ -134,8 +162,12 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     serverConstructor: oak.HttpServerNative,
   });
   const router = new oak.Router();
-  const { staticAssetsHome, staticIndex, liveReloadState, onServedStatic } =
-    options;
+  const {
+    staticAssetsHome,
+    staticIndex,
+    liveReloadClientState,
+    onServedStatic,
+  } = options;
 
   // error handler
   app.use(async (_ctx, next) => {
@@ -151,16 +183,16 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     ctx.response.body = "SSR test route in experimentalServer (don't use this)";
   });
 
-  if (liveReloadState) {
+  if (liveReloadClientState) {
     // create the live-reload websocket endpoint; whenever the listener is
     // restarted, the websocket will die on the client which will trigger a reload
     // of the browser's web page; the actual websocket message is irrelevant
-    router.get(liveReloadState.endpointURL, (ctx) => {
-      liveReloadState.register(ctx.upgrade());
+    router.get(liveReloadClientState.endpointURL, (ctx) => {
+      liveReloadClientState.register(ctx.upgrade());
       console.log(
         colors.gray(
           // accept-encoding,accept-language,cache-control,connection,host,origin,pragma,sec-websocket-extensions,sec-websocket-key,sec-websocket-version,upgrade,user-agent
-          `    ${liveReloadState.endpointURL} hook request from ${
+          `    ${liveReloadClientState.endpointURL} hook request from ${
             ctx.request.url.searchParams.get("origin-pathname")
           }`,
         ),
@@ -178,6 +210,9 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
   // static content
   app.use(async (ctx, next) => {
     try {
+      if (options?.onBeforeStaticServe) {
+        await options.onBeforeStaticServe(ctx);
+      }
       if (onServedStatic) {
         const serveStartedMark = performance.mark(ctx.request.url.pathname);
         const target = await ctx.send({
@@ -217,8 +252,21 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
 
 export async function experimentalServerListen(
   eso: ExperimentalServerOptions,
+  lrss?: LiveReloadServerState,
   port = 8003,
 ) {
   const app = experimentalServer(eso);
-  await app.listen({ port });
+  if (lrss) {
+    app.listen({ port });
+
+    const watcher = Deno.watchFs(lrss.watchFS, {
+      recursive: true,
+    });
+    if (lrss.onFileSysWatcherEvent) lrss.onFileSysWatcherEvent("start");
+    for await (const event of watcher) {
+      lrss.onFileSysEvent(event, watcher);
+    }
+  } else {
+    await app.listen({ port });
+  }
 }
