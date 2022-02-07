@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link href="https://cdnjs.cloudflare.com" crossorigin>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
+</head>
+
+<body>
+    <b>Resource Factory Experimental Server Live Diagnostics</b>
+    <div id="live-reload-message-container">
+        Live reload messages will be shown here.
+    </div>
+
+    <h1>Console Output</h1>
+    <ul id="container_redirectConsole">
+    </ul>
+
+    <h1>Access Log</h1>
+    <table id="access-log">
+        <tr>
+            <thead>
+                <th>Status</th>
+                <th>Location</th>
+                <th>Target</th>
+                <th>Target SymLink</th>
+            </thead>
+        </tr>
+    </table>
+</body>
+
+<script>
+    "use strict";
+
+    const consoleLogWarningStyles = `
+        color: #fff;
+        background-color: #c23934;
+        display: block;
+        text-align: center;
+        padding: 8px 32px;
+        font: 100 16px/28px sans-serif;
+        background-image: linear-gradient(45deg,rgba(0,0,0,.025) 25%,transparent 25%,transparent 50%,rgba(0,0,0,.025) 50%,rgba(0,0,0,.025) 75%,transparent 75%,transparent);
+        background-size: 64px 64px;
+    `;
+
+    /**
+     * Uses https://github.com/Alorel/console-log-html to redirect console.* output to an HTML DOM element.
+     * @param {*} redirectConsoleContainerID
+     */
+    // deno-lint-ignore no-unused-vars
+    const redirectConsoleToHTML = (
+        redirectConsoleContainerID = "container_redirectConsole",
+    ) => {
+        const ldsRedirectConsoleContainer = document.getElementById(redirectConsoleContainerID);
+        if (ldsRedirectConsoleContainer) {
+            $script(
+                "//cdn.rawgit.com/Alorel/console-log-html/master/console-log-html.min.js",
+                function () {
+                    ConsoleLogHTML.connect(ldsRedirectConsoleContainer);
+                    console.log(
+                        `Element ID '${redirectConsoleContainerID}' is logging console output. See github.com/Alorel/console-log-html for usage instructions.`,
+                    );
+                },
+            );
+        } else {
+            console.log(
+                "%c%s",
+                consoleLogWarningStyles,
+                `Element with ID '${redirectConsoleContainerID}' required by redirectConsoleToHTML() does not exist.`,
+            );
+        }
+    };
+    redirectConsoleToHTML();
+
+    let lrSocket, lrReconnectionTimerId;
+    const originServer = `${location.protocol}//${location.hostname}:${location.port}`;
+    const wsEndpoint = `ws://${document.location.host}/experimental-server/diagnostics/ephemeral/ws`;
+    const lrIntervalSeconds = 1;
+    const lrIntervalMS = lrIntervalSeconds * 1000;
+    const lrMaxAttempts = 60;
+
+    const refreshPage = (_event, _lrSocketUrl) => {
+        location.reload();
+    }
+
+    const liveReloadStatus = (message, appendForceReload = false) => {
+        const messenger = document.getElementById("live-reload-message-container");
+        if (messenger) {
+            messenger.innerHTML = appendForceReload ? `${message} <a href="javascript:location.reload()" class="localhost-diags localhost-diags-live-reload-force">Force Reload</a>.` : message;
+        } else {
+            console.log(message);
+        }
+    }
+
+    const liveReloadConnect = (onConnect, lrSocketUrl = `${wsEndpoint}?origin-pathname=${location.pathname}`, reloadAttempt = 0) => {
+        // If one is already open, allow the last socket to be garbage collected
+        if (lrSocket) lrSocket.close();
+        lrSocket = null;
+
+        liveReloadStatus(`Waiting for ${originServer} server to start (attempt ${reloadAttempt} of ${lrMaxAttempts}).`, true);
+        lrSocket = new WebSocket(lrSocketUrl);
+        lrSocket.addEventListener("open", (event) => { onConnect(event, lrSocketUrl) });
+
+        lrSocket.addEventListener("close", () => {
+            const nextReloadAttempt = reloadAttempt + 1;
+            liveReloadStatus(`Server at ${originServer} has been closed (restarted?), reconnecting (attempt ${nextReloadAttempt} in ${lrIntervalMS}ms).`, true);
+            clearInterval(lrReconnectionTimerId);
+            lrReconnectionTimerId = setInterval(() => {
+                if (nextReloadAttempt > lrMaxAttempts) {
+                    liveReloadStatus(`Server did not restart after ${lrMaxAttempts * lrIntervalSeconds} seconds and ${reloadAttempt} attempts, giving up.`, true);
+                    clearInterval(lrReconnectionTimerId);
+                    return;
+                }
+                liveReloadConnect((event) => {
+                    clearInterval(lrReconnectionTimerId);
+                    refreshPage(event, lrSocketUrl)
+                }, lrSocketUrl, nextReloadAttempt);
+            }, lrIntervalMS);
+        });
+
+        // Add a listener for messages from the server.
+        lrSocket.addEventListener("message", (event) => {
+            // Check whether we should refresh the browser.
+            if (event.data === "reload") {
+                liveReloadStatus(`Received live reload request from ${originServer}.`);
+                refreshPage(event, lrSocketUrl);
+                return;
+            }
+            // we just want to evaluate the code from the server as JavaScript for this client
+            // this is very dangerous, of course, but we're only doing it for experimental server
+            eval(event.data);
+        });
+    }
+
+    liveReloadConnect((_event, lrSocketUrl) => {
+        liveReloadStatus(`<span title="${lrSocketUrl}">Live reload enabled for <code>${originServer}</code> at <code>${wsEndpoint}</code> on ${new Date()}.</a>`);
+    });
+
+    const logLiveReloadRequest = (lrTarget, lrEndpoint) => {
+        console.log(`${lrTarget} live reload request from ${lrEndpoint}`);
+    }
+
+    const logAccess = (access) => {
+        const defaultExtnOptions = { style: "color: gray" };
+        const status304Options = { style: "color: gray" };
+        const accessLogOptions = {
+            ".html": { style: "color: black; font-weight: bold;", status: { 304: { style: "color: #333333" } } },
+            ".png": { style: "color: cyan", status: { 304: status304Options } },
+            ".drawio.png": { style: "color: green", status: { 304: status304Options } },
+            ".jpg": { style: "color: cyan", status: { 304: status304Options } },
+            ".gif": { style: "color: cyan", status: { 304: status304Options } },
+            ".ico": { style: "color: cyan", status: { 304: status304Options } },
+            ".svg": { style: "color: cyan", status: { 304: status304Options } },
+            ".drawio.svg": { style: "color: cyan", status: { 304: status304Options } },
+            ".css": { style: "color: purple", status: { 304: status304Options } },
+            ".js": { style: "color: red", status: { 304: status304Options } },
+            ".json": { style: "color: blue", status: { 304: status304Options } },
+            ".pdf": { style: "color: green", status: { 304: status304Options } },
+        }
+
+        const accessLogTableID = 'access-log';
+        const accessLogTable = document.getElementById(accessLogTableID);
+        const { status, locationHref, fsTarget, fsTargetSymLink, extn } = access;
+        let extnOptions = extn ? (accessLogOptions[extn] || defaultExtnOptions) : defaultExtnOptions;
+        if (status == 304 && extnOptions?.status && extnOptions.status[304]) {
+            extnOptions = extnOptions.status[304];
+        }
+        const newRow = accessLogTable.insertRow();
+        newRow.innerHTML = `
+            <td style="${extnOptions.style}">${status}</td>
+            <td style="${extnOptions.style}">${locationHref}</td>
+            <td style="${extnOptions.style}">${fsTarget}</td>
+            <td style="${extnOptions.style}">${fsTargetSymLink || '&nbsp;'}</td>
+        `;
+    }
+</script>
+
+</html>

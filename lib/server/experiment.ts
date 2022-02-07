@@ -1,5 +1,55 @@
 import { colors, oak, oakApp, path } from "./deps.ts";
 
+export interface DiagnosticsClientState {
+  readonly endpointBaseURL: string;
+  readonly ephemeralHtmlEndpointURL: string;
+  readonly ephemeralWsEndpointURL: string;
+  readonly sockets: WebSocket[];
+  readonly register: (socket: WebSocket) => void;
+  readonly clientJS: (js: string) => void;
+  readonly cleanup: () => void;
+}
+
+export function typicalDiagnosticsClientState(
+  { endpointBaseURL }: Pick<DiagnosticsClientState, "endpointBaseURL">,
+): DiagnosticsClientState {
+  const sockets: WebSocket[] = [];
+  const ephemeralHtmlEndpointURL = `${endpointBaseURL}/ephemeral/`;
+  return {
+    endpointBaseURL,
+    ephemeralHtmlEndpointURL,
+    ephemeralWsEndpointURL: `${ephemeralHtmlEndpointURL}ws`,
+    sockets,
+    register: (socket) => {
+      socket.onopen = () => sockets.push(socket);
+      socket.onclose = () => {
+        const index = sockets.indexOf(socket);
+        if (index !== -1) {
+          sockets.splice(index, 1);
+        }
+      };
+      socket.onerror = (e) =>
+        console.error("diagnostics client socket error", e);
+    },
+    clientJS: (js: string) => {
+      for (const socket of sockets) {
+        // send executable (eval'able) JS to the client
+        socket.send(js);
+      }
+    },
+    cleanup: () => {
+      for (const socket of sockets) {
+        // when the socket is closed, it will force reload on the client because
+        // the websocket closed signal is what is monitored
+        socket.close(-1, "reload");
+        console.log(
+          "closed client diagnostics socket, reload request sent to browser",
+        );
+      }
+    },
+  };
+}
+
 export interface LiveReloadClientState {
   readonly endpointURL: string;
   readonly lrSockets: WebSocket[];
@@ -22,14 +72,14 @@ export function typicalLiveReloadClientState(
           lrSockets.splice(index, 1);
         }
       };
-      socket.onerror = (e) => console.error("Socket errored", e);
+      socket.onerror = (e) => console.error("live reload socket errored", e);
     },
     cleanup: () => {
       for (const lrSocket of lrSockets) {
         // when the socket is closed, it will force reload on the client because
         // the websocket closed signal is what is monitored
         lrSocket.close(-1, "reload");
-        console.log("closed lrSocket, reload request sent to browser");
+        console.log("closed live reload, reload request sent to browser");
       }
     },
   };
@@ -98,66 +148,51 @@ export interface ExperimentalServerOptions
   ) => Promise<void>;
   readonly onServedStatic?: StaticAccessEventHandler;
   readonly onStaticServeError?: StaticAccessErrorEventHandler;
+  readonly clientDiagostics: DiagnosticsClientState;
   readonly liveReloadClientState?: LiveReloadClientState;
 }
 
-export function staticAccessColoredConsoleEmitter(
+export function staticAccessClientDiagsEmitter(
+  clientDiags: DiagnosticsClientState,
   showFilesRelativeTo: string,
 ): StaticAccessEventHandler {
-  const accessLog: Record<string, { color: (text: string) => string }> = {
-    ".html": { color: colors.green },
-    ".png": { color: colors.cyan },
-    ".drawio.png": { color: colors.green },
-    ".jpg": { color: colors.cyan },
-    ".gif": { color: colors.cyan },
-    ".ico": { color: colors.cyan },
-    ".svg": { color: colors.cyan },
-    ".drawio.svg": { color: colors.green },
-    ".css": { color: colors.magenta },
-    ".js": { color: colors.yellow },
-    ".json": { color: colors.white },
-    ".pdf": { color: colors.green },
-  };
-
   return async (event) => {
     const { target, oakCtx } = event;
     if (target) {
-      const relative = path.relative(showFilesRelativeTo, target);
-      const extn = path.extname(target);
-      const al = accessLog[extn];
-      const status = oakCtx.response.status;
-      if (status == oak.Status.NotModified) {
-        al.color = colors.gray;
-      }
       const followedSymLink = await Deno.realPath(target);
-      let symlink = "";
-      if (target != followedSymLink) {
-        const relativeSymlink = " -> " +
-          path.relative(showFilesRelativeTo, followedSymLink);
-        symlink = al ? al.color(relativeSymlink) : colors.gray(relativeSymlink);
-      }
-      console.info(
-        status == oak.Status.OK
-          ? colors.brightGreen(status.toString())
-          : colors.gray(status.toString()),
-        `${al ? al.color(relative) : colors.gray(relative)}${symlink}`,
+      const accessToSendToClient = {
+        status: oakCtx.response.status,
+        locationHref: oakCtx.request.url.pathname,
+        extn: path.extname(target),
+        fsTarget: path.relative(showFilesRelativeTo, target),
+        fsTargetSymLink: target != followedSymLink
+          ? path.relative(showFilesRelativeTo, followedSymLink)
+          : undefined,
+      };
+      clientDiags.clientJS(
+        `logAccess(${JSON.stringify(accessToSendToClient)})`,
       );
     } else {
       // deno-fmt-ignore
-      console.error(colors.red(`oak ctx.send('${colors.brightRed(oakCtx.request.url.pathname)}') was not served`));
+      clientDiags.clientJS(`console.error("'${colors.brightRed(oakCtx.request.url.pathname)}' was not served")`);
     }
   };
 }
 
-export function staticAccessErrorConsoleEmitter(): StaticAccessErrorEventHandler {
+export function staticAccessErrorConsoleEmitter(
+  clientDiags: DiagnosticsClientState,
+): StaticAccessErrorEventHandler {
   // deno-lint-ignore require-await
   return async (event) => {
     // deno-fmt-ignore
-    console.error(colors.red(`oak ctx.send('${colors.brightRed(event.oakCtx.request.url.pathname)}') error: ${event.error}`));
+    clientDiags.clientJS(`console.error("'${colors.brightRed(event.oakCtx.request.url.pathname)}' error:", ${JSON.stringify(event.error)})`);
   };
 }
 
 export const experimentalServer = (options: ExperimentalServerOptions) => {
+  const exprServerContentPath = path.dirname(import.meta.url).substr(
+    "file://".length,
+  );
   const app = new oak.Application({
     serverConstructor: oak.HttpServerNative,
   });
@@ -166,8 +201,11 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     staticAssetsHome,
     staticIndex,
     liveReloadClientState,
-    onServedStatic,
+    clientDiagostics,
   } = options;
+  let { onServedStatic } = options;
+  const onStaticServeError = options?.onStaticServeError ||
+    staticAccessErrorConsoleEmitter(clientDiagostics);
 
   // error handler
   app.use(async (_ctx, next) => {
@@ -183,19 +221,33 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     ctx.response.body = "SSR test route in experimentalServer (don't use this)";
   });
 
+  router.get(clientDiagostics.ephemeralHtmlEndpointURL, async (ctx) => {
+    ctx.response.body = await Deno.readTextFile(
+      path.join(exprServerContentPath, "ephemeral-diagnostics.html"),
+    );
+  });
+
+  // ephemeral-access-log.html will create a websocket back to this endpoint
+  router.get(clientDiagostics.ephemeralWsEndpointURL, (ctx) => {
+    clientDiagostics.register(ctx.upgrade());
+    onServedStatic = staticAccessClientDiagsEmitter(
+      clientDiagostics,
+      options.staticAssetsHome,
+    );
+  });
+
   if (liveReloadClientState) {
     // create the live-reload websocket endpoint; whenever the listener is
     // restarted, the websocket will die on the client which will trigger a reload
     // of the browser's web page; the actual websocket message is irrelevant
     router.get(liveReloadClientState.endpointURL, (ctx) => {
       liveReloadClientState.register(ctx.upgrade());
-      console.log(
-        colors.gray(
-          // accept-encoding,accept-language,cache-control,connection,host,origin,pragma,sec-websocket-extensions,sec-websocket-key,sec-websocket-version,upgrade,user-agent
-          `    ${liveReloadClientState.endpointURL} hook request from ${
-            ctx.request.url.searchParams.get("origin-pathname")
-          }`,
-        ),
+      clientDiagostics.clientJS(
+        `logLiveReloadRequest(${
+          JSON.stringify(liveReloadClientState.endpointURL)
+        }, ${
+          JSON.stringify(ctx.request.url.searchParams.get("origin-pathname"))
+        })`,
       );
     });
   }
@@ -229,8 +281,8 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
         await ctx.send({ root: staticAssetsHome, index: staticIndex });
       }
     } catch (err) {
-      if (options.onStaticServeError) {
-        options.onStaticServeError({ oakCtx: ctx, oc: options, error: err });
+      if (onStaticServeError) {
+        onStaticServeError({ oakCtx: ctx, oc: options, error: err });
       }
       next();
     }
