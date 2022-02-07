@@ -8,33 +8,216 @@
     <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
     <link href="https://cdnjs.cloudflare.com" crossorigin>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
+    <script type="module" src="https://cdn.skypack.dev/twind/shim"></script>
+
+    <link href="//cdn.datatables.net/1.11.4/css/jquery.dataTables.min.css" rel="stylesheet">
+
+    <style>
+        /*Overrides for Tailwind CSS */
+
+        /*Form fields*/
+        .dataTables_wrapper select,
+        .dataTables_wrapper .dataTables_filter input {
+            color: #4a5568;
+            /*text-gray-700*/
+            padding-left: 1rem;
+            /*pl-4*/
+            padding-right: 1rem;
+            /*pl-4*/
+            padding-top: .5rem;
+            /*pl-2*/
+            padding-bottom: .5rem;
+            /*pl-2*/
+            line-height: 1.25;
+            /*leading-tight*/
+            border-width: 2px;
+            /*border-2*/
+            border-radius: .25rem;
+            border-color: #edf2f7;
+            /*border-gray-200*/
+            background-color: #edf2f7;
+            /*bg-gray-200*/
+        }
+
+        /*Row Hover*/
+        table.dataTable.hover tbody tr:hover,
+        table.dataTable.display tbody tr:hover {
+            background-color: #ebf4ff;
+            /*bg-indigo-100*/
+        }
+
+        /*Pagination Buttons*/
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            font-weight: 700;
+            /*font-bold*/
+            border-radius: .25rem;
+            /*rounded*/
+            border: 1px solid transparent;
+            /*border border-transparent*/
+        }
+
+        /*Pagination Buttons - Current selected */
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            color: #fff !important;
+            /*text-white*/
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .1), 0 1px 2px 0 rgba(0, 0, 0, .06);
+            /*shadow*/
+            font-weight: 700;
+            /*font-bold*/
+            border-radius: .25rem;
+            /*rounded*/
+            background: #667eea !important;
+            /*bg-indigo-500*/
+            border: 1px solid transparent;
+            /*border border-transparent*/
+        }
+
+        /*Pagination Buttons - Hover */
+        .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+            color: #fff !important;
+            /*text-white*/
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .1), 0 1px 2px 0 rgba(0, 0, 0, .06);
+            /*shadow*/
+            font-weight: 700;
+            /*font-bold*/
+            border-radius: .25rem;
+            /*rounded*/
+            background: #667eea !important;
+            /*bg-indigo-500*/
+            border: 1px solid transparent;
+            /*border border-transparent*/
+        }
+
+        /*Add padding to bottom border */
+        table.dataTable.no-footer {
+            border-bottom: 1px solid #e2e8f0;
+            /*border-b-1 border-gray-300*/
+            margin-top: 0.75em;
+            margin-bottom: 0.75em;
+        }
+
+        /*Change colour of responsive icon*/
+        table.dataTable.dtr-inline.collapsed>tbody>tr>td:first-child:before,
+        table.dataTable.dtr-inline.collapsed>tbody>tr>th:first-child:before {
+            background-color: #667eea !important;
+            /*bg-indigo-500*/
+        }
+    </style>
 </head>
 
-<body>
-    <b>Resource Factory Experimental Server Live Diagnostics</b>
-    <div id="live-reload-message-container">
-        Live reload messages will be shown here.
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+    <nav id="header" class="fixed w-full z-10 top-0">
+        <div id="progress" class="h-1 z-20 top-0"
+            style="background:linear-gradient(to right, #4dc0b5 var(--scroll), transparent 0);"></div>
+
+        <div class="w-full md:max-w-4xl mx-auto flex flex-wrap items-center justify-between mt-0 py-3">
+            <div class="pl-4">
+                <a class="text-gray-900 text-base no-underline hover:no-underline font-extrabold text-xl" href="#">
+                    Resource Factory Experimental Server Live Diagnostics
+                </a>
+            </div>
+
+            <div class="block lg:hidden pr-4">
+                <button id="nav-toggle"
+                    class="flex items-center px-3 py-2 border rounded text-gray-500 border-gray-600 hover:text-gray-900 hover:border-green-500 appearance-none focus:outline-none">
+                    <svg class="fill-current h-3 w-3" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <title>Menu</title>
+                        <path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="w-full flex-grow lg:flex lg:items-center lg:w-auto hidden lg:block mt-2 lg:mt-0 bg-gray-100 md:bg-transparent z-20"
+                id="nav-content">
+                <ul class="list-reset lg:flex justify-end flex-1 items-center">
+                    <li class="mr-3">
+                        <a class="inline-block py-2 px-4 text-gray-900 font-bold no-underline" href="#">Active</a>
+                    </li>
+                    <li class="mr-3">
+                        <a class="inline-block text-gray-600 no-underline hover:text-gray-900 hover:text-underline py-2 px-4"
+                            href="#">link</a>
+                    </li>
+                    <li class="mr-3">
+                        <a class="inline-block text-gray-600 no-underline hover:text-gray-900 hover:text-underline py-2 px-4"
+                            href="#">link</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container w-full mx-auto pt-20">
+        <h1>Console Output</h1>
+        <div id='recipients' class="p-8 mt-6 lg:mt-0 rounded shadow bg-white">
+            <ul id="container_redirectConsole">
+            </ul>
+            This container will report all <code>console.*</code> messages. See <a
+                href="https://github.com/Alorel/console-log-html">github.com/Alorel/console-log-html</a> for
+            usage instructions.
+        </div>
+
+        <h1>Access Log</h1>
+        <div id='recipients' class="p-8 mt-6 lg:mt-0 rounded shadow bg-white">
+            <table id="access-log" class="stripe hover">
+                <thead>
+                    <tr>
+                        <th data-priority="1">Date</th>
+                        <th data-priority="2">Status</th>
+                        <th data-priority="3">Location</th>
+                        <th data-priority="4">Target</th>
+                        <th data-priority="5">Target SymLink</th>
+                        <th data-priority="5">Extn</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <h1>Console Output</h1>
-    <ul id="container_redirectConsole">
-    </ul>
+    <footer class="bg-white border-t border-gray-400 shadow">
+        <div class="container max-w-4xl mx-auto flex py-8">
+            <div class="w-full mx-auto flex flex-wrap">
+                <div class="flex w-full md:w-1/2 ">
+                    <div class="px-8">
+                        <h3 class="font-bold text-gray-900">About</h3>
+                        <p id="live-reload-message-container" class="py-4 text-gray-600 text-sm">
+                            Live reload messages will be shown here.
+                        </p>
+                    </div>
+                </div>
 
-    <h1>Access Log</h1>
-    <table id="access-log">
-        <tr>
-            <thead>
-                <th>Status</th>
-                <th>Location</th>
-                <th>Target</th>
-                <th>Target SymLink</th>
-            </thead>
-        </tr>
-    </table>
+                <div class="flex w-full md:w-1/2">
+                    <div class="px-8">
+                        <h3 class="font-bold text-gray-900">Social</h3>
+                        <ul class="list-reset items-center text-sm pt-3">
+                            <li>
+                                <a class="inline-block text-gray-600 no-underline hover:text-gray-900 hover:text-underline py-1"
+                                    href="#">Add social link</a>
+                            </li>
+                            <li>
+                                <a class="inline-block text-gray-600 no-underline hover:text-gray-900 hover:text-underline py-1"
+                                    href="#">Add social link</a>
+                            </li>
+                            <li>
+                                <a class="inline-block text-gray-600 no-underline hover:text-gray-900 hover:text-underline py-1"
+                                    href="#">Add social link</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
 </body>
 
+<!-- datatables.net dependencies -->
+<script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+<script src="//cdn.datatables.net/1.11.4/js/jquery.dataTables.min.js"></script>
 <script>
     "use strict";
+    const accessLogTableID = 'access-log';
+    let accessLogDataTable; // will be initialized after document is loaded
 
     const consoleLogWarningStyles = `
         color: #fff;
@@ -61,9 +244,7 @@
                 "//cdn.rawgit.com/Alorel/console-log-html/master/console-log-html.min.js",
                 function () {
                     ConsoleLogHTML.connect(ldsRedirectConsoleContainer);
-                    console.log(
-                        `Element ID '${redirectConsoleContainerID}' is logging console output. See github.com/Alorel/console-log-html for usage instructions.`,
-                    );
+                    console.log(`Ready.`);
                 },
             );
         } else {
@@ -74,7 +255,6 @@
             );
         }
     };
-    redirectConsoleToHTML();
 
     let lrSocket, lrReconnectionTimerId;
     const originServer = `${location.protocol}//${location.hostname}:${location.port}`;
@@ -137,7 +317,7 @@
     }
 
     liveReloadConnect((_event, lrSocketUrl) => {
-        liveReloadStatus(`<span title="${lrSocketUrl}">Live reload enabled for <code>${originServer}</code> at <code>${wsEndpoint}</code> on ${new Date()}.</a>`);
+        liveReloadStatus(`<span title="${lrSocketUrl}">Live client diagnostics enabled for <code>${originServer}</code>.<br/><code>${wsEndpoint}</code><p>${new Date()}.</p></span>`);
     });
 
     const logLiveReloadRequest = (lrTarget, lrEndpoint) => {
@@ -145,38 +325,72 @@
     }
 
     const logAccess = (access) => {
-        const defaultExtnOptions = { style: "color: gray" };
-        const status304Options = { style: "color: gray" };
-        const accessLogOptions = {
-            ".html": { style: "color: black; font-weight: bold;", status: { 304: { style: "color: #333333" } } },
-            ".png": { style: "color: cyan", status: { 304: status304Options } },
-            ".drawio.png": { style: "color: green", status: { 304: status304Options } },
-            ".jpg": { style: "color: cyan", status: { 304: status304Options } },
-            ".gif": { style: "color: cyan", status: { 304: status304Options } },
-            ".ico": { style: "color: cyan", status: { 304: status304Options } },
-            ".svg": { style: "color: cyan", status: { 304: status304Options } },
-            ".drawio.svg": { style: "color: cyan", status: { 304: status304Options } },
-            ".css": { style: "color: purple", status: { 304: status304Options } },
-            ".js": { style: "color: red", status: { 304: status304Options } },
-            ".json": { style: "color: blue", status: { 304: status304Options } },
-            ".pdf": { style: "color: green", status: { 304: status304Options } },
-        }
-
-        const accessLogTableID = 'access-log';
-        const accessLogTable = document.getElementById(accessLogTableID);
         const { status, locationHref, fsTarget, fsTargetSymLink, extn } = access;
-        let extnOptions = extn ? (accessLogOptions[extn] || defaultExtnOptions) : defaultExtnOptions;
-        if (status == 304 && extnOptions?.status && extnOptions.status[304]) {
-            extnOptions = extnOptions.status[304];
-        }
-        const newRow = accessLogTable.insertRow();
-        newRow.innerHTML = `
-            <td style="${extnOptions.style}">${status}</td>
-            <td style="${extnOptions.style}">${locationHref}</td>
-            <td style="${extnOptions.style}">${fsTarget}</td>
-            <td style="${extnOptions.style}">${fsTargetSymLink || '&nbsp;'}</td>
-        `;
+        accessLogDataTable.row.add([new Date().toISOString(), status, locationHref, fsTarget, fsTargetSymLink || '&nbsp;', extn]).draw().node();
     }
+
+    //Javascript to toggle the menu
+    document.getElementById('nav-toggle').onclick = function () {
+        document.getElementById("nav-content").classList.toggle("hidden");
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        accessLogDataTable = new DataTable(`#${accessLogTableID}`, {
+            pageLength: 100,
+            language: {
+                emptyTable: "No server accesses logged, refresh a content page to see data here."
+            },
+            columnDefs: [{
+                targets: [0, 1, 2, 3, 4, 5],
+                createdCell: function (td, cellData, rowData, row, col) {
+                    const status = rowData[1];
+                    const extn = rowData[5];
+                    if (status == 200 && extn == ".html") {
+                        $(td).css('font-weight', 'bold')
+                    }
+                    if (status == 304) {
+                        $(td).css('color', 'gray')
+                    }
+                }
+            }],
+        });
+
+        /* Progress bar */
+        //Source: https://alligator.io/js/progress-bar-javascript-css-variables/
+        var h = document.documentElement,
+            b = document.body,
+            st = 'scrollTop',
+            sh = 'scrollHeight',
+            progress = document.querySelector('#progress'),
+            scroll;
+        var scrollpos = window.scrollY;
+        var header = document.getElementById("header");
+        var navcontent = document.getElementById("nav-content");
+
+        document.addEventListener('scroll', function () {
+            /*Refresh scroll % width*/
+            scroll = (h[st] || b[st]) / ((h[sh] || b[sh]) - h.clientHeight) * 100;
+            progress.style.setProperty('--scroll', scroll + '%');
+
+            /*Apply classes for slide in bar*/
+            scrollpos = window.scrollY;
+
+            if (scrollpos > 10) {
+                header.classList.add("bg-white");
+                header.classList.add("shadow");
+                navcontent.classList.remove("bg-gray-100");
+                navcontent.classList.add("bg-white");
+            } else {
+                header.classList.remove("bg-white");
+                header.classList.remove("shadow");
+                navcontent.classList.remove("bg-white");
+                navcontent.classList.add("bg-gray-100");
+
+            }
+        });
+
+        redirectConsoleToHTML();
+    });
 </script>
 
 </html>
