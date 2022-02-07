@@ -147,7 +147,7 @@ if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
             // Check whether we should refresh the browser.
             if (event.data === "reload") {
                 liveReloadStatus(`Received live reload request from ${originServer}.`);
-                liveReload(event, lrSocketUrl);
+                refreshPage(event, lrSocketUrl);
             }
         });
     }
