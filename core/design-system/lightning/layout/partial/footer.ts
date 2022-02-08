@@ -1,7 +1,7 @@
 import * as html from "../../../../render/html/governance.ts";
 import * as ldsGovn from "../../governance.ts";
 import * as git from "../../../../../lib/git/mod.ts";
-import * as ws from "../../../../../lib/ws/mod.ts";
+import * as ws from "../../../../../lib/workspace/mod.ts";
 
 export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
   layout,

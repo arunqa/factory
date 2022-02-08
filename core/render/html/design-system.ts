@@ -1,6 +1,6 @@
 import * as safety from "../../../lib/safety/mod.ts";
 import * as git from "../../../lib/git/mod.ts";
-import * as ws from "../../../lib/ws/mod.ts";
+import * as ws from "../../../lib/workspace/mod.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as fm from "../../std/frontmatter.ts";
 import * as html from "../../render/html/mod.ts";

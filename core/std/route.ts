@@ -3,7 +3,7 @@ import * as safety from "../../lib/safety/mod.ts";
 import * as govn from "../../governance/mod.ts";
 import * as c from "./content.ts";
 import * as e from "./extension.ts";
-import * as ws from "../../lib/ws/mod.ts";
+import * as ws from "../../lib/workspace/mod.ts";
 
 export const [isRouteUnit, isRouteUnitsArray] = safety.typeGuards<
   govn.RouteUnit,

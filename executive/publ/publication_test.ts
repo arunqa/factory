@@ -58,6 +58,7 @@ const prefs: mod.Preferences<mod.PublicationOperationalContext> = {
   extensionsManager,
   termsManager,
   operationalCtx: { processStartTimestamp: new Date() },
+  memoizeProducers: false,
 };
 
 export class TestDesignSystem implements lds.LightningDesignSystemFactory {

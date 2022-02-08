@@ -14,7 +14,7 @@ import * as fsLink from "../../lib/fs/link.ts";
 import * as fsInspect from "../../lib/fs/inspect.ts";
 import * as git from "../../lib/git/mod.ts";
 import * as notif from "../../lib/notification/mod.ts";
-import * as ws from "../../lib/ws/mod.ts";
+import * as ws from "../../lib/workspace/mod.ts";
 import * as gi from "../../lib/structure/govn-index.ts";
 import * as m from "../../lib/metrics/mod.ts";
 

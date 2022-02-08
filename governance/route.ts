@@ -4,7 +4,7 @@ import * as e from "./extension.ts";
 import * as render from "./render.ts";
 import * as fm from "./frontmatter.ts";
 import * as git from "../lib/git/mod.ts";
-import * as ws from "../lib/ws/mod.ts";
+import * as ws from "../lib/workspace/mod.ts";
 
 export type RouteUnitName = string;
 export type RouteRelativeURL = string;
