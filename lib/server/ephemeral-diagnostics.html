@@ -5,12 +5,13 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
     <link href="https://cdnjs.cloudflare.com" crossorigin>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
-    <script type="module" src="https://cdn.skypack.dev/twind/shim"></script>
-
     <link href="//cdn.datatables.net/1.11.4/css/jquery.dataTables.min.css" rel="stylesheet">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
 
     <style>
         /*Overrides for Tailwind CSS */
@@ -113,7 +114,7 @@
         <div class="w-full md:max-w-4xl mx-auto flex flex-wrap items-center justify-between mt-0 py-3">
             <div class="pl-4">
                 <a class="text-gray-900 text-base no-underline hover:no-underline font-extrabold text-xl" href="#">
-                    Resource Factory Experimental Server Live Diagnostics
+                    Resource Factory Diagnostics Control Panel
                 </a>
             </div>
 
@@ -129,17 +130,14 @@
 
             <div class="w-full flex-grow lg:flex lg:items-center lg:w-auto hidden lg:block mt-2 lg:mt-0 bg-gray-100 md:bg-transparent z-20"
                 id="nav-content">
-                <ul class="list-reset lg:flex justify-end flex-1 items-center">
+                <ul class="list-reset lg:flex justify-end flex-1 items-center list-none">
                     <li class="mr-3">
-                        <a class="inline-block py-2 px-4 text-gray-900 font-bold no-underline" href="#">Active</a>
+                        <a class="inline-block text-gray-600 no-underline hover:text-gray-900 hover:text-underline py-2 px-4"
+                            href="/control-panel/observability/health.json" target="observability">health.json</a>
                     </li>
                     <li class="mr-3">
                         <a class="inline-block text-gray-600 no-underline hover:text-gray-900 hover:text-underline py-2 px-4"
-                            href="#">link</a>
-                    </li>
-                    <li class="mr-3">
-                        <a class="inline-block text-gray-600 no-underline hover:text-gray-900 hover:text-underline py-2 px-4"
-                            href="#">link</a>
+                            href="/control-panel/observability/metrics.txt" target="observability">metrics.txt</a>
                     </li>
                 </ul>
             </div>
@@ -147,7 +145,7 @@
     </nav>
 
     <div class="container w-full mx-auto pt-20">
-        <h1>Console Output</h1>
+        <h1 class="text-2xl font-normal leading-normal mt-0 mb-2 text-pink-800 pt-6">Console Output</h1>
         <div id='recipients' class="p-8 mt-6 lg:mt-0 rounded shadow bg-white">
             <ul id="container_redirectConsole">
             </ul>
@@ -156,7 +154,7 @@
             usage instructions.
         </div>
 
-        <h1>Access Log</h1>
+        <h1 class="text-2xl font-normal leading-normal mt-0 mb-2 text-pink-800 pt-6">Access Log</h1>
         <div id='recipients' class="p-8 mt-6 lg:mt-0 rounded shadow bg-white">
             <table id="access-log" class="stripe hover">
                 <thead>
@@ -175,10 +173,12 @@
         </div>
     </div>
 
+    <div class="py-8"></div>
+
     <footer class="bg-white border-t border-gray-400 shadow">
-        <div class="container max-w-4xl mx-auto flex py-8">
+        <div class="container max-w-6xl mx-auto flex py-8">
             <div class="w-full mx-auto flex flex-wrap">
-                <div class="flex w-full md:w-1/2 ">
+                <div class="flex w-full md:w-1/2">
                     <div class="px-8">
                         <h3 class="font-bold text-gray-900">About</h3>
                         <p id="live-reload-message-container" class="py-4 text-gray-600 text-sm">
@@ -189,19 +189,32 @@
 
                 <div class="flex w-full md:w-1/2">
                     <div class="px-8">
-                        <h3 class="font-bold text-gray-900">Social</h3>
-                        <ul class="list-reset items-center text-sm pt-3">
+                        <h3 class="font-bold text-gray-900">Observability artifacts</h3>
+                        <ul class="list-reset items-center text-sm pt-3 list-none">
                             <li>
                                 <a class="inline-block text-gray-600 no-underline hover:text-gray-900 hover:text-underline py-1"
-                                    href="#">Add social link</a>
+                                    href="/control-panel/observability/health.json" target="observability">
+                                    View <code>health.json</code>
+                                </a>
                             </li>
                             <li>
                                 <a class="inline-block text-gray-600 no-underline hover:text-gray-900 hover:text-underline py-1"
-                                    href="#">Add social link</a>
+                                    href="/control-panel/observability/metrics.json" target="observability">
+                                    View <code>metrics.json</code>
+                                </a>
                             </li>
                             <li>
                                 <a class="inline-block text-gray-600 no-underline hover:text-gray-900 hover:text-underline py-1"
-                                    href="#">Add social link</a>
+                                    href="/control-panel/observability/metrics.txt" target="observability">
+                                    View Exported OpenMetrics (in Prometheus Exposition Format)
+                                </a>
+                            </li>
+                            <li>
+                                <a class="inline-block text-gray-600 no-underline hover:text-gray-900 hover:text-underline py-1"
+                                    href="/control-panel/observability/analytics-paths-extensions.csv"
+                                    target="observability">
+                                    Open origin and assets analytics (CSV)
+                                </a>
                             </li>
                         </ul>
                     </div>
