@@ -1,53 +1,75 @@
 import { colors, oak, oakApp, path } from "./deps.ts";
+import * as sc from "../socket/server/command.ts";
 
-export interface DiagnosticsClientState {
-  readonly endpointBaseURL: string;
-  readonly ephemeralHtmlEndpointURL: string;
-  readonly ephemeralWsEndpointURL: string;
-  readonly sockets: WebSocket[];
-  readonly register: (socket: WebSocket) => void;
-  readonly clientJS: (js: string) => void;
-  readonly cleanup: () => void;
+export class ErrorBrowserCommand implements sc.SocketCommand<unknown> {
+  static readonly instance = new ErrorBrowserCommand();
+  readonly identity = "error";
+
+  // deno-lint-ignore require-await
+  async execute(cm: sc.SocketCommandsManager, args: unknown) {
+    cm.state.sendCommand(this, args);
+  }
 }
 
-export function typicalDiagnosticsClientState(
-  { endpointBaseURL }: Pick<DiagnosticsClientState, "endpointBaseURL">,
-): DiagnosticsClientState {
-  const sockets: WebSocket[] = [];
-  const ephemeralHtmlEndpointURL = `${endpointBaseURL}/ephemeral/`;
-  return {
-    endpointBaseURL,
-    ephemeralHtmlEndpointURL,
-    ephemeralWsEndpointURL: `${ephemeralHtmlEndpointURL}ws`,
-    sockets,
-    register: (socket) => {
-      socket.onopen = () => sockets.push(socket);
-      socket.onclose = () => {
-        const index = sockets.indexOf(socket);
-        if (index !== -1) {
-          sockets.splice(index, 1);
-        }
-      };
-      socket.onerror = (e) =>
-        console.error("diagnostics client socket error", e);
-    },
-    clientJS: (js: string) => {
-      for (const socket of sockets) {
-        // send executable (eval'able) JS to the client
-        socket.send(js);
-      }
-    },
-    cleanup: () => {
-      for (const socket of sockets) {
-        // when the socket is closed, it will force reload on the client because
-        // the websocket closed signal is what is monitored
-        socket.close(-1, "reload");
-        console.log(
-          "closed client diagnostics socket, reload request sent to browser",
-        );
-      }
-    },
-  };
+export class LogBrowserCommand implements sc.SocketCommand<unknown> {
+  static readonly instance = new LogBrowserCommand();
+  readonly identity = "log";
+
+  // deno-lint-ignore require-await
+  async execute(cm: sc.SocketCommandsManager, args: unknown) {
+    cm.state.sendCommand(this, args);
+  }
+}
+
+export class ReloadBrowserCommand implements sc.SocketCommand<void> {
+  static readonly instance = new ReloadBrowserCommand();
+  readonly identity = "reload";
+
+  // deno-lint-ignore require-await
+  async execute(cm: sc.SocketCommandsManager) {
+    cm.state.sendCommand(this, {});
+  }
+}
+
+export interface LogAccessBrowserCommandArgs {
+  readonly status: number;
+  readonly locationHref: string;
+  readonly extn: string;
+  readonly fsTarget: string;
+  readonly fsTargetSymLink?: string;
+}
+
+export class LogAccessBrowserCommand
+  implements sc.SocketCommand<LogAccessBrowserCommandArgs> {
+  static readonly instance = new LogAccessBrowserCommand();
+  readonly identity = "log-access";
+
+  // deno-lint-ignore require-await
+  async execute(
+    cm: sc.SocketCommandsManager,
+    args: LogAccessBrowserCommandArgs,
+  ) {
+    cm.state.sendCommand(this, args);
+  }
+}
+
+export class ClientDiagsSocketsCmdManager
+  extends sc.TypicalSocketCommandsManager<
+    sc.SocketCommandsConfiguration,
+    sc.SocketState
+  > {
+  readonly ephemeralHtmlEndpointURL: string;
+  readonly ephemeralWsEndpointURL: string;
+
+  constructor(config: sc.SocketCommandsConfiguration) {
+    super(config);
+    this.ephemeralHtmlEndpointURL = `${config.endpointBaseURL}/ephemeral/`;
+    this.ephemeralWsEndpointURL = `${this.ephemeralHtmlEndpointURL}ws`;
+    this.register(ErrorBrowserCommand.instance);
+    this.register(LogBrowserCommand.instance);
+    this.register(ReloadBrowserCommand.instance);
+    this.register(LogAccessBrowserCommand.instance);
+  }
 }
 
 export interface LiveReloadClientState {
@@ -148,12 +170,12 @@ export interface ExperimentalServerOptions
   ) => Promise<void>;
   readonly onServedStatic?: StaticAccessEventHandler;
   readonly onStaticServeError?: StaticAccessErrorEventHandler;
-  readonly clientDiagostics: DiagnosticsClientState;
+  readonly clientDiagostics: ClientDiagsSocketsCmdManager;
   readonly liveReloadClientState?: LiveReloadClientState;
 }
 
 export function staticAccessClientDiagsEmitter(
-  clientDiags: DiagnosticsClientState,
+  clientDiags: ClientDiagsSocketsCmdManager,
   showFilesRelativeTo: string,
 ): StaticAccessEventHandler {
   return async (event) => {
@@ -169,23 +191,24 @@ export function staticAccessClientDiagsEmitter(
           ? path.relative(showFilesRelativeTo, followedSymLink)
           : undefined,
       };
-      clientDiags.clientJS(
-        `logAccess(${JSON.stringify(accessToSendToClient)})`,
+      LogAccessBrowserCommand.instance.execute(
+        clientDiags,
+        accessToSendToClient,
       );
     } else {
       // deno-fmt-ignore
-      clientDiags.clientJS(`console.error("'${colors.brightRed(oakCtx.request.url.pathname)}' was not served")`);
+      ErrorBrowserCommand.instance.execute(clientDiags, `console.error("'${colors.brightRed(oakCtx.request.url.pathname)}' was not served")`);
     }
   };
 }
 
 export function staticAccessErrorConsoleEmitter(
-  clientDiags: DiagnosticsClientState,
+  clientDiags: ClientDiagsSocketsCmdManager,
 ): StaticAccessErrorEventHandler {
   // deno-lint-ignore require-await
   return async (event) => {
     // deno-fmt-ignore
-    clientDiags.clientJS(`console.error("'${colors.brightRed(event.oakCtx.request.url.pathname)}' error:", ${JSON.stringify(event.error)})`);
+    ErrorBrowserCommand.instance.execute(clientDiags, `console.error("'${colors.brightRed(event.oakCtx.request.url.pathname)}' error:", ${JSON.stringify(event.error)})`);
   };
 }
 
@@ -229,7 +252,18 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
 
   // ephemeral-access-log.html will create a websocket back to this endpoint
   router.get(clientDiagostics.ephemeralWsEndpointURL, (ctx) => {
-    clientDiagostics.register(ctx.upgrade());
+    const socket = ctx.upgrade();
+    clientDiagostics.state.register({
+      socket,
+      configure: (handlers) => {
+        socket.onopen = handlers.onopen;
+        socket.onclose = handlers.onclose;
+        socket.onerror = handlers.onerror;
+      },
+      send: (data) => socket.send(data),
+      // deno-lint-ignore require-await
+      cleanup: async () => socket.close(1, "cleanup"),
+    });
     onServedStatic = staticAccessClientDiagsEmitter(
       clientDiagostics,
       options.staticAssetsHome,
@@ -242,13 +276,11 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     // of the browser's web page; the actual websocket message is irrelevant
     router.get(liveReloadClientState.endpointURL, (ctx) => {
       liveReloadClientState.register(ctx.upgrade());
-      clientDiagostics.clientJS(
-        `logLiveReloadRequest(${
-          JSON.stringify(liveReloadClientState.endpointURL)
-        }, ${
-          JSON.stringify(ctx.request.url.searchParams.get("origin-pathname"))
-        })`,
-      );
+      LogBrowserCommand.instance.execute(clientDiagostics, {
+        identity: "logLiveReloadRequest",
+        endpointURL: liveReloadClientState.endpointURL,
+        originPathName: ctx.request.url.searchParams.get("origin-pathname"),
+      });
     });
   }
 

@@ -10,6 +10,7 @@
     <link href="https://cdnjs.cloudflare.com" crossorigin>
     <link href="//cdn.datatables.net/1.11.4/css/jquery.dataTables.min.css" rel="stylesheet">
 
+    <script src="/universal-cc/script/socket-command.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
 
@@ -117,6 +118,10 @@
                     Resource Factory Diagnostics Control Panel
                 </a>
             </div>
+            <div class="pl-2">
+                <img id="socket-command-mgr-state" src="/universal-cc/images/websocket-logo-300x225px-transpbg.png"
+                    style="height:15px; display:none">
+            </div>
 
             <div class="block lg:hidden pr-4">
                 <button id="nav-toggle"
@@ -180,9 +185,10 @@
             <div class="w-full mx-auto flex flex-wrap">
                 <div class="flex w-full md:w-1/2">
                     <div class="px-8">
-                        <h3 class="font-bold text-gray-900">About</h3>
+                        <h3 class="font-bold text-gray-900">Socket Commands Status</h3>
                         <p id="live-reload-message-container" class="py-4 text-gray-600 text-sm">
-                            Live reload messages will be shown here.
+                            If you see this message it means that the websocket connection did not initiate.
+                            Try restarting your browser?
                         </p>
                     </div>
                 </div>
@@ -269,18 +275,20 @@
         }
     };
 
-    let lrSocket, lrReconnectionTimerId;
-    const originServer = `${location.protocol}//${location.hostname}:${location.port}`;
-    const wsEndpoint = `ws://${document.location.host}/experimental-server/diagnostics/ephemeral/ws`;
-    const lrIntervalSeconds = 1;
-    const lrIntervalMS = lrIntervalSeconds * 1000;
-    const lrMaxAttempts = 60;
-
-    const refreshPage = (_event, _lrSocketUrl) => {
-        location.reload();
+    const updateConnState = (scm, connected, reestablished) => {
+        const scmsElem = document.getElementById("socket-command-mgr-state");
+        if (scmsElem) {
+            if (connected) {
+                scmsElem.style.display = 'block';
+                scmsElem.title = `${scm.userAgent.locationURL} connection ${reestablished ? 'reestablished' : 'established'} to ${scm.socketEndpointURL}`;
+            } else {
+                scmsElem.style.display = '';
+                scmsElem.title = `${scm.userAgent.locationURL} not connected to ${scm.socketEndpointURL}`;
+            }
+        }
     }
 
-    const liveReloadStatus = (message, appendForceReload = false) => {
+    const updateConnStatus = (message, appendForceReload = false) => {
         const messenger = document.getElementById("live-reload-message-container");
         if (messenger) {
             messenger.innerHTML = appendForceReload ? `${message} <a href="javascript:location.reload()" class="localhost-diags localhost-diags-live-reload-force">Force Reload</a>.` : message;
@@ -289,58 +297,41 @@
         }
     }
 
-    const liveReloadConnect = (onConnect, lrSocketUrl = `${wsEndpoint}?origin-pathname=${location.pathname}`, reloadAttempt = 0) => {
-        // If one is already open, allow the last socket to be garbage collected
-        if (lrSocket) lrSocket.close();
-        lrSocket = null;
-
-        liveReloadStatus(`Waiting for ${originServer} server to start (attempt ${reloadAttempt} of ${lrMaxAttempts}).`, true);
-        lrSocket = new WebSocket(lrSocketUrl);
-        lrSocket.addEventListener("open", (event) => { onConnect(event, lrSocketUrl) });
-
-        lrSocket.addEventListener("close", () => {
-            const nextReloadAttempt = reloadAttempt + 1;
-            liveReloadStatus(`Server at ${originServer} has been closed (restarted?), reconnecting (attempt ${nextReloadAttempt} in ${lrIntervalMS}ms).`, true);
-            clearInterval(lrReconnectionTimerId);
-            lrReconnectionTimerId = setInterval(() => {
-                if (nextReloadAttempt > lrMaxAttempts) {
-                    liveReloadStatus(`Server did not restart after ${lrMaxAttempts * lrIntervalSeconds} seconds and ${reloadAttempt} attempts, giving up.`, true);
-                    clearInterval(lrReconnectionTimerId);
-                    return;
-                }
-                liveReloadConnect((event) => {
-                    clearInterval(lrReconnectionTimerId);
-                    refreshPage(event, lrSocketUrl)
-                }, lrSocketUrl, nextReloadAttempt);
-            }, lrIntervalMS);
-        });
-
-        // Add a listener for messages from the server.
-        lrSocket.addEventListener("message", (event) => {
-            // Check whether we should refresh the browser.
-            if (event.data === "reload") {
-                liveReloadStatus(`Received live reload request from ${originServer}.`);
-                refreshPage(event, lrSocketUrl);
-                return;
+    const socketCM = new SocketCommandsManager(
+        `ws://${document.location.host}/experimental-server/diagnostics/ephemeral/ws`,
+        new NamedSocketCommandsHandler({
+            "log-access": (commandID, commandArgs, event) => {
+                const { status, locationHref, fsTarget, fsTargetSymLink, extn } = commandArgs;
+                accessLogDataTable.row.add([new Date().toISOString(), status, locationHref, fsTarget, fsTargetSymLink || '&nbsp;', extn]).draw().node();
+            },
+            "reload": (commandID, commandArgs, event) => {
+                location.reload();
+            },
+            "log": (commandID, commandArgs, event) => {
+                console.log(commandArgs);
+            },
+            "error": (commandID, commandArgs, event) => {
+                console.error(commandArgs);
             }
-            // we just want to evaluate the code from the server as JavaScript for this client
-            // this is very dangerous, of course, but we're only doing it for experimental server
-            eval(event.data);
-        });
-    }
-
-    liveReloadConnect((_event, lrSocketUrl) => {
-        liveReloadStatus(`<span title="${lrSocketUrl}">Live client diagnostics enabled for <code>${originServer}</code>.<br/><code>${wsEndpoint}</code><p>${new Date()}.</p></span>`);
-    });
-
-    const logLiveReloadRequest = (lrTarget, lrEndpoint) => {
-        console.log(`${lrTarget} live reload request from ${lrEndpoint}`);
-    }
-
-    const logAccess = (access) => {
-        const { status, locationHref, fsTarget, fsTargetSymLink, extn } = access;
-        accessLogDataTable.row.add([new Date().toISOString(), status, locationHref, fsTarget, fsTargetSymLink || '&nbsp;', extn]).draw().node();
-    }
+        }), { diagnose: true });
+    const socketConnStrategy = socketCM.connStrategy;
+    socketConnStrategy.onInitConnect = (scm, attemptNum) => {
+        updateConnState(scm, false);
+        updateConnStatus(`Waiting for ${scm.userAgent.locationURL} server to start (attempt ${attemptNum} of ${scm.connStrategy.connMaxAttempts}).`, true);
+    };
+    socketConnStrategy.onInitAutoReconnect = (scm, attemptNum) => {
+        updateConnStatus(`Server at ${scm.userAgent.locationURL} has been closed (restarted?), reconnecting (attempt ${attemptNum} in ${scm.connStrategy.connIntervalMS}ms).`, true);
+        return true;
+    };
+    socketConnStrategy.onConnEstablished = (event, scm, attemptNum, reestablishing) => {
+        updateConnState(scm, true, reestablishing);
+        updateConnStatus(`Live client diagnostics connection ${reestablishing ? 'reestablished' : 'established'} for <code>${scm.userAgent.locationURL}</code>.<br/><code>${scm.socketEndpointURL}</code><p>${new Date()}.${attemptNum > 1 ? `<br/>${attemptNum} attempts.</p>` : ''}`);
+        scm.provision(event, attemptNum, reestablishing);
+    };
+    socketConnStrategy.onAbandonConnAttempts = (scm, attemptNum) => {
+        updateConnStatus(`Server did not restart after ${socketConnStrategy.durationSinceStart()}ms and ${attemptNum} attempts, giving up.`, true);
+    };
+    socketCM.connect();
 
     //Javascript to toggle the menu
     document.getElementById('nav-toggle').onclick = function () {
