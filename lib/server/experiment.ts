@@ -215,6 +215,7 @@ export interface ExperimentalServerOptions
   readonly onStaticServeError?: StaticAccessErrorEventHandler;
   readonly clientDiagostics: ClientDiagsSocketsCmdManager;
   readonly liveReloadClientState?: LiveReloadClientState;
+  readonly diagnosticsPersistDest: string;
 }
 
 export function staticAccessClientDiagsEmitter(
@@ -268,18 +269,53 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     staticIndex,
     liveReloadClientState,
     clientDiagostics,
+    diagnosticsPersistDest,
   } = options;
   let { onServedStatic } = options;
   const onStaticServeError = options?.onStaticServeError ||
     staticAccessErrorConsoleEmitter(clientDiagostics);
 
-  // error handler
-  app.use(async (_ctx, next) => {
+  const persistDiagnostics = async (
+    diagnostics: unknown,
+    options?: { key?: string },
+  ) => {
+    const output = {
+      at: new Date(),
+      [options?.key ?? "diagnostics"]: diagnostics,
+    };
+    Deno.writeTextFileSync(
+      diagnosticsPersistDest,
+      JSON.stringify(output) + "\n",
+      { append: true },
+    );
+    await LogBrowserCommand.instance.execute(clientDiagostics, output);
+    console.error(
+      colors.red(
+        `*** internal issue encountered, persisted diagnostics in ${
+          colors.yellow(diagnosticsPersistDest)
+        }`,
+      ),
+    );
+  };
+
+  // error handler middleware
+  app.use(async (ctx, next) => {
     try {
       await next();
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      persistDiagnostics({
+        oakAppCtx: ctx,
+        nature: "oak-app-error-mw",
+        error,
+      });
     }
+  });
+
+  app.addEventListener("error", (event) => {
+    persistDiagnostics({
+      nature: "oak-app-error",
+      event,
+    });
   });
 
   // explcit routes defined here, anything not defined will be statically served
