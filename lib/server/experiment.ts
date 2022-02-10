@@ -1,32 +1,67 @@
 import { colors, oak, oakApp, path } from "./deps.ts";
 import * as sc from "../socket/server/command.ts";
 
-export class ErrorBrowserCommand implements sc.SocketCommand<unknown> {
+export class ErrorBrowserCommand implements
+  sc.SocketCommand<
+    unknown,
+    void,
+    sc.SocketCommandsConfiguration,
+    sc.ProvisionableSocketState
+  > {
   static readonly instance = new ErrorBrowserCommand();
   readonly identity = "error";
 
   // deno-lint-ignore require-await
-  async execute(cm: sc.SocketCommandsManager, args: unknown) {
+  async execute(
+    cm: sc.SocketCommandsManager<
+      sc.SocketCommandsConfiguration,
+      sc.ProvisionableSocketState
+    >,
+    args: unknown,
+  ) {
     cm.state.sendCommand(this, args);
   }
 }
 
-export class LogBrowserCommand implements sc.SocketCommand<unknown> {
+export class LogBrowserCommand implements
+  sc.SocketCommand<
+    unknown,
+    void,
+    sc.SocketCommandsConfiguration,
+    sc.ProvisionableSocketState
+  > {
   static readonly instance = new LogBrowserCommand();
   readonly identity = "log";
 
   // deno-lint-ignore require-await
-  async execute(cm: sc.SocketCommandsManager, args: unknown) {
+  async execute(
+    cm: sc.SocketCommandsManager<
+      sc.SocketCommandsConfiguration,
+      sc.ProvisionableSocketState
+    >,
+    args: unknown,
+  ) {
     cm.state.sendCommand(this, args);
   }
 }
 
-export class ReloadBrowserCommand implements sc.SocketCommand<void> {
+export class ReloadBrowserCommand implements
+  sc.SocketCommand<
+    void,
+    void,
+    sc.SocketCommandsConfiguration,
+    sc.ProvisionableSocketState
+  > {
   static readonly instance = new ReloadBrowserCommand();
   readonly identity = "reload";
 
   // deno-lint-ignore require-await
-  async execute(cm: sc.SocketCommandsManager) {
+  async execute(
+    cm: sc.SocketCommandsManager<
+      sc.SocketCommandsConfiguration,
+      sc.ProvisionableSocketState
+    >,
+  ) {
     cm.state.sendCommand(this, {});
   }
 }
@@ -39,14 +74,22 @@ export interface LogAccessBrowserCommandArgs {
   readonly fsTargetSymLink?: string;
 }
 
-export class LogAccessBrowserCommand
-  implements sc.SocketCommand<LogAccessBrowserCommandArgs> {
+export class LogAccessBrowserCommand implements
+  sc.SocketCommand<
+    LogAccessBrowserCommandArgs,
+    void,
+    sc.SocketCommandsConfiguration,
+    sc.ProvisionableSocketState
+  > {
   static readonly instance = new LogAccessBrowserCommand();
   readonly identity = "log-access";
 
   // deno-lint-ignore require-await
   async execute(
-    cm: sc.SocketCommandsManager,
+    cm: sc.SocketCommandsManager<
+      sc.SocketCommandsConfiguration,
+      sc.ProvisionableSocketState
+    >,
     args: LogAccessBrowserCommandArgs,
   ) {
     cm.state.sendCommand(this, args);
@@ -56,7 +99,7 @@ export class LogAccessBrowserCommand
 export class ClientDiagsSocketsCmdManager
   extends sc.TypicalSocketCommandsManager<
     sc.SocketCommandsConfiguration,
-    sc.SocketState
+    sc.ProvisionableSocketState
   > {
   readonly ephemeralHtmlEndpointURL: string;
   readonly ephemeralWsEndpointURL: string;
@@ -259,10 +302,17 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
         socket.onopen = handlers.onopen;
         socket.onclose = handlers.onclose;
         socket.onerror = handlers.onerror;
+        socket.onmessage = handlers.onmessage;
       },
       send: (data) => socket.send(data),
       // deno-lint-ignore require-await
       cleanup: async () => socket.close(1, "cleanup"),
+    }, (payload, state) => {
+      state.provisioned = payload;
+      LogBrowserCommand.instance.execute(
+        clientDiagostics,
+        JSON.stringify(payload),
+      );
     });
     onServedStatic = staticAccessClientDiagsEmitter(
       clientDiagostics,

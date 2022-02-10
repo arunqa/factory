@@ -119,8 +119,8 @@
                 </a>
             </div>
             <div class="pl-2">
-                <img id="socket-command-mgr-state" src="/universal-cc/images/websocket-logo-300x225px-transpbg.png"
-                    style="height:15px; display:none">
+                <img id="socket-commands-mgr-state-visuals"
+                    src="/universal-cc/images/websocket-logo-300x225px-transpbg.png" style="height:15px; display:none">
             </div>
 
             <div class="block lg:hidden pr-4">
@@ -186,7 +186,7 @@
                 <div class="flex w-full md:w-1/2">
                     <div class="px-8">
                         <h3 class="font-bold text-gray-900">Socket Commands Status</h3>
-                        <p id="live-reload-message-container" class="py-4 text-gray-600 text-sm">
+                        <p id="socket-commands-mgr-state-prose" class="py-4 text-gray-600 text-sm">
                             If you see this message it means that the websocket connection did not initiate.
                             Try restarting your browser?
                         </p>
@@ -235,6 +235,26 @@
 <script src="//cdn.datatables.net/1.11.4/js/jquery.dataTables.min.js"></script>
 <script>
     "use strict";
+
+    socketCmdsMgrVisualsProseDecorator(new SocketCommandsManager(
+        `ws://${document.location.host}/experimental-server/diagnostics/ephemeral/ws`,
+        new NamedSocketCommandsHandler({
+            "log-access": (commandID, commandArgs, event) => {
+                const { status, locationHref, fsTarget, fsTargetSymLink, extn } = commandArgs;
+                accessLogDataTable.row.add([new Date().toISOString(), status, locationHref, fsTarget, fsTargetSymLink || '&nbsp;', extn]).draw().node();
+            },
+            "reload": (commandID, commandArgs, event) => {
+                location.reload();
+            },
+            "log": (commandID, commandArgs, event) => {
+                console.log(commandArgs);
+            },
+            "error": (commandID, commandArgs, event) => {
+                console.error(commandArgs);
+            }
+        }), { diagnose: true })).connect();
+
+
     const accessLogTableID = 'access-log';
     let accessLogDataTable; // will be initialized after document is loaded
 
@@ -274,64 +294,6 @@
             );
         }
     };
-
-    const updateConnState = (scm, connected, reestablished) => {
-        const scmsElem = document.getElementById("socket-command-mgr-state");
-        if (scmsElem) {
-            if (connected) {
-                scmsElem.style.display = 'block';
-                scmsElem.title = `${scm.userAgent.locationURL} connection ${reestablished ? 'reestablished' : 'established'} to ${scm.socketEndpointURL}`;
-            } else {
-                scmsElem.style.display = '';
-                scmsElem.title = `${scm.userAgent.locationURL} not connected to ${scm.socketEndpointURL}`;
-            }
-        }
-    }
-
-    const updateConnStatus = (message, appendForceReload = false) => {
-        const messenger = document.getElementById("live-reload-message-container");
-        if (messenger) {
-            messenger.innerHTML = appendForceReload ? `${message} <a href="javascript:location.reload()" class="localhost-diags localhost-diags-live-reload-force">Force Reload</a>.` : message;
-        } else {
-            console.log(message);
-        }
-    }
-
-    const socketCM = new SocketCommandsManager(
-        `ws://${document.location.host}/experimental-server/diagnostics/ephemeral/ws`,
-        new NamedSocketCommandsHandler({
-            "log-access": (commandID, commandArgs, event) => {
-                const { status, locationHref, fsTarget, fsTargetSymLink, extn } = commandArgs;
-                accessLogDataTable.row.add([new Date().toISOString(), status, locationHref, fsTarget, fsTargetSymLink || '&nbsp;', extn]).draw().node();
-            },
-            "reload": (commandID, commandArgs, event) => {
-                location.reload();
-            },
-            "log": (commandID, commandArgs, event) => {
-                console.log(commandArgs);
-            },
-            "error": (commandID, commandArgs, event) => {
-                console.error(commandArgs);
-            }
-        }), { diagnose: true });
-    const socketConnStrategy = socketCM.connStrategy;
-    socketConnStrategy.onInitConnect = (scm, attemptNum) => {
-        updateConnState(scm, false);
-        updateConnStatus(`Waiting for ${scm.userAgent.locationURL} server to start (attempt ${attemptNum} of ${scm.connStrategy.connMaxAttempts}).`, true);
-    };
-    socketConnStrategy.onInitAutoReconnect = (scm, attemptNum) => {
-        updateConnStatus(`Server at ${scm.userAgent.locationURL} has been closed (restarted?), reconnecting (attempt ${attemptNum} in ${scm.connStrategy.connIntervalMS}ms).`, true);
-        return true;
-    };
-    socketConnStrategy.onConnEstablished = (event, scm, attemptNum, reestablishing) => {
-        updateConnState(scm, true, reestablishing);
-        updateConnStatus(`Live client diagnostics connection ${reestablishing ? 'reestablished' : 'established'} for <code>${scm.userAgent.locationURL}</code>.<br/><code>${scm.socketEndpointURL}</code><p>${new Date()}.${attemptNum > 1 ? `<br/>${attemptNum} attempts.</p>` : ''}`);
-        scm.provision(event, attemptNum, reestablishing);
-    };
-    socketConnStrategy.onAbandonConnAttempts = (scm, attemptNum) => {
-        updateConnStatus(`Server did not restart after ${socketConnStrategy.durationSinceStart()}ms and ${attemptNum} attempts, giving up.`, true);
-    };
-    socketCM.connect();
 
     //Javascript to toggle the menu
     document.getElementById('nav-toggle').onclick = function () {

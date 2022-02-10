@@ -1,6 +1,26 @@
 export type SocketCommandIdentity = string;
+export type UserAgentIdentity = string;
 
-export interface CommandPayload<Arguments = void> {
+export interface ProvisionedBrowserObservability {
+  readonly connAttempt: number;
+  readonly reestablishing: boolean;
+}
+
+export interface ProvisionedBrowserUserAgent {
+  readonly identity: UserAgentIdentity;
+  readonly locationURL: string;
+}
+
+export interface ProvisionBrowserPayload<
+  Observability extends ProvisionedBrowserObservability,
+  UserAgent extends ProvisionedBrowserUserAgent,
+> {
+  readonly nature: "provision";
+  readonly observability: Observability;
+  readonly userAgent: UserAgent;
+}
+
+export interface CommandPayload<Arguments> {
   readonly nature: "command";
   readonly identity: SocketCommandIdentity;
   readonly arguments: Arguments;
@@ -8,10 +28,9 @@ export interface CommandPayload<Arguments = void> {
 
 export interface SocketCommand<
   Arguments,
-  Result = void,
-  Configuration extends SocketCommandsConfiguration =
-    SocketCommandsConfiguration,
-  State extends SocketState = SocketState,
+  Result,
+  Configuration extends SocketCommandsConfiguration,
+  State extends SocketState,
 > {
   readonly identity: SocketCommandIdentity;
   readonly execute: (
@@ -27,15 +46,28 @@ export type SocketCommandData =
   | ArrayBufferView;
 
 export interface SocketState {
-  readonly originURL?: URL;
   readonly socket: WebSocket;
   readonly configure: (
-    handlers: Pick<WebSocket, "onopen" | "onclose" | "onerror">,
+    handlers: Pick<WebSocket, "onopen" | "onclose" | "onerror" | "onmessage">,
   ) => void;
   readonly send: (
     data: SocketCommandData,
   ) => void;
   readonly cleanup: () => Promise<void>;
+}
+
+export interface ProvisionedSocketState extends SocketState {
+  readonly provisioned: ProvisionBrowserPayload<
+    ProvisionedBrowserObservability,
+    ProvisionedBrowserUserAgent
+  >;
+}
+
+export interface ProvisionableSocketState extends SocketState {
+  provisioned?: ProvisionBrowserPayload<
+    ProvisionedBrowserObservability,
+    ProvisionedBrowserUserAgent
+  >;
 }
 
 export interface SocketsStateSendOptions<State extends SocketState> {
@@ -50,12 +82,26 @@ export interface SocketsState<State extends SocketState> {
     data: SocketCommandData,
     options?: SocketsStateSendOptions<State>,
   ) => void;
-  readonly sendCommand: <Arguments>(
-    command: SocketCommand<Arguments>,
+  readonly sendCommand: <Arguments, Result>(
+    command: SocketCommand<
+      Arguments,
+      Result,
+      SocketCommandsConfiguration,
+      State
+    >,
     args: Arguments,
     options?: SocketsStateSendOptions<State>,
   ) => void;
-  readonly register: (socket: State) => State;
+  readonly register: (
+    state: State,
+    onProvision?: (
+      payload: ProvisionBrowserPayload<
+        ProvisionedBrowserObservability,
+        ProvisionedBrowserUserAgent
+      >,
+      state: State,
+    ) => void,
+  ) => State;
   readonly cleanup: () => Promise<void>;
 }
 
@@ -64,9 +110,8 @@ export interface SocketCommandsConfiguration {
 }
 
 export interface SocketCommandsManager<
-  Configuration extends SocketCommandsConfiguration =
-    SocketCommandsConfiguration,
-  State extends SocketState = SocketState,
+  Configuration extends SocketCommandsConfiguration,
+  State extends SocketState,
 > {
   readonly config: SocketCommandsConfiguration;
   readonly state: SocketsState<State>;
@@ -93,7 +138,16 @@ export class TypicalSocketsState<State extends SocketState>
     return this.#active;
   }
 
-  register(ss: State): State {
+  register(
+    ss: State,
+    onProvision?: (
+      payload: ProvisionBrowserPayload<
+        ProvisionedBrowserObservability,
+        ProvisionedBrowserUserAgent
+      >,
+      state: State,
+    ) => void,
+  ): State {
     ss.configure({
       onopen: () => this.#active.push(ss),
       onclose: () => {
@@ -103,6 +157,14 @@ export class TypicalSocketsState<State extends SocketState>
         }
       },
       onerror: (e) => console.error("TypicalSocketsState socket error", e),
+      onmessage: (event) => {
+        const message = JSON.parse(event.data);
+        if (message) {
+          if (message.nature && message.nature == "provision") {
+            if (onProvision) onProvision(message, ss);
+          }
+        }
+      },
     });
     return ss;
   }
@@ -125,8 +187,13 @@ export class TypicalSocketsState<State extends SocketState>
     }
   }
 
-  sendCommand<Arguments = void>(
-    command: SocketCommand<Arguments>,
+  sendCommand<Arguments, Result>(
+    command: SocketCommand<
+      Arguments,
+      Result,
+      SocketCommandsConfiguration,
+      State
+    >,
     args: Arguments,
     options?: SocketsStateSendOptions<State>,
   ) {
