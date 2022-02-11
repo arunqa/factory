@@ -307,6 +307,16 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     );
   };
 
+  app.use(async (ctx, next) => {
+    await next();
+    // set the base URL in the header so that rfExprServerConsoleBaseURL
+    // can be set via Javascript (this makes sub pages references easier)
+    ctx.response.headers.set(
+      "RF-Console-HTML-Base-URL",
+      browserConsole.htmlEndpointURL,
+    );
+  });
+
   // error handler middleware
   app.use(async (ctx, next) => {
     try {
