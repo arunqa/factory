@@ -11,6 +11,8 @@
     <link href="//cdn.datatables.net/1.11.4/css/jquery.dataTables.min.css" rel="stylesheet">
 
     <script src="/universal-cc/script/socket-command.js"></script>
+    <script src="/universal-cc/script/http.js"></script>
+
     <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="./images/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="./images/favicon/favicon-16x16.png">
@@ -242,25 +244,21 @@
 <script>
     "use strict";
 
-    function parseHttpHeaders(httpHeaders) {
-        return httpHeaders.split("\n")
-            .map(x => x.split(/: */, 2))
-            .filter(x => x[0])
-            .reduce((ac, x) => { ac[x[0]] = x[1]; return ac; }, {});
-    }
-
-    // generally all console pages should use relative paths;
-    // rfExprServerConsoleBaseURL should be used when absolute paths are required
-    var rfExprServerConsoleBaseURL = null;
-    const inspectHeadersXHR = new XMLHttpRequest();
-    inspectHeadersXHR.open("HEAD", location);
-    inspectHeadersXHR.send();
-    inspectHeadersXHR.onload = function () {
-        const headers = parseHttpHeaders(inspectHeadersXHR.getAllResponseHeaders());
-        rfExprServerConsoleBaseURL = headers["rf-console-html-base-url"];
-        const ph = document.getElementById("page-head");
-        if (ph) ph.href = rfExprServerConsoleBaseURL;
-    }
+    var rfExprServerConsoleBaseURL = undefined;
+    inspectUrlHttpHeaders({
+        onHeader: {
+            "rf-console-html-base-url": [
+                (value) => {
+                    rfExprServerConsoleBaseURL = value;
+                    const ph = document.getElementById("page-head");
+                    if (ph) ph.href = rfExprServerConsoleBaseURL;
+                },
+                (key, url) => {
+                    console.error(`'${key}' is expected to be in the HTTP Header for ${url}`);
+                }
+            ]
+        }
+    });
 
     socketCmdsMgrVisualsProseDecorator(new SocketCommandsManager(
         `ws://${document.location.host}/experimental-server/console/ws`,
