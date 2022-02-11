@@ -96,18 +96,16 @@ export class LogAccessBrowserCommand implements
   }
 }
 
-export class ClientDiagsSocketsCmdManager
+export class BrowserConsoleSocketsCmdManager
   extends sc.TypicalSocketCommandsManager<
     sc.SocketCommandsConfiguration,
     sc.ProvisionableSocketState
   > {
-  readonly ephemeralHtmlEndpointURL: string;
-  readonly ephemeralWsEndpointURL: string;
+  readonly consoleWsEndpointURL: string;
 
   constructor(config: sc.SocketCommandsConfiguration) {
     super(config);
-    this.ephemeralHtmlEndpointURL = `${config.endpointBaseURL}/ephemeral/`;
-    this.ephemeralWsEndpointURL = `${this.ephemeralHtmlEndpointURL}ws`;
+    this.consoleWsEndpointURL = `${config.endpointBaseURL}/ws`;
     this.register(ErrorBrowserCommand.instance);
     this.register(LogBrowserCommand.instance);
     this.register(ReloadBrowserCommand.instance);
@@ -213,13 +211,19 @@ export interface ExperimentalServerOptions
   ) => Promise<void>;
   readonly onServedStatic?: StaticAccessEventHandler;
   readonly onStaticServeError?: StaticAccessErrorEventHandler;
-  readonly clientDiagostics: ClientDiagsSocketsCmdManager;
+  readonly browserConsole: {
+    readonly socketsCM: BrowserConsoleSocketsCmdManager;
+    readonly htmlEndpointURL: string;
+    readonly staticIndex: "index.html" | string;
+    readonly onServedStatic?: StaticAccessEventHandler;
+    readonly onStaticServeError?: StaticAccessErrorEventHandler;
+  };
   readonly liveReloadClientState?: LiveReloadClientState;
   readonly diagnosticsPersistDest: string;
 }
 
-export function staticAccessClientDiagsEmitter(
-  clientDiags: ClientDiagsSocketsCmdManager,
+export function staticAccessBrowserConsoleEmitter(
+  consoleSCM: BrowserConsoleSocketsCmdManager,
   showFilesRelativeTo: string,
 ): StaticAccessEventHandler {
   return async (event) => {
@@ -236,29 +240,33 @@ export function staticAccessClientDiagsEmitter(
           : undefined,
       };
       LogAccessBrowserCommand.instance.execute(
-        clientDiags,
+        consoleSCM,
         accessToSendToClient,
       );
     } else {
       // deno-fmt-ignore
-      ErrorBrowserCommand.instance.execute(clientDiags, `console.error("'${colors.brightRed(oakCtx.request.url.pathname)}' was not served")`);
+      ErrorBrowserCommand.instance.execute(consoleSCM, `console.error("'${colors.brightRed(oakCtx.request.url.pathname)}' was not served")`);
     }
   };
 }
 
-export function staticAccessErrorConsoleEmitter(
-  clientDiags: ClientDiagsSocketsCmdManager,
+export function staticAccessErrorBrowserConsoleEmitter(
+  consoleSCM: BrowserConsoleSocketsCmdManager,
 ): StaticAccessErrorEventHandler {
   // deno-lint-ignore require-await
   return async (event) => {
     // deno-fmt-ignore
-    ErrorBrowserCommand.instance.execute(clientDiags, `console.error("'${colors.brightRed(event.oakCtx.request.url.pathname)}' error:", ${JSON.stringify(event.error)})`);
+    ErrorBrowserCommand.instance.execute(consoleSCM, `console.error("'${colors.brightRed(event.oakCtx.request.url.pathname)}' error:", ${JSON.stringify(event.error)})`);
   };
 }
 
 export const experimentalServer = (options: ExperimentalServerOptions) => {
-  const exprServerContentPath = path.dirname(import.meta.url).substr(
-    "file://".length,
+  const browserConsoleContentPath = path.join(
+    path.dirname(import.meta.url).substr(
+      "file://".length,
+    ),
+    "content",
+    "console",
   );
   const app = new oak.Application({
     serverConstructor: oak.HttpServerNative,
@@ -268,12 +276,13 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     staticAssetsHome,
     staticIndex,
     liveReloadClientState,
-    clientDiagostics,
+    browserConsole,
     diagnosticsPersistDest,
   } = options;
   let { onServedStatic } = options;
+  const { socketsCM: browserConsoleSCM } = browserConsole;
   const onStaticServeError = options?.onStaticServeError ||
-    staticAccessErrorConsoleEmitter(clientDiagostics);
+    staticAccessErrorBrowserConsoleEmitter(browserConsoleSCM);
 
   const persistDiagnostics = async (
     diagnostics: unknown,
@@ -288,7 +297,7 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
       JSON.stringify(output) + "\n",
       { append: true },
     );
-    await LogBrowserCommand.instance.execute(clientDiagostics, output);
+    await LogBrowserCommand.instance.execute(browserConsoleSCM, output);
     console.error(
       colors.red(
         `*** internal issue encountered, persisted diagnostics in ${
@@ -323,16 +332,19 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     ctx.response.body = "SSR test route in experimentalServer (don't use this)";
   });
 
-  router.get(clientDiagostics.ephemeralHtmlEndpointURL, async (ctx) => {
-    ctx.response.body = await Deno.readTextFile(
-      path.join(exprServerContentPath, "ephemeral-diagnostics.html"),
-    );
+  // router.get(browserConsole.consoleHtmlEndpointURL, async (ctx) => {
+  //   ctx.response.body = await Deno.readTextFile(
+  //     path.join(browserConsoleContentPath, "index.html"),
+  //   );
+  // });
+
+  router.get(`${browserConsoleSCM.consoleWsEndpointURL}/:path`, (ctx) => {
   });
 
   // ephemeral-access-log.html will create a websocket back to this endpoint
-  router.get(clientDiagostics.ephemeralWsEndpointURL, (ctx) => {
+  router.get(browserConsoleSCM.consoleWsEndpointURL, (ctx) => {
     const socket = ctx.upgrade();
-    clientDiagostics.state.register({
+    browserConsoleSCM.state.register({
       socket,
       configure: (handlers) => {
         socket.onopen = handlers.onopen;
@@ -346,12 +358,12 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     }, (payload, state) => {
       state.provisioned = payload;
       LogBrowserCommand.instance.execute(
-        clientDiagostics,
+        browserConsoleSCM,
         JSON.stringify(payload),
       );
     });
-    onServedStatic = staticAccessClientDiagsEmitter(
-      clientDiagostics,
+    onServedStatic = staticAccessBrowserConsoleEmitter(
+      browserConsoleSCM,
       options.staticAssetsHome,
     );
   });
@@ -362,7 +374,7 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     // of the browser's web page; the actual websocket message is irrelevant
     router.get(liveReloadClientState.endpointURL, (ctx) => {
       liveReloadClientState.register(ctx.upgrade());
-      LogBrowserCommand.instance.execute(clientDiagostics, {
+      LogBrowserCommand.instance.execute(browserConsoleSCM, {
         identity: "logLiveReloadRequest",
         endpointURL: liveReloadClientState.endpointURL,
         originPathName: ctx.request.url.searchParams.get("origin-pathname"),
@@ -379,24 +391,39 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
 
   // static content
   app.use(async (ctx, next) => {
+    const requestUrlPath = ctx.request.url.pathname;
     try {
-      if (options?.onBeforeStaticServe) {
-        await options.onBeforeStaticServe(ctx);
-      }
-      if (onServedStatic) {
-        const serveStartedMark = performance.mark(ctx.request.url.pathname);
-        const target = await ctx.send({
-          root: staticAssetsHome,
-          index: staticIndex,
+      if (requestUrlPath.startsWith(browserConsole.htmlEndpointURL)) {
+        const path = requestUrlPath.substring(
+          browserConsole.htmlEndpointURL.length,
+        );
+        const served = await ctx.send({
+          root: browserConsoleContentPath,
+          index: browserConsole.staticIndex,
+          path,
         });
-        await onServedStatic({
-          target,
-          oakCtx: ctx,
-          serveStartedMark,
-          oc: options,
-        });
+        if (!served) {
+          console.log(colors.red(`${requestUrlPath} (${path}) not found`));
+        }
       } else {
-        await ctx.send({ root: staticAssetsHome, index: staticIndex });
+        if (options?.onBeforeStaticServe) {
+          await options.onBeforeStaticServe(ctx);
+        }
+        if (onServedStatic) {
+          const serveStartedMark = performance.mark(requestUrlPath);
+          const target = await ctx.send({
+            root: staticAssetsHome,
+            index: staticIndex,
+          });
+          await onServedStatic({
+            target,
+            oakCtx: ctx,
+            serveStartedMark,
+            oc: options,
+          });
+        } else {
+          await ctx.send({ root: staticAssetsHome, index: staticIndex });
+        }
       }
     } catch (err) {
       if (onStaticServeError) {

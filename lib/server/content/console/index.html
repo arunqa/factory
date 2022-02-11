@@ -11,6 +11,11 @@
     <link href="//cdn.datatables.net/1.11.4/css/jquery.dataTables.min.css" rel="stylesheet">
 
     <script src="/universal-cc/script/socket-command.js"></script>
+    <link rel="apple-touch-icon" sizes="180x180" href="./images/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./images/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./images/favicon/favicon-16x16.png">
+    <link rel="manifest" href="./images/favicon/site.webmanifest">
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
 
@@ -115,12 +120,12 @@
         <div class="w-full md:max-w-4xl mx-auto flex flex-wrap items-center justify-between mt-0 py-3">
             <div class="pl-4">
                 <a class="text-gray-900 text-base no-underline hover:no-underline font-extrabold text-xl" href="#">
-                    Resource Factory Diagnostics Control Panel
+                    Resource Factory Console
                 </a>
             </div>
             <div class="pl-2">
-                <img id="socket-commands-mgr-state-visuals"
-                    src="/universal-cc/images/websocket-logo-300x225px-transpbg.png" style="height:15px; display:none">
+                <img id="socket-commands-mgr-state-visuals" src="./images/websocket-logo-300x225px-transpbg.png"
+                    style="height:15px; display:none">
             </div>
 
             <div class="block lg:hidden pr-4">
@@ -237,7 +242,7 @@
     "use strict";
 
     socketCmdsMgrVisualsProseDecorator(new SocketCommandsManager(
-        `ws://${document.location.host}/experimental-server/diagnostics/ephemeral/ws`,
+        `ws://${document.location.host}/experimental-server/console/ws`,
         new NamedSocketCommandsHandler({
             "log-access": (commandID, commandArgs, event) => {
                 const { status, locationHref, fsTarget, fsTargetSymLink, extn } = commandArgs;

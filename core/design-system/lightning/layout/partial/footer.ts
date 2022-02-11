@@ -72,7 +72,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
               document.write(\`<p title="\${htmlDataSet.rfOriginLayoutSrc}" class="localhost-diags localhost-diags-warning">No layout information in <code>&lt;html data-rf-origin-layout-*&gt;</code></p>\`);
             }
             document.write('<div id="live-reload-message-container">Live Reload Not Enabled</div>'); <!-- will be replaced by proper message if enabled -->
-            document.write('<div><a href="/experimental-server/diagnostics/ephemeral/" target="experimental-server-diagnostics">Open Resource Factory Experimental Server Diagnostics</a></div>');
+            document.write('<div><a href="/experimental-server/console/" target="experimental-server-console">Open Resource Factory Console</a></div>');
           }
         </script>
         </p>
