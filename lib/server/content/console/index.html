@@ -257,7 +257,13 @@
             "error": (commandID, commandArgs, event) => {
                 console.error(commandArgs);
             }
-        }), { diagnose: true })).connect();
+        }), { diagnose: true })).connect(() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const open = urlParams.get('open');
+            if (open) {
+                window.open(open, urlParams.get('open-target')).focus();
+            }
+        });
 
 
     const accessLogTableID = 'access-log';
@@ -356,7 +362,6 @@
                 header.classList.remove("shadow");
                 navcontent.classList.remove("bg-white");
                 navcontent.classList.add("bg-gray-100");
-
             }
         });
 

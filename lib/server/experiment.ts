@@ -327,20 +327,6 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     });
   });
 
-  // explcit routes defined here, anything not defined will be statically served
-  router.get("/index.html", (ctx) => {
-    ctx.response.body = "SSR test route in experimentalServer (don't use this)";
-  });
-
-  // router.get(browserConsole.consoleHtmlEndpointURL, async (ctx) => {
-  //   ctx.response.body = await Deno.readTextFile(
-  //     path.join(browserConsoleContentPath, "index.html"),
-  //   );
-  // });
-
-  router.get(`${browserConsoleSCM.consoleWsEndpointURL}/:path`, (ctx) => {
-  });
-
   // ephemeral-access-log.html will create a websocket back to this endpoint
   router.get(browserConsoleSCM.consoleWsEndpointURL, (ctx) => {
     const socket = ctx.upgrade();
