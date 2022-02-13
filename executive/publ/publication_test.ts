@@ -12,8 +12,15 @@ import * as extn from "../../core/std/extension.ts";
 
 const testPath = path.relative(
   Deno.cwd(),
-  path.dirname(import.meta.url).substr("file://".length),
+  path.dirname(import.meta.url).substring("file://".length),
 );
+const pubCtlSupplier = mod.typicalPublicationCtlSupplier<
+  mod.PublicationOperationalContext
+>(
+  (relative) => path.join(path.relative(Deno.cwd(), testPath), relative),
+  (oc) => oc, // we're not enhancing, just adding type-safety,
+);
+const pubCtl = pubCtlSupplier();
 const docsPath = path.join(testPath, "../../", "docs");
 const extensionsManager = new extn.ReloadableCachedExtensions();
 const termsManager = new k.TypicalTermsManager();
@@ -57,7 +64,7 @@ const prefs: mod.Preferences<mod.PublicationOperationalContext> = {
   wsEditorResolver: () => undefined,
   extensionsManager,
   termsManager,
-  operationalCtx: { processStartTimestamp: new Date() },
+  operationalCtx: pubCtl.operationalCtx,
   memoizeProducers: false,
 };
 
@@ -97,7 +104,7 @@ export class TestDesignSystem implements lds.LightningDesignSystemFactory {
 }
 
 const config = new mod.Configuration(prefs);
-const executive = new mod.Executive([
+const executive = new mod.Executive(pubCtl, [
   new class extends mod.TypicalPublication<mod.PublicationOperationalContext> {
     constructDesignSystem(
       config: mod.Configuration<mod.PublicationOperationalContext>,
@@ -110,7 +117,7 @@ const executive = new mod.Executive([
 ]);
 
 Deno.test(`Publication discovered proper number of assets ${config.contentRootPath}`, async () => {
-  await executive.execute();
+  await executive.publish();
   // TODO: help find async leaks in executive.execute()
   // console.dir(Deno.metrics());
   // let count = 0;
