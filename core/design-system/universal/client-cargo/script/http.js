@@ -1,15 +1,34 @@
 "use strict";
 
-function inspectUrlHttpHeaders(options = {
+export function inspectUrlHttpHeaders(options = {
     inspectURL: null, // default is current page/location
     onHeaders: null,  // (headers, url) => void,
-    onHeader: null,   // { "header": (value, header, url) => void, "header2": [found: (value, header, url) => void, notFound: (header, url) => void] }
+    onHeader: null,   // { "header": (value, key, alias, url) => void, "header2": [found: (value, key, alias, url) => void, notFound: (key, alias, url) => void] }
 }) {
     function parseHttpHeaders(httpHeaders) {
-        return httpHeaders.split("\n")
+        return httpHeaders.split("\r\n")
             .map(x => x.split(/: */, 2))
             .filter(x => x[0])
-            .reduce((ac, x) => { ac[x[0]] = x[1]; return ac; }, {});
+            .reduce((ac, x) => {
+                const headerNameAsIs = x[0];
+                const headerNameCamelCase = headerNameAsIs.toLowerCase().replace(/([-_][a-z])/g, group =>
+                    group.toUpperCase()
+                        .replace('-', '')
+                        .replace('_', '')
+                );
+                const headerValueAsIs = x[1];
+                let headerValue = undefined;
+                try {
+                    headerValue = JSON.parse(headerValueAsIs);
+                } catch {
+                    headerValue = headerValueAsIs;
+                }
+                ac[headerNameAsIs] = headerValue;
+                ac[headerNameCamelCase] = headerValue;
+                ac.__headerNameAliases[headerNameCamelCase] = headerNameAsIs;
+                ac.__headerNameAliases[headerNameAsIs] = headerNameCamelCase;
+                return ac;
+            }, { __headerNameAliases: {} });
     }
 
     const inspectURL = options?.inspectURL || location;
@@ -24,19 +43,20 @@ function inspectUrlHttpHeaders(options = {
                 return;
             }
             for (const key in options.onHeader) {
+                const alias = headers.__headerNameAliases[key];
                 const handlers = options.onHeader[key];
                 const foundHeaderFn = Array.isArray(handlers) ? handlers[0] : handlers;
                 const notFoundHeaderFn = Array.isArray(handlers) ? handlers[1] : undefined;
                 if (!(key in headers)) {
                     if (typeof notFoundHeaderFn === "function") {
-                        notFoundHeaderFn(key, inspectURL);
-                    } else {
+                        notFoundHeaderFn(key, alias, inspectURL);
+                    } else if (notFoundHeaderFn) {
                         console.error(`[inspectUrlHttpHeaders] onHeader "${key}" notFoundHeaderFn is not a function`);
                     }
                 } else {
                     const value = headers[key];
                     if (typeof foundHeaderFn === "function") {
-                        foundHeaderFn(value, key, inspectURL);
+                        foundHeaderFn(value, key, alias, inspectURL);
                     } else {
                         console.error(`[inspectUrlHttpHeaders] onHeader "${key}" foundHeaderFn is not a function`);
                     }
