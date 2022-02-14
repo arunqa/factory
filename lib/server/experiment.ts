@@ -1,4 +1,4 @@
-import { colors, oak, oakApp, path } from "./deps.ts";
+import { colors, log, oak, oakApp, path } from "./deps.ts";
 import * as sc from "../socket/server/command.ts";
 
 export class ErrorBrowserCommand implements
@@ -118,10 +118,14 @@ export interface LiveReloadClientState {
   readonly lrSockets: WebSocket[];
   readonly register: (socket: WebSocket) => void;
   readonly cleanup: () => void;
+  readonly serverDiagnosticsLogger: log.Logger;
 }
 
 export function typicalLiveReloadClientState(
-  { endpointURL }: Pick<LiveReloadClientState, "endpointURL">,
+  { endpointURL, serverDiagnosticsLogger }: Pick<
+    LiveReloadClientState,
+    "endpointURL" | "serverDiagnosticsLogger"
+  >,
 ): LiveReloadClientState {
   const lrSockets: WebSocket[] = [];
   return {
@@ -135,16 +139,20 @@ export function typicalLiveReloadClientState(
           lrSockets.splice(index, 1);
         }
       };
-      socket.onerror = (e) => console.error("live reload socket errored", e);
+      socket.onerror = (e) =>
+        serverDiagnosticsLogger.error("live reload socket errored", e);
     },
     cleanup: () => {
       for (const lrSocket of lrSockets) {
         // when the socket is closed, it will force reload on the client because
         // the websocket closed signal is what is monitored
         lrSocket.close(-1, "reload");
-        console.log("closed live reload, reload request sent to browser");
+        serverDiagnosticsLogger.info(
+          "closed live reload, reload request sent to browser",
+        );
       }
     },
+    serverDiagnosticsLogger,
   };
 }
 
@@ -204,6 +212,7 @@ export type StaticAccessErrorEventHandler = (
 export interface ExperimentalServerOptions
   extends ExperimentalServerOperationalContext {
   readonly staticIndex: "index.html" | string;
+  readonly serverDiagnosticsLogger: log.Logger;
   // deno-lint-ignore no-explicit-any
   readonly onBeforeStaticServe?: (oakCtx: oak.Context<any>) => Promise<void>;
   readonly onServerListen?: (
@@ -219,7 +228,6 @@ export interface ExperimentalServerOptions
     readonly onStaticServeError?: StaticAccessErrorEventHandler;
   };
   readonly liveReloadClientState?: LiveReloadClientState;
-  readonly diagnosticsPersistDest: string;
 }
 
 export function staticAccessBrowserConsoleEmitter(
@@ -277,32 +285,19 @@ export const experimentalServer = (options: ExperimentalServerOptions) => {
     staticIndex,
     liveReloadClientState,
     browserConsole,
-    diagnosticsPersistDest,
+    serverDiagnosticsLogger,
   } = options;
   let { onServedStatic } = options;
   const { socketsCM: browserConsoleSCM } = browserConsole;
   const onStaticServeError = options?.onStaticServeError ||
     staticAccessErrorBrowserConsoleEmitter(browserConsoleSCM);
 
-  const persistDiagnostics = async (
-    diagnostics: unknown,
-    options?: { key?: string },
-  ) => {
-    const output = {
-      at: new Date(),
-      [options?.key ?? "diagnostics"]: diagnostics,
-    };
-    Deno.writeTextFileSync(
-      diagnosticsPersistDest,
-      JSON.stringify(output) + "\n",
-      { append: true },
-    );
-    await LogBrowserCommand.instance.execute(browserConsoleSCM, output);
+  const persistDiagnostics = async (diagnostics: unknown) => {
+    serverDiagnosticsLogger.error(diagnostics);
+    await LogBrowserCommand.instance.execute(browserConsoleSCM, diagnostics);
     console.error(
       colors.red(
-        `*** internal issue encountered, persisted diagnostics in ${
-          colors.yellow(diagnosticsPersistDest)
-        }`,
+        `*** internal issue encountered, persisted diagnostics in serverDiagnosticsLogger`,
       ),
     );
   };

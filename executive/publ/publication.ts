@@ -1329,7 +1329,7 @@ export interface ExecutiveController<
 export interface ExecutiveControllerSupplier<
   OperationalCtx extends PublicationOperationalContext,
 > {
-  (): ExecutiveController<OperationalCtx>;
+  (): Promise<ExecutiveController<OperationalCtx>>;
 }
 
 export class Executive<OperationalCtx extends PublicationOperationalContext> {
@@ -1562,7 +1562,17 @@ export function typicalPublicationCtlSupplier<
     ? new Date(Number(timestampAtEntryEnv) * 1000)
     : new Date();
 
-  return (): ExecutiveController<OperationalCtx> => {
+  return async (): Promise<ExecutiveController<OperationalCtx>> => {
+    const fh = new log.handlers.FileHandler("DEBUG", {
+      formatter: (logRecord) => JSON.stringify(logRecord),
+      filename: modulePath("pubctl-diagnostics.jsonl"),
+      mode: "a",
+    });
+    await fh.setup();
+    const serverDiagnosticsLogger = new log.Logger("server", "DEBUG", {
+      handlers: [fh],
+    });
+
     const exprServerConsoleEndpointBaseURL = "/experimental-server/console";
     const ocGuess: PublicationOperationalContext = {
       processStartTimestamp,
@@ -1570,7 +1580,7 @@ export function typicalPublicationCtlSupplier<
       isLiveReloadRequest,
       iterationCount: processIterationCount,
       staticAssetsHome: modulePath("public"),
-      diagnosticsPersistDest: modulePath("pubctl-diagnostics.jsonl"),
+      serverDiagnosticsLogger,
       browserConsole: {
         htmlEndpointURL: `${exprServerConsoleEndpointBaseURL}/`,
         socketsCM: new server.BrowserConsoleSocketsCmdManager({
@@ -1579,7 +1589,7 @@ export function typicalPublicationCtlSupplier<
         staticIndex: "index.html",
       },
       liveReloadClientState: server.typicalLiveReloadClientState(
-        { endpointURL: "/ws/experiment/live-reload" },
+        { endpointURL: "/ws/experiment/live-reload", serverDiagnosticsLogger },
       ),
       staticIndex: "index.html",
     };
