@@ -20,7 +20,7 @@ const pubCtlSupplier = mod.typicalPublicationCtlSupplier<
   (relative) => path.join(path.relative(Deno.cwd(), testPath), relative),
   (oc) => oc, // we're not enhancing, just adding type-safety,
 );
-const pubCtl = pubCtlSupplier();
+const pubCtl = await pubCtlSupplier();
 const docsPath = path.join(testPath, "../../", "docs");
 const extensionsManager = new extn.ReloadableCachedExtensions();
 const termsManager = new k.TypicalTermsManager();
