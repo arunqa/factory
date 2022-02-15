@@ -8,6 +8,8 @@ import * as rfStd from "../../core/std/mod.ts";
 import * as mr from "../../core/resource/module/module.ts";
 import * as pkg from "../../lib/package/mod.ts";
 import * as fsLink from "../../lib/fs/link.ts";
+import * as task from "../../lib/task/mod.ts";
+import * as r from "../../lib/text/readability.ts";
 
 export interface TypicalProxyableFileSysModelArguments<Model, OriginContext>
   extends
@@ -238,6 +240,74 @@ export function typicalSyncableAssetModuleConstructor(
       resourcesFactories: async function* () {
         // usually we would yield resources but we're just proxying a syncable asset
         await asset.value()();
+      },
+    };
+  };
+}
+
+export function typicalSyncableReadableAssetsModuleConstructor(
+  readables: () => Generator<
+    { originURL: string; assetPath: string; assetName: string }
+  >,
+): mr.FileSysResourceModuleConstructor<unknown> {
+  // deno-lint-ignore require-await
+  return async (_we, _o, imported) => {
+    return {
+      imported,
+      // we set this to true so that resourcesFactories will get called
+      isChildResourcesFactoriesSupplier: true,
+      yieldParentWithChildren: false,
+      // deno-lint-ignore require-yield
+      resourcesFactories: async function* () {
+        // usually we would yield resources but we're just proxying a syncable asset
+        // and not actually create any
+        for (const readable of readables()) {
+          await s.SingletonsManager.globalInstance()
+            .singletonSync(() =>
+              typicalSyncableAssetConsoleEmitter({
+                assetPath: path.join(
+                  readable.assetPath,
+                  `${readable.assetName}.readable.html`,
+                ),
+                cacheProxied: async (destPath) => {
+                  await task.downloadAsset(
+                    readable.originURL,
+                    destPath,
+                    async (srcEndpoint, destFile, mark) => {
+                      const rr = await r.extractReadableHTML(
+                        await Deno.readTextFile(destFile),
+                      );
+                      await Deno.writeTextFile(destFile, rr.content);
+                      await Deno.writeTextFile(
+                        path.join(
+                          readable.assetPath,
+                          `${readable.assetName}.readable.json`,
+                        ),
+                        JSON.stringify({
+                          originURL: readable.originURL,
+                          proxiedOn: new Date(),
+                          ...rr,
+                        }),
+                      );
+                      await task.reportDownloadConsole(
+                        destFile,
+                        srcEndpoint,
+                        mark,
+                      );
+                    },
+                    // deno-lint-ignore require-await
+                    async (error, srcEndpoint, destFile) => {
+                      console.error(
+                        `Unable to download ${destFile} from ${srcEndpoint}`,
+                      );
+                      console.dir(error, { colors: true });
+                    },
+                  );
+                  return destPath;
+                },
+              })
+            ).value()();
+        }
       },
     };
   };

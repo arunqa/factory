@@ -76,6 +76,15 @@ export const timeAgoCE: CustomElementMarkdownDirective = {
   encountered,
 };
 
+export const mozillaReadabilityCE: CustomElementMarkdownDirective = {
+  identity: "mozilla-readable",
+  present: "inline",
+  name: "mozilla-readable",
+  tag: "mozilla-readable",
+  allowedAttrs: ["originUrl", "registerResultHook"],
+  encountered,
+};
+
 export const allCustomElements: CustomElementMarkdownDirective[] = [
   agGridCE,
   apacheEChartsCE,
@@ -84,6 +93,7 @@ export const allCustomElements: CustomElementMarkdownDirective[] = [
   markmapCE,
   timeAgoCE,
   diagramsNetViewerCE,
+  mozillaReadabilityCE,
 ];
 
 export default allCustomElements;
