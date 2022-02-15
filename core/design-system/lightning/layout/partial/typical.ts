@@ -1,5 +1,6 @@
 import * as ldsGovn from "../../governance.ts";
 import * as dia from "./diagrams.ts";
+import * as ext from "./extensions.ts";
 
 export const typicalBodyPartial: ldsGovn.LightningPartial = (_, body) =>
   body || "<!-- no lightningBody -->";
@@ -67,6 +68,7 @@ ${layout.contributions.head.contributions("fore").contributions.join("\n")}
 <script src="${layout.contentStrategy.assets.uScript("/typical.js")}"></script>
 <script src="${layout.contentStrategy.assets.dsScript("/lightning.js")}"></script>
 ${dia.clientDiagramsContributionsPartial(layout)}
+${ext.clientExtensionsContributionsPartial(layout)}
 ${clientCargoPartial(layout)}
 <link rel="shortcut icon" href="${layout.contentStrategy.assets.favIcon("/asset/image/favicon.ico")}"/>
 <title>${layout.layoutText.title(layout)}</title>

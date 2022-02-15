@@ -3,6 +3,7 @@ export * from "./card.ts";
 export * from "./tab.ts";
 export * from "./diagnostics.ts";
 export * from "./diagrams.ts";
+export * from "./extensions.ts";
 export * from "./icon.ts";
 export * from "./index.ts";
 export * from "./footer.ts";
