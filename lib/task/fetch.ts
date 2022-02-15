@@ -57,7 +57,8 @@ export function graphQlTask(
 export interface DownloadTaskRunnerSupplier extends FetchTaskRunnerSupplier {
 }
 
-export const reportDownloadConsole = (
+// deno-lint-ignore require-await
+export const reportDownloadConsole = async (
   destFile: string,
   srcEndpoint: string,
   mark: PerformanceMark,
@@ -81,8 +82,13 @@ export async function downloadAsset(
     destFile: string,
     srcEndpoint: string,
     mark: PerformanceMark,
-  ) => void,
-  onError?: (error: Error) => void,
+  ) => Promise<void>,
+  onError?: (
+    error: Error,
+    destFile: string,
+    srcEndpoint: string,
+    mark: PerformanceMark,
+  ) => Promise<void>,
 ): Promise<void> {
   const markName = `${srcEndpoint}::${destFile}`;
   const mark = performance.mark(markName);
@@ -97,12 +103,14 @@ export async function downloadAsset(
         });
         await iosc.copy(r, f);
         f.close();
-        if (onData) onData(destFile, srcEndpoint, mark);
+        if (onData) await onData(srcEndpoint, destFile, mark);
       }
     } catch (err) {
-      if (onError) onError(err);
+      if (onError) await onError(err, srcEndpoint, destFile, mark);
     }
-  }).catch(onError);
+  }).catch(async (err) => {
+    if (onError) await onError(err, srcEndpoint, destFile, mark);
+  });
 }
 
 export function downloadTask(
@@ -113,14 +121,20 @@ export function downloadTask(
     destFile: string,
     srcEndpoint: string,
     mark: PerformanceMark,
-  ) => void,
-  onError?: (error: Error) => void,
+  ) => Promise<void>,
+  onError?: (
+    error: Error,
+    destFile: string,
+    srcEndpoint: string,
+    mark: PerformanceMark,
+  ) => Promise<void>,
 ): GraphQlTaskRunnerSupplier {
   return {
     identity,
     exec: async () => {
       if (!onError) {
-        onError = (error) => {
+        // deno-lint-ignore require-await
+        onError = async (error) => {
           console.dir(error, { colors: true });
         };
       }
