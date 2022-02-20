@@ -194,6 +194,7 @@ export interface DesignSystemAssetLocations
   readonly brandStylesheet: DesignSystemAssetLocationSupplier; // white label ("brandable")
   readonly brandComponent: DesignSystemAssetLocationSupplier; // white label ("brandable")
   readonly brandFavIcon: DesignSystemAssetLocationSupplier; // white label ("brandable")
+  readonly operationalCtx: DesignSystemAssetLocationSupplier; // operational context (e.g. server.js)
 }
 
 // deno-lint-ignore no-empty-interface
@@ -431,6 +432,7 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
     readonly layoutStrategies: DesignSystemLayouts<Layout>,
     readonly dsAssetsBaseURL: string,
     readonly universalAssetsBaseURL: string,
+    readonly operationalCtxAssetsBaseURL: string,
   ) {
   }
 
@@ -585,6 +587,7 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
       `brandComponent(relURL) { return this.component(\`/brand/\${relURL}\`); }`,
       `brandModel(relURL) { return this.model(\`/brand/\${relURL}\`); }`,
       `brandFavIcon(relURL) { return this.favIcon(\`/brand/\${relURL}\`); }`,
+      `operationalCtx(relURL) { return \`\${this.assetsBaseAbsURL()}${this.operationalCtxAssetsBaseURL}\${relURL}\`; }`,
       ...appendJS,
     ];
   }
@@ -623,6 +626,8 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
       brandScript: (relURL) => `${base}/brand${relURL}`,
       brandStylesheet: (relURL) => `${base}/brand${relURL}`,
       brandComponent: (relURL) => `${base}/brand${relURL}`,
+      operationalCtx: (relURL) =>
+        `${this.operationalCtxAssetsBaseURL}${relURL}`,
       clientCargoValue: () => {
         return `{
           ${this.clientCargoAssetsJS(base).join(",\n          ")}

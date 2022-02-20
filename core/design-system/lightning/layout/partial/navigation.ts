@@ -42,7 +42,8 @@ export const contextBarPartial: ldsGovn.LightningPartial = (layout) => {
           <span class="slds-truncate" title="${subjectLabel}"><a style="color: #000;" href="${subjectHref}">${subjectLabel}</a></span></span>
       </div>
       </div>
-      <div class="slds-float_left">
+      <div class="slds-float_left" style="vertical-align: middle">
+        <span id="rf-universal-tunnel-state" style="display:none; position:relative; top: 10px; ">Tunnel State</span>
       </div>
       <div class="slds-float_right">
         <div class="slds-grid slds-gutters slds-wrap slds-m-top_xx-small slds-text-align_right">

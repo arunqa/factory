@@ -15,6 +15,7 @@ Deno.test(`htmlLayoutTransformers with lds prime`, async () => {
   const lds = new mod.LightingDesignSystem(
     new extn.CachedExtensions(),
     `/universal-cc`,
+    "/operational-context",
   );
   const lss = lds.layoutStrategies.defaultLayoutStrategySupplier;
   const ls = lss.layoutStrategy;

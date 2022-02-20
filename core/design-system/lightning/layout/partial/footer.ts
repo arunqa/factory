@@ -60,21 +60,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
           : '<!-- no layout.activeRoute?.terminal?.lastModifiedAt -->'}
         ${wsAsset?.openInWorkspaceHTML ? ` (🧑‍💻 ${wsAsset.openInWorkspaceHTML("workspace-editor-target")})` : "<!-- workspace editor not resolved -->"}
         ${layout.contentStrategy.git ? ` 🌲 ${gitBranch}` : "<!-- not in Git work tree -->"}
-        <script>
-          if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
-            const htmlDataSet = document.documentElement.dataset;
-            if(htmlDataSet.rfOriginLayoutSrc) {
-              document.write(\`<p title="\${htmlDataSet.rfOriginLayoutSrc}" class="localhost-diags">
-              Using layout <code class="localhost-diags-layout-origin">\${htmlDataSet.rfOriginLayoutName}</code>
-              (<code class="localhost-diags-layout-origin">\${htmlDataSet.rfOriginLayoutSymbol}</code>) in
-              <code class="localhost-diags-layout-origin-src">\${htmlDataSet.rfOriginLayoutSrc.split('/').reverse()[0]}</code></p>\`);
-            } else {
-              document.write(\`<p title="\${htmlDataSet.rfOriginLayoutSrc}" class="localhost-diags localhost-diags-warning">No layout information in <code>&lt;html data-rf-origin-layout-*&gt;</code></p>\`);
-            }
-            document.write('<div id="live-reload-message-container">Live Reload Not Enabled</div>'); <!-- will be replaced by proper message if enabled -->
-            document.write('<div><a href="/experimental-server/console/" target="experimental-server-console">Open Resource Factory Console</a></div>');
-          }
-        </script>
+        <div id="rf-universal-footer-experimental-server-workspace" style="display:none">Should only be displayed and dynamically populated if running in "experimental server" operational context.</div>
         </p>
       </article>
     </div>

@@ -44,6 +44,15 @@ export const clientCargoPartial: ldsGovn.LightningPartial = (layout) => {
         );
       }
     };
+
+    // useful if layout information is required from other windows
+    window.${layout.windowTerminalRoutePropertyName} = ${layout.clientCargoPropertyName}.route.terminal;
+    window.${layout.windowClientCargoPropertyName} = ${layout.clientCargoPropertyName};
+
+    // if we're running in a special "workspace" (IDE-like, e.g. VS Code) operational context let's provision ourself
+    if(window.${layout.windowOperationalCtxPropertyName} && window.${layout.windowOperationalCtxPropertyName}.workspace) {
+      window.${layout.windowOperationalCtxPropertyName}.workspace.provision(${layout.clientCargoPropertyName});
+    }
     </script>`;
 };
 
@@ -65,7 +74,9 @@ ${layout.contributions.head.contributions("fore").contributions.join("\n")}
      and dependency manager. You should use this instead of <script> tags.
      TODO: consider https://addyosmani.com/basket.js/ as well -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
-<script src="${layout.contentStrategy.assets.uScript("/typical.js")}"></script>
+<script src="${layout.contentStrategy.assets.operationalCtx("/server.js")}"></script>
+<script src="${layout.contentStrategy.assets.uScript("/universal.js")}"></script>
+<script src="${layout.contentStrategy.assets.uScript("/typical.js")}"></script> <!-- TODO: merge typical.js with universal.js? -->
 <script src="${layout.contentStrategy.assets.dsScript("/lightning.js")}"></script>
 ${dia.clientDiagramsContributionsPartial(layout)}
 ${ext.clientExtensionsContributionsPartial(layout)}

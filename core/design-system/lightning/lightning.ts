@@ -68,6 +68,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   constructor(
     readonly extnManager: govn.ExtensionsManager,
     readonly universalAssetsBaseURL: string,
+    readonly operationalCtxBaseURL: string,
     readonly emptyContentModelLayoutSS:
       & govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier>
       & govn.ModelLayoutStrategySupplier<Layout, govn.HtmlSupplier> = {
@@ -82,6 +83,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       new LightingDesignSystemLayouts(),
       "/lightning",
       universalAssetsBaseURL,
+      operationalCtxBaseURL,
     );
     this.directives.push(
       new direc.ProxiedContentInfuseInterpolateDirective(this.extnManager),
@@ -172,11 +174,17 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
           activeRoute,
           activeTreeNode,
           clientCargoPropertyName: "clientLayout",
+          windowClientCargoPropertyName: "rfCientLayout",
+          windowOperationalCtxPropertyName: "rfOperationalCtx",
+          windowTerminalRoutePropertyName: "rfTerminalRoute",
           origin: html.htmlLayoutOriginDataAttrs,
           ...layoutArgs,
         })
         : this.contributions(),
       clientCargoPropertyName: "clientLayout",
+      windowClientCargoPropertyName: "rfCientLayout",
+      windowOperationalCtxPropertyName: "rfOperationalCtx",
+      windowTerminalRoutePropertyName: "rfTerminalRoute",
       origin: html.htmlLayoutOriginDataAttrs,
       ...layoutArgs,
     };

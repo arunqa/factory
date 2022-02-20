@@ -22,6 +22,9 @@ export interface HtmlLayoutClientCargoValueSupplier {
 
 export interface HtmlLayoutClientCargoSupplier {
   readonly clientCargoPropertyName: string;
+  readonly windowClientCargoPropertyName: string;
+  readonly windowTerminalRoutePropertyName: string;
+  readonly windowOperationalCtxPropertyName: string;
 }
 
 export interface HtmlLayoutContributions {

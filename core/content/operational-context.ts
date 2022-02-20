@@ -1,8 +1,8 @@
 import * as govn from "../../governance/mod.ts";
 
-const controlPanelRouteUnit: govn.RouteUnit = {
-  unit: "control-panel",
-  label: "Control Panel",
+const operationalCtxRouteUnit: govn.RouteUnit = {
+  unit: "operational-context",
+  label: "Operational Context",
 };
 
 const observabilityUnitName = "observability";
@@ -18,12 +18,12 @@ const diagnosticsRouteUnit: govn.RouteUnit = {
 };
 
 const observabilityRouteUnits: govn.RouteUnits = {
-  units: [controlPanelRouteUnit, observabilityRouteUnit],
+  units: [operationalCtxRouteUnit, observabilityRouteUnit],
   terminal: observabilityRouteUnit,
 };
 
 const diagnosticsRouteUnits: govn.RouteUnits = {
-  units: [controlPanelRouteUnit, diagnosticsRouteUnit],
+  units: [operationalCtxRouteUnit, diagnosticsRouteUnit],
   terminal: diagnosticsRouteUnit,
 };
 
@@ -36,12 +36,16 @@ const diagnosticsObsRedirectRouteTerminal: govn.RouteUnit = {
 
 const diagnosticsObsRedirectRouteUnits: govn.RouteUnits = {
   units: [
-    controlPanelRouteUnit,
+    operationalCtxRouteUnit,
     diagnosticsRouteUnit,
     diagnosticsObsRedirectRouteTerminal,
   ],
   terminal: diagnosticsObsRedirectRouteTerminal,
 };
+
+export function operationalCtxRoute(rf: govn.RouteFactory): govn.Route {
+  return rf.route(operationalCtxRouteUnit);
+}
 
 export function observabilityRoute(rf: govn.RouteFactory): govn.Route {
   return rf.route(observabilityRouteUnits);
