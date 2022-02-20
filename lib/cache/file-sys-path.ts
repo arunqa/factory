@@ -122,7 +122,8 @@ export abstract class ProxyableFileSysDirectory<OriginContext> {
     }
   }
 
-  useProxy(fsdpsr: govn.FileSysDirectoryProxyStrategyResult) {
+  useProxy(_fsdpsr: govn.FileSysDirectoryProxyStrategyResult) {
+    // for benefit of subclasses
   }
 
   proxyOriginError(
