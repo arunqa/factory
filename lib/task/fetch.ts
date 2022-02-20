@@ -1,4 +1,4 @@
-import { ioStreamConversion as iosc } from "./deps.ts";
+import { colors, ioStreamConversion as iosc } from "./deps.ts";
 import * as govn from "./governance.ts";
 import * as human from "../text/human.ts";
 
@@ -68,9 +68,11 @@ export const reportDownloadConsole = async (
   });
   const info = Deno.statSync(destFile);
   console.log(
-    `Downloaded ${destFile} (${
+    `Downloaded ${colors.yellow(destFile)} (${
       human.humanFriendlyBytes(info.size)
-    }) from ${srcEndpoint} (in ${measure.duration} ms)`,
+    }) from ${
+      colors.brightCyan(srcEndpoint)
+    } (in ${measure.duration.toFixed()} ms)`,
   );
 };
 
