@@ -129,6 +129,19 @@ export class WorkspaceMiddlewareSupplier {
       );
     // deno-lint-ignore require-await
     contentRootPathEE.on("modify", async (modified) => {
+      if (modified.endsWith(".ts")) {
+        console.info(
+          colors.magenta(
+            `*** ${
+              colors.yellow(relWatchPath(modified))
+            } script file change detected ***`,
+          ),
+          colors.yellow(
+            colors.underline("pubctl.ts (hot reload) server restart required"),
+          ),
+        );
+        return;
+      }
       this.tunnel.emitSync(
         "fileImpact",
         this.config.fsEntryPublicationURL(modified) ??
@@ -143,14 +156,18 @@ export class WorkspaceMiddlewareSupplier {
     contentRootPathEE.on("create", async (created) => {
       console.log(
         colors.magenta(`*** ${relWatchPath(created)} created ***`),
-        colors.yellow(colors.underline("server restarted required")),
+        colors.yellow(
+          colors.underline("pubctl.ts (hot reload) server restart required"),
+        ),
       );
     });
     // deno-lint-ignore require-await
     contentRootPathEE.on("remove", async (deleted) => {
       console.log(
         colors.magenta(`*** ${relWatchPath(deleted)} deleted ***`),
-        colors.yellow(colors.underline("server restarted required")),
+        colors.yellow(
+          colors.underline("pubctl.ts (hot reload) server restart required"),
+        ),
       );
     });
     yield wfs.typicalWatchableFS(contentRootPath, contentRootPathEE);
