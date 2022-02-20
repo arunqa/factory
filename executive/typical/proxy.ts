@@ -12,6 +12,7 @@ import * as pkg from "../../lib/package/mod.ts";
 import * as fsLink from "../../lib/fs/link.ts";
 import * as task from "../../lib/task/mod.ts";
 import * as r from "../../lib/text/readability.ts";
+import "./observability.ts"; // for window.observability global variable
 
 export interface TypicalProxyableFileSysModelArguments<Model, OriginContext>
   extends
@@ -27,6 +28,11 @@ export interface TypicalProxyableFileSysModelArguments<Model, OriginContext>
     > {
   readonly proxyHomePath: string;
   readonly envVarNamesPrefix: string;
+  readonly healthStatus: {
+    componentId: string;
+    category: string;
+    links?: Record<string, string>;
+  };
   readonly modelUnit?: string;
 }
 
@@ -78,17 +84,18 @@ export function typicalProxyableFileSysModel<Model, OriginContext>(
   );
 }
 
-export function typicalProxyableFileSysModelConsoleEmitter<
+export function typicalProxyableFileSysModelHealthStatusEmitter<
   Model,
   OriginContext,
 >(
   args: TypicalProxyableFileSysModelArguments<Model, OriginContext>,
 ): cache.ProxyableModel<Model> {
   return cache.proxyableMemoryFirstFileSysModel<Model, OriginContext>(
-    typicalProxyableFileSysConsoleEmitterArguments<Model, OriginContext>(
+    typicalProxyableFileSysHealthStatusEmitterArguments<Model, OriginContext>(
       {
         ...typicalProxyableFileSysModelArguments(args),
         envVarNamesPrefix: args.envVarNamesPrefix,
+        healthStatus: args.healthStatus,
       },
     ),
   );
@@ -97,12 +104,17 @@ export function typicalProxyableFileSysModelConsoleEmitter<
 // A "syncable asset" is a local file ("asset") which has a default version in
 // the Git repo is a proxied cache for a canonical version somewhere else.
 
-export function typicalProxyableFileSysConsoleEmitterArguments<
+export function typicalProxyableFileSysHealthStatusEmitterArguments<
   Model,
   OriginContext,
 >(
   pmfsa: cache.ProxyableFileSysModelArguments<Model, OriginContext> & {
     readonly envVarNamesPrefix: string;
+    readonly healthStatus: {
+      componentId: string;
+      category: string;
+      links?: Record<string, string>;
+    };
   },
 ): cache.ProxyableFileSysModelArguments<Model, OriginContext> {
   const relFilePath = (fsrpsr: cache.FileSysModelProxyStrategyResult) => {
@@ -129,10 +141,11 @@ export function typicalProxyableFileSysConsoleEmitterArguments<
           links?: Record<string, string>,
         ): Omit<h.HealthyServiceHealthComponentStatus, "status"> => {
           return {
-            componentId: pmfsa.envVarNamesPrefix,
+            componentId: pmfsa.healthStatus.componentId,
             componentType: "component",
             links: {
               module: import.meta.url,
+              ...pmfsa.healthStatus.links,
               ...links,
             },
             time: new Date(),
@@ -164,7 +177,7 @@ export function typicalProxyableFileSysConsoleEmitterArguments<
           });
         }
         yield {
-          category: "typicalProxyableFileSysModel",
+          category: pmfsa.healthStatus.category,
           status: status ||
             h.unhealthyComponent("fail", {
               ...result.obsHealthComponentStatus.provenance(),
@@ -228,78 +241,78 @@ export function typicalProxyableFileSysConsoleEmitterArguments<
     window.observability.events.emit("healthStatusSupplier", result);
   } else {
     console.warn(
-      `window.observability not available, typicalProxyableFileSysConsoleEmitterArguments healthStatusSupplier not set`,
+      `window.observability not available, typicalProxyableFileSysHealthStatusEmitterArguments healthStatusSupplier not set`,
     );
   }
   return result;
 }
 
-// export function typicalProxyableFileSysConsoleEmitterArguments<
-//   Model,
-//   OriginContext,
-// >(
-//   pmfsa: cache.ProxyableFileSysModelArguments<Model, OriginContext> & {
-//     readonly envVarNamesPrefix: string;
-//   },
-// ): cache.ProxyableFileSysModelArguments<Model, OriginContext> {
-//   if (window.disableAllProxies) {
-//     return pmfsa;
-//   }
-//   const config = new conf.TypicalEnvArgumentsConfiguration<
-//     { verbose: boolean }
-//   >(
-//     () => ({ verbose: false }),
-//     (ec) => ({ properties: [ec.booleanProperty("verbose")] }),
-//     pmfsa.envVarNamesPrefix,
-//   );
-//   const envVars = config.configureSync();
-//   if (envVars.verbose) {
-//     console.log(
-//       colors.brightBlue(
-//         `${pmfsa.envVarNamesPrefix}VERBOSE ${
-//           colors.gray("(typicalProxyableFileSysConsoleEmitterArguments)")
-//         }`,
-//       ),
-//     );
-//     const relFilePath = (fsrpsr: cache.FileSysModelProxyStrategyResult) => {
-//       return path.isAbsolute(fsrpsr.proxyFilePathAndName)
-//         ? path.relative(Deno.cwd(), fsrpsr.proxyFilePathAndName)
-//         : fsrpsr.proxyFilePathAndName;
-//     };
-//     return {
-//       ...pmfsa,
-//       // configState is optional so only wrap the function if it's defined
-//       configState: pmfsa.configState
-//         ? (async () => {
-//           const state = await pmfsa.configState!();
-//           if (!state.isConfigured) {
-//             // deno-fmt-ignore
-//             console.info(colors.brightRed(`Unable to originate ${colors.brightCyan(pmfsa.proxyFilePathAndName)}, proxy env vars not configured (using stale data)`));
-//           }
-//           return state;
-//         })
-//         : undefined,
-//       constructFromOrigin: (oc, fsrpsr, args) => {
-//         // deno-fmt-ignore
-//         console.info(colors.cyan(`Acquiring ${colors.brightCyan(relFilePath(fsrpsr))} from origin: ${fsrpsr.proxyRemarks}`));
-//         return pmfsa.constructFromOrigin(oc, fsrpsr, args);
-//       },
-//       constructFromCachedProxy: (state, args) => {
-//         // deno-fmt-ignore
-//         console.info(colors.gray(`Using cached content: ${relFilePath(state.proxyStrategyResult)} (${state.proxyStrategyResult.proxyRemarks})`));
-//         return pmfsa.constructFromCachedProxy(state, args);
-//       },
-//       constructFromError: (issue, cachedProxy, args) => {
-//         // deno-fmt-ignore
-//         console.info(colors.red(`Error encountered, ${cachedProxy ? `proxy available`: 'proxy not available'} ${colors.gray(`(check operational-context/observability/health.json for diagnostics)`)}`));
-//         return pmfsa.constructFromError(issue, cachedProxy, args);
-//       },
-//     };
-//   } else {
-//     console.info(colors.gray(`${pmfsa.envVarNamesPrefix}VERBOSE is not set`));
-//   }
-//   return pmfsa;
-// }
+export function typicalProxyableFileSysConsoleEmitterArguments<
+  Model,
+  OriginContext,
+>(
+  pmfsa: cache.ProxyableFileSysModelArguments<Model, OriginContext> & {
+    readonly envVarNamesPrefix: string;
+  },
+): cache.ProxyableFileSysModelArguments<Model, OriginContext> {
+  if (window.disableAllProxies) {
+    return pmfsa;
+  }
+  const config = new conf.TypicalEnvArgumentsConfiguration<
+    { verbose: boolean }
+  >(
+    () => ({ verbose: false }),
+    (ec) => ({ properties: [ec.booleanProperty("verbose")] }),
+    pmfsa.envVarNamesPrefix,
+  );
+  const envVars = config.configureSync();
+  if (envVars.verbose) {
+    console.log(
+      colors.brightBlue(
+        `${pmfsa.envVarNamesPrefix}VERBOSE ${
+          colors.gray("(typicalProxyableFileSysConsoleEmitterArguments)")
+        }`,
+      ),
+    );
+    const relFilePath = (fsrpsr: cache.FileSysModelProxyStrategyResult) => {
+      return path.isAbsolute(fsrpsr.proxyFilePathAndName)
+        ? path.relative(Deno.cwd(), fsrpsr.proxyFilePathAndName)
+        : fsrpsr.proxyFilePathAndName;
+    };
+    return {
+      ...pmfsa,
+      // configState is optional so only wrap the function if it's defined
+      configState: pmfsa.configState
+        ? (async () => {
+          const state = await pmfsa.configState!();
+          if (!state.isConfigured) {
+            // deno-fmt-ignore
+            console.info(colors.brightRed(`Unable to originate ${colors.brightCyan(pmfsa.proxyFilePathAndName)}, proxy env vars not configured (using stale data)`));
+          }
+          return state;
+        })
+        : undefined,
+      constructFromOrigin: (oc, fsrpsr, args) => {
+        // deno-fmt-ignore
+        console.info(colors.cyan(`Acquiring ${colors.brightCyan(relFilePath(fsrpsr))} from origin: ${fsrpsr.proxyRemarks}`));
+        return pmfsa.constructFromOrigin(oc, fsrpsr, args);
+      },
+      constructFromCachedProxy: (state, args) => {
+        // deno-fmt-ignore
+        console.info(colors.gray(`Using cached content: ${relFilePath(state.proxyStrategyResult)} (${state.proxyStrategyResult.proxyRemarks})`));
+        return pmfsa.constructFromCachedProxy(state, args);
+      },
+      constructFromError: (issue, cachedProxy, args) => {
+        // deno-fmt-ignore
+        console.info(colors.red(`Error encountered, ${cachedProxy ? `proxy available`: 'proxy not available'} ${colors.gray(`(check operational-context/observability/health.json for diagnostics)`)}`));
+        return pmfsa.constructFromError(issue, cachedProxy, args);
+      },
+    };
+  } else {
+    console.info(colors.gray(`${pmfsa.envVarNamesPrefix}VERBOSE is not set`));
+  }
+  return pmfsa;
+}
 
 export const typicalSyncableAssetEnvVarNamesPrefix = `SYNCABLE_ASSETS_PROXY_`;
 
@@ -314,6 +327,11 @@ export interface TypicalSyncableAssetArguments extends
   > {
   readonly assetPath: string;
   readonly envVarNamesPrefix?: string;
+  readonly healthStatus: {
+    componentId: string;
+    category: string;
+    links?: Record<string, string>;
+  };
 }
 
 function typicalSyncableAssetArguments(
@@ -352,11 +370,12 @@ export function typicalSyncableAssetConsoleEmitter(
   args: TypicalSyncableAssetArguments,
 ): cache.ProxyableModel<string> {
   return cache.proxyableMemoryFirstFileSysModel(
-    typicalProxyableFileSysConsoleEmitterArguments<string, boolean>(
+    typicalProxyableFileSysHealthStatusEmitterArguments<string, boolean>(
       {
         ...typicalSyncableAssetArguments(args),
         envVarNamesPrefix: args.envVarNamesPrefix ||
           typicalSyncableAssetEnvVarNamesPrefix,
+        healthStatus: args.healthStatus,
       },
     ),
   );
@@ -443,6 +462,11 @@ export function typicalSyncableReadableAssetsModuleConstructor(
                     },
                   );
                   return destPath;
+                },
+                healthStatus: {
+                  componentId: `${readable.assetPath} ${readable.assetName}`,
+                  category: "Syncable Readable Assets",
+                  links: { ...readable },
                 },
               })
             ).value()();
