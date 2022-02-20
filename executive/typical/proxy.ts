@@ -4,6 +4,8 @@ import * as fs from "https://deno.land/std@0.123.0/fs/mod.ts";
 import * as cache from "../../lib/cache/mod.ts";
 import * as conf from "../../lib/conf/mod.ts";
 import * as s from "../../lib/singleton.ts";
+import * as h from "../../lib/health/mod.ts";
+import * as rfGovn from "../../governance/mod.ts";
 import * as rfStd from "../../core/std/mod.ts";
 import * as mr from "../../core/resource/module/module.ts";
 import * as pkg from "../../lib/package/mod.ts";
@@ -103,64 +105,201 @@ export function typicalProxyableFileSysConsoleEmitterArguments<
     readonly envVarNamesPrefix: string;
   },
 ): cache.ProxyableFileSysModelArguments<Model, OriginContext> {
-  if (window.disableAllProxies) {
-    return pmfsa;
-  }
-  const config = new conf.TypicalEnvArgumentsConfiguration<
-    { verbose: boolean }
-  >(
-    () => ({ verbose: false }),
-    (ec) => ({ properties: [ec.booleanProperty("verbose")] }),
-    pmfsa.envVarNamesPrefix,
-  );
-  const envVars = config.configureSync();
-  if (envVars.verbose) {
-    console.log(
-      colors.brightBlue(
-        `${pmfsa.envVarNamesPrefix}VERBOSE ${
-          colors.gray("(typicalProxyableFileSysConsoleEmitterArguments)")
-        }`,
-      ),
-    );
-    const relFilePath = (fsrpsr: cache.FileSysModelProxyStrategyResult) => {
-      return path.isAbsolute(fsrpsr.proxyFilePathAndName)
-        ? path.relative(Deno.cwd(), fsrpsr.proxyFilePathAndName)
-        : fsrpsr.proxyFilePathAndName;
-    };
-    return {
-      ...pmfsa,
-      // configState is optional so only wrap the function if it's defined
-      configState: pmfsa.configState
-        ? (async () => {
-          const state = await pmfsa.configState!();
-          if (!state.isConfigured) {
-            // deno-fmt-ignore
-            console.info(colors.brightRed(`Unable to originate ${colors.brightCyan(pmfsa.proxyFilePathAndName)}, proxy env vars not configured (using stale data)`));
+  const relFilePath = (fsrpsr: cache.FileSysModelProxyStrategyResult) => {
+    return path.isAbsolute(fsrpsr.proxyFilePathAndName)
+      ? path.relative(Deno.cwd(), fsrpsr.proxyFilePathAndName)
+      : fsrpsr.proxyFilePathAndName;
+  };
+  const result:
+    & cache.ProxyableFileSysModelArguments<Model, OriginContext>
+    & rfGovn.ObservabilityHealthComponentStatusSupplier
+    & {
+      obsHealthComponentStatus: {
+        evaluated: boolean;
+        state?: h.ServiceHealthComponentStatus;
+        provenance: (
+          links?: Record<string, string>,
+        ) => Omit<h.HealthyServiceHealthComponentStatus, "status">;
+      };
+    } = {
+      obsHealthComponentStatus: {
+        evaluated: false,
+        state: undefined,
+        provenance: (
+          links?: Record<string, string>,
+        ): Omit<h.HealthyServiceHealthComponentStatus, "status"> => {
+          return {
+            componentId: pmfsa.envVarNamesPrefix,
+            componentType: "component",
+            links: {
+              module: import.meta.url,
+              ...links,
+            },
+            time: new Date(),
+          };
+        },
+      },
+      obsHealthStatus: async function* () {
+        let status: h.ServiceHealthComponentStatus | undefined;
+        if (result.obsHealthComponentStatus.evaluated) {
+          if (result.configState) {
+            const state = await result.configState();
+            if (!state.isConfigured) {
+              status = h.unhealthyComponent("warn", {
+                ...result.obsHealthComponentStatus.provenance(),
+                // deno-fmt-ignore
+                output: `Unable to originate ${pmfsa.proxyFilePathAndName}, proxy env vars not configured (using stale data)`,
+              });
+            }
           }
-          return state;
-        })
-        : undefined,
+          if (!status) {
+            // assume that by now the proxy has been executed
+            status = result.obsHealthComponentStatus.state;
+          }
+        } else {
+          status = h.unhealthyComponent("warn", {
+            ...result.obsHealthComponentStatus.provenance(),
+            // deno-fmt-ignore
+            output: `Unable to establish health of ${pmfsa.proxyFilePathAndName}, obsHealthStatus was executed before obsHealthComponentStatus.evaluated was set`,
+          });
+        }
+        yield {
+          category: "typicalProxyableFileSysModel",
+          status: status ||
+            h.unhealthyComponent("fail", {
+              ...result.obsHealthComponentStatus.provenance(),
+              output: "indeterminate",
+            }),
+        };
+      },
+      ...pmfsa,
       constructFromOrigin: (oc, fsrpsr, args) => {
-        // deno-fmt-ignore
-        console.info(colors.cyan(`Acquiring ${colors.brightCyan(relFilePath(fsrpsr))} from origin: ${fsrpsr.proxyRemarks}`));
+        result.obsHealthComponentStatus.evaluated = true;
+        result.obsHealthComponentStatus.state = h.healthyComponent(
+          result.obsHealthComponentStatus.provenance({
+            action: "acquired",
+            target: relFilePath(fsrpsr),
+            remarks: fsrpsr.proxyRemarks,
+          }),
+        );
         return pmfsa.constructFromOrigin(oc, fsrpsr, args);
       },
       constructFromCachedProxy: (state, args) => {
-        // deno-fmt-ignore
-        console.info(colors.gray(`Using cached content: ${relFilePath(state.proxyStrategyResult)} (${state.proxyStrategyResult.proxyRemarks})`));
+        // `Using cached content: ${relFilePath(state.proxyStrategyResult)} (${state.proxyStrategyResult.proxyRemarks})`
+        result.obsHealthComponentStatus.evaluated = true;
+        result.obsHealthComponentStatus.state = h.healthyComponent(
+          result.obsHealthComponentStatus.provenance({
+            action: "used-cached",
+            strategy: relFilePath(state.proxyStrategyResult),
+            remarks: state.proxyStrategyResult.proxyRemarks,
+          }),
+        );
         return pmfsa.constructFromCachedProxy(state, args);
       },
       constructFromError: (issue, cachedProxy, args) => {
-        // deno-fmt-ignore
-        console.info(colors.red(`Error encountered, ${cachedProxy ? `proxy available`: 'proxy not available'} ${colors.gray(`(check control-panel/observability/health.json for diagnostics)`)}`));
+        result.obsHealthComponentStatus.evaluated = true;
+        if (cachedProxy) {
+          result.obsHealthComponentStatus.state = h.unhealthyComponent(
+            "warn",
+            {
+              ...result.obsHealthComponentStatus.provenance({
+                "proxy-available": "yes",
+                diagnostics: JSON.stringify(issue),
+              }),
+              output: issue.proxyStrategyResult.proxyRemarks,
+            },
+          );
+        } else {
+          result.obsHealthComponentStatus.state = h.unhealthyComponent(
+            "fail",
+            {
+              ...result.obsHealthComponentStatus.provenance({
+                "proxy-available": "no",
+                diagnostics: JSON.stringify(issue),
+              }),
+              output: issue.proxyStrategyResult.proxyRemarks,
+            },
+          );
+        }
         return pmfsa.constructFromError(issue, cachedProxy, args);
       },
     };
+  if (window.observability) {
+    window.observability.events.emit("healthStatusSupplier", result);
   } else {
-    console.info(colors.gray(`${pmfsa.envVarNamesPrefix}VERBOSE is not set`));
+    console.warn(
+      `window.observability not available, typicalProxyableFileSysConsoleEmitterArguments healthStatusSupplier not set`,
+    );
   }
-  return pmfsa;
+  return result;
 }
+
+// export function typicalProxyableFileSysConsoleEmitterArguments<
+//   Model,
+//   OriginContext,
+// >(
+//   pmfsa: cache.ProxyableFileSysModelArguments<Model, OriginContext> & {
+//     readonly envVarNamesPrefix: string;
+//   },
+// ): cache.ProxyableFileSysModelArguments<Model, OriginContext> {
+//   if (window.disableAllProxies) {
+//     return pmfsa;
+//   }
+//   const config = new conf.TypicalEnvArgumentsConfiguration<
+//     { verbose: boolean }
+//   >(
+//     () => ({ verbose: false }),
+//     (ec) => ({ properties: [ec.booleanProperty("verbose")] }),
+//     pmfsa.envVarNamesPrefix,
+//   );
+//   const envVars = config.configureSync();
+//   if (envVars.verbose) {
+//     console.log(
+//       colors.brightBlue(
+//         `${pmfsa.envVarNamesPrefix}VERBOSE ${
+//           colors.gray("(typicalProxyableFileSysConsoleEmitterArguments)")
+//         }`,
+//       ),
+//     );
+//     const relFilePath = (fsrpsr: cache.FileSysModelProxyStrategyResult) => {
+//       return path.isAbsolute(fsrpsr.proxyFilePathAndName)
+//         ? path.relative(Deno.cwd(), fsrpsr.proxyFilePathAndName)
+//         : fsrpsr.proxyFilePathAndName;
+//     };
+//     return {
+//       ...pmfsa,
+//       // configState is optional so only wrap the function if it's defined
+//       configState: pmfsa.configState
+//         ? (async () => {
+//           const state = await pmfsa.configState!();
+//           if (!state.isConfigured) {
+//             // deno-fmt-ignore
+//             console.info(colors.brightRed(`Unable to originate ${colors.brightCyan(pmfsa.proxyFilePathAndName)}, proxy env vars not configured (using stale data)`));
+//           }
+//           return state;
+//         })
+//         : undefined,
+//       constructFromOrigin: (oc, fsrpsr, args) => {
+//         // deno-fmt-ignore
+//         console.info(colors.cyan(`Acquiring ${colors.brightCyan(relFilePath(fsrpsr))} from origin: ${fsrpsr.proxyRemarks}`));
+//         return pmfsa.constructFromOrigin(oc, fsrpsr, args);
+//       },
+//       constructFromCachedProxy: (state, args) => {
+//         // deno-fmt-ignore
+//         console.info(colors.gray(`Using cached content: ${relFilePath(state.proxyStrategyResult)} (${state.proxyStrategyResult.proxyRemarks})`));
+//         return pmfsa.constructFromCachedProxy(state, args);
+//       },
+//       constructFromError: (issue, cachedProxy, args) => {
+//         // deno-fmt-ignore
+//         console.info(colors.red(`Error encountered, ${cachedProxy ? `proxy available`: 'proxy not available'} ${colors.gray(`(check operational-context/observability/health.json for diagnostics)`)}`));
+//         return pmfsa.constructFromError(issue, cachedProxy, args);
+//       },
+//     };
+//   } else {
+//     console.info(colors.gray(`${pmfsa.envVarNamesPrefix}VERBOSE is not set`));
+//   }
+//   return pmfsa;
+// }
 
 export const typicalSyncableAssetEnvVarNamesPrefix = `SYNCABLE_ASSETS_PROXY_`;
 

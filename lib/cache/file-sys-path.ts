@@ -97,7 +97,10 @@ export abstract class ProxyableFileSysDirectory<OriginContext> {
     fsdpsr: govn.FileSysDirectoryProxyStrategyResult,
   ): Promise<OriginContext | false>;
 
-  abstract constructFromOrigin(ctx: OriginContext): Promise<void>;
+  abstract constructFromOrigin(
+    ctx: OriginContext,
+    fsdpsr: govn.FileSysDirectoryProxyStrategyResult,
+  ): Promise<void>;
 
   relativePath(newPath: string): string {
     return path.join(this.proxyPath, newPath);
@@ -119,6 +122,18 @@ export abstract class ProxyableFileSysDirectory<OriginContext> {
     }
   }
 
+  useProxy(fsdpsr: govn.FileSysDirectoryProxyStrategyResult) {
+  }
+
+  proxyOriginError(
+    error: Error,
+    fsdpsr: govn.FileSysDirectoryProxyStrategyResult,
+  ) {
+    if (this.fsdpEE) {
+      this.fsdpEE.emitSync("constructOriginError", fsdpsr, error);
+    }
+  }
+
   async prepareDirectory(): Promise<void> {
     const fsdpsr = await this.proxyStrategy(this.proxyPath);
     const fsdpEE = this.fsdpEE;
@@ -129,16 +144,14 @@ export abstract class ProxyableFileSysDirectory<OriginContext> {
         if (po) {
           // if no `stat` path does not exist
           if (fsdpsr.proxyPathInfo) this.removeProxyPath(fsdpsr.proxyPathInfo);
-          await this.constructFromOrigin(po);
+          await this.constructFromOrigin(po, fsdpsr);
           if (fsdpEE) fsdpEE.emit("constructOrigin", this.proxyPath);
         }
-      } catch (proxyOriginError) {
-        if (fsdpEE) {
-          fsdpEE.emitSync("constructOriginError", fsdpsr, proxyOriginError);
-        } else {
-          console.error(proxyOriginError);
-        }
+      } catch (error) {
+        this.proxyOriginError(error, fsdpsr);
       }
+    } else {
+      this.useProxy(fsdpsr);
     }
   }
 }
