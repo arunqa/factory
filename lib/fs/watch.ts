@@ -1,10 +1,18 @@
 import * as events from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.3/mod.ts";
 
+export interface FsWatchEvent {
+  readonly path: string;
+  readonly fsEventIndex: number;
+  readonly pathIndex: number;
+  readonly fsEvent: Deno.FsEvent;
+  readonly watcher: Deno.FsWatcher;
+}
+
 export class WatchableFileSysEventEmitter extends events.EventEmitter<{
-  create(path: string, fse: Deno.FsEvent, w: Deno.FsWatcher): Promise<void>;
-  modify(path: string, fse: Deno.FsEvent, w: Deno.FsWatcher): Promise<void>;
-  remove(path: string, fse: Deno.FsEvent, w: Deno.FsWatcher): Promise<void>;
-  impacted(path: string, fse: Deno.FsEvent, w: Deno.FsWatcher): Promise<void>;
+  create(event: FsWatchEvent): Promise<void>;
+  modify(event: FsWatchEvent): Promise<void>;
+  remove(event: FsWatchEvent): Promise<void>;
+  impacted(event: FsWatchEvent): Promise<void>;
 }> {}
 
 export interface WatchableFileSysPath {
@@ -14,11 +22,7 @@ export interface WatchableFileSysPath {
     event: Deno.FsEvent,
     watcher: Deno.FsWatcher,
   ) => Promise<number>;
-  readonly onEvent: (
-    path: string,
-    event: Deno.FsEvent,
-    watcher: Deno.FsWatcher,
-  ) => Promise<void>;
+  readonly onEvent: (event: FsWatchEvent) => Promise<void>;
 }
 
 export function typicalWatchableFS(
@@ -26,34 +30,45 @@ export function typicalWatchableFS(
   wfsEE: WatchableFileSysEventEmitter,
   options?: Partial<Omit<WatchableFileSysPath, "path">>,
 ): WatchableFileSysPath {
+  let fsEventIndex = 0;
+  let pathIndex = 0;
   const result: WatchableFileSysPath = {
     path: absPath,
     identity: options?.identity,
-    trigger: async (event, watcher) => {
-      let count = 0;
-      for (const p of event.paths) {
-        if (p.startsWith(absPath)) {
-          await result.onEvent(p, event, watcher);
-          count++;
+    trigger: async (fsEvent, watcher) => {
+      fsEventIndex++;
+
+      for (const path of fsEvent.paths) {
+        if (path.startsWith(absPath)) {
+          await result.onEvent({
+            path,
+            fsEventIndex,
+            pathIndex,
+            fsEvent,
+            watcher,
+          });
+          pathIndex++;
         }
       }
-      return count;
+
+      return fsEvent.paths.length;
     },
-    onEvent: options?.onEvent ? options?.onEvent : async (path, fse, w) => {
+    onEvent: options?.onEvent ? options?.onEvent : async (event) => {
+      const fse = event.fsEvent;
       switch (fse.kind) {
         case "create":
-          await wfsEE.emit("impacted", path, fse, w);
-          await wfsEE.emit("create", path, fse, w);
+          await wfsEE.emit("impacted", event);
+          await wfsEE.emit("create", event);
           break;
 
         case "modify":
-          await wfsEE.emit("impacted", path, fse, w);
-          await wfsEE.emit("modify", path, fse, w);
+          await wfsEE.emit("impacted", event);
+          await wfsEE.emit("modify", event);
           break;
 
         case "remove":
-          await wfsEE.emit("impacted", path, fse, w);
-          await wfsEE.emit("remove", path, fse, w);
+          await wfsEE.emit("impacted", event);
+          await wfsEE.emit("remove", event);
           break;
       }
     },

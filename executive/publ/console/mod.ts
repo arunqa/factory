@@ -169,7 +169,7 @@ export class ConsoleMiddlewareSupplier {
     const relWatchPath = (target: string) =>
       path.relative(this.contentHome, target);
     // deno-lint-ignore require-await
-    contentRootPathEE.on("impacted", async (modified) => {
+    contentRootPathEE.on("impacted", async ({ path: modified }) => {
       this.tunnel.emit("reloadConsole");
       // deno-fmt-ignore
       console.info(colors.magenta(`*** ${colors.yellow(relWatchPath(modified))} impacted *** ${colors.gray(`${this.tunnel.connections.length} browser tab refresh requests sent`)}`));

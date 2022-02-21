@@ -1,17 +1,11 @@
 import { colors, events, log, path } from "../../core/deps.ts";
-import { oak } from "./deps.ts";
+import { async, oak } from "./deps.ts";
 import * as rfStd from "../../core/std/mod.ts";
 import * as p from "./publication.ts";
 import * as wfs from "../../lib/fs/watch.ts";
 import * as s from "./static.ts";
 import * as c from "./console/mod.ts";
 import * as ws from "./workspace.ts";
-
-// export interface PublicationServerContext {
-//   readonly iterationCount: number;
-//   readonly staticAssetsHome: string;
-//   readonly isLiveReloadRequest: boolean;
-// }
 
 export interface PublicationServerAccessContext
   extends p.PublicationOperationalContext {
@@ -355,7 +349,10 @@ export class PublicationServer {
 
       const [watchFSs, watcher] = await this.fileWatchers(this.serverEE);
       for await (const event of watcher) {
-        watchFSs.forEach(async (wfs) => await wfs.trigger(event, watcher));
+        const debounce = async.debounce((event: Deno.FsEvent) => {
+          watchFSs.forEach(async (wfs) => await wfs.trigger(event, watcher));
+        }, 200);
+        debounce(event);
       }
       this.serverEE.emitSync("afterListen", this);
 

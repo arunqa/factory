@@ -127,35 +127,40 @@ export class WorkspaceMiddlewareSupplier {
         contentRootPath,
         target,
       );
-    // deno-lint-ignore require-await
-    contentRootPathEE.on("modify", async (modified) => {
-      if (modified.endsWith(".ts")) {
-        console.info(
-          colors.magenta(
-            `*** ${
-              colors.yellow(relWatchPath(modified))
-            } script file change detected ***`,
-          ),
-          colors.yellow(
-            colors.underline("pubctl.ts (hot reload) server restart required"),
-          ),
+    contentRootPathEE.on(
+      "modify",
+      // deno-lint-ignore require-await
+      async ({ path: modified, pathIndex, fsEventIndex }) => {
+        if (modified.endsWith(".ts")) {
+          console.info(
+            colors.magenta(
+              `*** ${
+                colors.yellow(relWatchPath(modified))
+              } script file change detected (${pathIndex}:${fsEventIndex}) ***`,
+            ),
+            colors.yellow(
+              colors.underline(
+                "pubctl.ts (hot reload) server restart required",
+              ),
+            ),
+          );
+          return;
+        }
+        this.tunnel.emitSync(
+          "fileImpact",
+          this.config.fsEntryPublicationURL(modified) ??
+            this.config.publicURL(),
+          modified,
         );
-        return;
-      }
-      this.tunnel.emitSync(
-        "fileImpact",
-        this.config.fsEntryPublicationURL(modified) ??
-          this.config.publicURL(),
-        modified,
-      );
 
-      // deno-fmt-ignore
-      console.info(colors.magenta(`*** ${colors.yellow(relWatchPath(modified))} file change detected *** ${colors.gray(`${this.tunnel.connections.length || 0} browser tab refresh requests sent`)}`));
-    });
+        // deno-fmt-ignore
+        console.info(colors.magenta(`*** ${colors.yellow(relWatchPath(modified))} file change detected (${pathIndex}:${fsEventIndex}) *** ${colors.gray(`${this.tunnel.connections.length || 0} browser tab refresh requests sent`)}`));
+      },
+    );
     // deno-lint-ignore require-await
     contentRootPathEE.on("create", async (created) => {
       console.log(
-        colors.magenta(`*** ${relWatchPath(created)} created ***`),
+        colors.magenta(`*** ${relWatchPath(created.path)} created ***`),
         colors.yellow(
           colors.underline("pubctl.ts (hot reload) server restart required"),
         ),
@@ -164,7 +169,7 @@ export class WorkspaceMiddlewareSupplier {
     // deno-lint-ignore require-await
     contentRootPathEE.on("remove", async (deleted) => {
       console.log(
-        colors.magenta(`*** ${relWatchPath(deleted)} deleted ***`),
+        colors.magenta(`*** ${relWatchPath(deleted.path)} deleted ***`),
         colors.yellow(
           colors.underline("pubctl.ts (hot reload) server restart required"),
         ),
