@@ -293,7 +293,8 @@ export function typicalPublicationCtlSupplier<
                 if(!window.rfOperationalCtx.isExperimentalOperationalCtx) return;
 
                 document.addEventListener('DOMContentLoaded', function () {
-                  const tunnels = new Tunnels((defaults) => ({ ...defaults, baseURL: '/workspace' })).init();
+                  const statePresentation = new TunnelStatePresentation((defaults) => ({ ...defaults, defaultLabel: 'Hot Reload Page' }));
+                  const tunnels = new Tunnels((defaults) => ({ ...defaults, baseURL: '/workspace', statePresentation })).init();
                   const wsTunnel = tunnels.registerEventSourceState(new EventSourceTunnelState(tunnels, (defaults) => ({
                       ...defaults,
                       identity: () => "Workspace SSE",

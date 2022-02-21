@@ -480,7 +480,6 @@ class EventSourceTunnelState {
 
     // these are only valid after init() has been completed.
     #messageIdentitiesEncountered = {}; // Record<string, { count: number }>
-    #messagesEncountered = 0;
 
     constructor(tunnel, argsSupplier) {
         this.esURL = `${tunnel.baseURL}/sse/tunnel`;
@@ -592,23 +591,12 @@ class EventSourceTunnelState {
                 this.#messageIdentitiesEncountered[identity] = encountered;
             }
             encountered.count++;
-            this.#messagesEncountered++;
 
             const diagnose = options?.diagnose ?? false;
-            this.#messagesEncountered++;
             if (diagnose) {
                 console.info(`[TunnelState] message: ${identity}`, event, encountered);
             }
             callback(event);
-
-            if (this.#statePresentation.isStatisticsPresentationPossible) {
-                this.#statePresentation.update(this, {
-                    enhanceBadgen: (suggested) => {
-                        suggested.status = this.#messagesEncountered.toString();
-                        return suggested;
-                    }
-                });
-            }
         }
         // hang onto the listeners in case we need to reconnect with a new EventSource
         // or if the #eventSource is not ready yet.
