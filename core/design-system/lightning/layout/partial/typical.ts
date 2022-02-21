@@ -74,7 +74,7 @@ ${layout.contributions.head.contributions("fore").contributions.join("\n")}
      and dependency manager. You should use this instead of <script> tags.
      TODO: consider https://addyosmani.com/basket.js/ as well -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
-<script src="${layout.contentStrategy.assets.operationalCtx("/server.js")}"></script>
+<script src="${layout.contentStrategy.assets.operationalCtx("/server.auto.js")}"></script>
 <script src="${layout.contentStrategy.assets.uScript("/universal.js")}"></script>
 <script src="${layout.contentStrategy.assets.uScript("/typical.js")}"></script> <!-- TODO: merge typical.js with universal.js? -->
 <script src="${layout.contentStrategy.assets.dsScript("/lightning.js")}"></script>

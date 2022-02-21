@@ -248,6 +248,9 @@ export function typicalPublicationCtlSupplier<
       Deno.env.get(`${serverListenEnvVarsPrefix}PUBLIC_URL_LOCATION`) ??
         `http://${listenHostname}:${listenPort}`;
 
+    const badgenRemoteBaseURL = Deno.env.get(
+      "RF_UNIVERSAL_BADGEN_REMOTE_BASE_URL",
+    );
     const ocGuess: publ.PublicationOperationalContext = {
       processStartTimestamp,
       isExperimentalOperationalCtx,
@@ -255,7 +258,8 @@ export function typicalPublicationCtlSupplier<
       iterationCount: processIterationCount,
       produceOperationalCtxCargo: async (home) => {
         await Deno.writeTextFile(
-          path.join(home, "server.js"),
+          path.join(home, "server.auto.js"),
+          // deno-fmt-ignore
           whs.unindentWhitespace(`
           const rfOperationalCtx = {
             isExperimentalOperationalCtx: ${isExperimentalOperationalCtx},
@@ -266,14 +270,17 @@ export function typicalPublicationCtlSupplier<
               tunnel: {
                 sseHealthURL: '${publicUrlLocation}' + '/console/sse/ping',
                 sseURL: '${publicUrlLocation}' + '/console/sse/tunnel',
+                badgenRemoteBaseURL: ${badgenRemoteBaseURL ? `'${badgenRemoteBaseURL}'` : "undefined"}, // from env:RF_UNIVERSAL_BADGEN_REMOTE_BASE_URL
               }
             },
             workspace: {
+              baseURL: "/workspace",
               footerContentDomID: "rf-universal-footer-experimental-server-workspace",
               isHotReloadAvailable: true,
               tunnel: {
                 sseHealthURL: '${publicUrlLocation}' + '/workspace/sse/ping',
                 sseURL: '${publicUrlLocation}' + '/workspace/sse/tunnel',
+                badgenRemoteBaseURL: ${badgenRemoteBaseURL ? `'${badgenRemoteBaseURL}'` : "undefined"}, // from env:RF_UNIVERSAL_BADGEN_REMOTE_BASE_URL
                 events: {
                   "workspace.file-impact": function (event) {
                     const payload = JSON.parse(event.data);
@@ -293,8 +300,9 @@ export function typicalPublicationCtlSupplier<
                 if(!window.rfOperationalCtx.isExperimentalOperationalCtx) return;
 
                 document.addEventListener('DOMContentLoaded', function () {
-                  const statePresentation = new TunnelStatePresentation((defaults) => ({ ...defaults, defaultLabel: 'Hot Reload Page' }));
-                  const tunnels = new Tunnels((defaults) => ({ ...defaults, baseURL: '/workspace', statePresentation })).init();
+                  const labeledBadge = new LabeledBadge((defaults) => ({ ...defaults, remoteBaseURL: window.rfOperationalCtx.workspace.tunnel.badgenRemoteBaseURL })).init();
+                  const statePresentation = new TunnelStatePresentation((defaults) => ({ ...defaults, defaultLabel: 'Hot Reload Page', labeledBadge }));
+                  const tunnels = new Tunnels((defaults) => ({ ...defaults, baseURL: window.rfOperationalCtx.workspace.baseURL, statePresentation })).init();
                   const wsTunnel = tunnels.registerEventSourceState(new EventSourceTunnelState(tunnels, (defaults) => ({
                       ...defaults,
                       identity: () => "Workspace SSE",

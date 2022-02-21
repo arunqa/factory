@@ -194,7 +194,7 @@ export interface DesignSystemAssetLocations
   readonly brandStylesheet: DesignSystemAssetLocationSupplier; // white label ("brandable")
   readonly brandComponent: DesignSystemAssetLocationSupplier; // white label ("brandable")
   readonly brandFavIcon: DesignSystemAssetLocationSupplier; // white label ("brandable")
-  readonly operationalCtx: DesignSystemAssetLocationSupplier; // operational context (e.g. server.js)
+  readonly operationalCtx: DesignSystemAssetLocationSupplier; // operational context (e.g. server.auto.js)
 }
 
 // deno-lint-ignore no-empty-interface
