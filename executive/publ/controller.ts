@@ -108,7 +108,7 @@ export class Executive<
           // deno-fmt-ignore
           console.info(`    Serving: ${colors.yellow(this.publication.config.destRootPath)}`);
           // deno-fmt-ignore
-          console.info(`Publication: ${colors.green(this.publication.state.resourcesIndex.resourcesIndex.length.toString())} resources, ${colors.green(this.publication.state.persistedIndex.persistedDestFiles.size.toString())} persisted`);
+          console.info(`Publication: ${colors.green(this.publication.state.resourcesIndex.resourcesIndex.length.toString())} resources, ${colors.green(this.publication.state.persistedIndex.persistedDestFiles.size.toString())} persisted${this.publication.config.memoizeProducers ? `, ${colors.green(publication.state.resourcesIndex.memoizedProducers.size.toString())} memoized` : ''}`);
           const mem = Deno.memoryUsage();
           console.info(
             `     Memory: ${colors.gray("rss")} ${
@@ -122,15 +122,6 @@ export class Executive<
             }`,
           );
           console.info(
-            `Memoization: ${
-              this.publication.config.memoizeProducers
-                ? `${
-                  colors.green(`on`)
-                } (${publication.state.resourcesIndex.memoizedProducers.size})`
-                : colors.gray(`off`)
-            }`,
-          );
-          console.info(
             `    ======== Ready to serve [${new Date()}] ========`,
           );
           // deno-fmt-ignore
@@ -139,8 +130,6 @@ export class Executive<
             // deno-fmt-ignore
             console.info(`    Console: ${colors.brightBlue(ps.publicURL(ps.console.htmlEndpointURL))}/`);
           }
-          // deno-fmt-ignore
-          console.info(`  Assurance: ${colors.brightBlue(ps.publicURL('/universal-cc/assurance/'))}`);
         });
         result.router.get("/server/restart", async (ctx) => {
           // result.lifecycleMgr.requestRestart("/server/restart");
