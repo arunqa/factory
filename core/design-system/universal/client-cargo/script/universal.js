@@ -322,24 +322,29 @@ class LabeledBadge {
 
 class TunnelStatePresentation {
     static defaultInitialStatus = "inactive";
-    domID; // string
+    summaryBadgeDomID; // string
+    elaborationHtmlDomID; // string
 
     constructor(argsSupplier) {
         const { args } = governedArgs(argsSupplier, {
             defaultArgs: {
-                domID: "rf-universal-tunnel-state",
+                summaryBadgeDomID: "rf-universal-tunnel-state-summary-badge",
+                elaborationHtmlDomID: "rf-universal-tunnel-state-elaboration",
                 initialStatus: TunnelStatePresentation.defaultInitialStatus,
-                labeledBadge: new LabeledBadge().init()
+                labeledBadge: new LabeledBadge().init(),
+                defaultLabel: "Tunnel"
             },
         });
 
-        this.domID = args.domID;
+        this.summaryBadgeDomID = args.summaryBadgeDomID;
+        this.elaborationHtmlDomID = args.elaborationHtmlDomID;
         this.labeledBadge = args.labeledBadge;
+        this.defaultLabel = args.defaultLabel;
     }
 
     badgenArgs(state, options) {
         const status = state.status;
-        const label = options?.label ?? "Tunnel";
+        const label = options?.label ?? this.defaultLabel;
         const color = options?.color ?? (status == "inactive" ? 'red' : (status == "active" ? 'green' : 'orange'));
         const icon = options?.icon;
         return this.labeledBadge.badgenArgs({
@@ -357,20 +362,26 @@ class TunnelStatePresentation {
     }
 
     update(state, options) {
-        const tspElem = document.getElementById(this.domID);
+        const tspElem = document.getElementById(this.summaryBadgeDomID);
         if (tspElem) {
             tspElem.innerHTML = this.labeledBadge.autoHTML(this.badgenArgs(state, options));
         } else {
-            console.warn(`Tunnel state could not be updated: DOM element id='${this.domID}' was not found.`);
+            console.warn(`Tunnel state could not be updated: DOM element id='${this.summaryBadgeDomID}' was not found.`);
         }
     }
 
     display(state = true) {
-        this.element.style.display = state ? 'block' : 'none';
+        if (this.summaryBadgeElement) {
+            this.summaryBadgeElement.style.display = state ? 'block' : 'none';
+        }
     }
 
-    get element() {
-        return document.getElementById(this.domID);
+    get summaryBadgeElement() {
+        return document.getElementById(this.summaryBadgeDomID);
+    }
+
+    get elaborationHtmlElement() {
+        return document.getElementById(this.elaborationHtmlDomID);
     }
 
     get isStatisticsPresentationPossible() {

@@ -43,7 +43,7 @@ class NavigationComponent extends HTMLElement {
             <div class="container">
                 <a class="navbar-brand" href="#">
                     <img src="./image/favicon/favicon-32x32.png" alt="" width="32" height="32">
-                    rfConsole <span id="rf-universal-tunnel-state"></span>
+                    rfConsole <span id="rf-universal-tunnel-state-summary-badge"></span>
                 </a>
                 <span class="navbar-text" id="socket-commands-mgr-state-prose">
                 </span>
