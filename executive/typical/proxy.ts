@@ -432,6 +432,14 @@ export function typicalSyncableReadableAssetsModuleConstructor(
                     readable.originURL,
                     destPath,
                     async (srcEndpoint, destFile, httpResp, mark) => {
+                      // see if we have a strong eTag and store it;
+                      // if we have an eTag but it's weak ("W/"), discard it
+                      let originETag = httpResp.headers.get("ETag");
+                      if (
+                        originETag && originETag.startsWith("W/")
+                      ) {
+                        originETag = null;
+                      }
                       const rr = await r.extractReadableHTML(
                         await Deno.readTextFile(destFile),
                       );
@@ -443,7 +451,7 @@ export function typicalSyncableReadableAssetsModuleConstructor(
                         ),
                         JSON.stringify({
                           originURL: readable.originURL,
-                          originETag: httpResp.headers.get("ETag"),
+                          originETag,
                           originLastModified: httpResp.headers.get(
                             "Last-Modified",
                           ),
