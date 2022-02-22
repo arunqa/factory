@@ -61,6 +61,7 @@ export interface DownloadTaskRunnerSupplier extends FetchTaskRunnerSupplier {
 export const reportDownloadConsole = async (
   destFile: string,
   srcEndpoint: string,
+  response: Response,
   mark: PerformanceMark,
 ) => {
   const measure = performance.measure(mark.name, {
@@ -72,7 +73,9 @@ export const reportDownloadConsole = async (
       human.humanFriendlyBytes(info.size)
     }) from ${
       colors.brightCyan(srcEndpoint)
-    } (in ${measure.duration.toFixed()} ms)`,
+    } (in ${measure.duration.toFixed()} ms, ETag: ${
+      response.headers.get("ETag")
+    })`,
   );
 };
 
@@ -83,12 +86,14 @@ export async function downloadAsset(
   onData?: (
     destFile: string,
     srcEndpoint: string,
+    response: Response,
     mark: PerformanceMark,
   ) => Promise<void>,
   onError?: (
     error: Error,
     destFile: string,
     srcEndpoint: string,
+    response: Response | undefined,
     mark: PerformanceMark,
   ) => Promise<void>,
 ): Promise<void> {
@@ -105,13 +110,13 @@ export async function downloadAsset(
         });
         await iosc.copy(r, f);
         f.close();
-        if (onData) await onData(srcEndpoint, destFile, mark);
+        if (onData) await onData(srcEndpoint, destFile, rsp, mark);
       }
     } catch (err) {
-      if (onError) await onError(err, srcEndpoint, destFile, mark);
+      if (onError) await onError(err, srcEndpoint, destFile, rsp, mark);
     }
   }).catch(async (err) => {
-    if (onError) await onError(err, srcEndpoint, destFile, mark);
+    if (onError) await onError(err, srcEndpoint, destFile, undefined, mark);
   });
 }
 
@@ -122,12 +127,14 @@ export function downloadTask(
   onData?: (
     destFile: string,
     srcEndpoint: string,
+    response: Response,
     mark: PerformanceMark,
   ) => Promise<void>,
   onError?: (
     error: Error,
     destFile: string,
     srcEndpoint: string,
+    response: Response | undefined,
     mark: PerformanceMark,
   ) => Promise<void>,
 ): GraphQlTaskRunnerSupplier {

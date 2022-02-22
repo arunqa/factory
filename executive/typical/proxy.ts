@@ -431,7 +431,7 @@ export function typicalSyncableReadableAssetsModuleConstructor(
                   await task.downloadAsset(
                     readable.originURL,
                     destPath,
-                    async (srcEndpoint, destFile, mark) => {
+                    async (srcEndpoint, destFile, httpResp, mark) => {
                       const rr = await r.extractReadableHTML(
                         await Deno.readTextFile(destFile),
                       );
@@ -443,13 +443,17 @@ export function typicalSyncableReadableAssetsModuleConstructor(
                         ),
                         JSON.stringify({
                           originURL: readable.originURL,
-                          proxiedOn: new Date(),
+                          originETag: httpResp.headers.get("ETag"),
+                          originLastModified: httpResp.headers.get(
+                            "Last-Modified",
+                          ),
                           ...rr,
                         }),
                       );
                       await task.reportDownloadConsole(
                         destFile,
                         srcEndpoint,
+                        httpResp,
                         mark,
                       );
                     },
