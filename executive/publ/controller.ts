@@ -298,8 +298,11 @@ export function typicalPublicationCtlSupplier<
               provision: function (clientLayout) {
                 // we're not running in a server that supports experimental workspace (IDE)
                 if(!window.rfOperationalCtx.isExperimentalOperationalCtx) return;
+                console.log("rfOperationalCtx workspace provisioning enabled for", clientLayout);
 
                 document.addEventListener('DOMContentLoaded', function () {
+                  console.log("rfOperationalCtx workspace enabled for", clientLayout);
+
                   const labeledBadge = new LabeledBadge((defaults) => ({ ...defaults, remoteBaseURL: window.rfOperationalCtx.workspace.tunnel.badgenRemoteBaseURL })).init();
                   const statePresentation = new TunnelStatePresentation((defaults) => ({ ...defaults, defaultLabel: 'Hot Reload Page', labeledBadge }));
                   const tunnels = new Tunnels((defaults) => ({ ...defaults, baseURL: window.rfOperationalCtx.workspace.baseURL, statePresentation })).init();
@@ -339,7 +342,13 @@ export function typicalPublicationCtlSupplier<
             },
           }
 
-          window.rfOperationalCtx = rfOperationalCtx`), // TODO: use HtmlLayoutClientCargoSupplier variables, don't hardcode
+          const rfUserAgentLifecycleSingleton = EventEmitter.singletons.instance("rfUserAgentLifecycle");
+          const rfUserAgentLifecycleEE = rfUserAgentLifecycleSingleton.value();
+          rfUserAgentLifecycleEE.on("clientLayout.provision", (event) => {
+            rfOperationalCtx.workspace.provision(clientLayout);
+          });
+
+          window.rfOperationalCtx = rfOperationalCtx`), // TODO: use HtmlLayoutClientCargoSupplier variables for rfUserAgentLifecycle, don't hardcode
         );
       },
     };

@@ -20,7 +20,7 @@ function unsafeDomElemsAttrHook(hookName, domElemsArg, options) {
             return undefined;
         },
         evalErrorValue: (ctx, error) => {
-            console.error(`[Tunnel.domElemAttrHook(${ctx.elem.tagName}, ${ctx.hookName})] eval error`, error, ctx);
+            console.error(`[Tunnel.domElemAttrHook(${ctx.elem?.tagName ?? '??ctx.elem?.tagName'}, ${ctx.hookName})] eval error`, error, ctx);
             return undefined;
         },
         notFoundValue: (ctx) => {
@@ -30,7 +30,7 @@ function unsafeDomElemsAttrHook(hookName, domElemsArg, options) {
 
     let domElems = domElemsArg
         ? (typeof domElemsArg === "function" ? domElemsArg() : domElemsArg)
-        : [document.documentElement, document.head, document.body];
+        : [document.documentElement];
     if (!Array.isArray(domElems)) domElems = [domElems];
 
     const validValue = options?.validValue ?? handlers.validValue;
@@ -39,10 +39,11 @@ function unsafeDomElemsAttrHook(hookName, domElemsArg, options) {
     const notFoundValue = options?.notFoundValue ?? handlers.notFoundValue;
 
     for (const elem of domElems) {
-        const potentialHook = elem.getAttribute(hookName);
-        const ctx = { hookName, potentialHook, elem, domElems, options };
+        const ctx = { hookName, elem, domElems, options };
         try {
+            const potentialHook = elem.getAttribute(hookName);
             if (potentialHook) {
+                ctx.potentialHook = potentialHook;
                 const hook = eval(potentialHook);
                 return typeof hook === "function"
                     ? validValue(hook, ctx)
@@ -77,7 +78,12 @@ function flexibleArgs(argsSupplier, rulesSupplier) {
     // evaluate it and assume that those are the actual default arguments.
     const defaultArgsSupplier = rules?.defaultArgs ?? {};
     const defaultArgs = typeof defaultArgsSupplier === "function"
-        ? defaultArgsSupplier(rules, argsSupplier) : defaultArgsSupplier
+        ? defaultArgsSupplier(rules,
+            typeof argsSupplier === "function"
+                ? argsSupplier(rules)
+                : argsSupplier,
+            argsSupplier)
+        : defaultArgsSupplier;
 
     // now that we have our rules and default arguments setup the canonical
     // arguments instance. If the argsSupplier is a function, evaluate it and
@@ -86,28 +92,50 @@ function flexibleArgs(argsSupplier, rulesSupplier) {
     // because the function is responsible for inheriting the default args.
     // If argsSupplier is an object instance, defaultArgs will automatically
     // be inherited.
-    let args = typeof argsSupplier === "function"
+    const args = typeof argsSupplier === "function"
         ? argsSupplier(defaultArgs, rules)
         : (argsSupplier ? { ...defaultArgs, ...argsSupplier } : defaultArgs);
 
     // If a DOM hook like <html lang="en" XYZ-args-supplier="xyzArgsHook"> is
     // defined, allow it to do a final flexible configuration of the args.
+    // hookable DOM element instances can be an array or a function which
+    // returns an array of DOM element instances. If no hookableDomElems are
+    // provided in rules, we see if window.flexibleArgsHookableDomElems is
+    // available use those as the instances. Finally, if no local DOM elems
+    // are supplied and window.flexibleArgsHookableDomElems is not available
+    // then document.documentElement (HTML tag), document.head (<head>), and
+    // document.body (<body>) are used.
     let domHook = undefined;
     if (rules?.hookableDomElemsAttrName) {
-        const hookableDomElems = rules.hookableDomElems
+        const hookableDomElemsSupplier = rules.hookableDomElems ?? window.flexibleArgsHookableDomElems;
+        const hookableDomElems = hookableDomElemsSupplier
             ? (typeof rules.hookableDomElems === "function" ? rules.hookableDomElems(args, rules) : rules.hookableDomElems)
-            : undefined;
+            : [document.documentElement];
         domHook = unsafeDomElemsAttrHook(rules.hookableDomElemsAttrName, hookableDomElems, {
             validValue: (value, ctx) => {
                 return { hookFn: value, domElem: ctx.elem, hookName: ctx.hookName };
             }
         });
-        if (domHook) {
-            args = domHook.hookFn(args, rules);
-            if (rules.onDomHook) rules.onDomHook(domHook, args, rules);
+    }
+
+    if (rules?.enhanceArgs) {
+        result = rules.enhanceArgs(result);
+    }
+
+    let result = { args, rules, domHook, argsSupplier, rulesSupplier };
+    if (domHook) {
+        if (rules.onDomHook) result = rules.onDomHook(result);
+        result = domHook.hookFn(result);
+        if (rules?.enhanceArgsAfterDomHook) {
+            result = rules.enhanceArgsAfterDomHook(result);
         }
     }
-    return { args, rules, domHook, argsSupplier, rulesSupplier };
+
+    if (rules?.diagnose) rules.diagnose(result);
+
+    // TODO: consider adding a dispatchEvent style args notification bus;
+    //       this might be useful for object or hook-construction lifecyles.
+    return result;
 }
 
 function governedArgs(argsSupplier, rulesSupplier) {
@@ -117,6 +145,139 @@ function governedArgs(argsSupplier, rulesSupplier) {
         result.rules.consumeArgs(result);
     }
     return result;
+}
+
+class Singletons {
+    #singletons = [];
+
+    constructor(lifecycleEE) {
+        this.lifecycleEE = lifecycleEE;
+    }
+
+    declare(identity, construct, configArgsSupplier, configRulesSupplier) {
+        const config = flexibleArgs(configArgsSupplier, {
+            defaultArgs: {
+                construct,                      // (config) => { return constructed; }
+                // optional:
+                lifecycleEE: this.lifecycleEE,  // EventEmitter
+                lifecycleEventName: undefined,  // (suggested) => string
+            },
+            hookableDomElemsAttrName: "rf-hook-universal-event-emitter-singletons",
+            hookableDomElems: [document.documentElement, document.head],
+            ...configRulesSupplier
+        });
+        const singleton = {
+            value: (reason) => {
+                const { construct, lifecycleEE, lifecycleEventName } = config.args;
+                if ("constructedValue" in singleton) {
+                    if (lifecycleEE) lifecycleEE.emit(lifecycleEventName("accessed"), { ...singleton, reason });
+                } else {
+                    singleton.constructedValue = construct(singleton.config, this);
+                    if (lifecycleEE) {
+                        lifecycleEE.emit(lifecycleEventName("constructed"), { ...singleton, reason });
+                        lifecycleEE.emit(lifecycleEventName("accessed"), { ...singleton, reason });
+                    }
+                }
+                return singleton.constructedValue;
+            }, config
+        };
+        let { lifecycleEE, lifecycleEventName } = config.args;
+        if (!lifecycleEventName) {
+            lifecycleEventName = (suggested) => suggested;
+            config.args.lifecycleEventName = lifecycleEventName;
+        }
+        this.#singletons[identity] = singleton;
+        if (lifecycleEE) lifecycleEE.emit(lifecycleEventName("declared"), { singleton, manager: this });
+        return singleton;
+    }
+
+    instance(identity, onNotDeclared) {
+        const singleton = this.#singletons[identity];
+        if (singleton) return singleton;
+
+        if (onNotDeclared) {
+            return onNotDeclared(this);
+        } else {
+            if (this.lifecycleEE) {
+                this.lifecycleEE.emit("singleton-not-declared", identity);
+            } else {
+                console.log('Singletons.instance', identity, "not found, no onNotDeclared handler");
+            }
+            return undefined;
+        }
+    }
+}
+
+/**
+ * https://github.com/subversivo58/Emitter/blob/master/Emitter.js
+ * https://github.com/subversivo58/Emitter/commit/9f4bb5d93165cc17ad02810fb1a6cd4635f360c3
+ * @license The MIT License (MIT)             - [https://github.com/subversivo58/Emitter/blob/master/LICENSE]
+ * @copyright Copyright (c) 2020 Lauro Moraes - [https://github.com/subversivo58]
+ * @version 0.1.0 [development stage]         - [https://github.com/subversivo58/Emitter/blob/master/VERSIONING.md]
+ */
+class EventEmitter extends EventTarget {
+    static sticky = Symbol()
+    static singletons = new class extends Singletons {
+        declare(identity, configArgsSupplier, configRulesSupplier) {
+            return super.declare(identity, () => new EventEmitter(), configArgsSupplier, configRulesSupplier);
+        }
+    }();
+
+    constructor() {
+        super()
+        // store listeners (by callback)
+        this.listeners = {
+            '*': [] // pre alocate for all (wildcard)
+        }
+        // l = listener, c = callback, e = event
+        this[EventEmitter.sticky] = (l, c, e) => {
+            // dispatch for same "callback" listed (k)
+            l in this.listeners ? this.listeners[l].forEach(k => k === c ? k(e.detail) : null) : null
+        }
+    }
+
+    on(e, cb, once = false) {
+        // store one-by-one registered listeners
+        !this.listeners[e] ? this.listeners[e] = [cb] : this.listeners[e].push(cb)
+        // check `.once()` ... callback `CustomEvent`
+        once ? this.addEventListener(e, this[EventEmitter.sticky].bind(this, e, cb), { once: true }) : this.addEventListener(e, this[EventEmitter.sticky].bind(this, e, cb))
+    }
+
+    off(e, Fn = false) {
+        if (this.listeners[e]) {
+            // remove listener (include ".once()")
+            let removeListener = target => {
+                this.removeEventListener(e, target)
+            }
+            // use `.filter()` to remove expecific event(s) associated to this callback
+            const filter = () => {
+                this.listeners[e] = this.listeners[e].filter(val => {
+                    return val === Fn ? removeListener(val) : val
+                })
+                // check number of listeners for this target ... remove target if empty
+                this.listeners[e].length === 0 ? e !== '*' ? delete this.listeners[e] : null : null
+            }
+            // use `.while()` to iterate all listeners for this target
+            const iterate = () => {
+                let len = this.listeners[e].length
+                while (len--) {
+                    removeListener(this.listeners[e][len])
+                }
+                // remove all listeners references (callbacks) for this target (by target object)
+                e !== '*' ? delete this.listeners[e] : this.listeners[e] = []
+            }
+            Fn && typeof Fn === 'function' ? filter() : iterate()
+        }
+    }
+
+    emit(e, d) {
+        this.listeners['*'].length > 0 ? this.dispatchEvent(new CustomEvent('*', { detail: d })) : null;
+        this.dispatchEvent(new CustomEvent(e, { detail: d }))
+    }
+
+    once(e, cb) {
+        this.on(e, cb, true)
+    }
 }
 
 function isFunction(functionToCheck) {

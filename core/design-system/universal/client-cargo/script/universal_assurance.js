@@ -39,19 +39,23 @@ describe("universal-args", () => {
     it("flexibleArgs with supplied args function and rules function", () => {
         const result = flexibleArgs(
             (defaults) => ({ ...defaults, another: "value" }), // if argsSupplier is a function, very important that ...defaults is spread
-            () => ({ defaultArgs: { test: "value" } }));       // rules can be a function
-        assert(result.args.test == "value");
-        assert(result.rules.defaultArgs.test == "value");
+            () => ({ defaultArgs: (rules, args, argsSupplier) => ({ test: "value" }) }));       // rules can be a function, and so can defaultArgs
+        assert(result.args.test == "value");    // from defaultArgs
+        assert(result.args.another == "value"); // from argsSupplier
     });
 
     it("flexibleArgs with supplied args object and hookable DOM function", () => {
         const result = flexibleArgs({ test: "value" }, {
             hookableDomElemsAttrName: "universal-test-hook-fn",
             hookableDomElems: [document.documentElement, document.head, document.body],
-            onDomHook: (domHook, args, rules) => {
+            onDomHook: (result) => {
+                const { domHook } = result;
                 assert(domHook.domElem === document.documentElement);
                 assert(domHook.hookFn === universalTestHookFn);
-            }
+                // must return the acceptable result (mutated, or as-is)
+                return result;
+            },
+            //diagnose: (result) => { console.log('flexibleArgs with supplied args object and hookable DOM function', result) },
         });
         assert(result.args.test == "value");
         assert(result.rules);
@@ -67,6 +71,52 @@ describe("universal-args", () => {
             }
         });
     });
+});
+
+describe("universal-event-emitter", () => {
+    it("flexibleEventEmitter", () => {
+        const ee = new EventEmitter();
+        const testE1 = "testE1";
+        const events = [];
+        ee.on(testE1, (event) => {
+            events.push(event);
+        });
+        ee.emit(testE1, { first: true });
+        ee.emit(testE1, { second: true });
+        assert(events.length == 2);
+        assert(events[0].first);
+        assert(events[1].second);
+    });
+
+    it("flexibleEventEmitter singletons", () => {
+        EventEmitter.singletons.declare("test");
+        const ees1 = EventEmitter.singletons.instance("test");
+        const ees2 = EventEmitter.singletons.instance("test");
+        assert(ees1);
+        assert(ees2);
+        assert(ees1 === ees2);
+    });
+
+    it("flexibleEventEmitter singletons with lifecycle events", () => {
+        let declared = 0;
+        let constructed = 0;
+        let accessed = 0;
+        const lifecycleEE = new EventEmitter();
+        lifecycleEE.on("declared", (ees) => { declared++; })
+        lifecycleEE.on("constructed", (ees) => { constructed++; })
+        lifecycleEE.on("accessed", (ees) => { accessed++; })
+        EventEmitter.singletons.declare("test", { lifecycleEE });
+        const ees1 = EventEmitter.singletons.instance("test");
+        const ees2 = EventEmitter.singletons.instance("test");
+        const ees1Value = ees1.value();
+        const ees2Value = ees1.value();
+        assert(declared == 1);
+        assert(constructed == 1);
+        assert(accessed == 2);
+        assert(ees1 === ees2);
+        assert(ees1Value === ees2Value);
+    });
+
 });
 
 describe("universal-HTTP", () => {

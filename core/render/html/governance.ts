@@ -21,10 +21,8 @@ export interface HtmlLayoutClientCargoValueSupplier {
 }
 
 export interface HtmlLayoutClientCargoSupplier {
+  readonly clientLifecycleEventEmitterSingletonIdentity: string;
   readonly clientCargoPropertyName: string;
-  readonly windowClientCargoPropertyName: string;
-  readonly windowTerminalRoutePropertyName: string;
-  readonly windowOperationalCtxPropertyName: string;
 }
 
 export interface HtmlLayoutContributions {
