@@ -27,6 +27,15 @@ describe("universal-args", () => {
         assert(result.rules.defaultArgs.test == "value");
     });
 
+    it("flexibleArgs with supplied args and rules function", () => {
+        const result = flexibleArgs(
+            { another: "value" },
+            () => ({ defaultArgs: { fromDefaults: "value" } }));  // rules can be a function
+        assert(result.args.fromDefaults == "value");
+        assert(result.args.another == "value");
+        assert(result.rules.defaultArgs.fromDefaults == "value");
+    });
+
     it("flexibleArgs with supplied args function and rules function", () => {
         const result = flexibleArgs(
             (defaults) => ({ ...defaults, another: "value" }), // if argsSupplier is a function, very important that ...defaults is spread

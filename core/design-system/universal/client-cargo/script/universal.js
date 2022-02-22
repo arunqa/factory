@@ -56,20 +56,42 @@ function unsafeDomElemsAttrHook(hookName, domElemsArg, options) {
     return notFoundValue({ hookName, domElems, options });
 }
 
+/**
+ * Flexibly create an object from an arguments supplier and a set of rules.
+ * This is our standard approach to constructing objects and hooks;
+ * argsSupplier is the primary object instance and should contain the
+ * canonical properties. When certain properties should always be present, they
+ * can be supplied in rules.defaultArgs.
+ * @param {object | () => object} argsSupplier
+ * @param {object | () => object} rulesSupplier
+ * @returns
+ */
 function flexibleArgs(argsSupplier, rulesSupplier) {
+    // if rulesSupplier is a function, evaluate it and assume those are our rules;
+    // rules may be undefined so be sure to use optional chaining to protect it.
     const rules = rulesSupplier
         ? (typeof rulesSupplier === "function" ? rulesSupplier(argsSupplier) : rulesSupplier)
         : undefined;
+
+    // if we have a defaultArgs rule, use it; if defaultArgs is a function,
+    // evaluate it and assume that those are the actual default arguments.
     const defaultArgsSupplier = rules?.defaultArgs ?? {};
     const defaultArgs = typeof defaultArgsSupplier === "function"
-        ? defaultArgsSupplier(rules) : defaultArgsSupplier
+        ? defaultArgsSupplier(rules, argsSupplier) : defaultArgsSupplier
 
+    // now that we have our rules and default arguments setup the canonical
+    // arguments instance. If the argsSupplier is a function, evaluate it and
+    // use it as the starting point. If argsSupplier is a function, it should
+    // be defined like (defaultArgs) => ({...defaultArgs, myNewArg: "value"})
+    // because the function is responsible for inheriting the default args.
+    // If argsSupplier is an object instance, defaultArgs will automatically
+    // be inherited.
     let args = typeof argsSupplier === "function"
-        ? argsSupplier({ ...defaultArgs }, rules)
-        : (argsSupplier ?? defaultArgs);
+        ? argsSupplier(defaultArgs, rules)
+        : (argsSupplier ? { ...defaultArgs, ...argsSupplier } : defaultArgs);
 
-    // If a hook like <html lang="en" XYZ-args-supplier="xyzArgsHook"> is
-    // defined, allow it to do a final configuration of the args.
+    // If a DOM hook like <html lang="en" XYZ-args-supplier="xyzArgsHook"> is
+    // defined, allow it to do a final flexible configuration of the args.
     let domHook = undefined;
     if (rules?.hookableDomElemsAttrName) {
         const hookableDomElems = rules.hookableDomElems
@@ -90,7 +112,7 @@ function flexibleArgs(argsSupplier, rulesSupplier) {
 
 function governedArgs(argsSupplier, rulesSupplier) {
     const result = flexibleArgs(argsSupplier, rulesSupplier);
-    // TODO: add AJV schema validation
+    // TODO: add https://ajv.js.org/ schema validation
     if (result.rules?.consumeArgs) {
         result.rules.consumeArgs(result);
     }
