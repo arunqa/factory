@@ -33,6 +33,22 @@ path-task inspect    # runs Taskfile.ts 'inspect' task at either the current dir
 cwd-task inspect     # runs Taskfile.ts 'inspect' task in the current working directory
 ```
 
+# Tips & Tricks
+
+## Be flexible to caller: allow _import_ **or** _execute_
+
+Each `Taskfile.ts` should operate either as a library of tasks (if it defines any) or should be "executable" based on the caller's discretion. An easy way to do that is to define the execution portion like this:
+
+```ts
+// only execute tasks if Taskfile.ts is being called as a script; otherwise
+// it might be imported for tasks or other reasons and we shouldn't "run".
+if (import.meta.main) {
+  await rflTask.run(Deno.args, {
+    ...rflTask.defaultTasks,
+  });
+}
+```
+
 # TODO
 
 * tasks should use console-independent telemetry like Deno loggers or [Deno OpenTelemetry](https://github.com/open-telemetry/opentelemetry-js/issues/2293#issuecomment-1030750431) for statusing, messaging, etc. so that we can use tasks at CLI or anywhere else
