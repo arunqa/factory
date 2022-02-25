@@ -35,6 +35,7 @@ cwd-task inspect     # runs Taskfile.ts 'inspect' task in the current working di
 
 # TODO
 
+* tasks should use console-independent telemetry like Deno loggers or [Deno OpenTelemetry](https://github.com/open-telemetry/opentelemetry-js/issues/2293#issuecomment-1030750431) for statusing, messaging, etc. so that we can use tasks at CLI or anywhere else
 * integrate [udd](https://github.com/hayd/deno-udd) as a built-in task so `find . -name "*.ts" | xargs udd` is not required outside of Deno
 * wrap [xargs](https://github.com/tarruda/node-xargs) in this module?
 * wrap [deno xeval](https://deno.land/std/examples/xeval.ts) in this module? [elaboration](https://stefanbuck.com/blog/hidden-superpower-deno-xeval)
