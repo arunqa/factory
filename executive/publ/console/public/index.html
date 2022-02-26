@@ -24,7 +24,22 @@
                 <header>TODO</header> <!-- note use of <header> for section now, not article -->
 
                 <ul>
-                    <li>Implement dynamic navigation using <code>path.ctx.js</code>.</li>
+                    <li>
+                        Implement dynamic navigation using <code>path.ctx.js</code>. This might work like Deno's
+                        <code>mod.ts</code> does where we inventory the files in the current path. If it's regular
+                        enough, it could be auto-generated on each start of the server or through Taskfile.ts.
+                        <pre>
+                            const pathCtx = {
+                                parent: import('../path.ctx.js'), // if it doesn't exist, parent would be undefined (not error?)
+                                entries: [
+                                    { unit: "x.html" }, // should have just enough for runtime parsing to be possible
+                                    { unit: "y.html" }, // follows interface defined for RouteUnit, which is inherited by RouteNode
+                                ],
+                            };
+                            export default pathCtx;
+                        </pre>
+                    </li>
+                    <li>Migrate all legacy `control-panel` pages to rfConsole.</li>
                     <li>Implement client-side markdown generator using web component so heavy text like this can be
                         written in MD.</li>
                     <li>In <code>executive/publ/console/mod.ts</code> make <code>#isAccessLoggingEnabled</code>
