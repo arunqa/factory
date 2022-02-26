@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<!-- follow guidelines in README.md, see FOUC section for why display:none is used-->
+<html lang="en" style="display:none">
+
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="./path.actuate.css" />
+    <script src="./universal.lib.js"></script>
+    <script src="./path.actuate.js" type="module"></script>
+</head>
+
+<body>
+    <main>
+        <article>
+            <header>Health</header>
+
+            <section>
+                <header>Unhealthy Only</header>
+                TODO
+                <div id="unhealthy-json"></div>
+            </section>
+
+            <section>
+                <header>health.json</header>
+                <div id="health-json"></div>
+            </section>
+        </article>
+    </main>
+
+    <script src="https://cdn.rawgit.com/caldwell/renderjson/master/renderjson.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            fetch("/operational-context/observability/health.json").then(resp => {
+                resp.json().then(health => {
+                    // API: https://github.com/caldwell/renderjson
+                    const unhealthy = JSON.stringify(health, (self, key, value) => {
+                        if (typeof self == "object" && "componentType" in self && self.status == "pass") {
+                            return undefined;
+                        }
+                        return value;
+                    });
+                    document.getElementById("unhealthy-json").innerHTML = unhealthy;
+                    renderjson.set_show_to_level(4);
+                    document.getElementById("health-json").prepend(renderjson(health));
+                });
+            })
+        });
+    </script>
+</body>
+
+</html>

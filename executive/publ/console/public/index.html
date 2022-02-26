@@ -1,227 +1,39 @@
 <!DOCTYPE html>
-
-<html lang="en">
+<!-- follow guidelines in README.md, we hide HTML to prevent flash of unstyled content (FOUC) -->
+<html lang="en" style="display:none">
 
 <head>
     <meta charset="utf-8">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
-    <script
-        src="https://cdn.jsdelivr.net/npm/reconnecting-eventsource@1.3.0/dist/ReconnectingEventSource.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="./executive.css" />
-    <script src="/universal-cc/component/ag-grid.js"></script>
-    <script src="/universal-cc/script/universal.js"></script>
-    <script type="module" src="./executive.js"></script>
-    <script>
-        const windowsOpened = []; // { target: string; url: string; windowInstance: Window }
-        const tunnels = new Tunnels((defaults) => ({ ...defaults, baseURL: '/console' })).init();
-        const consoleTunnel = tunnels.registerEventSourceState(new EventSourceTunnelState(tunnels, (defaults) => ({
-            ...defaults,
-            identity: () => "Console SSE",
-        })));
-        consoleTunnel.addEventSourceEventListener("ping", (evt) => { }, { diagnose: true });
-        consoleTunnel.addEventSourceEventListener("location.reload-console", (evt) => {
-            location.reload();
-        });
-        consoleTunnel.addEventSourceEventListener("location.reload-window", (evt) => {
-            const payload = JSON.parse(evt.data);
-            const openedWindow = windowsOpened[payload.target];
-            if (openedWindow) {
-                const srcFileSysPath = openedWindow?.windowInstance?.rfTerminalRoute?.fileSysPath;
-                if (srcFileSysPath == payload.fsAbsPathAndFileName) {
-                    openedWindow?.windowInstance.location.reload();
-                } else {
-                    console.log("Unable to find window to reload", payload, openedWindow?.windowInstance?.rfTerminalRoute);
-                }
-            } else {
-                // TODO: if window is not open already, open it now and go to the URL
-            }
-        });
-        consoleTunnel.addEventSourceEventListener("window.open", (evt) => {
-            const payload = JSON.parse(evt.data);
-            if (payload && "url" in payload) {
-                const windowInstance = window.open(payload.url, payload.target);
-                windowsOpened[payload.target] = { ...payload, windowInstance }
-                windowInstance.focus();
-            } else {
-                console.error(`invalid payload for window.open, expected { url: string; target?: string}: ${evt.data}`);
-            }
-        });
-
-        // <ag-grid> web component uses config-eval-js="accessLogAgGridConfig" to define the initial grid
-        // and then registerAccessLogAgGrid will set this same variable to final version computed by the WC.
-        let accessLogAgGridConfig = {
-            gridDefn: {
-                defaultColDef: { resizable: true },
-                columnDefs: [
-                    { field: "date", "sortable": true },
-                    { field: "extn", "sortable": true },
-                    { field: "status", "sortable": true },
-                    { field: "location", "sortable": true },
-                    { field: "target", "sortable": true },
-                    { field: "symlink", "sortable": true },
-                ],
-                rowData: []
-            },
-        }
-
-        // <ag-grid> web component uses in register-grid-hook="registerAccessLogAgGrid" to track instances
-        let accessLogAgGrid = undefined;
-        const registerAccessLogAgGrid = (grid, gridConfig, gridDomElem) => {
-            accessLogAgGrid = grid;
-            accessLogAgGridConfig = gridConfig;
-        };
-
-        consoleTunnel.addEventSourceEventListener("log-access", (evt) => {
-            if (accessLogAgGrid) {
-                const data = JSON.parse(evt.data);
-                accessLogAgGridConfig.api.applyTransaction({
-                    add: [{
-                        "date": new Date().toISOString(),
-                        "status": data.status,
-                        "location": data.locationHref,
-                        "target": data.fsTarget,
-                        "symlink": data.fsTargetSymLink || '',
-                        "extn": data.extn,
-                    }]
-                });
-                accessLogAgGridConfig.columnApi.autoSizeAllColumns();
-            } else {
-                console.log('accessLogAgGrid not available in log-access');
-            }
-        });
-
-        /**
-         * Uses https://github.com/Alorel/console-log-html to redirect console.* output to an HTML DOM element.
-         * @param {*} redirectConsoleContainerID
-         */
-        // deno-lint-ignore no-unused-vars
-        const redirectConsoleToHTML = (redirectConsoleContainerID = "container_redirectConsole") => {
-            const consoleLogWarningStyles = `
-                color: #fff;
-                background-color: #c23934;
-                display: block;
-                text-align: center;
-                padding: 8px 32px;
-                font: 100 16px/28px sans-serif;
-                background-image: linear-gradient(45deg,rgba(0,0,0,.025) 25%,transparent 25%,transparent 50%,rgba(0,0,0,.025) 50%,rgba(0,0,0,.025) 75%,transparent 75%,transparent);
-                background-size: 64px 64px;
-            `;
-
-            const ldsRedirectConsoleContainer = document.getElementById(redirectConsoleContainerID);
-            if (ldsRedirectConsoleContainer) {
-                $script(
-                    "//cdn.rawgit.com/Alorel/console-log-html/master/console-log-html.min.js",
-                    function () {
-                        ConsoleLogHTML.connect(ldsRedirectConsoleContainer);
-                        console.log(`Alorel/console-log-html Ready.`);
-                    },
-                );
-            } else {
-                console.log(
-                    "%c%s",
-                    consoleLogWarningStyles,
-                    `Element with ID '${redirectConsoleContainerID}' required by redirectConsoleToHTML() does not exist.`,
-                );
-            }
-
-            consoleTunnel.addEventSourceEventListener("console.log", (evt) => {
-                console.log(JSON.parse(evt.data));
-            });
-            consoleTunnel.addEventSourceEventListener("console.error", (evt) => {
-                console.log(JSON.parse(evt.data));
-            });
-        };
-    </script>
+    <link rel="stylesheet" type="text/css" href="./path.actuate.css" />
+    <script src="./universal.lib.js"></script>
+    <script src="./path.actuate.js" type="module"></script>
 </head>
 
-<body>
-    <site-body-head></site-body-head>
+<!-- always use Semantic tags whenever possible (https://html.spec.whatwg.org/multipage/sections.html#the-article-element) -->
 
-    <div class="container-fluid m-3">
-        <nav>
-            <div class="nav nav-tabs" id="nav-tab" role="tablist">
-                <button class="nav-link active" id="nav-access-log-tab" data-bs-toggle="tab"
-                    data-bs-target="#nav-access-log" type="button" role="tab" aria-controls="nav-access-log"
-                    aria-selected="true">Access Log</button>
-                <button class="nav-link" id="nav-health-tab" data-bs-toggle="tab" data-bs-target="#nav-health"
-                    type="button" role="tab" aria-controls="nav-health" aria-selected="true">Health</button>
-                <button class="nav-link" id="nav-observability-tab" data-bs-toggle="tab"
-                    data-bs-target="#nav-observability" type="button" role="tab" aria-controls="nav-observability"
-                    aria-selected="true">Observability</button>
-                <button class="nav-link" id="nav-diagnostics-tab" data-bs-toggle="tab" data-bs-target="#nav-diagnostics"
-                    type="button" role="tab" aria-controls="nav-diagnostics" aria-selected="false">Diagnostics</button>
-                <button class="nav-link" id="nav-universal-state-tab" data-bs-toggle="tab"
-                    data-bs-target="#nav-universal-state" type="button" role="tab" aria-controls="nav-universal-state"
-                    aria-selected="false">State</button>
-                <button class="nav-link" id="nav-universal-state-tab" data-bs-toggle="tab"
-                    data-bs-target="#nav-universal-assurance" type="button" role="tab"
-                    aria-controls="nav-universal-assurance" aria-selected="false">Assurance</button>
-            </div>
-        </nav>
-        <div class="tab-content" id="nav-tabContent" height="100%">
-            <div class="tab-pane fade show active" id="nav-access-log" role="tabpanel"
-                aria-labelledby="nav-access-log-tab">
-                <ag-grid config-eval-js="accessLogAgGridConfig" register-grid-hook="registerAccessLogAgGrid"
-                    class="ag-theme-balham"></ag-grid>
-            </div>
-            <div class="tab-pane fade" id="nav-health" role="tabpanel" aria-labelledby="nav-health-tab">
-                Unhealthy Only
-                <div id="unhealthy-json"></div>
+<body data-layout="auto">
+    <!-- Here is our page's main content, should always be present because the auto-layout engine in Executive will build around it-->
+    <main>
+        <!-- It contains an article -->
+        <article>
+            <header>Welcome to the Console</header> <!-- note use of <header> for article now, not page -->
 
-                health.json
-                <div id="health-json"></div>
-            </div>
-            <div class="tab-pane fade" id="nav-observability" role="tabpanel" aria-labelledby="nav-observability-tab">
-                <iframe id="iframe-observability" src="/operational-context/observability/index.html" width="100%"
-                    height="650px"></iframe>
-            </div>
-            <div class="tab-pane fade" id="nav-diagnostics" role="tabpanel" aria-labelledby="nav-diagnostics-tab">
-                <ul id="container_redirectConsole">
+            <p>There's a lot to write here.</p>
+
+            <section>
+                <header>TODO</header> <!-- note use of <header> for section now, not article -->
+
+                <ul>
+                    <li>Implement dynamic navigation using <code>path.ctx.js</code>.</li>
+                    <li>Implement client-side markdown generator using web component so heavy text like this can be
+                        written in MD.</li>
+                    <li>In <code>executive/publ/console/mod.ts</code> make <code>#isAccessLoggingEnabled</code>
+                        accessible through Console so access logging can be controlled from the browser dynamically.
+                    </li>
                 </ul>
-            </div>
-            <div class="tab-pane fade" id="nav-universal-state" role="tabpanel"
-                aria-labelledby="nav-universal-state-tab">...</div>
-            <div class="tab-pane fade" id="nav-universal-assurance" role="tabpanel"
-                aria-labelledby="nav-universal-assurance-tab">
-                <iframe id="iframe-universal-assurance" src="/universal-cc/assurance/" width="100%"
-                    height="650px"></iframe>
-            </div>
-        </div>
-    </div>
-
-    <site-body-tail></site-body-tail>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            consoleTunnel.statePresentation.update(consoleTunnel, "inactive");
-            redirectConsoleToHTML();
-            const tabEl = document.querySelector('button[data-bs-toggle="tab"]')
-            tabEl.addEventListener('shown.bs.tab', function (event) {
-                // event.target is newly activated tab
-                // event.relatedTarget is the previous active tab
-                if (event.target.id == 'nav-access-log-tab') {
-                    // for some reason when tab is hidden/shown the AGGrid display is broken
-                    // so we need to reset it every time the tab is shown
-                    accessLogAgGridConfig.columnApi.autoSizeAllColumns();
-                }
-            });
-            fetch("/operational-context/observability/health.json").then(resp => {
-                resp.json().then(health => {
-                    $script("https://cdn.rawgit.com/caldwell/renderjson/master/renderjson.js", () => {
-                        // API: https://github.com/caldwell/renderjson
-                        const unhealthy = JSON.stringify(health, (self, key, value) => {
-                            if (typeof self == "object" && "componentType" in self && self.status == "pass") {
-                                return undefined;
-                            }
-                            return value;
-                        });
-                        document.getElementById("unhealthy-json").innerHTML = unhealthy;
-                        renderjson.set_show_to_level(4);
-                        document.getElementById("health-json").prepend(renderjson(health));
-                    })
-                })
-            })
-        });
-    </script>
+            </section>
+        </article>
+    </main>
 </body>
 
 </html>

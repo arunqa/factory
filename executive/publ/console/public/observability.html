@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<!-- follow guidelines in README.md, see FOUC section for why display:none is used-->
+<html lang="en" style="display:none">
+
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="./path.actuate.css" />
+    <script src="./universal.lib.js"></script>
+    <script src="./path.actuate.js" type="module"></script>
+</head>
+
+<body>
+    <main>
+        <article>
+            <header>Observability</header>
+
+            <section>
+                <header>Metrics &amp; Health</header>
+
+                <p>TODO: assets metrics do not properly count contents of <code>public</code> because of symlinks
+                    instead of
+                    hardlinks</p>
+                <div>
+                    <a href="/operational-context/observability/metrics.json">View <code>metrics.json</code></a><br>
+                    <a href="/operational-context/observability/health.json">View <code>health.json</code></a><br>
+                    <a href="/operational-context/observability/metrics.txt">View Exported OpenMetrics (in Prometheus
+                        Exposition Format)</a>
+                </div>
+            </section>
+
+            <script type="text/javascript"
+                src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+            <script type="text/javascript"
+                src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+            <script type="text/javascript"
+                src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.min.js"></script>
+            <link rel="stylesheet" type="text/css"
+                href="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.css">
+            <script type="text/javascript"
+                src="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.js"></script>
+
+            <script type="text/javascript">
+                $(function () {
+                    Papa.parse("/operational-context/observability/analytics-paths-extensions.csv", {
+                        download: true,
+                        skipEmptyLines: true,
+                        complete: function (parsed) {
+                            // "Date","Time","Files Path","File Extension in Path","Count of Files with Extension in Path","Total Bytes in all Files with Extension in Path","Build ID","Host"
+                            $("#typesPivotUI").pivotUI(parsed.data, {
+                                rows: ["Scope", "Files Path", "File Extension in Path", "Count of Files with Extension in Path", "Total Bytes in all Files with Extension in Path"],
+                                cols: ["Date"],
+                                rendererOptions: { table: { rowTotals: false, colTotals: false, } },
+                            });
+                        }
+                    });
+                });
+            </script>
+
+            <section>
+                <header>File counts and total bytes by type</header>
+                <div id="typesPivotUI" style="margin: 30px;"></div>
+            </section>
+        </article>
+    </main>
+</body>
+
+</html>

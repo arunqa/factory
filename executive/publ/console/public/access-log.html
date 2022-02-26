@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<!-- follow guidelines in README.md, see FOUC section for why display:none is used-->
+<html lang="en" style="display:none">
+
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="./path.actuate.css" />
+    <!-- $script used by component/ag-grid.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
+    <script src="/universal-cc/component/ag-grid.js"></script>
+    <script src="./universal.lib.js"></script>
+    <script type="module">
+        import { actuationStrategy } from "./path.lib.js";
+        // prepare global `executive` and "bootstrap" or _actuate_ the page.
+        const strategy = actuationStrategy().args;
+        const executive = strategy.actuate();
+        executive.consoleTunnel.addEventSourceEventListener("log-access", (evt) => {
+            if (accessLogAgGrid) {
+                const data = JSON.parse(evt.data);
+                accessLogAgGridConfig.api.applyTransaction({
+                    add: [{
+                        "date": new Date().toISOString(),
+                        "status": data.status,
+                        "location": data.locationHref,
+                        "target": data.fsTarget,
+                        "symlink": data.fsTargetSymLink || '',
+                        "extn": data.extn,
+                    }]
+                });
+                accessLogAgGridConfig.columnApi.autoSizeAllColumns();
+            } else {
+                console.log('accessLogAgGrid not available in log-access');
+            }
+        });
+    </script>
+    <script>
+        // <ag-grid> web component uses config-eval-js="accessLogAgGridConfig" to define the initial grid
+        // and then registerAccessLogAgGrid will set this same variable to final version computed by the WC.
+        let accessLogAgGridConfig = {
+            gridDefn: {
+                defaultColDef: { resizable: true },
+                columnDefs: [
+                    { field: "date", "sortable": true },
+                    { field: "extn", "sortable": true },
+                    { field: "status", "sortable": true },
+                    { field: "location", "sortable": true },
+                    { field: "target", "sortable": true },
+                    { field: "symlink", "sortable": true },
+                ],
+                rowData: []
+            },
+        }
+
+        // <ag-grid> web component uses in register-grid-hook="registerAccessLogAgGrid" to track instances
+        let accessLogAgGrid = undefined;
+        const registerAccessLogAgGrid = (grid, gridConfig, gridDomElem) => {
+            accessLogAgGrid = grid;
+            accessLogAgGridConfig = gridConfig;
+        };
+    </script>
+</head>
+
+<body>
+    <main>
+        <article>
+            <!-- will automatically be set as title by Executive -->
+            <header>Access Log</header>
+
+            <ag-grid config-eval-js="accessLogAgGridConfig" register-grid-hook="registerAccessLogAgGrid"
+                class="ag-theme-balham"></ag-grid>
+        </article>
+    </main>
+</body>
+
+</html>
