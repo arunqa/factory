@@ -2,6 +2,41 @@
 
 const assert = chai.assert;
 
+describe("universal-humanize", () => {
+    it("humanizeText", () => {
+        const inhumanText = "module-2_Component--_  1,=service_2";
+        const result = humanizeText(inhumanText);
+        assert(result == "Module 2 Component 1 Service 2");
+    });
+});
+
+describe("universal-parser", () => {
+    it("fileSysStyleRouteParser", () => {
+        const parse = fileSysStyleRouteParser();
+        const complexPath =
+            "/some/long-ugly/file_sys_path/module-2_Component--_  1,=service_2.md";
+        const result = parse(complexPath);
+        assert(result.dir == "/some/long-ugly/file_sys_path");
+        assert(result.base == "module-2_Component--_  1,=service_2.md");
+        assert(result.name == "module-2_Component--_  1,=service_2");
+        assert(result.modifiers.length == 0);
+        assert(result.ext == ".md");
+    });
+
+    it("fileSysStyleRouteParser with modifiers", () => {
+        const parse = fileSysStyleRouteParser();
+        const complexPath =
+            "/some/long-ugly/file_sys_path/module-2_Component--_  1,=service_2.mod1.mod2.md";
+        const result = parse(complexPath);
+        assert(result.root == "/");
+        assert(result.dir == "/some/long-ugly/file_sys_path");
+        assert(result.base == "module-2_Component--_  1,=service_2.mod1.mod2.md");
+        assert(result.name == "module-2_Component--_  1,=service_2");
+        assert(result.modifiers.length == 2);
+        assert(result.ext == ".md");
+    });
+});
+
 describe("universal-args", () => {
     it("unsafeDomElemsAttrHook", () => {
         const result1 = unsafeDomElemsAttrHook('universal-test-hook-fn');
@@ -89,9 +124,9 @@ describe("universal-event-emitter", () => {
     });
 
     it("flexibleEventEmitter singletons", () => {
-        EventEmitter.singletons.declare("test");
-        const ees1 = EventEmitter.singletons.instance("test");
-        const ees2 = EventEmitter.singletons.instance("test");
+        EventEmitter.singletons.declare("testE2");
+        const ees1 = EventEmitter.singletons.instance("testE2");
+        const ees2 = EventEmitter.singletons.instance("testE2");
         assert(ees1);
         assert(ees2);
         assert(ees1 === ees2);
@@ -105,9 +140,9 @@ describe("universal-event-emitter", () => {
         lifecycleEE.on("declared", (ees) => { declared++; })
         lifecycleEE.on("constructed", (ees) => { constructed++; })
         lifecycleEE.on("accessed", (ees) => { accessed++; })
-        EventEmitter.singletons.declare("test", { lifecycleEE });
-        const ees1 = EventEmitter.singletons.instance("test");
-        const ees2 = EventEmitter.singletons.instance("test");
+        EventEmitter.singletons.declare("testE3", { lifecycleEE });
+        const ees1 = EventEmitter.singletons.instance("testE3");
+        const ees2 = EventEmitter.singletons.instance("testE3");
         const ees1Value = ees1.value();
         const ees2Value = ees1.value();
         assert(declared == 1);
@@ -116,7 +151,6 @@ describe("universal-event-emitter", () => {
         assert(ees1 === ees2);
         assert(ees1Value === ees2Value);
     });
-
 });
 
 describe("universal-HTTP", () => {

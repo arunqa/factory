@@ -1,6 +1,84 @@
 "use strict";
 
 /**
+ * Replace all special characters (non-letters/numbers) with space and
+ * capitalize the first character of each word.
+ * @param text string with special characters (like a filename or slug)
+ */
+function humanizeText(text) {
+    // first replace all special characters with space then remove multiple spaces
+    return text.replace(/[^a-zA-Z0-9 ]/g, " ").replace(/\s\s+/g, " ").replace(
+        // ^\w{1} matches the first letter of the word.
+        //   ^ matches the beginning of the string.
+        //   \w matches any word character.
+        //   {1} takes only the first character.
+        // | works like the boolean OR. It matches the expression after and before the |.
+        // \s+ matches any amount of whitespace between the words.
+        /(^\w{1})|(\s+\w{1})/g,
+        (letter) => letter.toUpperCase(),
+    );
+}
+
+function importHtmlContent(url, select, inject) {
+    fetch(url).then(resp => {
+        resp.text().then(html => {
+            const parser = new DOMParser();
+            const foreignDoc = parser.parseFromString(html, "text/html");
+            const selected = select(foreignDoc);
+            if (Array.isArray(selected)) {
+                for (const s of selected) {
+                    const importedNode = document.adoptNode(s);
+                    inject(importedNode, url, html);
+                }
+            } else if (selected) {
+                const importedNode = document.adoptNode(selected);
+                inject(importedNode, url, html);
+            }
+        });
+    });
+}
+
+function fileSysStyleRouteParser() {
+    const posixPathRE = /^((\/?)(?:[^\/]*\/)*)((\.{1,2}|[^\/]+?|)(\.[^.\/]*|))[\/]*$/;
+    return (text) => {
+        if (typeof text !== 'string') {
+            throw new TypeError(
+                "Parameter 'text' must be a string, not " + typeof text
+            );
+        }
+        const components = posixPathRE.exec(text).slice(1);
+        if (!components || components.length !== 5) {
+            throw new TypeError("Invalid path '" + text + "'");
+        }
+
+        const parsedPath = {
+            root: components[1],
+            dir: components[0].slice(0, -1),
+            base: components[2],
+            ext: components[4],
+            name: components[3],
+            modifiers: []
+        };
+
+        const modifierIndex = parsedPath.name.lastIndexOf(".");
+        if (modifierIndex > 0) {
+            let ppn = parsedPath.name;
+            let modifier = ppn.substring(modifierIndex);
+            while (modifier && modifier.length > 0) {
+                parsedPath.modifiers.push(modifier);
+                ppn = ppn.substring(0, ppn.length - modifier.length);
+
+                const modifierIndex = ppn.lastIndexOf(".");
+                modifier = modifierIndex > 0 ? ppn.substring(modifierIndex) : undefined;
+            }
+            parsedPath.name = ppn;
+        }
+
+        return parsedPath;
+    }
+}
+
+/**
  * Allows defining DOM "hook functions" like <html lang="en" XYZ-args-supplier="xyzArgsHook">.
  * Given one or more DOM elements, look for hookName attribute and, if the hookName ("XYZ-args-supplier")
  * references a Javascript function return it as a Javascript function instance. It's unsafe because it
@@ -155,39 +233,45 @@ class Singletons {
     }
 
     declare(identity, construct, configArgsSupplier, configRulesSupplier) {
-        const config = flexibleArgs(configArgsSupplier, {
-            defaultArgs: {
-                construct,                      // (config) => { return constructed; }
-                // optional:
-                lifecycleEE: this.lifecycleEE,  // EventEmitter
-                lifecycleEventName: undefined,  // (suggested) => string
-            },
-            hookableDomElemsAttrName: "rf-hook-universal-event-emitter-singletons",
-            hookableDomElems: [document.documentElement, document.head],
-            ...configRulesSupplier
-        });
-        const singleton = {
-            value: (reason) => {
-                const { construct, lifecycleEE, lifecycleEventName } = config.args;
-                if ("constructedValue" in singleton) {
-                    if (lifecycleEE) lifecycleEE.emit(lifecycleEventName("accessed"), { ...singleton, reason });
-                } else {
-                    singleton.constructedValue = construct(singleton.config, this);
-                    if (lifecycleEE) {
-                        lifecycleEE.emit(lifecycleEventName("constructed"), { ...singleton, reason });
-                        lifecycleEE.emit(lifecycleEventName("accessed"), { ...singleton, reason });
+        const request = { identity, construct, configArgsSupplier, configRulesSupplier };
+        let singleton = this.#singletons[identity];
+        if (!singleton) {
+            const config = flexibleArgs(configArgsSupplier, {
+                defaultArgs: {
+                    construct,                      // (config) => { return constructed; }
+                    // optional:
+                    lifecycleEE: this.lifecycleEE,  // EventEmitter
+                    lifecycleEventName: undefined,  // (suggested) => string
+                },
+                hookableDomElemsAttrName: "rf-hook-universal-event-emitter-singletons",
+                hookableDomElems: [document.documentElement, document.head],
+                ...configRulesSupplier
+            });
+            singleton = {
+                value: (reason) => {
+                    const { construct, lifecycleEE, lifecycleEventName } = config.args;
+                    if ("constructedValue" in singleton) {
+                        if (lifecycleEE) lifecycleEE.emit(lifecycleEventName("accessed"), { ...singleton, reason });
+                    } else {
+                        singleton.constructedValue = construct(singleton.config, this);
+                        if (lifecycleEE) {
+                            lifecycleEE.emit(lifecycleEventName("constructed"), { ...singleton, reason });
+                            lifecycleEE.emit(lifecycleEventName("accessed"), { ...singleton, reason });
+                        }
                     }
-                }
-                return singleton.constructedValue;
-            }, config
-        };
-        let { lifecycleEE, lifecycleEventName } = config.args;
-        if (!lifecycleEventName) {
-            lifecycleEventName = (suggested) => suggested;
-            config.args.lifecycleEventName = lifecycleEventName;
+                    return singleton.constructedValue;
+                }, config
+            };
+            let { lifecycleEE, lifecycleEventName } = config.args;
+            if (!lifecycleEventName) {
+                lifecycleEventName = (suggested) => suggested;
+                config.args.lifecycleEventName = lifecycleEventName;
+            }
+            this.#singletons[identity] = singleton;
+            if (lifecycleEE) lifecycleEE.emit(lifecycleEventName("declared"), { singleton, manager: this, request });
+        } else {
+            configRulesSupplier?.onDuplicateDeclaration?.(request);
         }
-        this.#singletons[identity] = singleton;
-        if (lifecycleEE) lifecycleEE.emit(lifecycleEventName("declared"), { singleton, manager: this });
         return singleton;
     }
 
@@ -425,6 +509,7 @@ class LabeledBadge {
     // valid after construction
     remoteBaseURL;
     useBadgenLib;
+    importModule;
     #initialized = false;
     #isBadgenLibLoaded = false;
 
@@ -435,12 +520,14 @@ class LabeledBadge {
         const { args } = governedArgs(argsSupplier, {
             defaultArgs: {
                 remoteBaseURL: 'https://badgen.net/badge',
+                importModule: (lib, actuate) => import(lib).then(actuate),
                 useBadgenLib: true,
             },
         });
 
         this.remoteBaseURL = args.remoteBaseURL;
         this.useBadgenLib = args.useBadgenLib;
+        this.importModule = args.importModule;
     }
 
     badgenArgs(args) {
@@ -483,7 +570,7 @@ class LabeledBadge {
 
         if (this.useBadgenLib) {
             // load the badgen script so that if it's needed later it will be faster than making network calls
-            $script("https://unpkg.com/badgen", () => {
+            this.importModule("https://unpkg.com/badgen", () => {
                 this.autoHTML = (badgenArgs) => {
                     return this.decorateHTML(badgenArgs, badgen(this.badgenArgs(badgenArgs)));
                 };
