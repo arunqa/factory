@@ -45,7 +45,12 @@ export function observabilityPostProduceResources<
       if (state.renderHealth) {
         yield {
           resourceFactory: async () => {
-            const health = await state.observability.serviceHealth();
+            const health = await state.observability.serviceHealth(
+              {
+                includeEnv: state.envVars.renderInHealth,
+                envVarFilter: state.envVars.filter,
+              },
+            );
             const healthJSON = JSON.stringify(health, undefined, "  ");
             const resource:
               & govn.PersistableStructuredDataResource

@@ -1162,6 +1162,10 @@ export abstract class TypicalPublication<
           // do a type-assertion
           {
             renderHealth: true,
+            envVars: {
+              renderInHealth: true,
+              filter: (name) => name.match(/^PUBCTL/) ? true : false,
+            },
             metrics: {
               universal: metrics,
               renderUniversalJSON: metricsOp.universalJSON,

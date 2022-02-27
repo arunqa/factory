@@ -32,5 +32,9 @@ export interface PostProduceObservabilityState {
     };
   };
   readonly renderHealth: boolean;
+  readonly envVars: {
+    readonly renderInHealth: boolean;
+    readonly filter: (name: string, value: string) => boolean;
+  };
   readonly observability: o.Observability;
 }
