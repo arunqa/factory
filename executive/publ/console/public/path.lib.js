@@ -42,7 +42,7 @@ class ContextBarComponent extends HTMLElement {
     connectedCallback() {
         // references: https://getbootstrap.com/docs/5.1/examples/navbars/
         //             https://getbootstrap.com/docs/5.1/examples/headers/
-        this.innerHTML = `<nav class="navbar navbar-expand-sm navbar-dark bg-dark" aria-label="Navbar">
+        this.innerHTML = `<nav class="navbar navbar-expand-sm navbar-dark bg-dark fixed-top" aria-label="Navbar">
             <div class="container-fluid">
                 <a class="navbar-brand" href="#">
                     <img src="./image/favicon/favicon-32x32.png" alt="" width="32" height="32">
@@ -102,7 +102,9 @@ class ContentSuppliers {
                 pageTitle: () => {
                     if (!document.title || document.title == defaultPageTitle) {
                         const firstHeader = document.querySelector("header");
-                        if (firstHeader) document.title = firstHeader.innerText;
+                        return firstHeader ? firstHeader.innerText : document.title;
+                    } else {
+                        return document.title;
                     }
                 },
             }
@@ -111,6 +113,7 @@ class ContentSuppliers {
 
     get config() { return this.#config; }
     get args() { return this.#config.args; }
+    get pageTitle() { return this.args.pageTitle; }
 
     init() {
         return this;
@@ -167,8 +170,12 @@ class PageLayouts {
                     // this doesn't quite work yet:
                     // history.pushState("object or string representing the state of the page", "new title", "newURL");
                 },
-                customElements: () => new CustomElements(),
-                contentSuppliers: () => new ContentSuppliers(),
+                mutatePageTitle: (titleSupplier) => {
+                    const title = typeof titleSupplier === "function" ? titleSupplier() : titleSupplier;
+                    if (title) document.title = title;
+                },
+                customElements: new CustomElements(),
+                contentSuppliers: new ContentSuppliers(),
             },
             hookableDomElemsAttrName: "page-layouts-args-supplier",
             hookableDomElems: [document.documentElement, document.head],
@@ -177,12 +184,13 @@ class PageLayouts {
 
     get config() { return this.#config; }
     get args() { return this.#config.args; }
-    get customElements() { return this.args.customElements(); }
+    get customElements() { return this.args.customElements; }
+    get contentSuppliers() { return this.args.contentSuppliers; }
     get layoutIdentity() { return this.args.layoutIdentity.supplier(); }
 
     init() {
-        this.args.customElements().init(this);
-        this.args.contentSuppliers().init(this);
+        this.args.customElements.init(this);
+        this.args.contentSuppliers.init(this);
         return this;
     }
 
@@ -217,7 +225,7 @@ class PageLayouts {
         this.defineFavIconLink("icon", "./image/favicon/favicon-16x16.png", "16x16", "image/png");
         this.defineFavIconLink("manifest", "./image/favicon/site.webmanifest");
 
-        this.args.pageTitleSupplier?.();
+        this.args.mutatePageTitle?.(this.args.contentSuppliers.pageTitle);
     }
 
     renderBody(identity = this.layoutIdentity) {
@@ -243,7 +251,8 @@ class PageLayouts {
     #styleSemanticElems() {
         // our philosophy is to not have styling in *.html semantic tags so let's style them now;
         [
-            ["main article", (elem) => elem.className += " container"],
+            ["main", (elem) => elem.className += " container"],
+            ["main article", (elem) => elem.className += " bg-light p-5 rounded-lg"],
             ["main article header", (elem) => elem.className += " h1"],
             ["main article section header", (elems) => elems.forEach(e => e.className += " h2"), true],
             ["main article section section header", (elems) => elems.forEach(e => e.className += " h2"), true],
