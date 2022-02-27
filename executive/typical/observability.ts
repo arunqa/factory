@@ -18,7 +18,7 @@ if (!window.observability) {
 
 export const emitServiceHealthComponentsToConsole = async () => {
   // any proxies or other components that register themselves will be iterable
-  const details = await window.observability.serviceHealthComponentsDetails();
+  const details = await window.observability.serviceHealthComponentsChecks();
   for (const entry of Object.entries(details)) {
     const [category, statuses] = entry;
     for (const s of statuses) {

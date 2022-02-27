@@ -37,12 +37,12 @@ export async function redisCache<T>(
           output: `Redis Server ${hostname} at ${port}: ${error}`,
         }),
       ];
-      const details: Record<string, health.ServiceHealthComponentDetails> = {
-        ...cache[1](keyName).details,
+      const checks: Record<string, health.ServiceHealthComponentChecks> = {
+        ...cache[1](keyName).checks,
         [keyName("redis")]: content,
       };
       return {
-        details: details,
+        checks,
       };
     }];
   }
@@ -98,17 +98,17 @@ export async function redisCache<T>(
         componentType: "component",
         componentId: `redis-cache-content`,
         metricName: "count",
-        metricUnit: "cardinal",
-        metricValue: Object.keys(result).length,
+        observedUnit: "cardinal",
+        observedValue: Object.keys(result).length,
         links: statistics,
         time: new Date(),
       }),
     ];
-    const details: Record<string, health.ServiceHealthComponentDetails> = {
+    const checks: Record<string, health.ServiceHealthComponentChecks> = {
       [keyName("content")]: content,
     };
     return {
-      details: details,
+      checks,
     };
   }];
 }

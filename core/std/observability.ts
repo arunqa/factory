@@ -16,7 +16,7 @@ export class Observability implements govn.ObservabilityEventsEmitterSupplier {
     events.on("healthStatusSupplier", (rf) => this.suppliers.push(rf));
   }
 
-  async serviceHealthComponentsDetails() {
+  async serviceHealthComponentsChecks() {
     const details: Record<string, health.ServiceHealthComponentStatus[]> = {};
     const storeDetail = (
       category: string,
@@ -45,10 +45,10 @@ export class Observability implements govn.ObservabilityEventsEmitterSupplier {
 
   async serviceHealth() {
     return health.healthyService({
-      serviceID: import.meta.url,
-      releaseID: "releaseID",
+      serviceId: import.meta.url,
+      releaseId: "releaseID",
       description: "TODO: ObservabilityEvents description",
-      details: await this.serviceHealthComponentsDetails(),
+      checks: await this.serviceHealthComponentsChecks(),
       version: "TODO: ObservabilityEvents version",
     });
   }

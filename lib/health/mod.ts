@@ -2,7 +2,7 @@ import * as safety from "../safety/mod.ts";
 
 /**
  * Health Check Response Format for HTTP APIs (draft-inadarei-api-health-check-01)
- * See: https://tools.ietf.org/id/draft-inadarei-api-health-check-01.html
+ * See: https://tools.ietf.org/id/draft-inadarei-api-health-check-06.html
  */
 
 /**
@@ -17,6 +17,7 @@ import * as safety from "../safety/mod.ts";
  */
 export type ServiceHealthState = "pass" | "fail" | "warn";
 export type ServiceHealthLinks = Record<string, string>;
+export type ServiceHealthAffectedEndpoints = Record<string, string>;
 
 export interface ServiceHealthStatusable {
   status: ServiceHealthState;
@@ -37,20 +38,20 @@ export const isServiceHealthDiagnosable = safety.typeGuard<
 
 export interface ServiceHealthVersioned {
   version: string;
-  releaseID: string;
+  releaseId: string;
 }
 
 export const isServiceHealthVersioned = safety.typeGuard<
   ServiceHealthVersioned
->("version", "releaseID");
+>("version", "releaseId");
 
 export interface ServiceHealthComponents {
-  details: Record<ServiceHealthComponentName, ServiceHealthComponentDetails>;
+  checks: Record<ServiceHealthComponentName, ServiceHealthComponentChecks>;
 }
 
 export const isServiceHealthComponents = safety.typeGuard<
   ServiceHealthComponents
->("details");
+>("checks");
 
 export interface ServiceHealthLinkable {
   links: ServiceHealthLinks;
@@ -60,14 +61,22 @@ export const isServiceHealthLinkable = safety.typeGuard<
   ServiceHealthLinkable
 >("links");
 
+export interface ServiceHealthAffectable {
+  affectedEndpoints: ServiceHealthAffectedEndpoints;
+}
+
+export const isServiceHealthAffectable = safety.typeGuard<
+  ServiceHealthAffectable
+>("affectedEndpoints");
+
 export interface ServiceHealthIdentity {
-  serviceID: string;
+  serviceId: string;
   description: string;
 }
 
 export const isServiceHealthIdentity = safety.typeGuard<
   ServiceHealthIdentity
->("serviceID", "description");
+>("serviceId", "description");
 
 export interface HealthyServiceStatus
   extends
@@ -86,7 +95,8 @@ export interface UnhealthyServiceStatus
     ServiceHealthDiagnosable,
     ServiceHealthComponents,
     ServiceHealthIdentity,
-    Partial<ServiceHealthLinkable> {
+    Partial<ServiceHealthLinkable>,
+    Partial<ServiceHealthAffectable> {
   status: "fail" | "warn";
 }
 
@@ -117,17 +127,18 @@ export type TypicalServiceHealthMetricName =
   | "connections"
   | "uptime";
 
-export type ServiceHealthMetricValue =
+export type ServiceHealthObservedValue =
   | string
   | number
   | Date
   | Record<string, unknown>
   | Array<unknown>;
+export type ServiceHealthObservedUnit = string;
 
-export interface ServiceHealthMetric {
+export interface ServiceHealtObservation {
   metricName: TypicalServiceHealthMetricName | string;
-  metricValue: ServiceHealthMetricValue;
-  metricUnit: string;
+  observedValue: ServiceHealthObservedValue;
+  observedUnit: ServiceHealthObservedUnit;
 }
 
 export type ServiceHealthComponentName = string;
@@ -142,7 +153,7 @@ export interface HealthyServiceHealthComponentStatus
   extends
     ServiceHealthStatusable,
     ServiceHealthComponent,
-    Partial<ServiceHealthMetric>,
+    Partial<ServiceHealtObservation>,
     ServiceHealthLinkable {
   time: Date;
   node?: string;
@@ -152,7 +163,7 @@ export interface UnhealthyServiceHealthComponentStatus
   extends
     ServiceHealthStatusable,
     ServiceHealthComponent,
-    Partial<ServiceHealthMetric>,
+    Partial<ServiceHealtObservation>,
     ServiceHealthDiagnosable,
     ServiceHealthLinkable {
   time: Date;
@@ -162,7 +173,7 @@ export interface UnhealthyServiceHealthComponentStatus
 export type ServiceHealthComponentStatus =
   | HealthyServiceHealthComponentStatus
   | UnhealthyServiceHealthComponentStatus;
-export type ServiceHealthComponentDetails = ServiceHealthComponentStatus[];
+export type ServiceHealthComponentChecks = ServiceHealthComponentStatus[];
 
 export interface ServiceHealthSupplier {
   readonly serviceHealth: ServiceHealthComponents;
@@ -175,7 +186,7 @@ export const isServiceHealthSupplier = safety.typeGuard<ServiceHealthSupplier>(
 export function defaultLinks(): ServiceHealthLinks {
   return {
     "schema":
-      "https://tools.ietf.org/id/draft-inadarei-api-health-check-01.html",
+      "https://tools.ietf.org/id/draft-inadarei-api-health-check-06.html",
   };
 }
 
