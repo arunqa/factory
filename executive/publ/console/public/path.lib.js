@@ -55,7 +55,7 @@ class ContextBarComponent extends HTMLElement {
                 <div class="collapse navbar-collapse justify-content-md-center" id="contextBar-navigation-primary">
                     <ul class="navbar-nav me-auto mb-2 mb-sm-0">
                         <li class="nav-item">
-                            <a class="nav-link active" aria-current="page" href="./index.html">Home</a>
+                            <a class="nav-link" href="./index.html">Home</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="./health.html">Health</a>
@@ -313,6 +313,15 @@ class PageState {
         // allow optional chaining
         return this;
     }
+
+    mutateStateContent() {
+        for (const nl of document.querySelectorAll("#contextBar-navigation-primary ul.navbar-nav li.nav-item a.nav-link")) {
+            if (nl.href == window.location) {
+                nl.className += " active";
+                nl.setAttribute("aria-current", "page");
+            }
+        }
+    }
 }
 
 class SiteNavigation {
@@ -465,6 +474,7 @@ class Executive {
         // layout requested
         document.addEventListener('DOMContentLoaded', () => {
             this.#layouts.renderBody();
+            this.#state.mutateStateContent();
 
             // in case we used <html style="display:none"> to prevent flash of unstyled content (FOUC), turn on display
             document.getElementsByTagName("html")[0].style.display = "block";
