@@ -123,6 +123,7 @@ Conventions that the server should honor should be based on `filename.m1.m2.extn
 
 ## Guidelines
 
+* Use [HTML syntax guidelines](https://github.com/LeaVerou/html-syntax-guidelines) and the various guides referenced in it for our guidelines.
 * remove coupling by ensuring event driven architecture (EDA) with event listeners, not specific callbacks or globals
 * use HTML5 semantic elements like <header>, <nav>, <main>, <article>, <aside>, <footer>, etc. and not make up our own semantics
 * use custom elements with prefixes like

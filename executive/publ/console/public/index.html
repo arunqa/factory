@@ -7,6 +7,11 @@
     <link rel="stylesheet" type="text/css" href="./path.actuate.css" />
     <script src="./universal.lib.js"></script>
     <script src="./path.actuate.js" type="module"></script>
+
+    <!-- Markdown in HTML, with Prism syntax highlighting: https://md-block.verou.me/ -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/themes/prism-coy.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/prism.min.js"></script>
+    <script type="module" src="https://md-block.verou.me/md-block.js"></script>
 </head>
 
 <!-- always use Semantic tags whenever possible (https://html.spec.whatwg.org/multipage/sections.html#the-article-element) -->
@@ -18,35 +23,84 @@
         <article>
             <header>Welcome to the Console</header> <!-- note use of <header> for article now, not page -->
 
-            <p>There's a lot to write here.</p>
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Special title treatment</h5>
+                            <p class="card-text">With supporting text below as a natural lead-in to additional content.
+                            </p>
+                            <a href="#" class="btn btn-primary">Go somewhere</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Special title treatment</h5>
+                            <p class="card-text">With supporting text below as a natural lead-in to additional content.
+                            </p>
+                            <a href="#" class="btn btn-primary">Go somewhere</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            <section>
-                <header>TODO</header> <!-- note use of <header> for section now, not article -->
+            <!-- if editing in VS Code use "html.format.unformatted": "md-block" in settings.json to not format this tag -->
+            <md-block hmin="2">
+                # TODO
 
-                <ul>
-                    <li>
-                        Implement dynamic navigation using <code>path.ctx.js</code>. This might work like Deno's
-                        <code>mod.ts</code> does where we inventory the files in the current path. If it's regular
-                        enough, it could be auto-generated on each start of the server or through Taskfile.ts.
-                        <pre>
-                            const pathCtx = {
-                                parent: import('../path.ctx.js'), // if it doesn't exist, parent would be undefined (not error?)
-                                entries: [
-                                    { unit: "x.html" }, // should have just enough for runtime parsing to be possible
-                                    { unit: "y.html" }, // follows interface defined for RouteUnit, which is inherited by RouteNode
-                                ],
-                            };
-                            export default pathCtx;
-                        </pre>
-                    </li>
-                    <li>Migrate all legacy `control-panel` pages to rfConsole.</li>
-                    <li>Implement client-side markdown generator using web component so heavy text like this can be
-                        written in MD.</li>
-                    <li>In <code>executive/publ/console/mod.ts</code> make <code>#isAccessLoggingEnabled</code>
-                        accessible through Console so access logging can be controlled from the browser dynamically.
-                    </li>
-                </ul>
-            </section>
+                ## Essential
+                * Implement dynamic navigation using `path.ctx.js`. This might work like Deno's `mod.ts` does where
+                we inventory the files in the current path. If it's regular enough, it could be auto-generated on
+                each start of the server or through Taskfile.ts.
+
+                    ```js
+                    const pathCtx = {
+                        parent: import('../path.ctx.js'), // if it doesn't exist, parent would be undefined (not error?)
+                        entries: [
+                            { unit: "x.html" }, // should have just enough for runtime parsing to be possible
+                            { unit: "y.html" }, // follows interface defined for RouteUnit, which is inherited by RouteNode
+                        ],
+                    };
+                    export default pathCtx;
+                    ```
+
+                * Continuously run Lighthouse in Edge/Chrome DevTools to make sure performance is maintained.
+
+                ## Next
+
+                * Migrate all legacy `control-panel` pages to rfConsole.
+                * Integrate Deno-specific [Packup](https://github.com/kt3k/packup) packager as Oak routes or use it
+                as guidance.
+                * In `executive/publ/console/mod.ts` make `#isAccessLoggingEnabled` accessible through Console so
+                access logging can be controlled from the browser dynamically.
+                * Create feature flags API endpoint so that unlimited Unleash-like FF's can be integrated
+
+                ## Components
+
+                * Use [µhtml](https://github.com/WebReflection/uhtml#readme) for DOM-friendly dynamic rendering.
+                * Use [µce](https://github.com/WebReflection/uce) for µhtml-based Custom Elements.
+                * Use [µce\-template](https://github.com/WebReflection/uce-template#readme) for a Vue 3 inspired Custom Elements toolless alternative.
+
+                ## HTML-friendly Scripts Dependency Bundling Convenience
+
+                Figure out how to replace `&lt;md-block>` dependencies with something like `&lt;html data-deps="md-block">`[^whyDeps]
+                to encapsulate "bundles" easily and dynamically load them. We can define multiple "bundles" and pull them
+                in dynamically using `&lt;html data-deps="bundle1,bundle2">` easily. `bundle1`, `bundle2` could just function
+                "hooks" which, when called, would just be looked up and executed using $script or similar.
+
+                [^whyDeps]: `&lt;html data-deps="..."> uses Deno's `deps.ts` naming convention.
+
+                ```html
+                &lt;!-- Markdown in HTML, with Prism syntax highlighting: https://md-block.verou.me/ --&gt;
+                &lt;link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/themes/prism-coy.min.css" rel="stylesheet" />
+                &lt;script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/prism.min.js">&lt;/script>
+                &lt;script type="module" src="https://md-block.verou.me/md-block.js">&lt;/script>
+                ```
+            </md-block>
+
+            <!-- <md-block src="./README.md" hmin="3"></md-block> -->
         </article>
     </main>
 </body>

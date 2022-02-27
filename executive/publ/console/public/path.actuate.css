@@ -4,3 +4,15 @@ body {
     /* because the navbar is fixed, put some space above the body */
     padding-top: 4.5rem;
 }
+
+/* we use <md-block> to transform Markdown to HTML in the client; the markdown
+   content should not be shown until transformation so we hide/show based on
+   ["rendered" attribute](https://md-block.verou.me/#api). */
+
+md-block:not([rendered]) {
+    display: none;
+}
+
+md-block[rendered] {
+    display: block;
+}
