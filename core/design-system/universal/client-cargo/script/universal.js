@@ -19,6 +19,18 @@ function humanizeText(text) {
     );
 }
 
+function minTextWhitespaceIndent(text) {
+    const match = text.match(/^[ \t]*(?=\S)/gm);
+    return match ? match.reduce((r, a) => Math.min(r, a.length), Infinity) : 0;
+}
+
+function unindentTextWhitespace(text, removeInitialNewLine = true) {
+    const indent = minTextWhitespaceIndent(text);
+    const regex = new RegExp(`^[ \\t]{${indent}}`, "gm");
+    const result = text.replace(regex, "");
+    return removeInitialNewLine ? result.replace(/^\n/, "") : result;
+}
+
 function importHtmlContent(url, select, inject) {
     fetch(url).then(resp => {
         resp.text().then(html => {

@@ -2,7 +2,7 @@
 
 const assert = chai.assert;
 
-describe("universal-humanize", () => {
+describe("universal-text", () => {
     it("humanizeText", () => {
         const inhumanText = "module-2_Component--_  1,=service_2";
         const result = humanizeText(inhumanText);
