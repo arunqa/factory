@@ -1,3 +1,5 @@
+import { humanFriendlyPhrase, unindentWhitespace } from "./deps.js";
+
 // prepare the event emitter globally in case anyone else might need it
 export const actuationEvtEmitterIdentity = "actuation";
 EventEmitter.singletons.declare(actuationEvtEmitterIdentity);
@@ -216,7 +218,7 @@ class MarkdownTransform {
 
         if (mdElems && mdElems.length > 0) {
             for (const mde of mdElems) {
-                const markdown = unindentTextWhitespace(mde.innerText);
+                const markdown = unindentWhitespace(mde.innerText);
                 const formatted = document.createElement("div");
                 formatted.innerHTML = this.#markdownIt.render(markdown);
                 formatted.dataset.contentTransformedFrom = "markdown";
@@ -413,7 +415,7 @@ class PageState {
                     const parsed = parse(source);
                     return {
                         unit: parsed.name,
-                        label: humanizeText(parsed.name),
+                        label: humanFriendlyPhrase(parsed.name),
                         source: parsed,
                     }
                 },

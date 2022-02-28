@@ -154,13 +154,27 @@ export class Executive<
     });
     // deno-lint-ignore require-await
     ps.tsTransformEE.on("persistedToJS", async (jsAbsPath, event) => {
-      console.info(
-        colors.magenta(
-          `*** ${colors.yellow(jsAbsPath)} generated from ${
-            colors.green(event.srcRootSpecifier)
-          }`,
-        ),
-      );
+      // deno-fmt-ignore
+      console.info(colors.magenta(`*** ${colors.yellow(jsAbsPath)} generated from ${colors.green(event.srcRootSpecifier)}`));
+    });
+    // deno-lint-ignore require-await
+    ps.tsTransformEE.on("notBundledToJS", async (event) => {
+      if (
+        event.reason == "src-not-found" ||
+        event.reason == "dest-is-newer-than-src"
+      ) {
+        // deno-fmt-ignore
+        console.info(colors.dim(`    ${event.srcRootSpecifier} not generated: ${event.reason}`));
+        return;
+      }
+      // deno-fmt-ignore
+      console.info(colors.magenta(`*** ${colors.yellow(event.srcRootSpecifier)} not generated: ${colors.blue(event.reason)}`));
+      if (event.er) {
+        console.warn("    ", Deno.formatDiagnostics(event.er.diagnostics));
+      }
+      if (event.error) {
+        console.error("   ", colors.red(event.error.toString()));
+      }
     });
     await ps.serve();
   }

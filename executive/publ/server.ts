@@ -127,10 +127,12 @@ export class PublicationServer {
       });
     this.staticIndex = options.staticIndex ?? "index.html";
     this.staticEE.on("transform", async (ssoe) => {
-      await lang.bundleJsFromTsTwinIfNewer(
-        path.join(ssoe.root, ssoe.target),
-        this.tsTransformEE,
-      );
+      if (ssoe.target.endsWith(".js")) {
+        await lang.bundleJsFromTsTwinIfNewer(
+          path.join(ssoe.root, ssoe.target),
+          this.tsTransformEE,
+        );
+      }
     });
   }
 

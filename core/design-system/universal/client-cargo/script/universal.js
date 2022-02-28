@@ -30,37 +30,6 @@ function jsTokenEvalResult(name, discover = eval, onInvalidToken, onFailedDiscov
     return result;
 }
 
-/**
- * Replace all special characters (non-letters/numbers) with space and
- * capitalize the first character of each word.
- * @param text string with special characters (like a filename or slug)
- */
-function humanizeText(text) {
-    // first replace all special characters with space then remove multiple spaces
-    return text.replace(/[^a-zA-Z0-9 ]/g, " ").replace(/\s\s+/g, " ").replace(
-        // ^\w{1} matches the first letter of the word.
-        //   ^ matches the beginning of the string.
-        //   \w matches any word character.
-        //   {1} takes only the first character.
-        // | works like the boolean OR. It matches the expression after and before the |.
-        // \s+ matches any amount of whitespace between the words.
-        /(^\w{1})|(\s+\w{1})/g,
-        (letter) => letter.toUpperCase(),
-    );
-}
-
-function minTextWhitespaceIndent(text) {
-    const match = text.match(/^[ \t]*(?=\S)/gm);
-    return match ? match.reduce((r, a) => Math.min(r, a.length), Infinity) : 0;
-}
-
-function unindentTextWhitespace(text, removeInitialNewLine = true) {
-    const indent = minTextWhitespaceIndent(text);
-    const regex = new RegExp(`^[ \\t]{${indent}}`, "gm");
-    const result = text.replace(regex, "");
-    return removeInitialNewLine ? result.replace(/^\n/, "") : result;
-}
-
 function importHtmlContent(url, select, inject) {
     fetch(url).then(resp => {
         resp.text().then(html => {
