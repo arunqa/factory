@@ -1,9 +1,9 @@
 import { log, path } from "../deps.ts";
 import * as safety from "../../lib/safety/mod.ts";
 import * as govn from "../../governance/mod.ts";
-import * as c from "./content.ts";
 import * as e from "./extension.ts";
 import * as ws from "../../lib/workspace/mod.ts";
+import * as fsr from "../../lib/fs/fs-route.ts";
 
 export const [isRouteUnit, isRouteUnitsArray] = safety.typeGuards<
   govn.RouteUnit,
@@ -469,77 +469,9 @@ export class TypicalRouteFactory implements govn.RouteFactory {
   }
 }
 
-export type FileExtnModifiers = string[];
-
-export interface ParsedFileSysRoute {
-  readonly parsedPath: path.ParsedPath;
-  readonly routeUnit: govn.RouteUnit;
-  readonly modifiers?: FileExtnModifiers;
-}
-
-export interface FileSysRouteParser {
-  (
-    fileSysPath: string | ParsedFileSysRoute,
-    commonAncestor: string,
-  ): ParsedFileSysRoute;
-}
-
-/**
- * Parses a file system path and returns the unit and label as the name of the
- * file. If there are any extra extensions in the file they are returned as
- * "modifiers".
- * @param fsp
- * @returns
- */
-export const typicalFileSysRouteParser: FileSysRouteParser = (fsp) => {
-  let parsedPath: path.ParsedPath;
-  let modifiers: string[] | undefined;
-  if (typeof fsp === "string") {
-    parsedPath = path.parse(fsp);
-    if (parsedPath.name.indexOf(".") > 0) {
-      modifiers = [];
-      let ppn = parsedPath.name;
-      let modifier = path.extname(ppn);
-      while (modifier && modifier.length > 0) {
-        modifiers.push(modifier);
-        ppn = ppn.substring(0, ppn.length - modifier.length);
-        modifier = path.extname(ppn);
-      }
-      parsedPath.name = ppn;
-    }
-    return {
-      parsedPath,
-      modifiers,
-      routeUnit: { unit: parsedPath.name, label: parsedPath.name },
-    };
-  }
-  return fsp; // no transformation
-};
-
-/**
- * Parses a file system path and returns the unit as the name of the file and
- * the label as a human-friendly version of the file name.
- * @param fsp
- * @returns
- */
-export const humanFriendlyFileSysRouteParser: FileSysRouteParser = (
-  fsp,
-  ca,
-) => {
-  const typical = typicalFileSysRouteParser(fsp, ca);
-  return {
-    parsedPath: typical.parsedPath,
-    modifiers: typical.modifiers,
-    routeUnit: {
-      ...typical.routeUnit,
-      label: c.humanFriendlyPhrase(typical.parsedPath.name),
-    },
-  };
-};
-
 export interface FileSysRouteOptions {
   readonly fsRouteFactory: FileSysRouteFactory;
-  readonly routeParser: FileSysRouteParser;
+  readonly routeParser: fsr.FileSysRouteParser;
   readonly extensionsManager: govn.ExtensionsManager;
   readonly log: log.Logger;
 }
@@ -662,55 +594,4 @@ export class FileSysRouteFactory extends TypicalRouteFactory {
     this.cache.set(fileSysPath, result);
     return result;
   }
-}
-
-export interface SlugifyOptions {
-  lowercase: boolean;
-  alphanumeric: boolean;
-  separator: string;
-  replace: {
-    [index: string]: string;
-  };
-}
-
-// Default options
-const defaultSlugifyOptions: SlugifyOptions = {
-  alphanumeric: true,
-  lowercase: true,
-  separator: "-",
-  replace: {
-    "Ð": "D", // eth
-    "ð": "d",
-    "Đ": "D", // crossed D
-    "đ": "d",
-    "ø": "o",
-    "ß": "ss",
-    "æ": "ae",
-    "œ": "oe",
-  },
-};
-
-export function slugifier(
-  options: SlugifyOptions = defaultSlugifyOptions,
-): (string: string) => string {
-  const { lowercase, alphanumeric, separator, replace } = options;
-
-  return function (text) {
-    if (lowercase) text = text.toLowerCase();
-
-    text = text.replaceAll(/[^a-z\d.-]/giu, (char) => {
-      if (char in replace) return replace[char];
-
-      if (alphanumeric) {
-        char = char.normalize("NFKD").replaceAll(/[\u0300-\u036F]/g, "");
-      }
-      char = /[\p{L}\u0300-\u036F]/u.test(char) ? char : "-";
-      return alphanumeric && /[^\w-]/.test(char) ? "" : char;
-    });
-
-    if (lowercase) text = text.toLowerCase();
-    return text
-      .replaceAll(/(?<=^|[/.])-+(?=[^.-])|(?<=[^.-])-+(?=$|[.])/g, "")
-      .replaceAll(/-+/g, separator);
-  };
 }

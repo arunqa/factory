@@ -1,6 +1,7 @@
 import { events, fs, log, path } from "../deps.ts";
 import * as safety from "../../lib/safety/mod.ts";
 import * as health from "../../lib/health/mod.ts";
+import * as fsr from "../../lib/fs/fs-route.ts";
 import * as govn from "../../governance/mod.ts";
 import * as g from "../../lib/git/mod.ts";
 import * as r from "../std/route.ts";
@@ -166,7 +167,7 @@ export class FileSysGlobsOriginator<Resource>
             fsRouteFactory: glob.fsRouteFactory || lfsPath.fsRouteFactory ||
               tllfsPath.fsRouteFactory,
             routeParser: glob.routeParser || lfsPath.routeParser ||
-              tllfsPath.routeParser || r.typicalFileSysRouteParser,
+              tllfsPath.routeParser || fsr.typicalFileSysRouteParser,
             extensionsManager: glob.extensionsManager ||
               lfsPath.extensionsManager ||
               tllfsPath.extensionsManager || this.extensionsManager,

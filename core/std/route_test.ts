@@ -3,6 +3,7 @@ import { testingAsserts as ta } from "../deps-test.ts";
 import * as govn from "../../governance/mod.ts";
 import * as mod from "./route.ts";
 import { CachedExtensions } from "./extension.ts";
+import * as fsr from "../../lib/fs/fs-route.ts";
 
 const testPath = path.relative(
   Deno.cwd(),
@@ -73,7 +74,7 @@ export function assertable(route: govn.Route) {
 Deno.test(`typical file sys route parser`, () => {
   const complexPath =
     "/some/long-ugly/file_sys_path/module-2_Component--_  1,=service_2.md";
-  const typicalUnit = mod.typicalFileSysRouteParser(
+  const typicalUnit = fsr.typicalFileSysRouteParser(
     complexPath,
     "/some/long-ugly",
   );
@@ -95,7 +96,7 @@ Deno.test(`typical file sys route parser`, () => {
 
 Deno.test(`typical file sys route parser with modifiers`, () => {
   const complexPath = "/some/long/file_sys_path/index.html.md.ts";
-  const typicalUnit = mod.typicalFileSysRouteParser(
+  const typicalUnit = fsr.typicalFileSysRouteParser(
     complexPath,
     "/some/long-ugly",
   );
@@ -118,7 +119,7 @@ Deno.test(`typical file sys route parser with modifiers`, () => {
 Deno.test(`human friendly file sys route parser`, () => {
   const uglyPath =
     "/some/long-ugly/file_sys_path/module-2_Component--_  1,=service_2.md";
-  const friendlyUnit = mod.humanFriendlyFileSysRouteParser(
+  const friendlyUnit = fsr.humanFriendlyFileSysRouteParser(
     uglyPath,
     "/some/long-ugly",
   );
@@ -418,7 +419,7 @@ Deno.test(`FileSysRoutes`, async () => {
     base,
     {
       fsRouteFactory,
-      routeParser: mod.humanFriendlyFileSysRouteParser,
+      routeParser: fsr.humanFriendlyFileSysRouteParser,
       extensionsManager: em,
       log: log.getLogger(),
     },
@@ -434,7 +435,7 @@ Deno.test(`FileSysRoutes`, async () => {
     base,
     {
       fsRouteFactory,
-      routeParser: mod.humanFriendlyFileSysRouteParser,
+      routeParser: fsr.humanFriendlyFileSysRouteParser,
       extensionsManager: em,
       log: log.getLogger(),
     },

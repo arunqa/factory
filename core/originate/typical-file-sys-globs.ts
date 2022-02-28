@@ -10,10 +10,11 @@ import * as module from "../resource/module/module.ts";
 import * as jsonM from "../resource/module/json.ts";
 import * as mdDS from "../render/markdown/mod.ts";
 import * as g from "../../lib/git/mod.ts";
+import * as fsr from "../../lib/fs/fs-route.ts";
 
 export function staticMarkdownFileSysGlob(
   mdrs: mdDS.MarkdownRenderStrategy,
-  routeParser = route.humanFriendlyFileSysRouteParser,
+  routeParser = fsr.humanFriendlyFileSysRouteParser,
 ): fsg.FileSysPathGlob<md.MarkdownResource> {
   return {
     glob: "**/*.md",
@@ -30,7 +31,7 @@ export function staticMarkdownFileSysGlob(
 
 export function markdownModuleFileSysGlob(
   mdrs: mdDS.MarkdownRenderStrategy,
-  routeParser = route.humanFriendlyFileSysRouteParser,
+  routeParser = fsr.humanFriendlyFileSysRouteParser,
   stage?: string,
 ): fsg.FileSysPathGlob<md.MarkdownResource> {
   return {
@@ -50,7 +51,7 @@ export function markdownFileSysGlobs(
   originRootPath: fsg.FileSysPathText,
   mdrs: mdDS.MarkdownRenderStrategy,
   fsRouteFactory: route.FileSysRouteFactory,
-  routeParser = route.humanFriendlyFileSysRouteParser,
+  routeParser = fsr.humanFriendlyFileSysRouteParser,
 ): fsg.FileSysPaths<md.MarkdownResource> {
   return {
     humanFriendlyName: "Markdown Content",
@@ -66,7 +67,7 @@ export function markdownFileSysGlobs(
 }
 
 export function htmlFileSysGlob(
-  routeParser = route.humanFriendlyFileSysRouteParser,
+  routeParser = fsr.humanFriendlyFileSysRouteParser,
 ): fsg.FileSysPathGlob<
   html.StaticHtmlResource
 > {
@@ -85,7 +86,7 @@ export function htmlFileSysGlob(
 export function htmlFileSysGlobs(
   originRootPath: fsg.FileSysPathText,
   fsRouteFactory: route.FileSysRouteFactory,
-  routeParser = route.humanFriendlyFileSysRouteParser,
+  routeParser = fsr.humanFriendlyFileSysRouteParser,
 ): fsg.FileSysPaths<html.StaticHtmlResource> {
   return {
     humanFriendlyName: "HTML Content with Optional Frontmatter",
@@ -102,7 +103,7 @@ export function htmlFileSysGlobs(
 
 export function resourceModuleFileSysGlob<State>(
   state: State,
-  routeParser = route.humanFriendlyFileSysRouteParser,
+  routeParser = fsr.humanFriendlyFileSysRouteParser,
   stage?: string,
 ): fsg.FileSysPathGlob<
   govn.ModuleResource
@@ -116,7 +117,7 @@ export function resourceModuleFileSysGlob<State>(
 }
 
 export function jsonModuleFileSysGlob(
-  routeParser = route.humanFriendlyFileSysRouteParser,
+  routeParser = fsr.humanFriendlyFileSysRouteParser,
   stage?: string,
 ): fsg.FileSysPathGlob<
   govn.StructuredDataInstanceSupplier
@@ -130,7 +131,7 @@ export function jsonModuleFileSysGlob(
 }
 
 export function jsBundleFileSysGlob(
-  routeParser = route.humanFriendlyFileSysRouteParser,
+  routeParser = fsr.humanFriendlyFileSysRouteParser,
   stage?: string,
 ): fsg.FileSysPathGlob<b.BundleResource> {
   return {
@@ -141,7 +142,7 @@ export function jsBundleFileSysGlob(
 }
 
 export function pciiServerOnlyBundleFileSysGlob(
-  routeParser = route.humanFriendlyFileSysRouteParser,
+  routeParser = fsr.humanFriendlyFileSysRouteParser,
   stage?: string,
 ): fsg.FileSysPathGlob<b.BundleResource> {
   return {
@@ -152,7 +153,7 @@ export function pciiServerOnlyBundleFileSysGlob(
 }
 
 export function pciiClientAndServerBundleFileSysGlob(
-  routeParser = route.humanFriendlyFileSysRouteParser,
+  routeParser = fsr.humanFriendlyFileSysRouteParser,
   stage?: string,
 ): fsg.FileSysPathGlob<b.BundleResource> {
   return {
@@ -167,7 +168,7 @@ export function moduleFileSysGlobs<State>(
   fsRouteFactory: route.FileSysRouteFactory,
   mdrs: mdDS.MarkdownRenderStrategy,
   state: State,
-  routeParser = route.humanFriendlyFileSysRouteParser,
+  routeParser = fsr.humanFriendlyFileSysRouteParser,
   stage?: string,
 ): fsg.FileSysPaths<govn.ModuleResource> {
   return {
