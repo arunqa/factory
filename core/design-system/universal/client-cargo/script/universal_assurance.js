@@ -2,6 +2,40 @@
 
 const assert = chai.assert;
 
+const syntheticScalarHook = "synthetic";
+const syntheticArrayHook = ["synthetic"];
+const syntheticObjectHook = { synthetic: "yes" };
+function syntheticFunctionHook() { }
+class SyntheticClassHook { }
+
+describe("universal-eval", () => {
+    it("jsTokenEvalResult (invalid)", () => {
+        let badValues = 0;
+        jsTokenEvalResult("alert('potential attack foiled!'))", eval, () => { badValues++ });
+        jsTokenEvalResult("badFunction", eval, undefined, (error) => { badValues++ });
+        assert(badValues == 2);
+    });
+
+    it("jsTokenEvalResult (class)", () => {
+        const synthetic = jsTokenEvalResult("SyntheticClassHook");
+        assert(synthetic === SyntheticClassHook);
+    });
+
+    it("jsTokenEvalResult (function)", () => {
+        const synthetic = jsTokenEvalResult("syntheticFunctionHook");
+        assert(synthetic === syntheticFunctionHook);
+    });
+
+    it("jsTokenEvalResult (values)", () => {
+        let synthetic = jsTokenEvalResult("syntheticScalarHook");
+        assert(synthetic === syntheticScalarHook);
+        synthetic = jsTokenEvalResult("syntheticArrayHook");
+        assert(synthetic === syntheticArrayHook);
+        synthetic = jsTokenEvalResult("syntheticObjectHook");
+        assert(synthetic === syntheticObjectHook);
+    });
+});
+
 describe("universal-text", () => {
     it("humanizeText", () => {
         const inhumanText = "module-2_Component--_  1,=service_2";
@@ -38,13 +72,13 @@ describe("universal-parser", () => {
 });
 
 describe("universal-args", () => {
-    it("unsafeDomElemsAttrHook", () => {
-        const result1 = unsafeDomElemsAttrHook('universal-test-hook-fn');
+    it("domElemsAttrHook", () => {
+        const result1 = domElemsAttrHook('universal-test-hook-fn');
         assert(result1);
         assert(result1 === universalTestHookFn);
 
         const hookableDomElems = () => [document.documentElement, document.head, document.body];
-        const result2 = unsafeDomElemsAttrHook('universal-test-hook-fn', hookableDomElems, {
+        const result2 = domElemsAttrHook('universal-test-hook-fn', hookableDomElems, {
             validValue: (value, ctx) => {
                 return { hookFn: value, domElem: ctx.elem, hookName: ctx.hookName };
             }

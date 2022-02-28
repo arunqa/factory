@@ -22,6 +22,7 @@ export class ConsoleTunnel<
   reloadConsole(): void;
   openWindow(url: string, target: "console-prime"): void;
   logAccess(sat: s.StaticAccessTarget): void;
+  featureState(feature: string, state: unknown): void;
 }> {
   #connections: Connection[] = [];
   #onlyOpen: ((value: Connection) => boolean) = (c) =>
@@ -62,6 +63,13 @@ export class ConsoleTunnel<
         );
       }
     });
+    this.on("featureState", (feature, state) => {
+      this.cleanConnections().forEach((c) =>
+        c.sseTarget.dispatchEvent(
+          new oak.ServerSentEvent("feature-state", { feature, state }),
+        )
+      );
+    });
   }
 
   get connections(): Connection[] {
@@ -87,6 +95,11 @@ export class ConsoleTunnel<
     this.emit("sseConnected", connection, ctx);
     if (pingOnConnect) {
       this.emit("ping");
+      this.emit(
+        "featureState",
+        "isAccessLoggingEnabled",
+        this.isAccessLoggingEnabled,
+      );
     }
     return connection;
   }
@@ -135,6 +148,15 @@ export class ConsoleMiddlewareSupplier {
       ctx.response.body =
         `SSE endpoint ${this.tunnel.sseEndpointURL} available`;
       this.tunnel.emit("sseHealthRequest", { oakCtx: ctx });
+    });
+
+    router.post(`${this.htmlEndpointURL}/user-agent-bus`, async (ctx) => {
+      const body = ctx.request.body();
+      const message = JSON.parse(await body.value);
+      if (message.tuiHookIdentity == "tuiHook_isAccessLoggingEnabled") {
+        this.tunnel.isAccessLoggingEnabled = message.state;
+      }
+      ctx.response.body = JSON.stringify(message);
     });
 
     router.get(this.tunnel.sseEndpointURL, (ctx) => {

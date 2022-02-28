@@ -14,6 +14,33 @@
         // prepare global `executive` and "bootstrap" or _actuate_ the page.
         const strategy = actuationStrategy().args;
         const executive = strategy.actuate();
+
+        function tuiHook_isAccessLoggingEnabled(element, identity, uab) {
+            const operationsEE = new EventEmitter();
+            const hook = { identity, element, operationsEE };
+            operationsEE.on("user-agent-server-response", (message) => {
+                console.log('[tuiHook_isAccessLoggingEnabled.hook]', identity, 'user-agent-server-response', message);
+                element.checked = message.state;
+            });
+            element.onchange = (evt) => {
+                const message = { state: evt.srcElement.checked };
+                operationsEE.emit("user-agent-request", message);
+                console.log('[tuiHook_isAccessLoggingEnabled.hook]', identity, 'user-agent-request', message);
+                // evt.srcElement.checked = !evt.srcElement.checked;
+            }
+            executive.consoleTunnel.addEventSourceEventListener("feature-state", (evt) => {
+                const data = JSON.parse(evt.data);
+                if (data && data.feature == "isAccessLoggingEnabled") {
+                    element.checked = data.state;
+                }
+            });
+            return hook;
+        }
+
+        const uab = new UserAgentBus({ clientReqMessageBaseURL: '/console/user-agent-bus' });
+        document.querySelectorAll("[data-tunnel-ui]").forEach(e => uab.discoverDomElemHook(e, (token) => eval(token)));
+        uab.init();
+
         executive.consoleTunnel.addEventSourceEventListener("log-access", (evt) => {
             if (accessLogAgGrid) {
                 const data = JSON.parse(evt.data);
@@ -65,6 +92,11 @@
         <article>
             <!-- will automatically be set as title by Executive -->
             <header>Access Log</header>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="isAccessLoggingEnabled" data-tunnel-ui="auto">
+                <label class="form-check-label" for="isAccessLoggingEnabled">Should server-side access logs to be seen
+                    here? <mark>Use sparingly</mark>.</label>
+            </div>
 
             <ag-grid config-eval-js="accessLogAgGridConfig" register-grid-hook="registerAccessLogAgGrid"
                 class="ag-theme-balham"></ag-grid>
