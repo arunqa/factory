@@ -21,7 +21,7 @@ export class ConsoleTunnel<
   ping(): void;
   reloadConsole(): void;
   openWindow(url: string, target: "console-prime"): void;
-  logAccess(sat: s.StaticAccessTarget): void;
+  logAccess(sat: s.StaticServedTarget): void;
   featureState(feature: string, state: unknown): void;
 }> {
   #connections: Connection[] = [];
@@ -200,7 +200,7 @@ export class ConsoleMiddlewareSupplier {
   }
 
   // deno-lint-ignore require-await
-  async staticAccess(event: s.StaticAccessEvent) {
+  async staticAccess(event: s.StaticServedEvent) {
     if (event.target) {
       this.tunnel.emit("logAccess", event.target);
     }

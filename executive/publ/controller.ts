@@ -152,6 +152,16 @@ export class Executive<
     ps.staticEE.on("before", async (psac) => {
       await this.replayMemoized(publication, psac.oakCtx.request.url.pathname);
     });
+    // deno-lint-ignore require-await
+    ps.tsTransformEE.on("persistedToJS", async (jsAbsPath, event) => {
+      console.info(
+        colors.magenta(
+          `*** ${colors.yellow(jsAbsPath)} generated from ${
+            colors.green(event.srcRootSpecifier)
+          }`,
+        ),
+      );
+    });
     await ps.serve();
   }
 

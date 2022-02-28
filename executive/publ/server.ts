@@ -3,6 +3,7 @@ import { async, oak } from "./deps.ts";
 import * as rfStd from "../../core/std/mod.ts";
 import * as p from "./publication.ts";
 import * as wfs from "../../lib/fs/watch.ts";
+import * as lang from "../../lib/lang/bundle-js.ts";
 import * as s from "./static.ts";
 import * as c from "./console/mod.ts";
 import * as ws from "./workspace.ts";
@@ -25,6 +26,7 @@ export class PublicationServerEventEmitter extends events.EventEmitter<{
 export interface PublicationServerOptions {
   readonly staticEE?: s.StaticEventEmitter;
   readonly serverEE?: PublicationServerEventEmitter;
+  readonly tsTransformEE?: lang.TransformTypescriptEventEmitter;
   readonly listenPort: number;
   readonly listenHostname: string;
   readonly publicURL: (path?: string) => string;
@@ -81,6 +83,7 @@ export class PublicationServerLifecyleManager {
 export class PublicationServer {
   readonly staticEE: s.StaticEventEmitter;
   readonly serverEE: PublicationServerEventEmitter;
+  readonly tsTransformEE: lang.TransformTypescriptEventEmitter;
   readonly listenPort: number;
   readonly listenHostname: string;
   readonly publicURL: (path?: string) => string;
@@ -99,6 +102,8 @@ export class PublicationServer {
       new PublicationServerEventEmitter();
     this.staticEE = options.staticEE ??
       new s.StaticEventEmitter();
+    this.tsTransformEE = options.tsTransformEE ??
+      new lang.TransformTypescriptEventEmitter();
     this.listenPort = options.listenPort;
     this.listenHostname = options.listenHostname;
     this.publicURL = options.publicURL;
@@ -121,6 +126,12 @@ export class PublicationServer {
         }
       });
     this.staticIndex = options.staticIndex ?? "index.html";
+    this.staticEE.on("transform", async (ssoe) => {
+      await lang.bundleJsFromTsTwinIfNewer(
+        path.join(ssoe.root, ssoe.target),
+        this.tsTransformEE,
+      );
+    });
   }
 
   get console(): c.ConsoleMiddlewareSupplier | undefined {
