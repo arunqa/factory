@@ -1,1 +1,0 @@
-../../../../core/design-system/universal/client-cargo/script/universal.js

@@ -8,9 +8,8 @@
     <!-- $script used by component/ag-grid.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
     <script src="/universal-cc/component/ag-grid.js"></script>
-    <script src="./universal.lib.js"></script>
     <script type="module">
-        import { actuationStrategy } from "./path.lib.js";
+        import { actuationStrategy, UserAgentBus, EventEmitter } from "./path.lib.js";
         // prepare global `executive` and "bootstrap" or _actuate_ the page.
         const strategy = actuationStrategy().args;
         const executive = strategy.actuate();
@@ -95,7 +94,8 @@
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" id="isAccessLoggingEnabled" data-tunnel-ui="auto">
                 <label class="form-check-label" for="isAccessLoggingEnabled">Should server-side access logs to be seen
-                    here? <mark>Use sparingly</mark> because it's resource intensive. TODO: find out why each entry is being duplicated.</label>
+                    here? <mark>Use sparingly</mark> because it's resource intensive. TODO: find out why each entry is
+                    being duplicated.</label>
             </div>
 
             <ag-grid config-eval-js="accessLogAgGridConfig" register-grid-hook="registerAccessLogAgGrid"

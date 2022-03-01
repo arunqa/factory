@@ -159,13 +159,11 @@ export class Executive<
     });
     // deno-lint-ignore require-await
     ps.tsTransformEE.on("notBundledToJS", async (event) => {
-      if (
-        event.reason == "src-not-found" ||
-        event.reason == "dest-is-newer-than-src"
-      ) {
-        // deno-fmt-ignore
-        console.info(colors.dim(`    ${event.srcRootSpecifier} not generated: ${event.reason}`));
-        return;
+      switch (event.reason) {
+        case "src-not-found":
+        case "dest-is-newer-than-src":
+          // nothing of interest, so skip it
+          return;
       }
       // deno-fmt-ignore
       console.info(colors.magenta(`*** ${colors.yellow(event.srcRootSpecifier)} not generated: ${colors.blue(event.reason)}`));
@@ -285,6 +283,8 @@ export function typicalPublicationCtlSupplier<
           path.join(home, "server.auto.js"),
           // deno-fmt-ignore
           whs.unindentWhitespace(`
+          import { LabeledBadge, TunnelStatePresentation, Tunnels, EventSourceTunnelState } from "/universal-cc/script/universal.auto.js";
+
           const rfOperationalCtx = {
             isExperimentalOperationalCtx: ${isExperimentalOperationalCtx},
             publicUrlLocation: '${publicUrlLocation}',
@@ -301,6 +301,17 @@ export function typicalPublicationCtlSupplier<
               baseURL: "/workspace",
               footerContentDomID: "rf-universal-footer-experimental-server-workspace",
               isHotReloadAvailable: true,
+              activePageTerminalRoute: undefined, // will be set in provision()
+              reloadIfImpacted: (fsAbsPathAndFileNameImpacted, ctx) => {
+                // rfOperationalCtx.workspace.activePageTerminalRoute should be set in rfOperationalCtx.provision()
+                // to see if the "impacted" workspace file is our current page
+                const activePageFileSysPath = rfOperationalCtx.workspace.activePageTerminalRoute?.fileSysPath;
+                if (activePageFileSysPath == fsAbsPathAndFileNameImpacted) {
+                  location.reload();
+                } else {
+                  console.info("rfOperationalCtx.workspace.reloadIfImpacted() called but this page was not impacted", fsAbsPathAndFileNameImpacted, rfOperationalCtx.workspace.activePageTerminalRoute, ctx);
+                }
+              },
               tunnel: {
                 sseHealthURL: '${publicUrlLocation}' + '/workspace/sse/ping',
                 sseURL: '${publicUrlLocation}' + '/workspace/sse/tunnel',
@@ -308,71 +319,55 @@ export function typicalPublicationCtlSupplier<
                 events: {
                   "workspace.file-impact": function (event) {
                     const payload = JSON.parse(event.data);
-                    // window.rfTerminalRoute should be set by any RF-generated page so we check
-                    // to see if the "impacted" workspace file is our current page
-                    const activePageFileSysPath = window.rfTerminalRoute?.fileSysPath;
-                    if (activePageFileSysPath == payload.fsAbsPathAndFileName) {
-                      location.reload();
-                    } else {
-                      console.info("Received workspace.file-impact but this page was not impacted", payload, window.rfTerminalRoute);
-                    }
+                    rfOperationalCtx.workspace.reloadIfImpacted(payload.fsAbsPathAndFileName);
                   }
                 },
               },
               provision: function (clientLayout) {
+                // this method will NOT be called before DOMContentLoaded so don't assume anything
                 // we're not running in a server that supports experimental workspace (IDE)
                 if(!window.rfOperationalCtx.isExperimentalOperationalCtx) return;
-                console.log("rfOperationalCtx workspace provisioning enabled for", clientLayout);
 
-                document.addEventListener('DOMContentLoaded', function () {
-                  console.log("rfOperationalCtx workspace enabled for", clientLayout);
+                rfOperationalCtx.workspace.activePageTerminalRoute = clientLayout.route.terminal;
+                console.log("rfOperationalCtx workspace enabled for", clientLayout, rfOperationalCtx.workspace.activePageTerminalRoute);
 
-                  const labeledBadge = new LabeledBadge((defaults) => ({ ...defaults, remoteBaseURL: window.rfOperationalCtx.workspace.tunnel.badgenRemoteBaseURL })).init();
-                  const statePresentation = new TunnelStatePresentation((defaults) => ({ ...defaults, defaultLabel: 'Hot Reload Page', labeledBadge }));
-                  const tunnels = new Tunnels((defaults) => ({ ...defaults, baseURL: window.rfOperationalCtx.workspace.baseURL, statePresentation })).init();
-                  const wsTunnel = tunnels.registerEventSourceState(new EventSourceTunnelState(tunnels, (defaults) => ({
-                      ...defaults,
-                      identity: () => "Workspace SSE",
-                  })));
-                  wsTunnel.statePresentation.display();
-                  wsTunnel.addEventSourceEventListener("ping", (evt) => { }, { diagnose: true });
-                  wsTunnel.addEventSourceEventListener("workspace.file-impact", (evt) => {
-                      const payload = JSON.parse(event.data);
-                      // window.rfTerminalRoute should be set by any RF-generated page so we check
-                      // to see if the "impacted" workspace file is our current page
-                      const activePageFileSysPath = window.rfTerminalRoute?.fileSysPath;
-                      if (activePageFileSysPath == payload.fsAbsPathAndFileName) {
-                        location.reload();
-                      } else {
-                        console.info("Received workspace.file-impact but this page was not impacted", payload, window.rfTerminalRoute);
-                      }
-                  });
-
-                  const footerContentElem = document.getElementById(window.rfOperationalCtx.workspace.footerContentDomID);
-                  if (footerContentElem) {
-                    footerContentElem.style.display = 'block';
-                    const htmlDataSet = document.documentElement.dataset;
-                    if(htmlDataSet.rfOriginLayoutSrc) {
-                      footerContentElem.innerHTML = \`<p title="\${htmlDataSet.rfOriginLayoutSrc}" class="localhost-diags">
-                      Using layout <code class="localhost-diags-layout-origin">\${htmlDataSet.rfOriginLayoutName}</code>
-                      (<code class="localhost-diags-layout-origin">\${htmlDataSet.rfOriginLayoutSymbol}</code>) in
-                      <code class="localhost-diags-layout-origin-src">\${htmlDataSet.rfOriginLayoutSrc.split('/').reverse()[0]}</code></p>\`;
-                    } else {
-                      footerContentElem.innerHTML = \`<p title="\${htmlDataSet.rfOriginLayoutSrc}" class="localhost-diags localhost-diags-warning">No layout information in <code>&lt;html data-rf-origin-layout-*&gt;</code></p>\`;
-                    }
-                  }
+                const labeledBadge = new LabeledBadge((defaults) => ({ ...defaults, remoteBaseURL: window.rfOperationalCtx.workspace.tunnel.badgenRemoteBaseURL })).init();
+                const statePresentation = new TunnelStatePresentation((defaults) => ({ ...defaults, defaultLabel: 'Hot Reload Page', labeledBadge }));
+                const tunnels = new Tunnels((defaults) => ({ ...defaults, baseURL: window.rfOperationalCtx.workspace.baseURL, statePresentation })).init();
+                const wsTunnel = tunnels.registerEventSourceState(new EventSourceTunnelState(tunnels, (defaults) => ({
+                    ...defaults,
+                    identity: () => "Workspace SSE",
+                })));
+                wsTunnel.statePresentation.display();
+                wsTunnel.addEventSourceEventListener("ping", (evt) => { }, { diagnose: true });
+                wsTunnel.addEventSourceEventListener("workspace.file-impact", (evt) => {
+                    const payload = JSON.parse(event.data);
+                    rfOperationalCtx.workspace.reloadIfImpacted(payload.fsAbsPathAndFileName);
                 });
+
+                const footerContentElem = document.getElementById(window.rfOperationalCtx.workspace.footerContentDomID);
+                if (footerContentElem) {
+                  footerContentElem.style.display = 'block';
+                  const htmlDataSet = document.documentElement.dataset;
+                  if(htmlDataSet.rfOriginLayoutSrc) {
+                    footerContentElem.innerHTML = \`<p title="\${htmlDataSet.rfOriginLayoutSrc}" class="localhost-diags">
+                    Using layout <code class="localhost-diags-layout-origin">\${htmlDataSet.rfOriginLayoutName}</code>
+                    (<code class="localhost-diags-layout-origin">\${htmlDataSet.rfOriginLayoutSymbol}</code>) in
+                    <code class="localhost-diags-layout-origin-src">\${htmlDataSet.rfOriginLayoutSrc.split('/').reverse()[0]}</code></p>\`;
+                  } else {
+                    footerContentElem.innerHTML = \`<p title="\${htmlDataSet.rfOriginLayoutSrc}" class="localhost-diags localhost-diags-warning">No layout information in <code>&lt;html data-rf-origin-layout-*&gt;</code></p>\`;
+                  }
+                }
               }
             },
           }
 
-          const rfUserAgentLifecycleSingleton = EventEmitter.singletons.instance("rfUserAgentLifecycle");
-          const rfUserAgentLifecycleEE = rfUserAgentLifecycleSingleton.value();
-          rfUserAgentLifecycleEE.on("clientLayout.provision", (event) => {
+          window.addEventListener("clientLayout.provisionAfterContentLoaded", (event) => {
             rfOperationalCtx.workspace.provision(clientLayout);
-          });
+          }, false);
 
-          window.rfOperationalCtx = rfOperationalCtx`), // TODO: use HtmlLayoutClientCargoSupplier variables for rfUserAgentLifecycle, don't hardcode
+          window.rfOperationalCtx = rfOperationalCtx;
+          `), // TODO: use HtmlLayoutClientCargoSupplier variables for rfUserAgentLifecycle, don't hardcode
         );
       },
     };

@@ -1,16 +1,29 @@
-import { humanFriendlyPhrase, unindentWhitespace } from "./deps.js";
+"use strict";
+
+import {
+    humanFriendlyPhrase,
+    unindentWhitespace,
+    flexibleArgs,
+    detectFileSysStyleRoute,
+    EventEmitter,
+    Tunnels,
+    UserAgentBus,
+    EventSourceTunnelState
+} from "./deps.auto.js";
+
+// this is commonly used outside of this script so let's make it available
+export { EventEmitter, UserAgentBus };
 
 // prepare the event emitter globally in case anyone else might need it
-export const actuationEvtEmitterIdentity = "actuation";
-EventEmitter.singletons.declare(actuationEvtEmitterIdentity);
+window.actuationEvtEmitter = new EventEmitter();
 
 // announce to everyone that an event emitter has been declared so they can hook into it
-document.dispatchEvent(new CustomEvent(`actuation-event-emitter-declared`, {
-    detail: EventEmitter.singletons.instance(actuationEvtEmitterIdentity).value()
+document.dispatchEvent(new CustomEvent(`actuation-event-emitter-available`, {
+    detail: window.actuationEvtEmitter
 }));
 
 export function actuationStrategy(argsSupplier) {
-    const actuationEE = EventEmitter.singletons.instance(actuationEvtEmitterIdentity).value();
+    const actuationEE = window.actuationEvtEmitter;
     const config = flexibleArgs(argsSupplier, {
         defaultArgs: {
             actuate: (ctx) => new Executive({ actuationEE, ...ctx }).init(),
@@ -411,8 +424,7 @@ class PageState {
         this.#config = flexibleArgs(argsSupplier, {
             defaultArgs: {
                 activeUnitSupplier: (source = window.location.pathname) => {
-                    const parse = fileSysStyleRouteParser();
-                    const parsed = parse(source);
+                    const parsed = detectFileSysStyleRoute(source);
                     return {
                         unit: parsed.name,
                         label: humanFriendlyPhrase(parsed.name),

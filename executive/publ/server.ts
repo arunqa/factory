@@ -127,9 +127,15 @@ export class PublicationServer {
       });
     this.staticIndex = options.staticIndex ?? "index.html";
     this.staticEE.on("transform", async (ssoe) => {
+      // if we're about to serve a *.js file (e.g. XYZ.js or XYZ.auto.js) see
+      // if it has a *.ts "twin" which we bundle for the browser. This is the
+      // same as Taskfile.ts's bundleJsFromTsTwinTask(), which is run as part
+      // of the build process. This "transform" handler just does it
+      // automatically, which is useful during development for hot-reloading.
       if (ssoe.target.endsWith(".js")) {
         await lang.bundleJsFromTsTwinIfNewer(
           path.join(ssoe.root, ssoe.target),
+          lang.typicalJsTwinTsNamingStrategy,
           this.tsTransformEE,
         );
       }
