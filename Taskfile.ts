@@ -9,5 +9,7 @@ if (import.meta.main) {
     ...t.defaultTasks,
     bundleJsFromTsTwin: t.bundleJsFromTsTwinTask(),
     discoverBundleJsFromTsTwinTask: t.discoverBundleJsFromTsTwinTask(),
+    transformCssFromTsTwin: t.transformCssFromTsTwinTask(),
+    discoverBundleCssFromTsTwin: t.discoverBundleCssFromTsTwinTask(),
   });
 }

@@ -5,3 +5,4 @@ export * from "./governance.ts";
 export * from "./identity.ts";
 export * from "./inspect.ts";
 export * from "./run.ts";
+export * from "./transform-css.ts";
