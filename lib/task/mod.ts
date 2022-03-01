@@ -1,3 +1,4 @@
+export * from "./bundle-js.ts";
 export * from "./default.ts";
 export * from "./fetch.ts";
 export * from "./governance.ts";
