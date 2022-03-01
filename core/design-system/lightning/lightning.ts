@@ -174,13 +174,11 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
           activeRoute,
           activeTreeNode,
           clientCargoPropertyName: "clientLayout",
-          clientLifecycleEventEmitterSingletonIdentity: "rfUserAgentLifecycle",
           origin: html.htmlLayoutOriginDataAttrs,
           ...layoutArgs,
         })
         : this.contributions(),
       clientCargoPropertyName: "clientLayout",
-      clientLifecycleEventEmitterSingletonIdentity: "rfUserAgentLifecycle",
       origin: html.htmlLayoutOriginDataAttrs,
       ...layoutArgs,
     };

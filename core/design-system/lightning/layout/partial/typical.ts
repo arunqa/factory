@@ -44,18 +44,18 @@ export const clientCargoPartial: ldsGovn.LightningPartial = (layout) => {
         );
       },
       lifecycle: {
-        ee: (reason) => {
-          // EventEmitter singleton "${layout.clientLifecycleEventEmitterSingletonIdentity}" must already be declared.
-          const ${layout.clientLifecycleEventEmitterSingletonIdentity}Singleton = EventEmitter.singletons.instance("${layout.clientLifecycleEventEmitterSingletonIdentity}");
-          return ${layout.clientLifecycleEventEmitterSingletonIdentity}Singleton.value(reason);
-        },
-        provision: (provisionCtx) => {
-          const ${layout.clientLifecycleEventEmitterSingletonIdentity}EE = ${layout.clientCargoPropertyName}.lifecycle.ee("${layout.clientCargoPropertyName} lifecycle.provision()");
-          ${layout.clientLifecycleEventEmitterSingletonIdentity}EE.emit("${layout.clientCargoPropertyName}.provision", {${layout.clientCargoPropertyName}, ...provisionCtx});
+        provisionAfterContentLoaded: (provisionCtx) => {
+          const provisionEvent = new CustomEvent("${layout.clientCargoPropertyName}.provisionAfterContentLoaded", {
+            detail: { ${layout.clientCargoPropertyName}, ...provisionCtx }
+          });
+          window.dispatchEvent(provisionEvent);
         },
       }
     };
-    ${layout.clientCargoPropertyName}.lifecycle.provision({ provisionedOn: new Date() });
+
+    document.addEventListener('DOMContentLoaded', function () {
+      ${layout.clientCargoPropertyName}.lifecycle.provisionAfterContentLoaded({ provisionedOn: new Date() });
+    });
     </script>`;
 };
 
@@ -77,30 +77,7 @@ ${layout.contributions.head.contributions("fore").contributions.join("\n")}
      and dependency manager. You should use this instead of <script> tags.
      TODO: consider https://addyosmani.com/basket.js/ as well -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
-<script src="${layout.contentStrategy.assets.uScript("/universal.js")}"></script> <!-- should be first RF-related script so everyone can reliably depend on it -->
-<script>
-  // We want to decouple everything so we create an "event bus" for our lifecycle events.
-  // lifecycleEE is the lifecycle events emitter that "watches" ${layout.clientLifecycleEventEmitterSingletonIdentity} singleton.
-  // ${layout.clientLifecycleEventEmitterSingletonIdentity} singleton is, itself, an EventEmitter value holder so lifecycleEE
-  // lets us monitor access to ${layout.clientLifecycleEventEmitterSingletonIdentity} singleton, primarily for diagnostics purposes.
-  const lifecycleEE = new EventEmitter();
-  const ${layout.clientLifecycleEventEmitterSingletonIdentity}Diagnosable = false;
-  lifecycleEE.on("constructed", (${layout.clientLifecycleEventEmitterSingletonIdentity}EES) => {
-    if(${layout.clientLifecycleEventEmitterSingletonIdentity}Diagnosable) {
-      console.log("${layout.clientLifecycleEventEmitterSingletonIdentity} singleton constructed", ${layout.clientLifecycleEventEmitterSingletonIdentity}EES);
-    }
-  });
-  lifecycleEE.on("accessed", (${layout.clientLifecycleEventEmitterSingletonIdentity}EES) => {
-    if(${layout.clientLifecycleEventEmitterSingletonIdentity}Diagnosable) {
-      console.log("${layout.clientLifecycleEventEmitterSingletonIdentity} accessed", ${layout.clientLifecycleEventEmitterSingletonIdentity}EES);
-    }
-  });
-  const ${layout.clientLifecycleEventEmitterSingletonIdentity}EES = EventEmitter.singletons.declare("${layout.clientLifecycleEventEmitterSingletonIdentity}", { lifecycleEE });
-  if(${layout.clientLifecycleEventEmitterSingletonIdentity}Diagnosable) {
-    console.log("${layout.clientLifecycleEventEmitterSingletonIdentity} singleton declared", ${layout.clientLifecycleEventEmitterSingletonIdentity}EES);
-  }
-</script>
-<script src="${layout.contentStrategy.assets.operationalCtx("/server.auto.js")}"></script>
+<script src="${layout.contentStrategy.assets.operationalCtx("/server.auto.js")}" type="module"></script>
 <script src="${layout.contentStrategy.assets.uScript("/typical.js")}"></script> <!-- TODO: merge typical.js with universal.js? -->
 <script src="${layout.contentStrategy.assets.dsScript("/lightning.js")}"></script>
 ${dia.clientDiagramsContributionsPartial(layout)}
