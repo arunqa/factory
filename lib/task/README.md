@@ -35,6 +35,10 @@ cwd-task inspect     # runs Taskfile.ts 'inspect' task in the current working di
 
 # Tips & Tricks
 
+## Use deno-dzx or other shell wrappers
+
+See https://github.com/c4spar/deno-dzx for a nice Deno-friendly shell wrapper.
+
 ## Be flexible to caller: allow _import_ **or** _execute_
 
 Each `Taskfile.ts` should operate either as a library of tasks (if it defines any) or should be "executable" based on the caller's discretion. An easy way to do that is to define the execution portion like this:
