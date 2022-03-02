@@ -1,13 +1,12 @@
-import { events } from "./lib/task/deps.ts";
-import * as t from "./lib/task/mod.ts";
+import * as t from "./lib/task/core.ts";
 import * as tcss from "./lib/task/transform-css.ts";
 import * as bjs from "./lib/task/bundle-js.ts";
 import * as udd from "./lib/task/udd.ts";
 
 // see setup and usage instructions in lib/task/README.md
 
-export class Tasks extends events.EventEmitter<{
-  inspect(): void;
+export class Tasks extends t.EventEmitter<{
+  help(): void;
   updateDenoDeps(): Promise<void>;
   bundleJsFromTsTwin(): Promise<void>;
   discoverBundleJsFromTsTwin(): Promise<void>;
@@ -20,7 +19,7 @@ export class Tasks extends events.EventEmitter<{
   constructor() {
     super();
     // this is ugly but necessary due to events.EventEmitter making _events_ private :-(
-    this.on("inspect", t.eeInspectorTask(this));
+    this.on("help", t.eeHelpTask(this));
     this.on("updateDenoDeps", udd.updateDenoDepsTask());
     this.on("bundleJsFromTsTwin", bjs.bundleJsFromTsTwinTask());
     this.on("discoverBundleJsFromTsTwin", bjs.discoverBundleJsFromTsTwinTask());

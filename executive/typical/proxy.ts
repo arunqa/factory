@@ -10,7 +10,7 @@ import * as rfStd from "../../core/std/mod.ts";
 import * as mr from "../../core/resource/module/module.ts";
 import * as pkg from "../../lib/package/mod.ts";
 import * as fsLink from "../../lib/fs/link.ts";
-import * as task from "../../lib/task/mod.ts";
+import * as task from "../../lib/task/fetch.ts";
 import * as r from "../../lib/text/readability.ts";
 import "./observability.ts"; // for window.observability global variable
 
