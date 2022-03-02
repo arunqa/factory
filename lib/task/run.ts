@@ -1,45 +1,56 @@
-import { colors } from "./deps.ts";
-import * as govn from "./governance.ts";
+import { colors, events } from "./deps.ts";
 import * as id from "./identity.ts";
-import * as i from "./inspect.ts";
 
-export async function run(
+export async function eventEmitterCLI<
+  // deno-lint-ignore no-explicit-any
+  EE extends events.EventEmitter<any>,
+  Context,
+>(
   [name, ...args]: string[],
-  tasks: govn.Tasks,
-  options: govn.RunOptions = {
+  ee: EE,
+  options: {
+    context?: (ee: EE, name: string, ...args: unknown[]) => Context | undefined;
+    onTaskNotFound: (
+      task: string,
+      // deno-lint-ignore no-explicit-any
+      handlers: Map<any, unknown>,
+    ) => Promise<void>;
+  } = {
     // deno-lint-ignore require-await
-    onTaskNotFound: async (task, tasks) => {
-      console.error(
-        colors.red(
-          `task "${colors.yellow(task)}" not found (available: ${
-            Object.keys(tasks).map((t) => colors.green(t)).join(", ")
-          })`,
-        ),
-      );
+    onTaskNotFound: async (task, handlers) => {
+      // deno-fmt-ignore
+      console.error(colors.red(`task "${colors.yellow(task)}" not found, available: ${Array.from(handlers.keys()).map((t) => colors.green(t)).join(", ")}`));
     },
   },
 ): Promise<void> {
-  if (!name) name = i.inspect.identity;
-  const runnable = tasks[name] || tasks[id.kebabCaseToCamelTaskName(name)];
-  if (runnable) {
-    if (typeof runnable === "function") {
+  if (!name) name = "inspect";
+  if (name.indexOf("-") > 0) name = id.kebabCaseToCamelTaskName(name);
+
+  // this is ugly but necessary due to events.EventEmitter making _events_ private :-(
+  const handlers =
+    // deno-lint-ignore no-explicit-any
+    (ee as unknown as { ["_events_"]: Map<any, unknown> })["_events_"];
+
+  if (handlers.has(name)) {
+    const untypedEE = ee as unknown as {
       // deno-lint-ignore no-explicit-any
-      const ctx: govn.TaskContext<any> = {
-        task: runnable,
-        tasks,
-      };
-      await runnable(ctx, ...args);
+      emit: (name: any, ...args: unknown[]) => Promise<any>;
+    };
+
+    const context = options.context
+      ? options.context(ee, name, ...args)
+      : undefined;
+
+    if (context) {
+      // deno-lint-ignore no-explicit-any
+      await untypedEE.emit(name as any, context, ...args);
     } else {
       // deno-lint-ignore no-explicit-any
-      const ctx: govn.TaskContext<any> = {
-        task: { identity: name, ...runnable },
-        tasks,
-      };
-      await runnable.exec(ctx, ...args);
+      await untypedEE.emit(name as any, ...args);
     }
   } else {
     if (options?.onTaskNotFound) {
-      await options.onTaskNotFound(name, tasks);
+      await options.onTaskNotFound(name, handlers);
     }
   }
 }

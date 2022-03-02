@@ -43,9 +43,7 @@ Each `Taskfile.ts` should operate either as a library of tasks (if it defines an
 // only execute tasks if Taskfile.ts is being called as a script; otherwise
 // it might be imported for tasks or other reasons and we shouldn't "run".
 if (import.meta.main) {
-  await rflTask.run(Deno.args, {
-    ...rflTask.defaultTasks,
-  });
+  await t.eventEmitterCLI(Deno.args, new Tasks());
 }
 ```
 

@@ -1,24 +1,13 @@
 import { colors, ioStreamConversion as iosc } from "./deps.ts";
-import * as govn from "./governance.ts";
 import * as human from "../text/human.ts";
 
-// deno-lint-ignore no-empty-interface
-export interface FetchTaskRunnerSupplier
-  extends govn.IdentifiableTaskRunnerSupplier {
-}
-
-// deno-lint-ignore no-empty-interface
-export interface GraphQlTaskRunnerSupplier extends FetchTaskRunnerSupplier {
-}
-
 export function graphQlTask(
-  identity: string,
   endpoint: string,
   query: string,
   variables?: Record<string, unknown>,
   onData?: (data: unknown) => void,
   onError?: (error: Error) => void,
-): GraphQlTaskRunnerSupplier {
+): () => Promise<void> {
   if (!onData) {
     onData = (data) => {
       console.dir(data, { showHidden: true, depth: undefined, colors: true });
@@ -29,32 +18,24 @@ export function graphQlTask(
       console.dir(error, { colors: true });
     };
   }
-  return {
-    identity,
-    // deno-lint-ignore require-await
-    exec: async () => {
-      fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(
-          variables
-            ? {
-              query,
-              variables,
-            }
-            : { query },
-        ),
-      }).then((r) => r.json()).then(onData)
-        .catch(onError);
-    },
+  return async () => {
+    await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(
+        variables
+          ? {
+            query,
+            variables,
+          }
+          : { query },
+      ),
+    }).then((r) => r.json()).then(onData)
+      .catch(onError);
   };
-}
-
-// deno-lint-ignore no-empty-interface
-export interface DownloadTaskRunnerSupplier extends FetchTaskRunnerSupplier {
 }
 
 // deno-lint-ignore require-await
@@ -121,7 +102,6 @@ export async function downloadAsset(
 }
 
 export function downloadTask(
-  identity: string,
   srcEndpoint: string,
   destFile: string,
   onData?: (
@@ -137,23 +117,20 @@ export function downloadTask(
     response: Response | undefined,
     mark: PerformanceMark,
   ) => Promise<void>,
-): GraphQlTaskRunnerSupplier {
-  return {
-    identity,
-    exec: async () => {
-      if (!onError) {
-        // deno-lint-ignore require-await
-        onError = async (error) => {
-          console.dir(error, { colors: true });
-        };
-      }
+): () => Promise<void> {
+  return async () => {
+    if (!onError) {
+      // deno-lint-ignore require-await
+      onError = async (error) => {
+        console.dir(error, { colors: true });
+      };
+    }
 
-      await downloadAsset(
-        srcEndpoint,
-        destFile,
-        onData || reportDownloadConsole,
-        onError,
-      );
-    },
+    await downloadAsset(
+      srcEndpoint,
+      destFile,
+      onData || reportDownloadConsole,
+      onError,
+    );
   };
 }

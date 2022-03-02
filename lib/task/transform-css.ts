@@ -44,11 +44,13 @@ export function transformCssFromTsTwinTask(
 }
 
 /**
- * discoverBundleJsFromTsTwinTask is used in Taskfile.ts to discover all *.js.ts
+ * discoverTransformCssFromTsTwinTask is used in Taskfile.ts to discover all *.js.ts
  * files as a "dry-run" for bundleJsFromTsTwinIfNewerTask.
  * @param originRootPath which directory to start in, defaults to Deno.cwd()
  */
-export function discoverBundleCssFromTsTwinTask(originRootPath = Deno.cwd()) {
+export function discoverTransformCssFromTsTwinTask(
+  originRootPath = Deno.cwd(),
+) {
   return async () => {
     for await (
       const asset of fsi.discoverAssets({
