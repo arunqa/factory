@@ -15,6 +15,7 @@ export class Tasks extends events.EventEmitter<{
   discoverTransformCssFromTsTwinTask(): Promise<void>;
   bundleAll(): Promise<void>;
   discoverBundleable(): Promise<void>;
+  maintain(): Promise<void>;
 }> {
   constructor() {
     super();
@@ -35,6 +36,10 @@ export class Tasks extends events.EventEmitter<{
     this.on("discoverBundleable", async () => {
       await this.emit("discoverBundleJsFromTsTwin");
       await this.emit("discoverTransformCssFromTsTwinTask");
+    });
+    this.on("maintain", async () => {
+      await this.emit("updateDenoDeps");
+      await this.emit("bundleAll");
     });
   }
 }
