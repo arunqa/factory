@@ -37,7 +37,7 @@ cwd-task inspect     # runs Taskfile.ts 'inspect' task in the current working di
 
 ## Use deno-dzx or other shell wrappers
 
-See https://github.com/c4spar/deno-dzx for a nice Deno-friendly shell wrapper.
+See [github.com/linux-china/dx](https://github.com/linux-china/dx) and [github.com/c4spar/deno-dzx](https://github.com/c4spar/deno-dzx) for nice Deno-friendly shell wrappers. `linux-china/dx` seems more sophisticated and might be a good place to start.
 
 ## Be flexible to caller: allow _import_ **or** _execute_
 
