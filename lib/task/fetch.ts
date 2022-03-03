@@ -2,6 +2,18 @@ import * as colors from "https://deno.land/std@0.123.0/fmt/colors.ts";
 import * as iosc from "https://deno.land/std@0.123.0/streams/conversion.ts";
 import * as human from "../text/human.ts";
 
+export function singleHtmlFileDownloadTask(): () => Promise<void> {
+  // deno-lint-ignore require-await
+  return async () => {
+    // https://github.com/gildas-lormeau/SingleFile/blob/master/cli/README.MD
+    console.log(
+      colors.red(
+        "TODO: need to implement https://github.com/gildas-lormeau/SingleFile",
+      ),
+    );
+  };
+}
+
 export function graphQlTask(
   endpoint: string,
   query: string,
