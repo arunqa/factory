@@ -15,7 +15,9 @@
     <main>
         <!-- It contains an article -->
         <article>
-            <header>Welcome to the Console</header> <!-- note use of <header> for article now, not page -->
+            <header>
+                <h1>Welcome to the Console</h1>
+            </header> <!-- note use of <header> for article now, not page -->
 
             <div class="row">
                 <div class="col-sm-6">
@@ -40,60 +42,63 @@
                 </div>
             </div>
 
-            <pre data-transform="markdown">
-                # TODO
+            <h2>TODO</h2>
+            <section class="card">
+                <section class="card-body">
+                    <pre data-transform="markdown">
+                        ## Essential
+                        * Implement restart server handler using new user agent bus (UAB) infrastructure
+                        * Implement dynamic navigation using `path.ctx.js`. This might work like Deno's `mod.ts` does where
+                        we inventory the files in the current path. If it's regular enough, it could be auto-generated on
+                        each start of the server or through Taskfile.ts.
 
-                ## Essential
-                * Implement restart server handler using new user agent bus (UAB) infrastructure
-                * Implement dynamic navigation using `path.ctx.js`. This might work like Deno's `mod.ts` does where
-                we inventory the files in the current path. If it's regular enough, it could be auto-generated on
-                each start of the server or through Taskfile.ts.
+                            ```js
+                            const pathCtx = {
+                                parent: import('../path.ctx.js'), // if it doesn't exist, parent would be undefined (not error?)
+                                entries: [
+                                    { unit: "x.html" }, // should have just enough for runtime parsing to be possible
+                                    { unit: "y.html" }, // follows interface defined for RouteUnit, which is inherited by RouteNode
+                                ],
+                            };
+                            export default pathCtx;
+                            ```
 
-                    ```js
-                    const pathCtx = {
-                        parent: import('../path.ctx.js'), // if it doesn't exist, parent would be undefined (not error?)
-                        entries: [
-                            { unit: "x.html" }, // should have just enough for runtime parsing to be possible
-                            { unit: "y.html" }, // follows interface defined for RouteUnit, which is inherited by RouteNode
-                        ],
-                    };
-                    export default pathCtx;
-                    ```
+                        * Continuously run Lighthouse in Edge/Chrome DevTools to make sure performance is maintained.
 
-                * Continuously run Lighthouse in Edge/Chrome DevTools to make sure performance is maintained.
+                        ## Next
 
-                ## Next
+                        * Migrate all legacy `control-panel` pages to rfConsole.
+                        * Integrate Deno-specific [Packup](https://github.com/kt3k/packup) packager as Oak routes or use it
+                        as guidance.
+                        * In `executive/publ/console/mod.ts` make `#isAccessLoggingEnabled` accessible through Console so
+                        access logging can be controlled from the browser dynamically.
+                        * Create feature flags API endpoint so that unlimited Unleash-like FF's can be integrated
+                        * Implement [Oak eTag](https://github.com/oakserver/oak#etag-support) before going to production
 
-                * Migrate all legacy `control-panel` pages to rfConsole.
-                * Integrate Deno-specific [Packup](https://github.com/kt3k/packup) packager as Oak routes or use it
-                as guidance.
-                * In `executive/publ/console/mod.ts` make `#isAccessLoggingEnabled` accessible through Console so
-                access logging can be controlled from the browser dynamically.
-                * Create feature flags API endpoint so that unlimited Unleash-like FF's can be integrated
-                * Implement [Oak eTag](https://github.com/oakserver/oak#etag-support) before going to production
+                        ## Components
 
-                ## Components
+                        * Use [µhtml](https://github.com/WebReflection/uhtml#readme) for DOM-friendly dynamic rendering.
+                        * Use [µce](https://github.com/WebReflection/uce) for µhtml-based Custom Elements.
+                        * Use [µce\-template](https://github.com/WebReflection/uce-template#readme) for a Vue 3 inspired Custom Elements toolless alternative.
 
-                * Use [µhtml](https://github.com/WebReflection/uhtml#readme) for DOM-friendly dynamic rendering.
-                * Use [µce](https://github.com/WebReflection/uce) for µhtml-based Custom Elements.
-                * Use [µce\-template](https://github.com/WebReflection/uce-template#readme) for a Vue 3 inspired Custom Elements toolless alternative.
+                        ## HTML-friendly Scripts Dependency Bundling Convenience
 
-                ## HTML-friendly Scripts Dependency Bundling Convenience
+                        Figure out how to replace `&lt;md-block>` dependencies with something like `&lt;html data-deps="md-block">`[^whyDeps]
+                        to encapsulate "bundles" easily and dynamically load them. We can define multiple "bundles" and pull them
+                        in dynamically using `&lt;html data-deps="bundle1,bundle2">` easily. `bundle1`, `bundle2` could just function
+                        "hooks" which, when called, would just be looked up and executed using $script or similar.
 
-                Figure out how to replace `&lt;md-block>` dependencies with something like `&lt;html data-deps="md-block">`[^whyDeps]
-                to encapsulate "bundles" easily and dynamically load them. We can define multiple "bundles" and pull them
-                in dynamically using `&lt;html data-deps="bundle1,bundle2">` easily. `bundle1`, `bundle2` could just function
-                "hooks" which, when called, would just be looked up and executed using $script or similar.
+                        [^whyDeps]: `&lt;html data-deps="..."> uses Deno's `deps.ts` naming convention.
 
-                [^whyDeps]: `&lt;html data-deps="..."> uses Deno's `deps.ts` naming convention.
-
-                ```html
-                &lt;!-- Markdown in HTML, with Prism syntax highlighting: https://md-block.verou.me/ --&gt;
-                &lt;link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/themes/prism-coy.min.css" rel="stylesheet" />
-                &lt;script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/prism.min.js">&lt;/script>
-                &lt;script type="module" src="https://md-block.verou.me/md-block.js">&lt;/script>
-                ```
-            </pre>
+                        ```html
+                        &lt;!-- Markdown in HTML, with Prism syntax highlighting: https://md-block.verou.me/ --&gt;
+                        &lt;link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/themes/prism-coy.min.css" rel="stylesheet" />
+                        &lt;script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/prism.min.js">&lt;/script>
+                        &lt;script type="module" src="https://md-block.verou.me/md-block.js">&lt;/script>
+                        ```
+                    </pre>
+                </section>
+            </section>
         </article>
     </main>
 </body>

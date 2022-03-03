@@ -37,7 +37,6 @@ This is the _minimal pattern_ and, although devoid of any content, is a perfectl
 <head>
     <meta charset="utf-8">
     <link rel="stylesheet" type="text/css" href="./path.actuate.css" />
-    <script src="./universal.lib.js"></script>
     <script src="./path.actuate.js" type="module"></script>
 </head>
 
@@ -53,9 +52,8 @@ Below is a more useful page and shows optional `<meta>` data in `<head>` and som
 <!-- keep the `<head>` section trim with just the minimum tags, do all other page in Javascript dynamically -->
 <head>
     <meta charset="utf-8">                                              <!-- all other "standard" <meta> tags should be in *.actuate.js -->
-    <meta name="route.unit" content="{unit: 'x'}">                      <!-- for navigation, each page has a RouteUnit instance -->
+    <meta name="route.unit" content="{unit: 'x'}">                      <!-- for navigation, each page has a RouteUnit instance if not matching fs-style-route -->
     <link rel="stylesheet" type="text/css" href="./path.actuate.css" /> <!-- use @import() in this .css to pull in other css -->
-    <script src="./universal.lib.js"></script>                          <!-- universal library modules we need for actuators -->
     <script src="./path.actuate.js" type="module"></script>             <!-- use module imports in this .js to pull in other js -->
 </head>
 
@@ -63,7 +61,7 @@ Below is a more useful page and shows optional `<meta>` data in `<head>` and som
     <!-- always use Semantic tags whenever possible (https://html.spec.whatwg.org/multipage/sections.html#the-article-element) -->
     <main>
         <article>
-            <header>Article heading</header> <!-- the first <header> tag in <body> will usually be the page title, automatically -->
+            <header><h1>Article heading</h1></header> <!-- the first <header> tag in <body> will usually be the page title, automatically -->
             <section>
                 <header>Section heading</header> <!-- note use of <header> for section now, not article -->
             </section>

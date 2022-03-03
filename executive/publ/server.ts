@@ -261,6 +261,20 @@ export class PublicationServer {
       throw new Error("an error has been thrown");
     });
 
+    const voltB5Dashboard = "/mazer";
+    router.get(
+      `${voltB5Dashboard}/(.*)`,
+      s.staticContentMiddleware(
+        {
+          staticAssetsHome:
+            "/home/snshah/workspaces/github.com/zuramai/mazer/dist",
+        },
+        this.staticEE,
+        this.staticIndex,
+        (requestUrlPath) => requestUrlPath.substring(voltB5Dashboard.length),
+      ),
+    );
+
     app.use(router.routes());
     app.use(router.allowedMethods());
     app.use(

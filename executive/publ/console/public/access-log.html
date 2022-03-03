@@ -89,17 +89,22 @@
 <body>
     <main>
         <article>
-            <!-- will automatically be set as title by Executive -->
-            <header>Access Log</header>
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="isAccessLoggingEnabled" data-tunnel-ui="auto">
-                <label class="form-check-label" for="isAccessLoggingEnabled">Should server-side access logs to be seen
-                    here? <mark>Use sparingly</mark> because it's resource intensive. TODO: find out why each entry is
-                    being duplicated.</label>
-            </div>
+            <header>
+                <h1>Access Log</h1>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="isAccessLoggingEnabled" data-tunnel-ui="auto">
+                    <label class="form-check-label" for="isAccessLoggingEnabled">Should server-side access logs to be
+                        seen
+                        here? <mark>Use sparingly</mark> because it's resource intensive. TODO: find out why each entry
+                        is
+                        being duplicated.</label>
+                </div>
+            </header>
 
-            <ag-grid config-eval-js="accessLogAgGridConfig" register-grid-hook="registerAccessLogAgGrid"
-                class="ag-theme-balham"></ag-grid>
+            <section class="card">
+                <ag-grid config-eval-js="accessLogAgGridConfig" register-grid-hook="registerAccessLogAgGrid"
+                    class="ag-theme-balham"></ag-grid>
+            </section>
         </article>
     </main>
 </body>

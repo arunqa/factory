@@ -57,50 +57,178 @@ class ContextBarComponent extends HTMLElement {
     connectedCallback() {
         // references: https://getbootstrap.com/docs/5.1/examples/navbars/
         //             https://getbootstrap.com/docs/5.1/examples/headers/
-        this.innerHTML = `<nav class="navbar navbar-expand-sm navbar-dark bg-dark fixed-top" aria-label="Navbar">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="#">
-                    <img src="./image/favicon/favicon-32x32.png" alt="" width="32" height="32">
-                    rfConsole
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#contextBar-navigation-primary" aria-controls="contextBar-navigation-primary" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <div class="collapse navbar-collapse justify-content-md-center" id="contextBar-navigation-primary">
-                    <ul class="navbar-nav me-auto mb-2 mb-sm-0">
-                        <li class="nav-item">
-                            <a class="nav-link" href="./index.html">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="./health.html">Health</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="./assurance.html">Assurance</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="./observability.html">Observability</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="./access-log.html">Access Log</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="./diagnostics.html">Diagnostics</a>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="dropdown03" data-bs-toggle="dropdown" aria-expanded="false">Experiment</a>
-                            <ul class="dropdown-menu" aria-labelledby="dropdown03">
-                                <li><a class="dropdown-item" href="./experiment/uhtml.html">Experiment</a></li>
-                                <li><a class="dropdown-item" href="#">Another action</a></li>
-                                <li><a class="dropdown-item" href="#">Something else here</a></li>
-                            </ul>
-                        </li>
-                    </ul>
-                    <div>
-                        <span id="rf-universal-tunnel-state-summary-badge"><span title="If you're seeing this report it as a tunnel bug">Tunnel Bug!</span></span>
-                        <button href="#" onclick="fetch('/server/restart')" class="btn btn-secondary btn-sm">Restart pubctl.ts</button>
+        this.innerHTML = `<nav id="sidebar" class="active" aria-label="Navbar">
+            <div class="sidebar-wrapper active">
+                <div class="sidebar-header">
+                    <div class="d-flex justify-content-between">
+                        <div class="logo">
+                            <!-- "console-prime" prime is also specified in console/mod.ts openWindow event -->
+                            <a href="/" target="console-prime"><img src="./image/favicon/favicon-32x32.png" alt="Logo" srcset=""> rfConsole</a>
+                        </div>
+                        <div class="toggler">
+                            <a href="#" class="sidebar-hide d-xl-none d-block"><i class="bi bi-x bi-middle"></i></a>
+                        </div>
                     </div>
                 </div>
+                <div class="sidebar-menu">
+                    <p id="rf-universal-tunnel-state-summary-badge" class="text-center"><span title="If you're seeing this report it as a tunnel bug">Tunnel Bug!</span></p>
+                    <ul class="menu">
+                        <li class="sidebar-item">
+                            <a href="index.html" class='sidebar-link'>
+                                <i class="bi bi-grid-fill"></i>
+                                <span>Home</span>
+                            </a>
+                        </li>
+
+                        <li class="sidebar-title">Publication</li>
+
+                        <li class="sidebar-item  has-sub">
+                            <a href="#" class='sidebar-link'>
+                                <i class="bi bi-stack"></i>
+                                <span>Components</span>
+                            </a>
+                            <ul class="submenu ">
+                                <li class="submenu-item ">
+                                    <a href="component-alert.html">Alert</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="component-badge.html">Badge</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="component-breadcrumb.html">Breadcrumb</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="component-button.html">Button</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="component-card.html">Card</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="component-carousel.html">Carousel</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="component-dropdown.html">Dropdown</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="component-list-group.html">List Group</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="component-modal.html">Modal</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="component-navs.html">Navs</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="component-pagination.html">Pagination</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="component-progress.html">Progress</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="component-spinner.html">Spinner</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="component-tooltip.html">Tooltip</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="sidebar-item  has-sub">
+                            <a href="#" class='sidebar-link'>
+                                <i class="bi bi-collection-fill"></i>
+                                <span>Extra Components</span>
+                            </a>
+                            <ul class="submenu ">
+                                <li class="submenu-item ">
+                                    <a href="extra-component-avatar.html">Avatar</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="extra-component-sweetalert.html">Sweet Alert</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="extra-component-toastify.html">Toastify</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="extra-component-rating.html">Rating</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="extra-component-divider.html">Divider</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="sidebar-item  has-sub">
+                            <a href="#" class='sidebar-link'>
+                                <i class="bi bi-grid-1x2-fill"></i>
+                                <span>Layouts</span>
+                            </a>
+                            <ul class="submenu ">
+                                <li class="submenu-item ">
+                                    <a href="layout-default.html">Default Layout</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="layout-vertical-1-column.html">1 Column</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="layout-vertical-navbar.html">Vertical Navbar</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="layout-rtl.html">RTL Layout</a>
+                                </li>
+                                <li class="submenu-item ">
+                                    <a href="layout-horizontal.html">Horizontal Menu</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="sidebar-title">Observability</li>
+
+                        <li class="sidebar-item">
+                            <a href="./health.html" class='sidebar-link'>
+                                <i class="bi bi-activity"></i>
+                                <span>Health</span>
+                            </a>
+                        </li>
+
+                        <li class="sidebar-item">
+                            <a href="./observability.html" class='sidebar-link'>
+                                <i class="bi bi-bar-chart-steps"></i>
+                                <span>Assets Analytics</span>
+                            </a>
+                        </li>
+
+                        <li class="sidebar-item">
+                            <a href="./access-log.html" class='sidebar-link'>
+                                <i class="bi bi-grid-1x2-fill"></i>
+                                <span>Access Log</span>
+                            </a>
+                        </li>
+
+                        <li class="sidebar-item">
+                            <a href="./assurance.html" class='sidebar-link'>
+                                <i class="bi bi-file-earmark-medical-fill"></i>
+                                <span>Unit Tests</span>
+                            </a>
+                        </li>
+
+                        <li class="sidebar-title">pubctl.ts Controller</li>
+
+                        <li class="sidebar-item">
+                            <a onclick="fetch('/server/restart')" href="#" class='sidebar-link'>
+                                <i class="bi bi-life-preserver"></i>
+                                <span>Restart pubctl.ts</span>
+                            </a>
+                        </li>
+
+                        <li class="sidebar-item">
+                            <a href="./diagnostics.html" class='sidebar-link'>
+                                <i class="bi bi-puzzle"></i>
+                                <span>Diagnostics</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <button class="sidebar-toggler btn x"><i data-feather="x"></i></button>
             </div>
         </nav>`;
     }
@@ -355,6 +483,11 @@ class PageLayouts {
         scriptJS.src = "https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js";
         document.head.appendChild(scriptJS);
 
+        const link = document.createElement('link');
+        link.href = "https://fonts.gstatic.com";
+        link.rel = "preconnect";
+        document.head.appendChild(link);
+
         this.defineFavIconLink("apple-touch-icon", "./image/favicon/apple-touch-icon.png", "180x180");
         this.defineFavIconLink("icon", "./image/favicon/favicon-32x32.png", "32x32", "image/png");
         this.defineFavIconLink("icon", "./image/favicon/favicon-16x16.png", "16x16", "image/png");
@@ -390,11 +523,11 @@ class PageLayouts {
     #styleSemanticElems() {
         // our philosophy is to not have styling in *.html semantic tags so let's style them now;
         [
-            ["main", (elem) => elem.className += " container"],
-            ["main article", (elem) => elem.className += " bg-light p-5 rounded-lg"],
-            ["main article header", (elem) => elem.className += " h1"],
-            ["main article section header", (elems) => elems.forEach(e => e.className += " h2"), true],
-            ["main article section section header", (elems) => elems.forEach(e => e.className += " h2"), true],
+            ["main", (elem) => { if (!elem.id) elem.id = "main" }], // TODDO: remove mazer requirement for elem.id = "main", use semantic
+            // ["main article", (elem) => elem.className += " bg-light p-5 rounded-lg"],
+            // ["main article header", (elem) => elem.className += " h1"],
+            // ["main article section header", (elems) => elems.forEach(e => e.className += " h2"), true],
+            // ["main article section section header", (elems) => elems.forEach(e => e.className += " h2"), true],
         ].forEach(directive => {
             const [query, handler, multiple] = directive;
             const selected = multiple ? document.querySelectorAll(query) : document.querySelector(query);
@@ -403,9 +536,15 @@ class PageLayouts {
     }
 
     #renderBodyTail() {
-        const bootstrapBundleJS = document.createElement('script');
-        bootstrapBundleJS.src = "https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js";
-        document.body.appendChild(bootstrapBundleJS);
+        [
+            "https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js",
+            "https://cdn.jsdelivr.net/npm/perfect-scrollbar@1.5.5/dist/perfect-scrollbar.min.js",
+            "./vendor/mazer/mazer.js"
+        ].forEach(src => {
+            const js = document.createElement('script');
+            js.src = src;
+            document.body.appendChild(js);
+        });
     }
 
     renderWarning(diagnostics) {
@@ -453,10 +592,10 @@ class PageState {
     }
 
     mutateStateContent() {
-        for (const nl of document.querySelectorAll("#contextBar-navigation-primary ul.navbar-nav li.nav-item a.nav-link")) {
+        for (const nl of document.querySelectorAll("#sidebar ul.menu li.sidebar-item a.sidebar-link")) {
             if (nl.href == window.location) {
-                nl.className += " active";
-                nl.setAttribute("aria-current", "page");
+                nl.parentElement.className += " active";
+                nl.parentElement.setAttribute("aria-current", "page");
             }
         }
     }
