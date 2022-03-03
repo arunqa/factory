@@ -6,7 +6,6 @@
 @import url("https://cdn.jsdelivr.net/npm/perfect-scrollbar@1.5.5/css/perfect-scrollbar.css");
 @import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css");
 
-@import url("./vendor/iconly/bold.css");
 @import url("./vendor/mazer/app.css");
 
 /* if we need to transform data, hide it and then then the transformer will display it */
