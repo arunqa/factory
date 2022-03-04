@@ -261,38 +261,6 @@ export class PublicationServer {
       throw new Error("an error has been thrown");
     });
 
-    const mazer = "/mazer";
-    router.get(
-      `${mazer}/(.*)`,
-      s.staticContentMiddleware(
-        {
-          staticAssetsHome:
-            "/home/snshah/workspaces/github.com/zuramai/mazer/dist",
-        },
-        this.staticEE,
-        this.staticIndex,
-        (requestUrlPath) => requestUrlPath.substring(mazer.length),
-      ),
-    );
-
-    const resFactory = "/resFactory";
-    const resFactoryHome = path.resolve(
-      path.fromFileUrl(import.meta.url),
-      "../../..",
-    );
-    console.log(resFactory, resFactoryHome);
-    router.get(
-      `${resFactory}/(.*)`,
-      s.staticContentMiddleware(
-        {
-          staticAssetsHome: resFactoryHome,
-        },
-        this.staticEE,
-        this.staticIndex,
-        (requestUrlPath) => requestUrlPath.substring(resFactory.length),
-      ),
-    );
-
     app.use(router.routes());
     app.use(router.allowedMethods());
     app.use(

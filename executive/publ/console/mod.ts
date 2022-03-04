@@ -174,6 +174,27 @@ export class ConsoleMiddlewareSupplier {
       }
     });
 
+    [{
+      endpoint: `${this.htmlEndpointURL}/proxy/factory`,
+      home: () =>
+        path.resolve(
+          path.fromFileUrl(import.meta.url),
+          "../../../..",
+        ),
+    }].forEach((proxy) => {
+      router.get(
+        `${proxy.endpoint}/(.*)`,
+        s.staticContentMiddleware(
+          {
+            staticAssetsHome: proxy.home(),
+          },
+          this.staticEE,
+          this.staticIndex,
+          (requestUrlPath) => requestUrlPath.substring(proxy.endpoint.length),
+        ),
+      );
+    });
+
     router.get(
       `${this.htmlEndpointURL}/(.*)`,
       s.staticContentMiddleware(
