@@ -17,8 +17,15 @@
 
             <section class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Unhealthy Only</h5>
-                    <div id="unhealthy-json"></div>
+                    <h5 class="card-title">Errors</h5>
+                    <div id="unhealthy-json-errors"></div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Warnings</h5>
+                    <div id="unhealthy-json-warnings"></div>
                 </div>
             </section>
 
@@ -36,14 +43,28 @@
         document.addEventListener('DOMContentLoaded', function () {
             fetch("/operational-context/observability/health.json").then(resp => {
                 resp.json().then(health => {
-                    // API: https://github.com/caldwell/renderjson
-                    const unhealthy = JSON.stringify(health, (self, key, value) => {
-                        if (typeof self == "object" && "componentType" in self && self.status == "pass") {
-                            return undefined;
+                    const errors = [];
+                    const warnings = [];
+                    Object.entries(health.checks).forEach(check => {
+                        const [serviceIdentity, components] = check;
+                        for (const c of components) {
+                            switch (c.status) {
+                                case "pass":
+                                    break;
+                                case "warn":
+                                    warnings.push({ service: serviceIdentity, ...c });
+                                    break;
+                                case "fail":
+                                    errors.push({ service: serviceIdentity, ...c });
+                                    break
+                            }
                         }
-                        return value;
                     });
-                    document.getElementById("unhealthy-json").innerHTML = unhealthy;
+                    renderjson.set_show_to_level(2);
+                    document.getElementById("unhealthy-json-errors").prepend(renderjson(errors));
+                    document.getElementById("unhealthy-json-warnings").prepend(renderjson(warnings));
+
+                    // API: https://github.com/caldwell/renderjson
                     renderjson.set_show_to_level(4);
                     document.getElementById("health-json").prepend(renderjson(health));
                 });
