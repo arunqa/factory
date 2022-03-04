@@ -165,7 +165,6 @@ export interface FlexibleArgsResult<
  */
 export function flexibleArgs<
   Arguments extends FlexibleArguments,
-  Context = unknown,
 >(
   argsSupplier: ArgumentsSupplier<Arguments>,
   rulesSupplier?: FlexibleArgsRulesSupplier<
