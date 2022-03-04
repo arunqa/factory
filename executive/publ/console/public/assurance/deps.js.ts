@@ -22,3 +22,4 @@ export * from "../../../../../lib/net/http-endpoint-action.js";
 export * from "../../../../../lib/net/inspect-http-headers.js";
 export * from "../../../../../lib/dom/tunnels.js";
 export * from "../../../../../lib/text/detect-route.ts";
+export * from "../../../../../lib/dom/markdown-it.js";

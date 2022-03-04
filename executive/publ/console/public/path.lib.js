@@ -63,7 +63,7 @@ class ContextBarComponent extends HTMLElement {
                     <div class="d-flex justify-content-between">
                         <div class="logo">
                             <!-- "console-prime" prime is also specified in console/mod.ts openWindow event -->
-                            <a href="/" target="console-prime"><img src="./image/favicon/favicon-32x32.png" alt="Logo" srcset=""> rfConsole</a>
+                            <a href="/" target="console-prime"><img src="/console/image/favicon/favicon-32x32.png" alt="Logo" srcset=""> rfConsole</a>
                         </div>
                         <div class="toggler">
                             <a href="#" class="sidebar-hide d-xl-none d-block"><i class="bi bi-x bi-middle"></i></a>
@@ -74,7 +74,7 @@ class ContextBarComponent extends HTMLElement {
                     <p id="rf-universal-tunnel-state-summary-badge" class="text-center"><span title="If you're seeing this report it as a tunnel bug">Tunnel Bug!</span></p>
                     <ul class="menu">
                         <li class="sidebar-item">
-                            <a href="index.html" class='sidebar-link'>
+                            <a href="/console/" class='sidebar-link'>
                                 <i class="bi bi-grid-fill"></i>
                                 <span>Home</span>
                             </a>
@@ -184,28 +184,28 @@ class ContextBarComponent extends HTMLElement {
                         <li class="sidebar-title">Observability</li>
 
                         <li class="sidebar-item">
-                            <a href="./health.html" class='sidebar-link'>
+                            <a href="/console/health.html" class='sidebar-link'>
                                 <i class="bi bi-activity"></i>
                                 <span>Health</span>
                             </a>
                         </li>
 
                         <li class="sidebar-item">
-                            <a href="./observability.html" class='sidebar-link'>
+                            <a href="/console/observability.html" class='sidebar-link'>
                                 <i class="bi bi-bar-chart-steps"></i>
                                 <span>Assets Analytics</span>
                             </a>
                         </li>
 
                         <li class="sidebar-item">
-                            <a href="./access-log.html" class='sidebar-link'>
+                            <a href="/console/access-log.html" class='sidebar-link'>
                                 <i class="bi bi-grid-1x2-fill"></i>
                                 <span>Access Log</span>
                             </a>
                         </li>
 
                         <li class="sidebar-item">
-                            <a href="./assurance.html" class='sidebar-link'>
+                            <a href="/console/assurance/" class='sidebar-link'>
                                 <i class="bi bi-file-earmark-medical-fill"></i>
                                 <span>Unit Tests</span>
                             </a>
@@ -221,7 +221,7 @@ class ContextBarComponent extends HTMLElement {
                         </li>
 
                         <li class="sidebar-item">
-                            <a href="./diagnostics.html" class='sidebar-link'>
+                            <a href="/console/diagnostics.html" class='sidebar-link'>
                                 <i class="bi bi-puzzle"></i>
                                 <span>Diagnostics</span>
                             </a>
@@ -368,10 +368,10 @@ class PageLayouts {
         link.rel = "preconnect";
         document.head.appendChild(link);
 
-        this.defineFavIconLink("apple-touch-icon", "./image/favicon/apple-touch-icon.png", "180x180");
-        this.defineFavIconLink("icon", "./image/favicon/favicon-32x32.png", "32x32", "image/png");
-        this.defineFavIconLink("icon", "./image/favicon/favicon-16x16.png", "16x16", "image/png");
-        this.defineFavIconLink("manifest", "./image/favicon/site.webmanifest");
+        this.defineFavIconLink("apple-touch-icon", "/console/image/favicon/apple-touch-icon.png", "180x180");
+        this.defineFavIconLink("icon", "/console/image/favicon/favicon-32x32.png", "32x32", "image/png");
+        this.defineFavIconLink("icon", "/console/image/favicon/favicon-16x16.png", "16x16", "image/png");
+        this.defineFavIconLink("manifest", "/console/image/favicon/site.webmanifest");
 
         this.args.mutatePageTitle?.(this.args.contentSuppliers.pageTitle);
     }
@@ -417,7 +417,7 @@ class PageLayouts {
         [
             "https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js",
             "https://cdn.jsdelivr.net/npm/perfect-scrollbar@1.5.5/dist/perfect-scrollbar.min.js",
-            "./vendor/mazer/mazer.js"
+            "/console/vendor/mazer/mazer.js"
         ].forEach(src => {
             const js = document.createElement('script');
             js.src = src;

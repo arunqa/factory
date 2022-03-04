@@ -673,3 +673,159 @@ function detectFileSysStyleRoute(text) {
     return parsedPath;
 }
 export { detectFileSysStyleRoute as detectFileSysStyleRoute };
+function markdownItTransformer() {
+    return {
+        dependencies: undefined,
+        acquireDependencies: async (transformer)=>{
+            const { default: markdownIt  } = await import("https://jspm.dev/markdown-it@12.2.0");
+            return {
+                markdownIt,
+                plugins: await transformer.plugins()
+            };
+        },
+        construct: async (transformer)=>{
+            if (!transformer.dependencies) {
+                transformer.dependencies = await transformer.acquireDependencies(transformer);
+            }
+            const markdownIt = transformer.dependencies.markdownIt({
+                html: true,
+                linkify: true,
+                typographer: true
+            });
+            transformer.customize(markdownIt, transformer);
+            return markdownIt;
+        },
+        customize: (markdownIt, transformer)=>{
+            const plugins = transformer.dependencies.plugins;
+            markdownIt.use(plugins.footnote);
+            return transformer;
+        },
+        unindentWhitespace: (text, removeInitialNewLine = true)=>{
+            const whitespace = text.match(/^[ \t]*(?=\S)/gm);
+            const indentCount = whitespace ? whitespace.reduce((r, a)=>Math.min(r, a.length)
+            , Infinity) : 0;
+            const regex = new RegExp(`^[ \\t]{${indentCount}}`, "gm");
+            const result = text.replace(regex, "");
+            return removeInitialNewLine ? result.replace(/^\n/, "") : result;
+        },
+        plugins: async ()=>{
+            const { default: footnote  } = await import("https://jspm.dev/markdown-it-footnote@3.0.3");
+            return {
+                footnote,
+                adjustHeadingLevel: (md, options)=>{
+                    function getHeadingLevel(tagName) {
+                        if (tagName[0].toLowerCase() === 'h') {
+                            tagName = tagName.slice(1);
+                        }
+                        return parseInt(tagName, 10);
+                    }
+                    const firstLevel = options.firstLevel;
+                    if (typeof firstLevel === 'string') {
+                        firstLevel = getHeadingLevel(firstLevel);
+                    }
+                    if (!firstLevel || isNaN(firstLevel)) {
+                        return;
+                    }
+                    const levelOffset = firstLevel - 1;
+                    if (levelOffset < 1 || levelOffset > 6) {
+                        return;
+                    }
+                    md.core.ruler.push("adjust-heading-levels", function(state) {
+                        const tokens = state.tokens;
+                        for(let i = 0; i < tokens.length; i++){
+                            if (tokens[i].type !== "heading_close") {
+                                continue;
+                            }
+                            const headingOpen = tokens[i - 2];
+                            const headingClose = tokens[i];
+                            const currentLevel = getHeadingLevel(headingOpen.tag);
+                            const tagName = 'h' + Math.min(currentLevel + levelOffset, 6);
+                            headingOpen.tag = tagName;
+                            headingClose.tag = tagName;
+                        }
+                    });
+                }
+            };
+        }
+    };
+}
+async function renderMarkdown(strategies, mditt = markdownItTransformer()) {
+    const markdownIt = await mditt.construct(mditt);
+    for await (const strategy of strategies(mditt)){
+        const markdown = mditt.unindentWhitespace(await strategy.markdownText(mditt));
+        strategy.renderHTML(markdownIt.render(markdown), mditt);
+    }
+}
+function importMarkdownContent(input, select, inject) {
+    fetch(input).then((resp)=>{
+        resp.text().then((html)=>{
+            const parser = new DOMParser();
+            const foreignDoc = parser.parseFromString(html, "text/html");
+            const selected = select(foreignDoc);
+            if (Array.isArray(selected)) {
+                for (const s of selected){
+                    const importedNode = document.adoptNode(s);
+                    inject(importedNode, input, html);
+                }
+            } else if (selected) {
+                const importedNode = document.adoptNode(selected);
+                inject(importedNode, input, html);
+            }
+        });
+    });
+}
+async function transformMarkdownElemsCustom(srcElems, finalizeElemFn, mditt = markdownItTransformer()) {
+    await renderMarkdown(function*() {
+        for (const elem of srcElems){
+            yield {
+                markdownText: async ()=>{
+                    if (elem.dataset.transformableSrc) {
+                        const response = await fetch(elem.dataset.transformableSrc);
+                        if (!response.ok) {
+                            return `Error fetching ${elem.dataset.transformableSrc}: ${response.status}`;
+                        }
+                        return await response.text();
+                    } else {
+                        return elem.innerText;
+                    }
+                },
+                renderHTML: async (html)=>{
+                    try {
+                        const formatted = document.createElement("div");
+                        formatted.innerHTML = html;
+                        elem.parentElement.replaceChild(formatted, elem);
+                        if (finalizeElemFn) finalizeElemFn(formatted, elem);
+                    } catch (error) {
+                        console.error("Undiagnosable error in renderHTML()", error);
+                    }
+                }
+            };
+        }
+    }, mditt);
+}
+async function transformMarkdownElems(firstHeadingLevel = 2) {
+    const mdittDefaults = markdownItTransformer();
+    await transformMarkdownElemsCustom(document.querySelectorAll(`[data-transformable="markdown"]`), (mdHtmlElem, mdSrcElem)=>{
+        mdHtmlElem.dataset.transformedFrom = "markdown";
+        if (mdSrcElem.className) mdHtmlElem.className = mdSrcElem.className;
+        document.dispatchEvent(new CustomEvent("transformed-markdown", {
+            detail: {
+                mdHtmlElem,
+                mdSrcElem
+            }
+        }));
+    }, {
+        ...mdittDefaults,
+        customize: (markdownIt, transformer)=>{
+            mdittDefaults.customize(markdownIt, transformer);
+            markdownIt.use(transformer.dependencies.plugins.adjustHeadingLevel, {
+                firstLevel: firstHeadingLevel
+            });
+        }
+    });
+}
+export { markdownItTransformer as markdownItTransformer };
+export { renderMarkdown as renderMarkdown };
+export { importMarkdownContent as importMarkdownContent };
+export { transformMarkdownElemsCustom as transformMarkdownElemsCustom };
+export { transformMarkdownElems as transformMarkdownElems };
