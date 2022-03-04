@@ -261,9 +261,9 @@ export class PublicationServer {
       throw new Error("an error has been thrown");
     });
 
-    const voltB5Dashboard = "/mazer";
+    const mazer = "/mazer";
     router.get(
-      `${voltB5Dashboard}/(.*)`,
+      `${mazer}/(.*)`,
       s.staticContentMiddleware(
         {
           staticAssetsHome:
@@ -271,7 +271,25 @@ export class PublicationServer {
         },
         this.staticEE,
         this.staticIndex,
-        (requestUrlPath) => requestUrlPath.substring(voltB5Dashboard.length),
+        (requestUrlPath) => requestUrlPath.substring(mazer.length),
+      ),
+    );
+
+    const resFactory = "/resFactory";
+    const resFactoryHome = path.resolve(
+      path.fromFileUrl(import.meta.url),
+      "../../..",
+    );
+    console.log(resFactory, resFactoryHome);
+    router.get(
+      `${resFactory}/(.*)`,
+      s.staticContentMiddleware(
+        {
+          staticAssetsHome: resFactoryHome,
+        },
+        this.staticEE,
+        this.staticIndex,
+        (requestUrlPath) => requestUrlPath.substring(resFactory.length),
       ),
     );
 

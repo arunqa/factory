@@ -2,13 +2,13 @@
 
 import {
     humanFriendlyPhrase,
-    unindentWhitespace,
     flexibleArgs,
     detectFileSysStyleRoute,
     EventEmitter,
     Tunnels,
     UserAgentBus,
-    EventSourceTunnelState
+    EventSourceTunnelState,
+    transformMarkdownElems
 } from "./deps.auto.js";
 
 // this is commonly used outside of this script so let's make it available
@@ -244,7 +244,7 @@ class ContentSuppliers {
                 hookableDomElems: [document.documentElement, document.head],
                 pageTitle: () => {
                     if (!document.title || document.title == defaultPageTitle) {
-                        const firstHeader = document.querySelector("header");
+                        const firstHeader = document.querySelector("header h1");
                         return firstHeader ? firstHeader.innerText : document.title;
                     } else {
                         return document.title;
@@ -259,125 +259,6 @@ class ContentSuppliers {
     get pageTitle() { return this.args.pageTitle; }
 
     init() {
-        return this;
-    }
-}
-
-class MarkdownTransform {
-    static opportunities = () => {
-        return document.querySelectorAll(`[data-transform="markdown"]`);
-    }
-
-    static necessary = (potential = MarkdownTransform.opportunities()) => {
-        return potential && potential.length > 0;
-    };
-
-    #config;
-    #markdownIt; // valid only after init(), the Markdown-it instance
-
-    constructor(argsSupplier) {
-        this.#config = flexibleArgs(argsSupplier, {
-            defaultArgs: {
-                hookableDomElemsAttrName: "markdown-render-args-supplier",
-                hookableDomElems: [document.documentElement, document.head],
-                transformElements: () => {
-                    return MarkdownTransform.opportunities();
-                },
-            },
-        });
-    }
-
-    get config() { return this.#config; }
-    get args() { return this.#config.args; }
-    get markdownIt() { return this.#markdownIt; }
-
-    async transform(mdElems = this.args.transformElements()) {
-        const { default: markdownIt } = await import("https://jspm.dev/markdown-it@12.2.0");
-        const { default: markdownItFootnote } = await import("https://jspm.dev/markdown-it-footnote@3.0.3");
-        // import { default as markdownItReplaceLink } from "https://jspm.dev/markdown-it-replace-link@1.1.0";
-        // import { default as markdownItAnchor } from "https://jspm.dev/markdown-it-anchor@8.3.0";
-        // import { default as markdownItTitle } from "https://jspm.dev/markdown-it-title@4.0.0";
-        // import { default as markdownItDirective } from "https://jspm.dev/markdown-it-directive@1.0.1";
-        // import { default as markdownItDirectiveWC } from "https://jspm.dev/markdown-it-directive-webcomponents@1.2.0";
-        // import { default as markdownItHashtag } from "https://jspm.dev/markdown-it-hashtag@0.4.0";
-        // import { default as markdownItTaskCheckbox } from "https://jspm.dev/markdown-it-task-checkbox";
-
-        function getHeadingLevel(tagName) {
-            if (tagName[0].toLowerCase() === 'h') {
-                tagName = tagName.slice(1);
-            }
-
-            return parseInt(tagName, 10);
-        }
-
-        function adjustHeadingLevel(md, options) {
-            const firstLevel = options.firstLevel;
-
-            if (typeof firstLevel === 'string') {
-                firstLevel = getHeadingLevel(firstLevel);
-            }
-
-            if (!firstLevel || isNaN(firstLevel)) {
-                return;
-            }
-
-            const levelOffset = firstLevel - 1;
-            if (levelOffset < 1 || levelOffset > 6) {
-                return;
-            }
-
-            md.core.ruler.push("adjust-heading-levels", function (state) {
-                const tokens = state.tokens
-                for (let i = 0; i < tokens.length; i++) {
-                    if (tokens[i].type !== "heading_close") {
-                        continue
-                    }
-
-                    const headingOpen = tokens[i - 2];
-                    // var heading_content = tokens[i - 1];
-                    const headingClose = tokens[i];
-
-                    // we could go deeper with <div role="heading" aria-level="7">
-                    // see http://w3c.github.io/aria/aria/aria.html#aria-level
-                    // but clamping to a depth of 6 should suffice for now
-                    const currentLevel = getHeadingLevel(headingOpen.tag);
-                    const tagName = 'h' + Math.min(currentLevel + levelOffset, 6);
-
-                    headingOpen.tag = tagName;
-                    headingClose.tag = tagName;
-                }
-            });
-        }
-
-        this.#markdownIt = markdownIt({
-            html: true,
-            linkify: true,
-            typographer: true,
-        });
-        this.#markdownIt.use(markdownItFootnote);
-        this.#markdownIt.use(adjustHeadingLevel, { firstLevel: 2 });
-
-        if (mdElems && mdElems.length > 0) {
-            for (const mde of mdElems) {
-                const markdown = unindentWhitespace(mde.innerText);
-                const formatted = document.createElement("div");
-                formatted.innerHTML = this.#markdownIt.render(markdown);
-                formatted.dataset.contentTransformedFrom = "markdown";
-                mde.replaceWith(formatted);
-
-                // const codeBlocks = document.querySelectorAll("code.hljs");
-                // for (const cb of codeBlocks) {
-                //     cb.className += " shadow p-3 mb-5 bg-light.bg-gradient rounded";
-                // }
-            }
-        }
-
-        // if you change the version of highlight.js, also update the CSS in path.actuate.css
-        // https://highlightjs.org/
-        const { default: hljs } = await import("https://jspm.dev/highlight.js@11.4.0");
-        hljs.highlightAll();
-
-        // encourage chaining
         return this;
     }
 }
@@ -438,7 +319,6 @@ class PageLayouts {
                 },
                 customElements: new CustomElements(),
                 contentSuppliers: new ContentSuppliers(),
-                markdownTranformer: MarkdownTransform.necessary() ? new MarkdownTransform() : undefined,
             },
             hookableDomElemsAttrName: "page-layouts-args-supplier",
             hookableDomElems: [document.documentElement, document.head],
@@ -510,9 +390,7 @@ class PageLayouts {
                 this.args.layoutIdentity.renderInvalid(layout);
         }
 
-        if (this.args.markdownTranformer) {
-            this.args.markdownTranformer.transform();
-        }
+        transformMarkdownElems()
     }
 
     #renderBodyContextBar() {
