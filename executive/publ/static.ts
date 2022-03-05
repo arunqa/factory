@@ -84,6 +84,9 @@ export function staticContentMiddleware(
         root: staticAssetsHome,
         index: staticIndex,
         path: resolvedStaticPathOnServer,
+        contentTypes: {
+          ".cjs": "application/javascript",
+        },
       });
       await staticEE.emit("served", {
         target: target

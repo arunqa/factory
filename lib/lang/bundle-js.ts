@@ -1,6 +1,7 @@
 import { events, path } from "./deps.ts";
 
 export interface TypescriptSupplier extends Pick<Deno.EmitOptions, "bundle"> {
+  readonly bundle: "classic" | "module";
   readonly srcRootSpecifier: string;
 }
 
@@ -117,25 +118,47 @@ export async function transformTypescriptToJS(
 }
 
 export interface JsTsTwinNamingStrategy {
-  (jsAbsPath: string): string;
+  (jsAbsPath: string): [renamed: string, jsType: "module" | "classic"];
 }
 
+/**
+ * Accept a file path like *.(auto?).{js,cjs,mjs} and normalize it to *.js
+ * @param jsAbsPath the full path with .auto., .js, .cjs, or .mjs modifiers
+ * @returns "normalized" file with just *.js and no .auto., cjs, or mjs and type of module to emit
+ */
 export const typicalJsTwinTsNamingStrategy: JsTsTwinNamingStrategy = (
   jsAbsPath,
 ) => {
-  // if the output file looks like xyz.auto.js rename it to xyz.js so that
-  // the Typescript "twin" doesnt have the word auto in there
-  return jsAbsPath.replace(".auto.", ".");
+  // if the output file looks like xyz.auto.{js,cjs,mjs} rename it to xyz.js so that
+  // the Typescript "twin" doesnt have the word auto in there and is normalized to .js
+  let renamed = jsAbsPath.replace(".auto.", ".");
+  let jsType: "module" | "classic" = "module";
+  if (renamed.endsWith(".cjs")) {
+    jsType = "classic";
+    renamed = renamed.replace(/\.cjs$/i, ".js");
+  } else {
+    if (renamed.endsWith(".mjs")) {
+      renamed = renamed.replace(/\.mjs$/i, ".js");
+    }
+  }
+  return [renamed, jsType];
 };
 
 export async function jsHasTsTwin(
   jsAbsPath: string,
   namingStrategy = typicalJsTwinTsNamingStrategy,
-): Promise<false | [twinPath: string, twinStat: Deno.FileInfo]> {
-  const twinPath = `${namingStrategy(jsAbsPath)}.ts`;
+): Promise<
+  false | [
+    twinPath: string,
+    twinStat: Deno.FileInfo,
+    jsType: "module" | "classic",
+  ]
+> {
+  const [name, jsType] = namingStrategy(jsAbsPath);
+  const twinPath = `${name}.ts`;
   try {
     const twinStat = await Deno.lstat(twinPath);
-    return [twinPath, twinStat];
+    return [twinPath, twinStat, jsType];
   } catch (error) {
     // if the *.js doesn't exist we want to build it
     if (error instanceof Deno.errors.NotFound) {
@@ -150,8 +173,10 @@ export async function bundleJsFromTsTwin(
   namingStrategy = typicalJsTwinTsNamingStrategy,
   ee?: TransformTypescriptEventEmitter,
 ) {
+  const [name, jsType] = namingStrategy(jsAbsPath);
   await transformTypescriptToJS({
-    srcRootSpecifier: `${namingStrategy(jsAbsPath)}.ts`,
+    srcRootSpecifier: `${name}.ts`,
+    bundle: jsType,
   }, {
     ee,
     onBundledToJS: async (event) => {
@@ -175,8 +200,10 @@ export async function bundleJsFromTsTwinIfNewer(
   namingStrategy = typicalJsTwinTsNamingStrategy,
   ee?: TransformTypescriptEventEmitter,
 ) {
+  const [name, jsType] = namingStrategy(jsAbsPath);
   await transformTypescriptToJS({
-    srcRootSpecifier: `${namingStrategy(jsAbsPath)}.ts`,
+    srcRootSpecifier: `${namingStrategy(name)}.ts`,
+    bundle: jsType,
   }, {
     ee,
     shouldBundle: async (src, srcStat) => {

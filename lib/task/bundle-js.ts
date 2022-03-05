@@ -4,13 +4,14 @@ import * as fsi from "../fs/inspect.ts";
 import * as bjs from "../lang/bundle-js.ts";
 
 const relativeToCWD = (absPath: string) => path.relative(Deno.cwd(), absPath);
+const jsDiscoverGlob = "**/*.{js,cjs,mjs}";
 
 /**
- * bundleJsFromTsTwin is used in Taskfile.ts to find all *.js.ts and create
- * it's "twin" *.js file by using Deno.emit(). The default bundler rules are:
- * 1. Find all *.js files
- * 2. For each *.js file, see if it has a "twin" *.js.ts
- * 3. If a JS file is called xyz.auto.js (a good convention), .auto. is removed
+ * bundleJsFromTsTwin is used in Taskfile.ts to find all *.{js,cjs,mjs}.ts and create
+ * it's "twin" *.{js,cjs,mjs} file by using Deno.emit(). The default bundler rules are:
+ * 1. Find all *.{js,cjs,mjs} files
+ * 2. For each *.{js,cjs,mjs} file, see if it has a "twin" *.js.ts
+ * 3. If a JS file is called xyz.auto.{js,cjs,mjs} (a good convention), .auto. is removed
  *    before checking
  * @param originRootPath which directory to start in, defaults to Deno.cwd()
  */
@@ -21,7 +22,7 @@ export function bundleJsFromTsTwinTask(
   return async () => {
     for await (
       const asset of fsi.discoverAssets({
-        glob: "**/*.js",
+        glob: jsDiscoverGlob,
         originRootPath,
       })
     ) {
@@ -52,18 +53,20 @@ export function discoverBundleJsFromTsTwinTask(originRootPath = Deno.cwd()) {
   return async () => {
     for await (
       const asset of fsi.discoverAssets({
-        glob: "**/*.js",
+        glob: jsDiscoverGlob,
         originRootPath,
       })
     ) {
       const available = await bjs.jsHasTsTwin(asset.path);
       if (available) {
-        const [twinPath, _twinStat] = available;
+        const [twinPath, _twinStat, jsType] = available;
         console.info(
           colors.magenta(
             `*** ${
               colors.white(relativeToCWD(asset.path))
-            } may be bundled from ${colors.yellow(relativeToCWD(twinPath))}`,
+            } (${jsType}) may be bundled from ${
+              colors.yellow(relativeToCWD(twinPath))
+            }`,
           ),
         );
       }

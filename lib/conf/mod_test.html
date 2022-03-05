@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" data-universal-test-hook-fn="universalTestHookFn">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="https://unpkg.com/mocha/mocha.css" />
+    <script>
+        function universalTestHookFn(flexibleArgsResult) {
+            flexibleArgsResult.args.hooked = "universalTestHookFn";
+            return flexibleArgsResult;
+        }
+    </script>
+</head>
+
+<body>
+    <div id="mocha"></div>
+
+    <script src="https://unpkg.com/chai/chai.js"></script>
+    <script src="https://unpkg.com/mocha/mocha.js"></script>
+
+    <script class="mocha-init">
+        mocha.setup('bdd');
+        mocha.checkLeaks();
+    </script>
+    <script class="mocha-exec" type="module">
+        import * as mod from "./flexible-args.auto.js";
+        import { describeFlexibleArgs } from "./flexible-args_bdd.js";
+        const assert = chai.assert;
+
+        describeFlexibleArgs({ ...mod, assert });
+        describe("document-hook-args", () => {
+            it("flexibleArgs with supplied args object and hookable DOM function", () => {
+                let hookable = undefined;
+                let hook = undefined;
+                const result = mod.flexibleArgs({ test: "value" }, {
+                    finalizeResult: (suggested) => {
+                        // find the first hook available in the DOM
+                        hookable = document.querySelector("[data-universal-test-hook-fn]");
+                        if (hookable) {
+                            // a hook name was found, see if it's a valid token and "execute" it
+                            hook = mod.jsTokenEvalResult(hookable.dataset.universalTestHookFn, (jsToken) => eval(jsToken));
+                            if (hook) return hook(suggested);
+                        }
+                        // be sure to return the original otherwise failure is likely
+                        return suggested;
+                    },
+                });
+                assert(result);
+                assert(hookable === document.documentElement);
+                assert(hook === universalTestHookFn);
+                assert(result.args.test == "value");
+                assert(result.args.hooked == "universalTestHookFn");
+            });
+        });
+
+        mocha.run();
+    </script>
+</body>
+
+</html>
