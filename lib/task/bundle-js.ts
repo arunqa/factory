@@ -1,10 +1,14 @@
-import * as colors from "https://deno.land/std@0.123.0/fmt/colors.ts";
+import {
+  blue,
+  green,
+  red,
+  white,
+  yellow,
+} from "https://deno.land/std@0.123.0/fmt/colors.ts";
 import * as path from "https://deno.land/std@0.123.0/path/mod.ts";
-import * as fsi from "../fs/inspect.ts";
-import * as bjs from "../lang/bundle-js.ts";
+import * as bjs from "../package/bundle-js.ts";
 
 const relativeToCWD = (absPath: string) => path.relative(Deno.cwd(), absPath);
-const jsDiscoverGlob = "**/*.{js,cjs,mjs}";
 
 /**
  * bundleJsFromTsTwin is used in Taskfile.ts to find all *.{js,cjs,mjs}.ts and create
@@ -17,30 +21,13 @@ const jsDiscoverGlob = "**/*.{js,cjs,mjs}";
  */
 export function bundleJsFromTsTwinTask(
   originRootPath = Deno.cwd(),
-  observer: bjs.TransformTypescriptEventEmitter = consoleEE(),
+  observer = consoleEE(),
 ) {
   return async () => {
-    for await (
-      const asset of fsi.discoverAssets({
-        glob: jsDiscoverGlob,
-        originRootPath,
-      })
-    ) {
-      const available = await bjs.jsHasTsTwin(asset.path);
-      if (available) {
-        await bjs.bundleJsFromTsTwin(
-          asset.path,
-          bjs.typicalJsTwinTsNamingStrategy,
-          observer,
-        );
-      } else {
-        console.warn(
-          colors.dim(
-            `${relativeToCWD(asset.path)} does not have a Typescript twin`,
-          ),
-        );
-      }
-    }
+    await bjs.bundleJsTargets(
+      bjs.jsTargetsSupplier(bjs.allJsTargetsWithTsTwins(originRootPath)),
+      observer,
+    );
   };
 }
 
@@ -51,25 +38,45 @@ export function bundleJsFromTsTwinTask(
  */
 export function discoverBundleJsFromTsTwinTask(originRootPath = Deno.cwd()) {
   return async () => {
-    for await (
-      const asset of fsi.discoverAssets({
-        glob: jsDiscoverGlob,
-        originRootPath,
-      })
-    ) {
-      const available = await bjs.jsHasTsTwin(asset.path);
-      if (available) {
-        const [twinPath, _twinStat, jsType] = available;
-        console.info(
-          colors.magenta(
-            `*** ${
-              colors.white(relativeToCWD(asset.path))
-            } (${jsType}) may be bundled from ${
-              colors.yellow(relativeToCWD(twinPath))
-            }`,
-          ),
-        );
-      }
+    const twins = bjs.jsTargetsSupplier(
+      bjs.allJsTargetsWithTsTwins(originRootPath),
+    );
+    for await (const twin of twins()) {
+      console.info(
+        white(
+          `${yellow(relativeToCWD(twin.jsAbsPath))} (${twin.jsNature}${
+            twin.jsMinify ? ", minified" : ", not minified"
+          }) may be bundled from ${
+            green(relativeToCWD(twin.tsSrcRootSpecifier))
+          }`,
+        ),
+      );
+    }
+  };
+}
+
+/**
+ * discoverJsTargetsWithoutTsTwinsTask is used in Taskfile.ts to discover all *.js
+ * files that do not have twins
+ * @param originRootPath which directory to start in, defaults to Deno.cwd()
+ */
+export function discoverJsTargetsWithoutTsTwinsTask(
+  originRootPath = Deno.cwd(),
+) {
+  return async () => {
+    const lackingTwins = bjs.jsTargetsSupplier(
+      bjs.allJsTargetsWithoutTsTwins(originRootPath),
+    );
+    for await (const twin of lackingTwins()) {
+      console.info(
+        white(
+          `${yellow(relativeToCWD(twin.jsAbsPath))} (${twin.jsNature}${
+            twin.jsMinify ? ", minified" : ", not minified"
+          }) is missing its twin ${
+            red(relativeToCWD(twin.tsSrcRootSpecifier))
+          }`,
+        ),
+      );
     }
   };
 }
@@ -77,11 +84,11 @@ export function discoverBundleJsFromTsTwinTask(originRootPath = Deno.cwd()) {
 function consoleEE() {
   const ttConsoleEE = new bjs.TransformTypescriptEventEmitter();
   // deno-lint-ignore require-await
-  ttConsoleEE.on("persistedToJS", async (jsAbsPath, event) => {
+  ttConsoleEE.on("persistedToJS", async (twin, event) => {
     console.info(
-      colors.magenta(
-        `*** ${colors.yellow(relativeToCWD(jsAbsPath))} generated from ${
-          colors.green(relativeToCWD(event.srcRootSpecifier))
+      white(
+        `${yellow(relativeToCWD(twin.jsAbsPath))} generated from ${
+          green(relativeToCWD(event.tsSrcRootSpecifier))
         }`,
       ),
     );
@@ -89,17 +96,17 @@ function consoleEE() {
   // deno-lint-ignore require-await
   ttConsoleEE.on("notBundledToJS", async (event) => {
     console.info(
-      colors.magenta(
+      white(
         `*** ${
-          colors.yellow(relativeToCWD(event.srcRootSpecifier))
-        } not generated: ${colors.blue(event.reason)}`,
+          yellow(relativeToCWD(event.tsSrcRootSpecifier))
+        } not generated: ${blue(event.reason)}`,
       ),
     );
     if (event.er) {
       console.warn("    ", Deno.formatDiagnostics(event.er.diagnostics));
     }
     if (event.error) {
-      console.error("   ", colors.red(event.error.toString()));
+      console.error("   ", red(event.error.toString()));
     }
   });
   return ttConsoleEE;

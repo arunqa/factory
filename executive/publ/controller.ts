@@ -153,9 +153,9 @@ export class Executive<
       await this.replayMemoized(publication, psac.oakCtx.request.url.pathname);
     });
     // deno-lint-ignore require-await
-    ps.tsTransformEE.on("persistedToJS", async (jsAbsPath, event) => {
+    ps.tsTransformEE.on("persistedToJS", async (target, event) => {
       // deno-fmt-ignore
-      console.info(colors.magenta(`*** ${colors.yellow(jsAbsPath)} generated from ${colors.green(event.srcRootSpecifier)}`));
+      console.info(colors.magenta(`*** ${colors.yellow(target.jsAbsPath)} generated from ${colors.green(event.tsSrcRootSpecifier)}`));
     });
     // deno-lint-ignore require-await
     ps.tsTransformEE.on("notBundledToJS", async (event) => {
@@ -166,7 +166,7 @@ export class Executive<
           return;
       }
       // deno-fmt-ignore
-      console.info(colors.magenta(`*** ${colors.yellow(event.srcRootSpecifier)} not generated: ${colors.blue(event.reason)}`));
+      console.info(colors.magenta(`*** ${colors.yellow(event.tsSrcRootSpecifier)} not generated: ${colors.blue(event.reason)}`));
       if (event.er) {
         console.warn("    ", Deno.formatDiagnostics(event.er.diagnostics));
       }

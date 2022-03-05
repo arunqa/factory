@@ -3,7 +3,7 @@ import { async, oak } from "./deps.ts";
 import * as rfStd from "../../core/std/mod.ts";
 import * as p from "./publication.ts";
 import * as wfs from "../../lib/fs/watch.ts";
-import * as lang from "../../lib/lang/bundle-js.ts";
+import * as bjs from "../../lib/package/bundle-js.ts";
 import * as s from "./static.ts";
 import * as c from "./console/mod.ts";
 import * as ws from "./workspace.ts";
@@ -26,7 +26,7 @@ export class PublicationServerEventEmitter extends events.EventEmitter<{
 export interface PublicationServerOptions {
   readonly staticEE?: s.StaticEventEmitter;
   readonly serverEE?: PublicationServerEventEmitter;
-  readonly tsTransformEE?: lang.TransformTypescriptEventEmitter;
+  readonly tsTransformEE?: bjs.TransformTypescriptEventEmitter;
   readonly listenPort: number;
   readonly listenHostname: string;
   readonly publicURL: (path?: string) => string;
@@ -83,7 +83,7 @@ export class PublicationServerLifecyleManager {
 export class PublicationServer {
   readonly staticEE: s.StaticEventEmitter;
   readonly serverEE: PublicationServerEventEmitter;
-  readonly tsTransformEE: lang.TransformTypescriptEventEmitter;
+  readonly tsTransformEE: bjs.TransformTypescriptEventEmitter;
   readonly listenPort: number;
   readonly listenHostname: string;
   readonly publicURL: (path?: string) => string;
@@ -103,7 +103,7 @@ export class PublicationServer {
     this.staticEE = options.staticEE ??
       new s.StaticEventEmitter();
     this.tsTransformEE = options.tsTransformEE ??
-      new lang.TransformTypescriptEventEmitter();
+      new bjs.TransformTypescriptEventEmitter();
     this.listenPort = options.listenPort;
     this.listenHostname = options.listenHostname;
     this.publicURL = options.publicURL;
@@ -133,9 +133,10 @@ export class PublicationServer {
       // of the build process. This "transform" handler just does it
       // automatically, which is useful during development for hot-reloading.
       if (ssoe.target.endsWith(".js")) {
-        await lang.bundleJsFromTsTwinIfNewer(
-          path.join(ssoe.root, ssoe.target),
-          lang.typicalJsTwinTsNamingStrategy,
+        await bjs.bundleJsFromTsTwinIfNewer(
+          bjs.jsPotentialTsTwin(
+            bjs.typicalJsNamingStrategy(path.join(ssoe.root, ssoe.target)),
+          ),
           this.tsTransformEE,
         );
       }

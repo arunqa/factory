@@ -10,10 +10,13 @@ export class Tasks extends t.EventEmitter<{
   updateDenoDeps(): Promise<void>;
   bundleJsFromTsTwin(): Promise<void>;
   discoverBundleJsFromTsTwin(): Promise<void>;
+  discoverJsTargetsWithoutTsTwins(): Promise<void>;
   transformCssFromTsTwin(): Promise<void>;
-  discoverTransformCssFromTsTwinTask(): Promise<void>;
+  discoverTransformCssFromTsTwin(): Promise<void>;
+  discoverCssTargetsWithoutTsTwins(): Promise<void>;
   bundleAll(): Promise<void>;
   discoverBundleable(): Promise<void>;
+  lintBundleable(): Promise<void>;
   maintain(): Promise<void>;
 }> {
   constructor() {
@@ -23,10 +26,18 @@ export class Tasks extends t.EventEmitter<{
     this.on("updateDenoDeps", udd.updateDenoDepsTask());
     this.on("bundleJsFromTsTwin", bjs.bundleJsFromTsTwinTask());
     this.on("discoverBundleJsFromTsTwin", bjs.discoverBundleJsFromTsTwinTask());
+    this.on(
+      "discoverJsTargetsWithoutTsTwins",
+      bjs.discoverJsTargetsWithoutTsTwinsTask(),
+    );
     this.on("transformCssFromTsTwin", tcss.transformCssFromTsTwinTask());
     this.on(
-      "discoverTransformCssFromTsTwinTask",
+      "discoverTransformCssFromTsTwin",
       tcss.discoverTransformCssFromTsTwinTask(),
+    );
+    this.on(
+      "discoverCssTargetsWithoutTsTwins",
+      tcss.discoverCssTargetsWithoutTsTwinsTask(),
     );
     this.on("bundleAll", async () => {
       await this.emit("bundleJsFromTsTwin");
@@ -34,7 +45,11 @@ export class Tasks extends t.EventEmitter<{
     });
     this.on("discoverBundleable", async () => {
       await this.emit("discoverBundleJsFromTsTwin");
-      await this.emit("discoverTransformCssFromTsTwinTask");
+      await this.emit("discoverTransformCssFromTsTwin");
+    });
+    this.on("lintBundleable", async () => {
+      await this.emit("discoverJsTargetsWithoutTsTwins");
+      await this.emit("discoverCssTargetsWithoutTsTwins");
     });
     this.on("maintain", async () => {
       await this.emit("updateDenoDeps");
