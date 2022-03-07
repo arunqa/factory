@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="https://unpkg.com/mocha/mocha.css" />
     <script>
+        function report() {
+            console.info("%c[service-bus_test.html]%c", "color:#D3D3D3", "color:#999999", ...arguments);
+        }
+
         // conventional hook factory function name test
         function sbFactory_testCheckbox1(factory) {
             const { target: element, serviceBus, serverState } = factory;
@@ -14,7 +18,7 @@
                 serverState.accessLogEnabled.fetch(serviceBus, { something: true });
                 alert(`Clicked ` + observer);
             }
-            serverState.accessLogEnabled.observeFetchResponse(serviceBus, (respPayload, fetchPayload) => console.log('observed sbFactory_testCheckbox1() fetchResponse', fetchPayload, respPayload));
+            serverState.accessLogEnabled.observeFetchResponse(serviceBus, (respPayload, fetchPayload) => report('observed sbFactory_testCheckbox1() fetchResponse', fetchPayload, respPayload));
             // since this is a factory function return our new object
             return { ...factory, observer };
         }
@@ -70,37 +74,41 @@
                         const esPingURL = `${baseURL}/sse/ping`;
                         const eventSourceFactory = {
                             construct: (esURL) => {
+                                // we have to prepare the entire EventSources
+                                // each time we are called; this is because ESs
+                                // can error out and be dropped/recreated
                                 const result = new EventSource(esURL);
-                                result.onmessage = function (event) {
-                                    console.log("onmessage", event);
-                                    serviceBusOnMessage(event);
-                                }
+                                // ServiceBus only handles raw messages and does
+                                // not do anything with listeners; this means
+                                // typed events shouldn't be done by ES, it should
+                                // be handled by ServiceBus (that's it's job!)
+                                result.onmessage = serviceBusOnMessage;
                                 return result;
                             }
                         };
                         const tunnel = new mod.EventSourceTunnel({
                             esURL, esPingURL, eventSourceFactory, options: {
-                                onConnStateChange: (active, previous) => console.log("connection state", active, previous),
-                                onReconnStateChange: (active, previous) => console.log("reconnection state", active, previous),
+                                onConnStateChange: (active, previous) => report("connection state", active, previous),
+                                onReconnStateChange: (active, previous) => report("reconnection state", active, previous),
                             }
                         });
                         tunnel.init();
                         yield tunnel;
                     }
                 }));
-                serviceBus.observeFetchEvent((payload, reqInit) => console.log('observed universal fetch', payload, reqInit));
-                serviceBus.observeFetchEventResponse((respPayload, fetchPayload) => console.log('observed universal fetchResponse', fetchPayload, respPayload));
-                serviceBus.observeFetchEventError((error, reqInit, fetchPayload) => console.log('observed universal fetchRespError', error, reqInit, fetchPayload));
+                serviceBus.observeFetchEvent((payload, reqInit) => report('observed universal fetch', payload, reqInit));
+                serviceBus.observeFetchEventResponse((respPayload, fetchPayload) => report('observed universal fetchResponse', fetchPayload, respPayload));
+                serviceBus.observeFetchEventError((error, reqInit, fetchPayload) => report('observed universal fetchRespError', error, reqInit, fetchPayload));
 
                 const accessLogEnabled = mod.binaryStateServerProxy((baseURL) => baseURL, () => "testCheckbox1", () => ({ testCheckbox1State: true }));
                 const ping = mod.pingServerProxy((baseURL) => baseURL);
-                ping.observeEventSource(serviceBus, (payload) => console.log('observed ping SSE', payload));
+                ping.observeEventSource(serviceBus, (payload) => report('observed ping SSE', payload));
                 const serverState = {
                     ping,
                     accessLogEnabled,
                 }
-                console.dir(serviceBus);
-                console.dir(serverState);
+                report("serviceBus", serviceBus);
+                report("serverState", serverState);
                 for (const factory of mod.walkHooks(
                     // find hookable controls
                     document.querySelectorAll("[data-service-bus],[data-service-bus-factory]"),
