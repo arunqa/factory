@@ -53,6 +53,12 @@ export function binaryStateServerProxy(
           fetchRespRawJSON,
         } as BinaryStateProxyFetchRespPayload;
       },
+      isEventSourcePayload: (
+        _rawJSON,
+      ): _rawJSON is BinaryStateProxyEventSourcePayload => {
+        // TODO: we should really do some error checking
+        return true;
+      },
       prepareEventSourcePayload: (rawJSON) => {
         return rawJSON as BinaryStateProxyEventSourcePayload;
       },
@@ -76,6 +82,9 @@ export function binaryStateServerProxy(
       },
       observeEventSource: (eventSrcStrategy, observer) => {
         eventSrcStrategy.observeEventSource(observer, identitySupplier());
+      },
+      observeEventSourceError: (eventSrcStrategy, observer) => {
+        eventSrcStrategy.observeEventSourceError(observer, identitySupplier());
       },
     };
   return proxy;

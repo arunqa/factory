@@ -9,15 +9,28 @@ export interface EventSourceStrategy {
     observer: EventSourceObserver<EventSourcePayload>,
     payloadID?: govn.PayloadIdentity,
   ) => void;
+  observeEventSourceError: <
+    EventSourcePayload extends govn.IdentifiablePayload,
+  >(
+    observer: EventSourceErrorObserver<EventSourcePayload>,
+    payloadID?: govn.PayloadIdentity,
+  ) => void;
 }
 
 export interface EventSourceProxy<
   EventSourcePayload extends govn.IdentifiablePayload,
 > {
+  readonly isEventSourcePayload: (
+    rawJSON: unknown,
+  ) => rawJSON is EventSourcePayload;
   readonly prepareEventSourcePayload: (rawJSON: unknown) => EventSourcePayload;
   readonly observeEventSource: (
     ess: EventSourceStrategy,
     observer: EventSourceObserver<EventSourcePayload>,
+  ) => void;
+  readonly observeEventSourceError: (
+    ess: EventSourceStrategy,
+    observer: EventSourceErrorObserver<EventSourcePayload>,
   ) => void;
 }
 
@@ -25,6 +38,16 @@ export interface EventSourceObserver<
   EventSourcePayload extends govn.IdentifiablePayload,
 > {
   (esp: EventSourcePayload, ess: EventSourceStrategy): void;
+}
+
+export interface EventSourceErrorObserver<
+  EventSourcePayload extends govn.IdentifiablePayload,
+> {
+  (
+    error: Error,
+    esp: EventSourcePayload,
+    ess: EventSourceStrategy,
+  ): void;
 }
 
 export interface EventSourceCustomEventDetail<

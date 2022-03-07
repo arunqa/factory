@@ -15,6 +15,7 @@ export interface ServiceBusArguments {
     readonly fetchResponse: govn.EventTargetEventNameStrategy;
     readonly fetchError: govn.EventTargetEventNameStrategy;
     readonly eventSource: govn.EventTargetEventNameStrategy;
+    readonly eventSourceError: govn.EventTargetEventNameStrategy;
     readonly eventSourceInvalidPayload: govn.EventTargetEventNameStrategy;
   };
 }
@@ -82,7 +83,24 @@ export function serviceBusArguments(
             : payloadSpecificName,
         };
       },
+      eventSourceError: (payload) => {
+        const identity = typeof payload === "string"
+          ? payload
+          : payload.payloadIdentity;
+        const payloadSpecificName = `event-source-error-${identity}`;
+        const universalName = `event-source-error`;
+        return {
+          payloadSpecificName,
+          universalName,
+          selectedName: identity == universalScopeID
+            ? universalName
+            : payloadSpecificName,
+        };
+      },
       eventSourceInvalidPayload: () => {
+        // this is a special error which cannot be payload-specific because
+        // it indicates an unsolicited server sent event could not be identified
+        // as something we can handle (it will be ignored)
         const universalName = `event-source-invalid-payload`;
         return {
           payloadSpecificName: undefined,
@@ -341,6 +359,28 @@ export class ServiceBus extends EventTarget
       },
     );
   }
+
+  observeEventSourceError<
+    EventSourcePayload extends govn.IdentifiablePayload,
+  >(
+    observer: sse.EventSourceErrorObserver<EventSourcePayload>,
+    payloadID?: govn.PayloadIdentity,
+  ) {
+    const names = this.args.eventNameStrategy.eventSourceError(
+      payloadID ?? this.args.eventNameStrategy.universalScopeID,
+    );
+    this.addEventListener(
+      names.selectedName,
+      (event) => {
+        const typedCustomEvent = event as unknown as {
+          // deno-lint-ignore no-explicit-any
+          detail: sse.EventSourceCustomEventDetail<any> & govn.ErrorSupplier;
+        };
+        const { eventSrcPayload, error } = typedCustomEvent.detail;
+        observer(error, eventSrcPayload, this);
+      },
+    );
+  }
 }
 
 export interface PingFetchPayload {
@@ -392,6 +432,10 @@ export function pingServerProxy(
           fetchRespRawJSON,
         } as PingFetchRespPayload;
       },
+      isEventSourcePayload: (_rawJSON): _rawJSON is PingEventSourcePayload => {
+        // TODO: we should really do some error checking
+        return true;
+      },
       prepareEventSourcePayload: (rawJSON) => {
         return rawJSON as PingEventSourcePayload;
       },
@@ -423,6 +467,9 @@ export function pingServerProxy(
           },
           payloadIdentity,
         );
+      },
+      observeEventSourceError: (eventSrcStrategy, observer) => {
+        eventSrcStrategy.observeEventSourceError(observer, payloadIdentity);
       },
     };
   return proxy;
