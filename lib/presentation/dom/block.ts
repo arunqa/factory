@@ -37,6 +37,10 @@ export interface BadgenBadgeContent extends PresentationBlockSchema {
   readonly icon?: string; // Use icon (default: undefined), best to use 'data:image/svg+xml;base64,...'
   readonly iconWidth?: number; // Set this if icon is not square (default: 13)
   readonly scale?: number; // Set badge scale (default: 1)
+
+  // beyond badgen, our custom properties
+  readonly title?: string;
+  readonly action?: string;
 }
 
 // deno-lint-ignore no-explicit-any
@@ -46,13 +50,7 @@ export interface BadgenBlock extends PresentationBlock<any, any> {
   readonly remoteBaseURL?: string;
   readonly remoteURL: (content: BadgenBadgeContent) => string;
   readonly remoteImageURL: (content: BadgenBadgeContent) => string;
-  readonly decorateHTML: (
-    html: string,
-    content: BadgenBadgeContent & {
-      readonly elaborationText?: string;
-      readonly actionable?: string;
-    },
-  ) => string;
+  readonly decorateHTML: (html: string, content: BadgenBadgeContent) => string;
   readonly isUsingRemote: () => boolean;
 }
 
@@ -116,11 +114,11 @@ export function badgenBlock(init: BadgenBlockInit = {}): BadgenBlock {
     remoteImageURL: (content) =>
       block.decorateHTML(`<img src="${block.remoteURL(content)}">`, content),
     decorateHTML: (html, content) => {
-      if (content.elaborationText) {
-        html = `<span title="${content.elaborationText}">${html}</span>`;
+      if (content.title) {
+        html = `<span title="${content.title}">${html}</span>`;
       }
-      if (content.actionable) {
-        html = `<a onclick="${content.actionable}">${html}</a>`;
+      if (content.action) {
+        html = `<a onclick="${content.action}">${html}</a>`;
       }
       return html;
     },

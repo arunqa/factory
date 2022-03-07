@@ -1,6 +1,7 @@
 ///! <reference lib="dom" />
 import * as govn from "./governance.ts";
 import * as c from "./connection.ts";
+import * as safety from "../safety/mod.ts";
 
 export interface EventSourceStrategy {
   observeEventSource: <
@@ -57,54 +58,58 @@ export interface EventSourceCustomEventDetail<
 }
 
 export interface EventSourceConnectionState {
+  readonly isConnectionState: true;
   readonly isHealthy?: boolean;
 }
 
 export interface EventSourceConnectionHealthy
   extends EventSourceConnectionState {
   readonly isHealthy: true;
+  readonly connEstablishedOn: Date;
+  readonly endpointURL: string;
+  readonly pingURL: string;
 }
+
+export const isEventSourceConnectionHealthy = safety.typeGuard<
+  EventSourceConnectionHealthy
+>("isHealthy", "connEstablishedOn");
 
 export interface EventSourceConnectionUnhealthy
   extends EventSourceConnectionState {
   readonly isHealthy: false;
+  readonly connFailedOn: Date;
   readonly reconnectStrategy?: c.ReconnectionStrategy;
 }
+
+export const isEventSourceConnectionUnhealthy = safety.typeGuard<
+  EventSourceConnectionUnhealthy
+>("isHealthy", "connFailedOn");
+
+export const isEventSourceReconnecting = safety.typeGuard<
+  EventSourceConnectionUnhealthy
+>("isHealthy", "connFailedOn", "reconnectStrategy");
 
 export interface EventSourceError extends EventSourceConnectionUnhealthy {
   readonly isEventSourceError: true;
   readonly errorEvent: Event;
 }
 
-export interface EventSourceEndpointAvailability
-  extends EventSourceConnectionUnhealthy {
-  readonly isEventSourceEndpointAvailable: false;
+export const isEventSourceError = safety.typeGuard<
+  EventSourceError
+>("isEventSourceError", "errorEvent");
+
+export interface EventSourceEndpointUnavailable {
+  readonly isEndpointUnavailable: true;
+  readonly endpointURL: string;
+  readonly pingURL: string;
   readonly httpStatus?: number;
   readonly httpStatusText?: string;
   readonly connectionError?: Error;
 }
 
-function eventSourceError(
-  errorEvent: Event,
-  reconnectStrategy: c.ReconnectionStrategy,
-): EventSourceError {
-  return {
-    isHealthy: false,
-    isEventSourceError: true,
-    errorEvent,
-    reconnectStrategy,
-  };
-}
-
-function endpointUnavailable(
-  state?: Partial<EventSourceEndpointAvailability>,
-): EventSourceEndpointAvailability {
-  return {
-    isHealthy: false,
-    isEventSourceEndpointAvailable: false,
-    ...state,
-  };
-}
+export const isEventSourceEndpointUnavailable = safety.typeGuard<
+  EventSourceEndpointUnavailable
+>("isEndpointUnavailable", "endpointURL");
 
 /**
  * EventSourceFactory will be called upon each connection of ES. It's important
@@ -128,6 +133,16 @@ interface ConnectionStateChangeNotification {
   (
     active: EventSourceConnectionState,
     previous: EventSourceConnectionState,
+    tunnel: EventSourceTunnel,
+  ): void;
+}
+
+interface ReconnectionStateChangeNotification {
+  (
+    active: c.ReconnectionState,
+    previous: c.ReconnectionState,
+    rs: c.ReconnectionStrategy,
+    tunnel: EventSourceTunnel,
   ): void;
 }
 
@@ -137,7 +152,7 @@ export interface EventSourceStateInit<EventSource> {
   readonly eventSourceFactory: EventSourceFactory<EventSource>;
   readonly options?: {
     readonly onConnStateChange?: ConnectionStateChangeNotification;
-    readonly onReconnStateChange?: c.ReconnectionStateChangeNotification;
+    readonly onReconnStateChange?: ReconnectionStateChangeNotification;
   };
 }
 
@@ -148,11 +163,11 @@ export class EventSourceTunnel<EventSource = any> {
   readonly observerUniversalScopeID: "universal" = "universal";
   readonly eventSourceFactory: EventSourceFactory<EventSource>;
   readonly onConnStateChange?: ConnectionStateChangeNotification;
-  readonly onReconnStateChange?: c.ReconnectionStateChangeNotification;
+  readonly onReconnStateChange?: ReconnectionStateChangeNotification;
 
   // isHealthy can be true or false for known states, or undefined at init
   // for "unknown" state
-  #connectionState: EventSourceConnectionState = { isHealthy: undefined };
+  #connectionState: EventSourceConnectionState = { isConnectionState: true };
 
   constructor(init: EventSourceStateInit<EventSource>) {
     this.esURL = init.esURL;
@@ -180,31 +195,67 @@ export class EventSourceTunnel<EventSource = any> {
         };
 
         coercedES.onopen = () => {
-          this.connectionState = { isHealthy: true };
+          const connState: EventSourceConnectionHealthy = {
+            isConnectionState: true,
+            isHealthy: true,
+            connEstablishedOn: new Date(),
+            endpointURL: this.esURL,
+            pingURL: this.esPingURL,
+          };
+          this.connectionState = connState;
           if (reconnector) reconnector.completed();
           this.eventSourceFactory.connected?.(eventSource);
         };
 
         coercedES.onerror = (event) => {
           coercedES.close();
-          // recursively call init() until success or aborted exit
-          this.connectionState = eventSourceError(
-            event,
-            new c.ReconnectionStrategy((reconnector) => {
+          const connState: EventSourceError = {
+            isConnectionState: true,
+            isHealthy: false,
+            connFailedOn: new Date(),
+            isEventSourceError: true,
+            errorEvent: event,
+            reconnectStrategy: new c.ReconnectionStrategy((reconnector) => {
               this.init(reconnector);
             }, {
-              onStateChange: this.onReconnStateChange,
+              onStateChange: this.onReconnStateChange
+                ? (active, previous, rs) => {
+                  this.onReconnStateChange?.(active, previous, rs, this);
+                }
+                : undefined,
             }).reconnect(),
-          );
+          };
+          this.connectionState = connState;
+          // recursively call init() until success or aborted exit
         };
       } else {
-        this.connectionState = endpointUnavailable({
-          httpStatus: resp.status,
-          httpStatusText: resp.statusText,
-        });
+        const connState:
+          & EventSourceConnectionUnhealthy
+          & EventSourceEndpointUnavailable = {
+            isConnectionState: true,
+            isHealthy: false,
+            connFailedOn: new Date(),
+            isEndpointUnavailable: true,
+            endpointURL: this.esURL,
+            pingURL: this.esPingURL,
+            httpStatus: resp.status,
+            httpStatusText: resp.statusText,
+          };
+        this.connectionState = connState;
       }
     }).catch((connectionError: Error) => {
-      this.connectionState = endpointUnavailable({ connectionError });
+      const connState:
+        & EventSourceConnectionUnhealthy
+        & EventSourceEndpointUnavailable = {
+          isConnectionState: true,
+          isHealthy: false,
+          connFailedOn: new Date(),
+          pingURL: this.esPingURL,
+          connectionError,
+          isEndpointUnavailable: true,
+          endpointURL: this.esPingURL,
+        };
+      this.connectionState = connState;
     });
 
     // we return 'this' to allow convenient method chaining
@@ -218,6 +269,88 @@ export class EventSourceTunnel<EventSource = any> {
   set connectionState(value) {
     const previousConnState = this.#connectionState;
     this.#connectionState = value;
-    this.onConnStateChange?.(this.#connectionState, previousConnState);
+    this.onConnStateChange?.(this.#connectionState, previousConnState, this);
   }
+}
+
+export interface EventSourceConnNarrative {
+  readonly isHealthy: boolean;
+  readonly summary: string;
+  readonly color: string;
+  readonly summaryHint?: string;
+}
+
+export function eventSourceConnlNarrative(
+  tunnel: EventSourceTunnel,
+  reconn?: c.ReconnectionStrategy,
+): EventSourceConnNarrative {
+  const sseState = tunnel.connectionState;
+  if (!reconn && isEventSourceReconnecting(sseState)) {
+    reconn = sseState.reconnectStrategy;
+  }
+  let reconnected = false;
+  if (reconn) {
+    switch (reconn.state) {
+      case c.ReconnectionState.WAITING:
+      case c.ReconnectionState.TRYING:
+        return {
+          summary: `reconnecting ${reconn.attempt}/${reconn.maxAttempts}`,
+          color: "orange",
+          isHealthy: false,
+          summaryHint:
+            `Trying to reconnect to ${tunnel.esURL}, reconnecting every ${reconn.intervalMillecs} milliseconds`,
+        };
+
+      case c.ReconnectionState.ABORTED:
+        return {
+          summary: `failed`,
+          color: "red",
+          isHealthy: false,
+          summaryHint:
+            `Unable to reconnect to ${tunnel.esURL} after ${reconn.maxAttempts} attempts, giving up`,
+        };
+
+      case c.ReconnectionState.COMPLETED:
+        reconnected = true;
+        break;
+    }
+  }
+
+  // c.ReconnectionState.UNKNOWN and c.ReconnectionState.COMPLETED will fall
+  // through to the messages below
+
+  if (isEventSourceConnectionHealthy(sseState)) {
+    return {
+      summary: reconnected ? "reconnected" : "connected",
+      color: "green",
+      isHealthy: true,
+      summaryHint:
+        `Connection to ${sseState.endpointURL} verified using ${sseState.pingURL} on ${sseState.connEstablishedOn}`,
+    };
+  }
+
+  const isHealthy = false;
+  let summary = "unknown";
+  let color = "purple";
+  let summaryHint = `the tunnel is not healthy, but not sure why`;
+  if (isEventSourceConnectionUnhealthy(sseState)) {
+    if (isEventSourceEndpointUnavailable(sseState)) {
+      summary = "unavailable";
+      summaryHint = `${sseState.endpointURL} not available`;
+      if (sseState.httpStatus) {
+        summary = `unavailable (${sseState.httpStatus})`;
+        summaryHint +=
+          ` (HTTP status: ${sseState.httpStatus}, ${sseState.httpStatusText})`;
+        color = "red";
+      }
+    } else {
+      if (isEventSourceError(sseState)) {
+        summary = "error";
+        summaryHint = JSON.stringify(sseState.errorEvent);
+        color = "red";
+      }
+    }
+  }
+
+  return { isHealthy, summary, summaryHint, color };
 }

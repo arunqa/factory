@@ -1,5 +1,9 @@
 export interface ReconnectionStateChangeNotification {
-  (active: ReconnectionState, previous: ReconnectionState): void;
+  (
+    active: ReconnectionState,
+    previous: ReconnectionState,
+    stategy: ReconnectionStrategy,
+  ): void;
 }
 
 export interface ReconnectionStrategyOptions {
@@ -44,7 +48,7 @@ export class ReconnectionStrategy {
   set state(value) {
     const previousStatus = this.#state;
     this.#state = value;
-    this.onStateChange?.(this.#state, previousStatus);
+    this.onStateChange?.(this.#state, previousStatus, this);
   }
 
   reconnect() {

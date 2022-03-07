@@ -101,13 +101,15 @@
                         };
                         const tunnel = new mod.EventSourceTunnel({
                             esURL, esPingURL, eventSourceFactory, options: {
-                                onConnStateChange: (active, previous) => {
-                                    report("connection state", active, previous);
-                                    tunnelStateBadge.content({ label: "Tunnel", status: active.isHealthy.toString() });
+                                onConnStateChange: (active, previous, tunnel) => {
+                                    const escn = mod.eventSourceConnlNarrative(tunnel);
+                                    report("connection state", escn.summary, escn.summaryHint, active, previous);
+                                    tunnelStateBadge.content({ label: "Tunnel", status: escn.summary, title: escn.summaryHint, color: escn.color });
                                 },
-                                onReconnStateChange: (active, previous) => {
-                                    report("reconnection state", active, previous);
-                                    tunnelStateBadge.content({ label: "Tunnel", status: active.toString() });
+                                onReconnStateChange: (active, previous, reconnStrategy, tunnel) => {
+                                    const escn = mod.eventSourceConnlNarrative(tunnel, reconnStrategy);
+                                    report("reconnection state", active, previous, escn.summary, escn.summaryHint);
+                                    tunnelStateBadge.content({ label: "Tunnel", status: escn.summary, title: escn.summaryHint, color: escn.color });
                                 },
                             }
                         });
