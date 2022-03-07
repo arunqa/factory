@@ -120,6 +120,8 @@ export class AssuranceMiddlewareSupplier {
       const message = JSON.parse(await body.value);
       ctx.response.body = JSON.stringify({
         ...message,
+        isAssurance: true,
+        isSyntheticMirror: true,
         serviceBusServerFetchHandler: {
           provenance: import.meta.url,
           endpoint: ctx.request.url,
