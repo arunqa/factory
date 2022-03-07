@@ -120,7 +120,7 @@ export async function transformTypescriptToJS(
     const er = await Deno.emit(tsSrcRootSpecifier, {
       bundle,
       compilerOptions: {
-        lib: ["deno.unstable", "deno.window"],
+        lib: ["deno.unstable", "deno.window", "deno.web"],
       },
     });
     if (er.diagnostics.length) {

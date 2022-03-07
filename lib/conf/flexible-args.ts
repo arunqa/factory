@@ -74,6 +74,72 @@ export function cacheableJsTokenEvalResult<Token>(
   );
 }
 
+// we define HTMLElement as a generic argument because DOM is not known in Typescript
+export interface WalkHookNameSupplier<HookTarget> {
+  (element: HookTarget): string | undefined;
+}
+
+export interface HookWalkEntry<HookTarget, Hook> {
+  readonly target: HookTarget;
+  readonly hookDiscovered?: Hook;
+  readonly hookName: string;
+  readonly hookNameSupplier: WalkHookNameSupplier<HookTarget>;
+}
+
+export function* walkHooks<HookTarget, Hook>(
+  targets: Iterable<HookTarget>,
+  hookNameSuppliers: Iterable<WalkHookNameSupplier<HookTarget>>,
+  discover: TokenExplorer<Hook> | TokenExplorer<Hook>[],
+  prepareWalkEntry?: (
+    suggested: HookWalkEntry<HookTarget, Hook>,
+  ) => HookWalkEntry<HookTarget, Hook> | undefined,
+): Generator<HookWalkEntry<HookTarget, Hook>> {
+  const suppliers = Array.isArray(hookNameSuppliers)
+    ? hookNameSuppliers
+    : [hookNameSuppliers];
+  for (const target of targets) {
+    for (const hookNameSupplier of suppliers) {
+      const hookName = hookNameSupplier(target);
+      if (hookName) {
+        const hookDiscovered = jsTokenEvalResult<Hook>(
+          hookName,
+          discover,
+          (value) => value as Hook, // TODO: need validation
+          (name) => {
+            console.log(
+              `[discoverDomElemHook] '${name}' is not a token in current scope for`,
+              target,
+            );
+            return undefined;
+          },
+        );
+        let hookExecArgs: HookWalkEntry<HookTarget, Hook> = {
+          target,
+          hookDiscovered,
+          hookName,
+          hookNameSupplier,
+        };
+        if (prepareWalkEntry) {
+          const prepared = prepareWalkEntry(hookExecArgs);
+          if (!prepared) continue; // filtered, don't yield
+          hookExecArgs = prepared;
+        }
+        // run the hook which receives the discovery parameters and is expected
+        // to return the parameters plus whatever is expected by the discoverDomElemHooks
+        // caller; if it returns undefined, the default hookExecArgs + hookExecResult
+        // is returned
+        const hookExecResult =
+          hookDiscovered && typeof hookDiscovered === "function"
+            ? hookDiscovered(hookExecArgs)
+            : undefined;
+
+        // yield from any supplier found
+        yield hookExecResult ?? hookExecArgs;
+      }
+    }
+  }
+}
+
 // deno-lint-ignore no-empty-interface
 export interface FlexibleArguments {
 }

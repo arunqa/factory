@@ -7,6 +7,7 @@ import * as bjs from "../../lib/package/bundle-js.ts";
 import * as s from "./static.ts";
 import * as c from "./console/mod.ts";
 import * as ws from "./workspace.ts";
+import * as assure from "./assurance.ts";
 
 export interface PublicationServerAccessContext
   extends p.PublicationOperationalContext {
@@ -93,6 +94,7 @@ export class PublicationServer {
   readonly staticIndex: "index.html" | string;
   #console?: c.ConsoleMiddlewareSupplier;
   #workspace?: ws.WorkspaceMiddlewareSupplier;
+  #assurance?: assure.AssuranceMiddlewareSupplier;
 
   constructor(
     readonly publication: p.Publication<p.PublicationOperationalContext>,
@@ -191,6 +193,28 @@ export class PublicationServer {
     });
   }
 
+  protected prepareAssurance(
+    app: oak.Application,
+    router: oak.Router,
+    options?: assure.AssuranceMiddlewareSupplier,
+  ) {
+    this.#assurance = new assure.AssuranceMiddlewareSupplier(
+      {
+        contentRootPath: this.publication.config.contentRootPath,
+        fsEntryPublicationURL: this.fsEntryPublicationURL,
+        publicURL: this.publicURL,
+      },
+      app,
+      router,
+      options,
+    );
+    this.staticEE.on("served", async (sae) => {
+      // whenever a file is served by the web server, "tell" the console so that
+      // it can be available as diagnostics in a web browser
+      await this.#console?.staticAccess(sae);
+    });
+  }
+
   // deno-lint-ignore require-await
   async persistDiagnostics(diagnostics: unknown) {
     console.error(diagnostics);
@@ -210,6 +234,7 @@ export class PublicationServer {
 
     this.prepareConsole(app, router, this.staticEE);
     this.prepareWorkspace(app, router);
+    this.prepareAssurance(app, router);
 
     if (this.#console) {
       app.use(async (ctx, next) => {
