@@ -2,59 +2,6 @@
 import * as govn from "./governance.ts";
 import * as c from "./connection.ts";
 
-// ===================================================================
-// TODO: REMOVE EVENTSOURCEEVENTMAP AND EVENTSOURCE LOCAL DECLARATIONS
-// ===================================================================
-// had to copy EventSourceEventMap and EventSource interfaces from lib.dom.d.ts
-// because "/// <reference lib="dom" />" works in VS Code but not Deno.emit().
-
-interface EventSourceEventMap {
-  "error": Event;
-  "message": MessageEvent;
-  "open": Event;
-}
-
-interface EventSource extends EventTarget {
-  onerror: ((this: EventSource, ev: Event) => any) | null;
-  onmessage: ((this: EventSource, ev: MessageEvent) => any) | null;
-  onopen: ((this: EventSource, ev: Event) => any) | null;
-  /** Returns the state of this EventSource object's connection. It can have the values described below. */
-  readonly readyState: number;
-  /** Returns the URL providing the event stream. */
-  readonly url: string;
-  /** Returns true if the credentials mode for connection requests to the URL providing the event stream is set to "include", and false otherwise. */
-  readonly withCredentials: boolean;
-  /** Aborts any instances of the fetch algorithm started for this EventSource object, and sets the readyState attribute to CLOSED. */
-  close(): void;
-  readonly CLOSED: number;
-  readonly CONNECTING: number;
-  readonly OPEN: number;
-  addEventListener<K extends keyof EventSourceEventMap>(
-    type: K,
-    listener: (this: EventSource, ev: EventSourceEventMap[K]) => any,
-    options?: boolean | AddEventListenerOptions,
-  ): void;
-  addEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | AddEventListenerOptions,
-  ): void;
-  removeEventListener<K extends keyof EventSourceEventMap>(
-    type: K,
-    listener: (this: EventSource, ev: EventSourceEventMap[K]) => any,
-    options?: boolean | EventListenerOptions,
-  ): void;
-  removeEventListener(
-    type: string,
-    listener: EventListenerOrEventListenerObject,
-    options?: boolean | EventListenerOptions,
-  ): void;
-}
-
-// =========================================================================
-// TODO: ^^^^^ REMOVE EVENTSOURCEEVENTMAP AND EVENTSOURCE LOCAL DECLARATIONS
-// =========================================================================
-
 export interface EventSourceStrategy {
   observeEventSource: <
     EventSourcePayload extends govn.IdentifiablePayload,
@@ -87,7 +34,7 @@ export interface EventSourceCustomEventDetail<
 }
 
 export interface EventSourceConnectionState {
-  readonly isHealthy: boolean;
+  readonly isHealthy?: boolean;
 }
 
 export interface EventSourceConnectionHealthy
@@ -98,6 +45,7 @@ export interface EventSourceConnectionHealthy
 export interface EventSourceConnectionUnhealthy
   extends EventSourceConnectionState {
   readonly isHealthy: false;
+  readonly reconnectStrategy?: c.ReconnectionStrategy;
 }
 
 export interface EventSourceError extends EventSourceConnectionUnhealthy {
@@ -105,9 +53,9 @@ export interface EventSourceError extends EventSourceConnectionUnhealthy {
   readonly errorEvent: Event;
 }
 
-export interface EventSourceEndpointUnvailable
+export interface EventSourceEndpointAvailability
   extends EventSourceConnectionUnhealthy {
-  readonly isEventSourceEndpointUnvailable: true;
+  readonly isEventSourceEndpointAvailable: false;
   readonly httpStatus?: number;
   readonly httpStatusText?: string;
   readonly connectionError?: Error;
@@ -115,64 +63,80 @@ export interface EventSourceEndpointUnvailable
 
 function eventSourceError(
   errorEvent: Event,
+  reconnectStrategy: c.ReconnectionStrategy,
 ): EventSourceError {
   return {
     isHealthy: false,
     isEventSourceError: true,
     errorEvent,
+    reconnectStrategy,
   };
 }
 
 function endpointUnavailable(
-  state?: Partial<EventSourceEndpointUnvailable>,
-): EventSourceEndpointUnvailable {
+  state?: Partial<EventSourceEndpointAvailability>,
+): EventSourceEndpointAvailability {
   return {
     isHealthy: false,
-    isEventSourceEndpointUnvailable: true,
+    isEventSourceEndpointAvailable: false,
     ...state,
   };
 }
-
-export interface EventSourceListener {
-  readonly identity: string;
-  readonly observableListener: (event: Event) => void;
-  readonly options?: boolean | AddEventListenerOptions | undefined;
-}
-
-export type EventSourceListeners = EventSourceListener[];
 
 /**
  * EventSourceFactory will be called upon each connection of ES. It's important
  * that this factory setup the full EventSource, including any onmessage or
  * event listeners because reconnections will close previous ESs and recreate
  * the EventSource every time a connection is "broken".
+ *
+ * We're using a generic EventSource because we build in Deno but Deno doesn't
+ * know what an EventSource is (it's known in browsers). This did not work:
+ *     /// <reference lib="dom" />
+ * note: <reference lib="dom" /> works in VS Code but created Deno.emit() and
+ * 'path-task bundle-all' errors.
+ * TODO: figure out how to not use EventSource generic.
  */
-export interface EventSourceFactory {
+export interface EventSourceFactory<EventSource> {
   construct: (esURL: string) => EventSource;
   connected?: (es: EventSource) => void;
 }
 
-export interface EventSourceStateInit {
-  readonly esURL: string;
-  readonly esPingURL: string;
-  readonly eventSourceFactory: EventSourceFactory;
+interface ConnectionStateChangeNotification {
+  (
+    active: EventSourceConnectionState,
+    previous: EventSourceConnectionState,
+  ): void;
 }
 
-export class EventSourceTunnel {
+export interface EventSourceStateInit<EventSource> {
   readonly esURL: string;
   readonly esPingURL: string;
-  readonly observers = new EventTarget();
+  readonly eventSourceFactory: EventSourceFactory<EventSource>;
+  readonly options?: {
+    readonly onConnStateChange?: ConnectionStateChangeNotification;
+    readonly onReconnStateChange?: c.ReconnectionStateChangeNotification;
+  };
+}
+
+// deno-lint-ignore no-explicit-any
+export class EventSourceTunnel<EventSource = any> {
+  readonly esURL: string;
+  readonly esPingURL: string;
   readonly observerUniversalScopeID: "universal" = "universal";
+  readonly eventSourceFactory: EventSourceFactory<EventSource>;
+  readonly onConnStateChange?: ConnectionStateChangeNotification;
+  readonly onReconnStateChange?: c.ReconnectionStateChangeNotification;
 
-  readonly eventSourceFactory: EventSourceFactory;
-  readonly eventSourceListeners: EventSourceListeners = [];
+  // isHealthy can be true or false for known states, or undefined at init
+  // for "unknown" state
+  #connectionState: EventSourceConnectionState = { isHealthy: undefined };
 
-  #connectionState?: EventSourceConnectionState;
-
-  constructor(init: EventSourceStateInit) {
+  constructor(init: EventSourceStateInit<EventSource>) {
     this.esURL = init.esURL;
     this.esPingURL = init.esPingURL;
     this.eventSourceFactory = init.eventSourceFactory;
+    this.onConnStateChange = init.options?.onConnStateChange;
+    this.onReconnStateChange = init.options?.onReconnStateChange;
   }
 
   init(reconnector?: c.ReconnectionStrategy) {
@@ -181,43 +145,35 @@ export class EventSourceTunnel {
         // this.eventSourceFactory() should assign onmessage by default
         const eventSource = this.eventSourceFactory.construct(this.esURL);
 
-        eventSource.onopen = () => {
+        // for type-safety in Deno we need to coerce to what we know ES is;
+        // TODO: figure out how why /// <reference lib="dom" /> did not work.
+        // note: <reference lib="dom" /> works in VS Code but not in Deno.emit().
+        const coercedES = eventSource as unknown as {
+          // deno-lint-ignore no-explicit-any
+          onerror: ((this: EventSource, ev: Event) => any) | null;
+          // deno-lint-ignore no-explicit-any
+          onopen: ((this: EventSource, ev: Event) => any) | null;
+          close: () => void;
+        };
+
+        coercedES.onopen = () => {
           this.connectionState = { isHealthy: true };
           if (reconnector) reconnector.completed();
           this.eventSourceFactory.connected?.(eventSource);
         };
 
-        eventSource.onerror = (event) => {
-          eventSource.close();
-          this.connectionState = eventSourceError(event);
-
+        coercedES.onerror = (event) => {
+          coercedES.close();
           // recursively call init() until success or aborted exit
-          new c.ReconnectionStrategy((reconnector) => {
-            this.init(reconnector);
-          }, {
-            onStateChange: (active, previous) => {
-              this.observers.dispatchEvent(
-                new CustomEvent("reconnection-state", {
-                  detail: {
-                    connState: this.connectionState,
-                    previousReconnState: previous,
-                    activeReconnState: active,
-                    esState: this,
-                  },
-                }),
-              );
-            },
-          }).reconnect();
-        };
-
-        // in case we're reconnecting, get the existing listeners attached to the new ES
-        this.eventSourceListeners.forEach((l) => {
-          eventSource.addEventListener(
-            l.identity,
-            l.observableListener,
-            l.options,
+          this.connectionState = eventSourceError(
+            event,
+            new c.ReconnectionStrategy((reconnector) => {
+              this.init(reconnector);
+            }, {
+              onStateChange: this.onReconnStateChange,
+            }).reconnect(),
           );
-        });
+        };
       } else {
         this.connectionState = endpointUnavailable({
           httpStatus: resp.status,
@@ -237,14 +193,8 @@ export class EventSourceTunnel {
   }
 
   set connectionState(value) {
-    const statusEventDetail = {
-      previousConnState: this.#connectionState,
-      activeConnState: value,
-      esState: this,
-    };
+    const previousConnState = this.#connectionState;
     this.#connectionState = value;
-    this.observers.dispatchEvent(
-      new CustomEvent("connection-state", { detail: statusEventDetail }),
-    );
+    this.onConnStateChange?.(this.#connectionState, previousConnState);
   }
 }

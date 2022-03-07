@@ -1,9 +1,9 @@
 import * as govn from "./governance.ts";
 import * as f from "./fetch.ts";
-import * as es from "./event-source.ts";
+import * as sse from "./event-source.ts";
 
 export interface ServicBusEventSourceTunnelsSupplier {
-  (onMessage: (event: MessageEvent) => void): Generator<es.EventSourceTunnel>;
+  (onMessage: (event: MessageEvent) => void): Generator<sse.EventSourceTunnel>;
 }
 
 export interface ServiceBusArguments {
@@ -15,6 +15,7 @@ export interface ServiceBusArguments {
     readonly fetchResponse: govn.EventTargetEventNameStrategy;
     readonly fetchError: govn.EventTargetEventNameStrategy;
     readonly eventSource: govn.EventTargetEventNameStrategy;
+    readonly eventSourceInvalidPayload: govn.EventTargetEventNameStrategy;
   };
 }
 
@@ -29,31 +30,65 @@ export function serviceBusArguments(
         const identity = typeof payload === "string"
           ? payload
           : payload.payloadIdentity;
-        return identity == universalScopeID ? `fetch` : `fetch-${identity}`;
+        const payloadSpecificName = `fetch-${identity}`;
+        const universalName = `fetch`;
+        return {
+          payloadSpecificName,
+          universalName,
+          selectedName: identity == universalScopeID
+            ? universalName
+            : payloadSpecificName,
+        };
       },
       fetchResponse: (payload) => {
         const identity = typeof payload === "string"
           ? payload
           : payload.payloadIdentity;
-        return identity == universalScopeID
-          ? `fetch-response`
-          : `fetch-response-${identity}`;
+        const payloadSpecificName = `fetch-response-${identity}`;
+        const universalName = `fetch-response`;
+        return {
+          payloadSpecificName,
+          universalName,
+          selectedName: identity == universalScopeID
+            ? universalName
+            : payloadSpecificName,
+        };
       },
       fetchError: (payload) => {
         const identity = typeof payload === "string"
           ? payload
           : payload.payloadIdentity;
-        return identity == universalScopeID
-          ? `fetch-error`
-          : `fetch-error-${identity}`;
+        const payloadSpecificName = `fetch-error-${identity}`;
+        const universalName = `fetch-error`;
+        return {
+          payloadSpecificName,
+          universalName,
+          selectedName: identity == universalScopeID
+            ? universalName
+            : payloadSpecificName,
+        };
       },
       eventSource: (payload) => {
         const identity = typeof payload === "string"
           ? payload
           : payload.payloadIdentity;
-        return identity == universalScopeID
-          ? `event-source`
-          : `event-source-${identity}`;
+        const payloadSpecificName = `event-source-${identity}`;
+        const universalName = `event-source`;
+        return {
+          payloadSpecificName,
+          universalName,
+          selectedName: identity == universalScopeID
+            ? universalName
+            : payloadSpecificName,
+        };
+      },
+      eventSourceInvalidPayload: () => {
+        const universalName = `event-source-invalid-payload`;
+        return {
+          payloadSpecificName: undefined,
+          universalName,
+          selectedName: universalName,
+        };
       },
     },
     ...options,
@@ -61,8 +96,8 @@ export function serviceBusArguments(
 }
 
 export class ServiceBus extends EventTarget
-  implements f.FetchStrategy, es.EventSourceStrategy {
-  readonly tunnels: es.EventSourceTunnel[] = [];
+  implements f.FetchStrategy, sse.EventSourceStrategy {
+  readonly tunnels: sse.EventSourceTunnel[] = [];
   readonly eventListenersLog: {
     name: string;
     hook: EventListenerOrEventListenerObject | null;
@@ -77,19 +112,16 @@ export class ServiceBus extends EventTarget
     for (
       const tunnel of ests((event) => {
         const eventSrcPayload = JSON.parse(event.data);
-        console.log(
-          "[registerEventSourceTunnels]",
-          "eventSrcPayload",
-          eventSrcPayload,
-        );
         const esDetail:
           // deno-lint-ignore no-explicit-any
-          es.EventSourceCustomEventDetail<any> = {
+          sse.EventSourceCustomEventDetail<any> = {
             eventSrcPayload,
           };
         this.dispatchNamingStrategyEvent(
           eventSrcPayload,
-          this.args.eventNameStrategy.eventSource,
+          govn.isIdentifiablePayload(eventSrcPayload)
+            ? this.args.eventNameStrategy.eventSource
+            : this.args.eventNameStrategy.eventSourceInvalidPayload,
           esDetail,
         );
       })
@@ -103,9 +135,14 @@ export class ServiceBus extends EventTarget
     strategy: govn.EventTargetEventNameStrategy,
     detail: unknown,
   ) {
-    this.dispatchEvent(new CustomEvent(strategy(id), { detail }));
+    const names = strategy(id);
+    if (names.payloadSpecificName) {
+      this.dispatchEvent(
+        new CustomEvent(names.payloadSpecificName, { detail }),
+      );
+    }
     this.dispatchEvent(
-      new CustomEvent(strategy(this.args.eventNameStrategy.universalScopeID), {
+      new CustomEvent(names.universalName, {
         detail,
       }),
     );
@@ -204,10 +241,11 @@ export class ServiceBus extends EventTarget
     observer: f.FetchObserver<FetchPayload, Context>,
     fetchPayloadID?: govn.PayloadIdentity,
   ): void {
+    const names = this.args.eventNameStrategy.fetch(
+      fetchPayloadID ?? this.args.eventNameStrategy.universalScopeID,
+    );
     this.addEventListener(
-      this.args.eventNameStrategy.fetch(
-        fetchPayloadID ?? this.args.eventNameStrategy.universalScopeID,
-      ),
+      names.selectedName,
       (event) => {
         const typedCustomEvent = event as unknown as {
           detail:
@@ -234,10 +272,11 @@ export class ServiceBus extends EventTarget
     >,
     fetchRespPayloadID?: govn.PayloadIdentity,
   ): void {
+    const names = this.args.eventNameStrategy.fetchResponse(
+      fetchRespPayloadID ?? this.args.eventNameStrategy.universalScopeID,
+    );
     this.addEventListener(
-      this.args.eventNameStrategy.fetchResponse(
-        fetchRespPayloadID ?? this.args.eventNameStrategy.universalScopeID,
-      ),
+      names.selectedName,
       (event) => {
         const typedCustomEvent = event as unknown as {
           detail:
@@ -262,10 +301,11 @@ export class ServiceBus extends EventTarget
     >,
     fetchPayloadID?: govn.PayloadIdentity,
   ): void {
+    const names = this.args.eventNameStrategy.fetchError(
+      fetchPayloadID ?? this.args.eventNameStrategy.universalScopeID,
+    );
     this.addEventListener(
-      this.args.eventNameStrategy.fetchError(
-        fetchPayloadID ?? this.args.eventNameStrategy.universalScopeID,
-      ),
+      names.selectedName,
       (event) => {
         const typedCustomEvent = event as unknown as {
           detail:
@@ -284,16 +324,17 @@ export class ServiceBus extends EventTarget
   observeEventSource<
     EventSourcePayload extends govn.IdentifiablePayload,
   >(
-    observer: es.EventSourceObserver<EventSourcePayload>,
+    observer: sse.EventSourceObserver<EventSourcePayload>,
     payloadID?: govn.PayloadIdentity,
   ): void {
+    const names = this.args.eventNameStrategy.eventSource(
+      payloadID ?? this.args.eventNameStrategy.universalScopeID,
+    );
     this.addEventListener(
-      this.args.eventNameStrategy.eventSource(
-        payloadID ?? this.args.eventNameStrategy.universalScopeID,
-      ),
+      names.selectedName,
       (event) => {
         const typedCustomEvent = event as unknown as {
-          detail: es.EventSourceCustomEventDetail<EventSourcePayload>;
+          detail: sse.EventSourceCustomEventDetail<EventSourcePayload>;
         };
         const { eventSrcPayload } = typedCustomEvent.detail;
         observer(eventSrcPayload, this);
@@ -324,7 +365,7 @@ export function pingServerProxy(
     PingFetchRespPayload,
     Record<string, unknown>
   >
-  & es.EventSourceProxy<PingEventSourcePayload> {
+  & sse.EventSourceProxy<PingEventSourcePayload> {
   const payloadIdentity = "ping";
   const proxy:
     & f.FetchProxy<
@@ -332,7 +373,7 @@ export function pingServerProxy(
       PingFetchRespPayload,
       Record<string, unknown>
     >
-    & es.EventSourceProxy<PingEventSourcePayload> = {
+    & sse.EventSourceProxy<PingEventSourcePayload> = {
       fetch: (fetchStrategy, ctx) => {
         fetchStrategy.fetch(proxy, ctx);
       },
@@ -373,7 +414,15 @@ export function pingServerProxy(
         fetchStrategy.observeFetchEventError(observer, payloadIdentity);
       },
       observeEventSource: (eventSrcStrategy, observer) => {
-        eventSrcStrategy.observeEventSource(observer, payloadIdentity);
+        eventSrcStrategy.observeEventSource(
+          (payload, ess) => {
+            // EventSources are sent from server unsolicited so we need to type
+            // it ourselves (this is different than the fetch models which are
+            // already typed properly since they are not unsolicited)
+            observer(proxy.prepareEventSourcePayload(payload), ess);
+          },
+          payloadIdentity,
+        );
       },
     };
   return proxy;

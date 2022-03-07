@@ -78,9 +78,12 @@
                                 return result;
                             }
                         };
-                        const tunnel = new mod.EventSourceTunnel({ esURL, esPingURL, eventSourceFactory });
-                        tunnel.observers.addEventListener("connection-state", (event) => console.log("connection-state", event?.detail));
-                        tunnel.observers.addEventListener("reconnection-state", (event) => console.log("reconnection-state", event?.detail));
+                        const tunnel = new mod.EventSourceTunnel({
+                            esURL, esPingURL, eventSourceFactory, options: {
+                                onConnStateChange: (active, previous) => console.log("connection state", active, previous),
+                                onReconnStateChange: (active, previous) => console.log("reconnection state", active, previous),
+                            }
+                        });
                         tunnel.init();
                         yield tunnel;
                     }
