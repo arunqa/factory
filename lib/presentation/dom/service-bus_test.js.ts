@@ -12,3 +12,4 @@
 export * from "../../conf/flexible-args.ts";
 export * from "../../service-bus/mod.ts";
 export * from "../../service-bus/binary-state-proxy.ts";
+export * from "./block.ts";

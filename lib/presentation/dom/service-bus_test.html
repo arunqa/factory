@@ -40,6 +40,7 @@
     <p style="text-align: center;"><a href="#" onclick="location.reload()">Rerun Tests</a></p>
     <div id="mocha"></div>
     <div id="human-readable-results">
+        <div id="badge-container"></div>
         <div>
             <!-- when only data-service-bus is specified, we'll look for hook_testCheckbox1 (which is in the discovery method) -->
             <input class="form-check-input" type="checkbox" id="testCheckbox1" data-service-bus>
@@ -63,6 +64,18 @@
     <script class="mocha-exec" type="module">
         import * as mod from "./service-bus_test.auto.js";
         const assert = chai.assert;
+
+        const tunnelStateBadge = mod.badgenLiveBlock({
+            badgenBlockSupplier: async () => {
+                const block = mod.badgenBlock();
+                block.init(); // async so don't depend on it, dependencies will be auto-loaded
+                return block;
+            },
+            badgeElementSupplier: () => document.getElementById("badge-container"),
+            init: (block) => block,
+        });
+        tunnelStateBadge.init(); // async so don't depend on it yet, dependencies will be auto-loaded
+        console.log("tunnelStateBadge", typeof tunnelStateBadge, tunnelStateBadge);
 
         describe("service-bus", () => {
             it("discover UI controls", () => {
@@ -88,8 +101,14 @@
                         };
                         const tunnel = new mod.EventSourceTunnel({
                             esURL, esPingURL, eventSourceFactory, options: {
-                                onConnStateChange: (active, previous) => report("connection state", active, previous),
-                                onReconnStateChange: (active, previous) => report("reconnection state", active, previous),
+                                onConnStateChange: (active, previous) => {
+                                    report("connection state", active, previous);
+                                    tunnelStateBadge.content({ label: "Tunnel", status: active.isHealthy.toString() });
+                                },
+                                onReconnStateChange: (active, previous) => {
+                                    report("reconnection state", active, previous);
+                                    tunnelStateBadge.content({ label: "Tunnel", status: active.toString() });
+                                },
                             }
                         });
                         tunnel.init();
