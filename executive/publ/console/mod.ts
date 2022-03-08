@@ -2,6 +2,10 @@ import { colors, events, path } from "../../../core/deps.ts";
 import { oak } from "../deps.ts";
 import * as s from "../static.ts";
 import * as wfs from "../../../lib/fs/watch.ts";
+import * as ping from "../../../lib/service-bus/service/ping.ts";
+import * as fis from "../../../lib/service-bus/service/file-impact.ts";
+import * as uaows from "./service/open-user-agent-window.ts";
+import * as las from "./service/log-access.ts";
 
 export interface ConsoleTunnelConnection {
   readonly sseTarget: oak.ServerSentEventTarget;
@@ -19,8 +23,8 @@ export class ConsoleTunnel<
   sseConnected(conn: Connection, ctx: ConnectionContext): void;
   sseInvalidRequest(ctx: ConnectionContext): void;
   ping(): void;
-  reloadConsole(): void;
-  openWindow(url: string, target: "console-prime"): void;
+  serverFileImpact(fsAbsPathAndFileName: string, url?: string): void;
+  uaOpenWindow(location: string, target: "console-prime"): void;
   logAccess(sat: s.StaticServedTarget): void;
   featureState(feature: string, state: unknown): void;
 }> {
@@ -35,31 +39,34 @@ export class ConsoleTunnel<
     readonly factory: (ctx: ConnectionContext) => Connection,
   ) {
     super();
-    this.on("ping", () => {
+    this.on(ping.pingPayloadIdentity, () => {
       this.cleanConnections().forEach((c) =>
-        c.sseTarget.dispatchEvent(new oak.ServerSentEvent("ping", {}))
+        c.sseTarget.dispatchMessage(ping.pingPayload())
       );
     });
-    this.on("reloadConsole", () => {
+    this.on(
+      fis.serverFileImpactPayloadIdentity,
+      (fsAbsPathAndFileName, url) => {
+        this.cleanConnections().forEach((c) =>
+          c.sseTarget.dispatchMessage(fis.serverFileImpact({
+            serverFsAbsPathAndFileName: fsAbsPathAndFileName,
+            relativeUserAgentLocation: url,
+          }))
+        );
+      },
+    );
+    this.on(uaows.uaOpenWindowPayloadIdentity, (location, target) => {
       this.cleanConnections().forEach((c) =>
-        c.sseTarget.dispatchEvent(
-          new oak.ServerSentEvent("location.reload-console", {}),
-        )
+        c.sseTarget.dispatchMessage(uaows.userAgentOpenWindow({
+          location,
+          target,
+        }))
       );
     });
-    this.on("openWindow", (url, target) => {
-      this.cleanConnections().forEach((c) =>
-        c.sseTarget.dispatchEvent(
-          new oak.ServerSentEvent("window.open", { url, target }),
-        )
-      );
-    });
-    this.on("logAccess", (sat) => {
+    this.on(las.logAccessPayloadIdentity, (sat) => {
       if (this.#isAccessLoggingEnabled) {
         this.cleanConnections().forEach((c) =>
-          c.sseTarget.dispatchEvent(
-            new oak.ServerSentEvent("log-access", sat),
-          )
+          c.sseTarget.dispatchMessage(las.logAccess(sat))
         );
       }
     });
@@ -164,7 +171,7 @@ export class ConsoleMiddlewareSupplier {
         this.tunnel.connect({ oakCtx: ctx });
         if (options?.openWindowOnInit) {
           this.tunnel.emit(
-            "openWindow",
+            "uaOpenWindow",
             options.openWindowOnInit.url,
             "console-prime",
           );
@@ -213,7 +220,7 @@ export class ConsoleMiddlewareSupplier {
       path.relative(this.contentHome, target);
     // deno-lint-ignore require-await
     contentRootPathEE.on("impacted", async ({ path: modified }) => {
-      this.tunnel.emit("reloadConsole");
+      this.tunnel.emit("serverFileImpact", modified);
       // deno-fmt-ignore
       console.info(colors.magenta(`*** ${colors.yellow(relWatchPath(modified))} impacted *** ${colors.gray(`${this.tunnel.connections.length} browser tab refresh requests sent`)}`));
     });

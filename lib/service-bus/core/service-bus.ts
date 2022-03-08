@@ -1,5 +1,4 @@
-import * as govn from "./governance.ts";
-import * as f from "./fetch.ts";
+import * as govn from "../governance.ts";
 import * as sse from "./event-source.ts";
 
 export interface ServicBusEventSourceTunnelsSupplier {
@@ -114,7 +113,7 @@ export function serviceBusArguments(
 }
 
 export class ServiceBus extends EventTarget
-  implements f.FetchStrategy, sse.EventSourceStrategy {
+  implements govn.FetchStrategy, govn.EventSourceStrategy {
   readonly tunnels: sse.EventSourceTunnel[] = [];
   readonly eventListenersLog: {
     name: string;
@@ -180,7 +179,7 @@ export class ServiceBus extends EventTarget
     ServerRespPayload extends govn.IdentifiablePayload,
     Context,
   >(
-    uase: f.FetchProxy<UserAgentPayload, ServerRespPayload, Context>,
+    uase: govn.FetchService<UserAgentPayload, ServerRespPayload, Context>,
     suggestedCtx: Context,
   ): void {
     const transactionID = "TODO:UUIDv5?"; // tokens, user agent strings, etc.
@@ -194,9 +193,9 @@ export class ServiceBus extends EventTarget
       this,
     );
     const fetchDetail:
-      & f.FetchCustomEventDetail<Context>
-      & f.FetchInit
-      & f.FetchPayloadSupplier<UserAgentPayload> = {
+      & govn.FetchCustomEventDetail<Context>
+      & govn.FetchInit
+      & govn.FetchPayloadSupplier<UserAgentPayload> = {
         ...fetchInit,
         fetchPayload,
         context: ctx,
@@ -209,33 +208,55 @@ export class ServiceBus extends EventTarget
     );
 
     fetch(fetchInit.endpoint, fetchInit.requestInit)
-      .then((res) => res.json())
-      .then((fetchRespRawJSON) => {
-        const fetchRespPayload = uase.prepareFetchResponsePayload(
-          fetchPayload,
-          fetchRespRawJSON,
-          ctx,
-          this,
-        );
-        const fetchRespDetail:
-          & f.FetchCustomEventDetail<Context>
-          & f.FetchPayloadSupplier<UserAgentPayload>
-          & f.FetchRespPayloadSupplier<ServerRespPayload> = {
+      .then((resp) => {
+        if (resp.ok) {
+          resp.json().then((fetchRespRawJSON) => {
+            const fetchRespPayload = uase.prepareFetchResponsePayload(
+              fetchPayload,
+              fetchRespRawJSON,
+              ctx,
+              this,
+            );
+            const fetchRespDetail:
+              & govn.FetchCustomEventDetail<Context>
+              & govn.FetchPayloadSupplier<UserAgentPayload>
+              & govn.FetchRespPayloadSupplier<ServerRespPayload> = {
+                fetchPayload,
+                fetchRespPayload,
+                context: ctx,
+                fetchStrategy: this,
+              };
+            this.dispatchNamingStrategyEvent(
+              fetchPayload,
+              this.args.eventNameStrategy.fetchResponse,
+              fetchRespDetail,
+            );
+          });
+        } else {
+          const fetchErrorDetail:
+            & govn.FetchCustomEventDetail<Context>
+            & govn.FetchInit
+            & govn.FetchPayloadSupplier<UserAgentPayload>
+            & govn.ErrorSupplier = {
+              ...fetchInit,
+              fetchPayload,
+              context: ctx,
+              error: new Error(
+                `${fetchInit.endpoint} invalid HTTP status ${resp.status} (${resp.statusText})`,
+              ),
+              fetchStrategy: this,
+            };
+          this.dispatchNamingStrategyEvent(
             fetchPayload,
-            fetchRespPayload,
-            context: ctx,
-            fetchStrategy: this,
-          };
-        this.dispatchNamingStrategyEvent(
-          fetchPayload,
-          this.args.eventNameStrategy.fetchResponse,
-          fetchRespDetail,
-        );
+            this.args.eventNameStrategy.fetchError,
+            fetchErrorDetail,
+          );
+        }
       }).catch((error) => {
         const fetchErrorDetail:
-          & f.FetchCustomEventDetail<Context>
-          & f.FetchInit
-          & f.FetchPayloadSupplier<UserAgentPayload>
+          & govn.FetchCustomEventDetail<Context>
+          & govn.FetchInit
+          & govn.FetchPayloadSupplier<UserAgentPayload>
           & govn.ErrorSupplier = {
             ...fetchInit,
             fetchPayload,
@@ -256,7 +277,7 @@ export class ServiceBus extends EventTarget
     FetchPayload extends govn.IdentifiablePayload,
     Context,
   >(
-    observer: f.FetchObserver<FetchPayload, Context>,
+    observer: govn.FetchObserver<FetchPayload, Context>,
     fetchPayloadID?: govn.PayloadIdentity,
   ): void {
     const names = this.args.eventNameStrategy.fetch(
@@ -267,9 +288,9 @@ export class ServiceBus extends EventTarget
       (event) => {
         const typedCustomEvent = event as unknown as {
           detail:
-            & f.FetchCustomEventDetail<Context>
-            & f.FetchInit
-            & f.FetchPayloadSupplier<FetchPayload>;
+            & govn.FetchCustomEventDetail<Context>
+            & govn.FetchInit
+            & govn.FetchPayloadSupplier<FetchPayload>;
         };
         const { fetchPayload, requestInit, context, fetchStrategy } =
           typedCustomEvent.detail;
@@ -283,7 +304,7 @@ export class ServiceBus extends EventTarget
     FetchRespPayload extends govn.IdentifiablePayload,
     Context,
   >(
-    observer: f.FetchResponseObserver<
+    observer: govn.FetchResponseObserver<
       FetchPayload,
       FetchRespPayload,
       Context
@@ -298,9 +319,9 @@ export class ServiceBus extends EventTarget
       (event) => {
         const typedCustomEvent = event as unknown as {
           detail:
-            & f.FetchCustomEventDetail<Context>
-            & f.FetchRespPayloadSupplier<FetchRespPayload>
-            & f.FetchPayloadSupplier<FetchPayload>;
+            & govn.FetchCustomEventDetail<Context>
+            & govn.FetchRespPayloadSupplier<FetchRespPayload>
+            & govn.FetchPayloadSupplier<FetchPayload>;
         };
         const { fetchPayload, fetchRespPayload, context, fetchStrategy } =
           typedCustomEvent.detail;
@@ -313,7 +334,7 @@ export class ServiceBus extends EventTarget
     FetchPayload extends govn.IdentifiablePayload,
     Context,
   >(
-    observer: f.FetchErrorObserver<
+    observer: govn.FetchErrorObserver<
       FetchPayload,
       Context
     >,
@@ -327,9 +348,9 @@ export class ServiceBus extends EventTarget
       (event) => {
         const typedCustomEvent = event as unknown as {
           detail:
-            & f.FetchCustomEventDetail<Context>
-            & f.FetchInit
-            & f.FetchPayloadSupplier<FetchPayload>
+            & govn.FetchCustomEventDetail<Context>
+            & govn.FetchInit
+            & govn.FetchPayloadSupplier<FetchPayload>
             & govn.ErrorSupplier;
         };
         const { fetchPayload, error, requestInit, context, fetchStrategy } =
@@ -342,7 +363,7 @@ export class ServiceBus extends EventTarget
   observeEventSource<
     EventSourcePayload extends govn.IdentifiablePayload,
   >(
-    observer: sse.EventSourceObserver<EventSourcePayload>,
+    observer: govn.EventSourceObserver<EventSourcePayload>,
     payloadID?: govn.PayloadIdentity,
   ): void {
     const names = this.args.eventNameStrategy.eventSource(
@@ -363,7 +384,7 @@ export class ServiceBus extends EventTarget
   observeEventSourceError<
     EventSourcePayload extends govn.IdentifiablePayload,
   >(
-    observer: sse.EventSourceErrorObserver<EventSourcePayload>,
+    observer: govn.EventSourceErrorObserver<EventSourcePayload>,
     payloadID?: govn.PayloadIdentity,
   ) {
     const names = this.args.eventNameStrategy.eventSourceError(
@@ -381,96 +402,4 @@ export class ServiceBus extends EventTarget
       },
     );
   }
-}
-
-export interface PingFetchPayload {
-  payloadIdentity: "ping";
-}
-
-export interface PingFetchRespPayload {
-  payloadIdentity: "ping";
-  fetchPayload: PingFetchPayload;
-  fetchRespRawJSON: unknown;
-}
-
-export interface PingEventSourcePayload {
-  payloadIdentity: "ping";
-}
-
-export function pingServerProxy(
-  endpointSupplier: (baseURL?: string) => string,
-):
-  & f.FetchProxy<
-    PingFetchPayload,
-    PingFetchRespPayload,
-    Record<string, unknown>
-  >
-  & sse.EventSourceProxy<PingEventSourcePayload> {
-  const payloadIdentity = "ping";
-  const proxy:
-    & f.FetchProxy<
-      PingFetchPayload,
-      PingFetchRespPayload,
-      Record<string, unknown>
-    >
-    & sse.EventSourceProxy<PingEventSourcePayload> = {
-      fetch: (fetchStrategy, ctx) => {
-        fetchStrategy.fetch(proxy, ctx);
-      },
-      prepareContext: (ctx) => ctx,
-      prepareFetchPayload: (ctx) => {
-        return {
-          payloadIdentity,
-          ...ctx,
-        };
-      },
-      prepareFetchResponsePayload: (fetchPayload, fetchRespRawJSON) => {
-        // assume that JSON processing has already been done, we just need to "type" it
-        return {
-          payloadIdentity: fetchPayload.payloadIdentity,
-          fetchPayload,
-          fetchRespRawJSON,
-        } as PingFetchRespPayload;
-      },
-      isEventSourcePayload: (_rawJSON): _rawJSON is PingEventSourcePayload => {
-        // TODO: we should really do some error checking
-        return true;
-      },
-      prepareEventSourcePayload: (rawJSON) => {
-        return rawJSON as PingEventSourcePayload;
-      },
-      prepareFetch: (baseURL, payload) => {
-        return {
-          endpoint: endpointSupplier(baseURL), // we accept the suggested endpoint
-          requestInit: {
-            method: "POST",
-            body: JSON.stringify(payload),
-          },
-        };
-      },
-      observeFetch: (fetchStrategy, observer) => {
-        fetchStrategy.observeFetchEvent(observer, payloadIdentity);
-      },
-      observeFetchResponse: (fetchStrategy, observer) => {
-        fetchStrategy.observeFetchEventResponse(observer, payloadIdentity);
-      },
-      observeFetchRespError: (fetchStrategy, observer) => {
-        fetchStrategy.observeFetchEventError(observer, payloadIdentity);
-      },
-      observeEventSource: (eventSrcStrategy, observer) => {
-        eventSrcStrategy.observeEventSource(
-          (payload, ess) => {
-            // EventSources are sent from server unsolicited so we need to type
-            // it ourselves (this is different than the fetch models which are
-            // already typed properly since they are not unsolicited)
-            observer(proxy.prepareEventSourcePayload(payload), ess);
-          },
-          payloadIdentity,
-        );
-      },
-      observeEventSourceError: (eventSrcStrategy, observer) => {
-        eventSrcStrategy.observeEventSourceError(observer, payloadIdentity);
-      },
-    };
-  return proxy;
 }

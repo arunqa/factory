@@ -2,6 +2,7 @@ import { colors, events, log, path } from "../../core/deps.ts";
 import * as rfGovn from "../../governance/mod.ts";
 import * as human from "../../lib/text/human.ts";
 import * as whs from "../../lib/text/whitespace.ts";
+import * as bjs from "../../lib/package/bundle-js.ts";
 import * as server from "./server.ts";
 import * as publ from "./publication.ts";
 
@@ -280,94 +281,57 @@ export function typicalPublicationCtlSupplier<
       iterationCount: processIterationCount,
       produceOperationalCtxCargo: async (home) => {
         await Deno.writeTextFile(
-          path.join(home, "server.auto.js"),
-          // deno-fmt-ignore
+          path.join(home, "deps.js.ts"),
           whs.unindentWhitespace(`
-          import { LabeledBadge, TunnelStatePresentation, Tunnels, EventSourceTunnelState } from "/universal-cc/script/universal.auto.js";
+          /**
+           * deps.js.ts is a Typescript-friendly Deno-style strategy of bringing in
+           * selective server-side Typescript functions and modules into client-side
+           * browser and other user agent Javascript. deps.js.ts is Deno-bundled into
+           * deps.auto.js assuming that deps.auto.js exists as a "twin".
+           * For instructions, see resFactory/factory/lib/package/README.md
+           */
+          export * from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.3/mod.ts";
 
-          const rfOperationalCtx = {
-            isExperimentalOperationalCtx: ${isExperimentalOperationalCtx},
-            publicUrlLocation: '${publicUrlLocation}',
-            publicURL: function (path) { return '${publicUrlLocation}' + path },
-            console: {
-              location: function (path) { return '${publicUrlLocation}' + '/console' + path },
-              tunnel: {
-                sseHealthURL: '${publicUrlLocation}' + '/console/sse/ping',
-                sseURL: '${publicUrlLocation}' + '/console/sse/tunnel',
-                badgenRemoteBaseURL: ${badgenRemoteBaseURL ? `'${badgenRemoteBaseURL}'` : "undefined"}, // from env:RF_UNIVERSAL_BADGEN_REMOTE_BASE_URL
-              }
-            },
-            workspace: {
-              baseURL: "/workspace",
-              footerContentDomID: "rf-universal-footer-experimental-server-workspace",
-              isHotReloadAvailable: true,
-              activePageTerminalRoute: undefined, // will be set in provision()
-              reloadIfImpacted: (fsAbsPathAndFileNameImpacted, ctx) => {
-                // rfOperationalCtx.workspace.activePageTerminalRoute should be set in rfOperationalCtx.provision()
-                // to see if the "impacted" workspace file is our current page
-                const activePageFileSysPath = rfOperationalCtx.workspace.activePageTerminalRoute?.fileSysPath;
-                if (activePageFileSysPath == fsAbsPathAndFileNameImpacted) {
-                  location.reload();
-                } else {
-                  console.info("rfOperationalCtx.workspace.reloadIfImpacted() called but this page was not impacted", fsAbsPathAndFileNameImpacted, rfOperationalCtx.workspace.activePageTerminalRoute, ctx);
-                }
-              },
-              tunnel: {
-                sseHealthURL: '${publicUrlLocation}' + '/workspace/sse/ping',
-                sseURL: '${publicUrlLocation}' + '/workspace/sse/tunnel',
-                badgenRemoteBaseURL: ${badgenRemoteBaseURL ? `'${badgenRemoteBaseURL}'` : "undefined"}, // from env:RF_UNIVERSAL_BADGEN_REMOTE_BASE_URL
-                events: {
-                  "workspace.file-impact": function (event) {
-                    const payload = JSON.parse(event.data);
-                    rfOperationalCtx.workspace.reloadIfImpacted(payload.fsAbsPathAndFileName);
-                  }
+          // relative to public/operational-context/deps.js.ts (using managed Git repo structure)
+          // TODO: remove hardcoding
+          export * from "../../../../../github.com/resFactory/factory/lib/service-bus/core/mod.ts";
+          export * from "../../../../../github.com/resFactory/factory/lib/service-bus/service/ping.ts";
+          export * from "../../../../../github.com/resFactory/factory/lib/service-bus/service/file-impact.ts";
+          export * from "../../../../../github.com/resFactory/factory/lib/presentation/dom/block.ts";
+
+          `) +
+            `// these are used by public/operational-context/server.auto.js for options/arguments\nexport const rfOperationalCtxArgs = ${
+              JSON.stringify(
+                {
+                  isExperimentalOperationalCtx,
+                  publicUrlLocation,
+                  badgenRemoteBaseURL,
                 },
-              },
-              provision: function (clientLayout) {
-                // this method will NOT be called before DOMContentLoaded so don't assume anything
-                // we're not running in a server that supports experimental workspace (IDE)
-                if(!window.rfOperationalCtx.isExperimentalOperationalCtx) return;
-
-                rfOperationalCtx.workspace.activePageTerminalRoute = clientLayout.route.terminal;
-                console.log("rfOperationalCtx workspace enabled for", clientLayout, rfOperationalCtx.workspace.activePageTerminalRoute);
-
-                const labeledBadge = new LabeledBadge((defaults) => ({ ...defaults, remoteBaseURL: window.rfOperationalCtx.workspace.tunnel.badgenRemoteBaseURL })).init();
-                const statePresentation = new TunnelStatePresentation((defaults) => ({ ...defaults, defaultLabel: 'Hot Reload Page', labeledBadge }));
-                const tunnels = new Tunnels((defaults) => ({ ...defaults, baseURL: window.rfOperationalCtx.workspace.baseURL, statePresentation })).init();
-                const wsTunnel = tunnels.registerEventSourceState(new EventSourceTunnelState(tunnels, (defaults) => ({
-                    ...defaults,
-                    identity: () => "Workspace SSE",
-                })));
-                wsTunnel.statePresentation.display();
-                wsTunnel.addEventSourceEventListener("ping", (evt) => { }, { diagnose: true });
-                wsTunnel.addEventSourceEventListener("workspace.file-impact", (evt) => {
-                    const payload = JSON.parse(event.data);
-                    rfOperationalCtx.workspace.reloadIfImpacted(payload.fsAbsPathAndFileName);
-                });
-
-                const footerContentElem = document.getElementById(window.rfOperationalCtx.workspace.footerContentDomID);
-                if (footerContentElem) {
-                  footerContentElem.style.display = 'block';
-                  const htmlDataSet = document.documentElement.dataset;
-                  if(htmlDataSet.rfOriginLayoutSrc) {
-                    footerContentElem.innerHTML = \`<p title="\${htmlDataSet.rfOriginLayoutSrc}" class="localhost-diags">
-                    Using layout <code class="localhost-diags-layout-origin">\${htmlDataSet.rfOriginLayoutName}</code>
-                    (<code class="localhost-diags-layout-origin">\${htmlDataSet.rfOriginLayoutSymbol}</code>) in
-                    <code class="localhost-diags-layout-origin-src">\${htmlDataSet.rfOriginLayoutSrc.split('/').reverse()[0]}</code></p>\`;
-                  } else {
-                    footerContentElem.innerHTML = \`<p title="\${htmlDataSet.rfOriginLayoutSrc}" class="localhost-diags localhost-diags-warning">No layout information in <code>&lt;html data-rf-origin-layout-*&gt;</code></p>\`;
-                  }
-                }
-              }
-            },
-          }
-
-          window.addEventListener("clientLayout.provisionAfterContentLoaded", (event) => {
-            rfOperationalCtx.workspace.provision(clientLayout);
-          }, false);
-
-          window.rfOperationalCtx = rfOperationalCtx;
-          `), // TODO: use HtmlLayoutClientCargoSupplier variables for rfUserAgentLifecycle, don't hardcode
+                undefined,
+                "  ",
+              )
+            };
+          `,
+        );
+        const serverAutoJsDepsAbsPath = path.join(home, "deps.auto.js");
+        await Deno.writeTextFile(
+          serverAutoJsDepsAbsPath,
+          "// purposefully empty, will be filled in by bundleJsFromTsTwin, see see resFactory/factory/lib/package/README.md",
+        );
+        bjs.bundleJsFromTsTwin(
+          bjs.jsPotentialTsTwin(
+            bjs.typicalJsNamingStrategy(serverAutoJsDepsAbsPath),
+          ),
+        );
+        // symlink resFactory/factory/executive/publ/server.js to public/operational-context/server.auto.js
+        // which will allow console to "hook into" non-console pages; operational-context/server.auto.js is
+        // included via <script> tag in pages that want to have auto-reload and other "workspace" functions.
+        await Deno.symlink(
+          path.join(
+            path.dirname(path.fromFileUrl(import.meta.url)),
+            "server.js",
+          ),
+          path.join(home, "server.auto.js"),
         );
       },
     };

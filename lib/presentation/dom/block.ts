@@ -147,23 +147,26 @@ export interface BadgenLiveBlockInit {
   ) => Promise<BadgenBlock>;
   // deno-lint-ignore no-explicit-any
   readonly badgeElementSupplier: (lbInit: BadgenLiveBlockInit) => any;
+  readonly renderBadgeEventSupplier: (lbInit: BadgenLiveBlockInit) => {
+    readonly eventTarget: any;
+    readonly eventName: string;
+  };
   readonly init?: (block: BadgenLiveBlock) => Promise<BadgenLiveBlock>;
-  readonly renderBadgeContentEventName?: string;
 }
 
 export function badgenLiveBlock(lbInit: BadgenLiveBlockInit): BadgenLiveBlock {
   const {
     badgenBlockSupplier,
     badgeElementSupplier,
+    renderBadgeEventSupplier,
     init,
-    renderBadgeContentEventName = "render-badge-content",
   } = lbInit;
 
-  const badgeElement = badgeElementSupplier(lbInit);
+  let badgenBlock: BadgenBlock | undefined = undefined;
+  const { eventTarget, eventName } = renderBadgeEventSupplier(lbInit);
   // deno-lint-ignore no-explicit-any
-  badgeElement.addEventListener(renderBadgeContentEventName, (event: any) => {
-    const { badgenBlock = badgeElement.badgenBlock, content, display } =
-      event.detail;
+  eventTarget.addEventListener(eventName, (event: any) => {
+    const { badgeElement, content, display } = event.detail;
     if (badgenBlock) {
       badgeElement.innerHTML = badgenBlock.autoHTML(content);
     } else {
@@ -175,30 +178,37 @@ export function badgenLiveBlock(lbInit: BadgenLiveBlockInit): BadgenLiveBlock {
   let content: BadgenLiveBadgeContent = { status: "Unspecified" };
   const block: BadgenLiveBlock = {
     init: async () => {
-      badgeElement.badgenBlock = await badgenBlockSupplier(lbInit);
+      badgenBlock = await badgenBlockSupplier(lbInit);
       return init ? await init?.(block) : block;
     },
     content: (set, display) => {
       if (set) {
         content = set;
-        if (badgeElement) {
-          badgeElement.dispatchEvent(
-            new CustomEvent(renderBadgeContentEventName, {
-              detail: { content, display },
-            }),
-          );
+        if (eventTarget) {
+          const badgeElement = badgeElementSupplier(lbInit);
+          if (badgeElement) {
+            eventTarget.dispatchEvent(
+              new CustomEvent(eventName, {
+                detail: { badgeElement, content, display },
+              }),
+            );
+          }
         } else {
           console.warn(
             `[badgenLiveBlock] content could not be updated: badgeElement was not found.`,
           );
         }
       }
-      console.log("[badgenLiveBlock] content", set, content);
       return content;
     },
     display: (state) => {
+      const badgeElement = badgeElementSupplier(lbInit);
       if (badgeElement) {
         badgeElement.style.display = state ? "block" : "none";
+      } else {
+        console.warn(
+          `[badgenLiveBlock] content could not be display'd: badgeElement was not found.`,
+        );
       }
     },
   };

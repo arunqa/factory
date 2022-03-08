@@ -10,6 +10,7 @@
  */
 
 export * from "../../conf/flexible-args.ts";
-export * from "../../service-bus/mod.ts";
-export * from "../../service-bus/binary-state-proxy.ts";
-export * from "./block.ts";
+export * from "../core/mod.ts";
+export * from "../service/ping.ts";
+export * from "../service/binary-state.ts";
+export * from "../../presentation/dom/block.ts";

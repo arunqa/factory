@@ -1,5 +1,6 @@
 import { events } from "../../core/deps.ts";
 import { oak } from "./deps.ts";
+import * as ping from "../../lib/service-bus/service/ping.ts";
 
 export interface AssuranceSyntheticTunnelConnection {
   readonly sseTarget: oak.ServerSentEventTarget;
@@ -29,17 +30,9 @@ export class AssuranceSyntheticTunnel<
     readonly factory: (ctx: ConnectionContext) => Connection,
   ) {
     super();
-    this.on("ping", () => {
+    this.on(ping.pingPayloadIdentity, () => {
       this.cleanConnections().forEach((c) =>
-        c.sseTarget.dispatchEvent(
-          // we use "__message" as the type so that Service Bus can use
-          // raw EventSource.onmessage instead of requiring EventSource.addEventListener
-          // on the client side
-          new oak.ServerSentEvent("__message", {
-            payloadIdentity: "ping",
-            at: new Date(),
-          }),
-        )
+        c.sseTarget.dispatchMessage(ping.pingPayload())
       );
     });
   }

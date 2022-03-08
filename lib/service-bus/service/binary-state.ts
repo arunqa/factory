@@ -1,39 +1,39 @@
-import * as mod from "./mod.ts";
+import * as govn from "../governance.ts";
 
-export interface BinaryStateProxyFetchPayload {
+export interface BinaryStateServiceFetchPayload {
   payloadIdentity: string;
   state: "checked" | "unchecked";
 }
 
-export interface BinaryStateProxyFetchRespPayload {
+export interface BinaryStateServiceFetchRespPayload {
   payloadIdentity: string;
-  fetchPayload: BinaryStateProxyFetchPayload;
+  fetchPayload: BinaryStateServiceFetchPayload;
   fetchRespRawJSON: unknown;
 }
 
-export interface BinaryStateProxyEventSourcePayload {
+export interface BinaryStateServiceEventSourcePayload {
   payloadIdentity: string;
   state: "checked" | "unchecked";
 }
 
-export function binaryStateServerProxy(
+export function binaryStateService(
   endpointSupplier: (baseURL?: string) => string,
   identitySupplier: () => string,
   stateSupplier: () => "checked" | "unchecked",
 ):
-  & mod.FetchProxy<
-    BinaryStateProxyFetchPayload,
-    BinaryStateProxyFetchRespPayload,
+  & govn.FetchService<
+    BinaryStateServiceFetchPayload,
+    BinaryStateServiceFetchRespPayload,
     Record<string, unknown>
   >
-  & mod.EventSourceProxy<BinaryStateProxyEventSourcePayload> {
+  & govn.EventSourceService<BinaryStateServiceEventSourcePayload> {
   const proxy:
-    & mod.FetchProxy<
-      BinaryStateProxyFetchPayload,
-      BinaryStateProxyFetchRespPayload,
+    & govn.FetchService<
+      BinaryStateServiceFetchPayload,
+      BinaryStateServiceFetchRespPayload,
       Record<string, unknown>
     >
-    & mod.EventSourceProxy<BinaryStateProxyEventSourcePayload> = {
+    & govn.EventSourceService<BinaryStateServiceEventSourcePayload> = {
       fetch: (fetchStrategy, ctx) => {
         fetchStrategy.fetch(proxy, ctx);
       },
@@ -51,16 +51,16 @@ export function binaryStateServerProxy(
           payloadIdentity: fetchPayload.payloadIdentity,
           fetchPayload,
           fetchRespRawJSON,
-        } as BinaryStateProxyFetchRespPayload;
+        } as BinaryStateServiceFetchRespPayload;
       },
       isEventSourcePayload: (
         _rawJSON,
-      ): _rawJSON is BinaryStateProxyEventSourcePayload => {
+      ): _rawJSON is BinaryStateServiceEventSourcePayload => {
         // TODO: we should really do some error checking
         return true;
       },
       prepareEventSourcePayload: (rawJSON) => {
-        return rawJSON as BinaryStateProxyEventSourcePayload;
+        return rawJSON as BinaryStateServiceEventSourcePayload;
       },
       prepareFetch: (baseURL, payload) => {
         return {

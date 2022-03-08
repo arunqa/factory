@@ -9,5 +9,4 @@
  *           flexible-args.auto.js.
  */
 
-export * from "./http-endpoint-action.js";
 export * from "./inspect-http-headers.js";

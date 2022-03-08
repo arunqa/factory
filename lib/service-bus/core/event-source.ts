@@ -1,55 +1,10 @@
-///! <reference lib="dom" />
-import * as govn from "./governance.ts";
+import * as govn from "../governance.ts";
 import * as c from "./connection.ts";
-import * as safety from "../safety/mod.ts";
+import * as safety from "../../safety/mod.ts";
 
-export interface EventSourceStrategy {
-  observeEventSource: <
-    EventSourcePayload extends govn.IdentifiablePayload,
-  >(
-    observer: EventSourceObserver<EventSourcePayload>,
-    payloadID?: govn.PayloadIdentity,
-  ) => void;
-  observeEventSourceError: <
-    EventSourcePayload extends govn.IdentifiablePayload,
-  >(
-    observer: EventSourceErrorObserver<EventSourcePayload>,
-    payloadID?: govn.PayloadIdentity,
-  ) => void;
-}
-
-export interface EventSourceProxy<
-  EventSourcePayload extends govn.IdentifiablePayload,
-> {
-  readonly isEventSourcePayload: (
-    rawJSON: unknown,
-  ) => rawJSON is EventSourcePayload;
-  readonly prepareEventSourcePayload: (rawJSON: unknown) => EventSourcePayload;
-  readonly observeEventSource: (
-    ess: EventSourceStrategy,
-    observer: EventSourceObserver<EventSourcePayload>,
-  ) => void;
-  readonly observeEventSourceError: (
-    ess: EventSourceStrategy,
-    observer: EventSourceErrorObserver<EventSourcePayload>,
-  ) => void;
-}
-
-export interface EventSourceObserver<
-  EventSourcePayload extends govn.IdentifiablePayload,
-> {
-  (esp: EventSourcePayload, ess: EventSourceStrategy): void;
-}
-
-export interface EventSourceErrorObserver<
-  EventSourcePayload extends govn.IdentifiablePayload,
-> {
-  (
-    error: Error,
-    esp: EventSourcePayload,
-    ess: EventSourceStrategy,
-  ): void;
-}
+// Using Server Sent Events (SSEs or "EventSource") on anything but HTTP/2 connections is not recommended.
+// See [EventSource](https://developer.mozilla.org/en-US/docs/Web/API/EventSource) warning section.
+// See [EventSource: why no more than 6 connections?](https://stackoverflow.com/questions/16852690/sseeventsource-why-no-more-than-6-connections).
 
 export interface EventSourceCustomEventDetail<
   Payload extends govn.IdentifiablePayload,
@@ -280,7 +235,7 @@ export interface EventSourceConnNarrative {
   readonly summaryHint?: string;
 }
 
-export function eventSourceConnlNarrative(
+export function eventSourceConnNarrative(
   tunnel: EventSourceTunnel,
   reconn?: c.ReconnectionStrategy,
 ): EventSourceConnNarrative {

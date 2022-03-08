@@ -72,6 +72,7 @@
                 return block;
             },
             badgeElementSupplier: () => document.getElementById("badge-container"),
+            renderBadgeEventSupplier: () => ({ eventTarget: document, eventName: "render-tunnel-state-badge-content" }),
             init: (block) => block,
         });
         tunnelStateBadge.init(); // async so don't depend on it yet, dependencies will be auto-loaded
@@ -102,12 +103,12 @@
                         const tunnel = new mod.EventSourceTunnel({
                             esURL, esPingURL, eventSourceFactory, options: {
                                 onConnStateChange: (active, previous, tunnel) => {
-                                    const escn = mod.eventSourceConnlNarrative(tunnel);
+                                    const escn = mod.eventSourceConnNarrative(tunnel);
                                     report("connection state", escn.summary, escn.summaryHint, active, previous);
                                     tunnelStateBadge.content({ label: "Tunnel", status: escn.summary, title: escn.summaryHint, color: escn.color });
                                 },
                                 onReconnStateChange: (active, previous, reconnStrategy, tunnel) => {
-                                    const escn = mod.eventSourceConnlNarrative(tunnel, reconnStrategy);
+                                    const escn = mod.eventSourceConnNarrative(tunnel, reconnStrategy);
                                     report("reconnection state", active, previous, escn.summary, escn.summaryHint);
                                     tunnelStateBadge.content({ label: "Tunnel", status: escn.summary, title: escn.summaryHint, color: escn.color });
                                 },
@@ -121,8 +122,8 @@
                 serviceBus.observeFetchEventResponse((respPayload, fetchPayload) => report('observed universal fetchResponse', fetchPayload, respPayload));
                 serviceBus.observeFetchEventError((error, reqInit, fetchPayload) => report('observed universal fetchRespError', error, reqInit, fetchPayload));
 
-                const accessLogEnabled = mod.binaryStateServerProxy((baseURL) => baseURL, () => "testCheckbox1", () => ({ testCheckbox1State: true }));
-                const ping = mod.pingServerProxy((baseURL) => baseURL);
+                const accessLogEnabled = mod.binaryStateService((baseURL) => baseURL, () => "testCheckbox1", () => ({ testCheckbox1State: true }));
+                const ping = mod.pingService((baseURL) => baseURL);
                 ping.observeEventSource(serviceBus, (payload) => report('observed ping SSE', payload));
                 const serverState = {
                     ping,

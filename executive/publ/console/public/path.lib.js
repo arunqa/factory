@@ -5,14 +5,20 @@ import {
     flexibleArgs,
     detectFileSysStyleRoute,
     EventEmitter,
-    Tunnels,
-    UserAgentBus,
-    EventSourceTunnelState,
-    transformMarkdownElems
+    transformMarkdownElems,
+    badgenLiveBlock,
+    badgenBlock,
+    ServiceBus,
+    serviceBusArguments,
+    EventSourceTunnel,
+    eventSourceConnNarrative,
+    pingService,
+    serverFileImpactService,
+    userAgentOpenWindowService
 } from "./deps.auto.js";
 
 // this is commonly used outside of this script so let's make it available
-export { EventEmitter, UserAgentBus };
+export { EventEmitter, ServiceBus };
 
 // prepare the event emitter globally in case anyone else might need it
 window.actuationEvtEmitter = new EventEmitter();
@@ -541,13 +547,13 @@ class Executive {
     #layouts;
     #state;
     #consoleTunnel;
+    #serviceBus;
 
     // actuationEE instance is expected in actuatorCtx as a property
     constructor(actuatorCtx) {
         this.#config = flexibleArgs(actuatorCtx, {
             hookableDomElemsAttrName: "executive-hook-args-supplier",
             hookableDomElems: [document.documentElement, document.head],
-            diagnose: (result) => { console.log('Executive.config', result) },
             defaultArgs: {
                 onBeforeInit: (ctx, executive) => {
                     const event = { ctx, executive };
@@ -570,6 +576,26 @@ class Executive {
                 state: { construct: () => new PageState() },
                 layouts: { construct: () => new PageLayouts() },
                 navigation: { construct: () => new SiteNavigation() },
+                diagnostics: {
+                    universal: {
+                        verbose: true,
+                        report: function () {
+                            console.info("%c[Executive]%c", "color:#D3D3D3", "color:#999999", ...arguments);
+                        }
+                    },
+                    serviceBus: {
+                        verbose: false,
+                        report: function () {
+                            console.info("%c[Executive serviceBus]%c", "color:#D3D3D3", "color:#999999", ...arguments);
+                        }
+                    },
+                    consoleTunnel: {
+                        verbose: true,
+                        report: function () {
+                            console.info("%c[Executive consoleTunnel]%c", "color:#D3D3D3", "color:#777777", ...arguments);
+                        }
+                    },
+                },
             }
         });
     }
@@ -591,33 +617,118 @@ class Executive {
         this.args.onAfterInit?.(ctx, this);
     }
 
-    #initTunnels(ctx) {
-        const tunnels = new Tunnels((defaults) => ({ ...defaults, baseURL: '/console' })).init();
-        this.#consoleTunnel = tunnels.registerEventSourceState(new EventSourceTunnelState(tunnels, (defaults) => ({
-            ...defaults,
-            identity: () => "Console SSE",
-        })));
-        this.#consoleTunnel.addEventSourceEventListener("ping", (evt) => { }, { diagnose: true });
-        this.#consoleTunnel.addEventSourceEventListener("location.reload-console", (evt) => {
+    #initServiceBus(ctx) {
+        const consoleTunnelStateBadge = badgenLiveBlock({
+            // deno-lint-ignore require-await
+            badgenBlockSupplier: async () => {
+                const block = badgenBlock();
+                block.init(); // async so don't depend on it, dependencies will be auto-loaded
+                return block;
+            },
+            badgeElementSupplier: () => document.getElementById("rf-universal-tunnel-state-summary-badge"),
+            renderBadgeEventSupplier: () => ({ eventTarget: document, eventName: "render-rf-universal-tunnel-state-summary-badge-content" }),
+            init: (block) => block,
+        });
+        consoleTunnelStateBadge.init(); // async so don't depend on it yet, dependencies will be auto-loaded
+
+        const { diagnostics } = this.args;
+        const reportServiceBusDiags = diagnostics.serviceBus.report;
+        const reportConsoleTunnelDiags = diagnostics.consoleTunnel.report;
+
+        const baseURL = "/console";
+        let consoleTunnel = undefined; // we cannot access this.#consoleTunnel in function* below so we stash here
+        this.#serviceBus = new ServiceBus(serviceBusArguments({
+            fetchBaseURL: `${baseURL}/user-agent-bus`,
+            esTunnels: function* (serviceBusOnMessage) {
+                const esURL = `${baseURL}/sse/tunnel`;
+                const esPingURL = `${baseURL}/sse/ping`;
+                const eventSourceFactory = {
+                    construct: (esURL) => {
+                        // we have to prepare the entire EventSources
+                        // each time we are called; this is because ESs
+                        // can error out and be dropped/recreated
+                        const result = new EventSource(esURL);
+                        // ServiceBus only handles raw messages and does
+                        // not do anything with listeners; this means
+                        // typed events shouldn't be done by ES, it should
+                        // be handled by ServiceBus (that's it's job!)
+                        result.onmessage = serviceBusOnMessage;
+                        return result;
+                    }
+                };
+                consoleTunnel = new EventSourceTunnel({
+                    esURL, esPingURL, eventSourceFactory, options: {
+                        onConnStateChange: (active, previous, tunnel) => {
+                            const escn = eventSourceConnNarrative(tunnel);
+                            if (diagnostics.consoleTunnel.verbose) reportConsoleTunnelDiags("connection state", escn.summary, escn.summaryHint, active, previous);
+                            consoleTunnelStateBadge.content({ label: "Tunnel", status: escn.summary, title: escn.summaryHint, color: escn.color }, true);
+                        },
+                        onReconnStateChange: (active, previous, reconnStrategy, tunnel) => {
+                            const escn = eventSourceConnNarrative(tunnel, reconnStrategy);
+                            if (diagnostics.consoleTunnel.verbose) reportConsoleTunnelDiags("reconnection state", active, previous, escn.summary, escn.summaryHint);
+                            consoleTunnelStateBadge.content({ label: "Tunnel", status: escn.summary, title: escn.summaryHint, color: escn.color }, true);
+                        },
+                    }
+                });
+                consoleTunnel.init();
+                yield consoleTunnel;
+            }
+        }));
+        this.#consoleTunnel = consoleTunnel;
+        if (diagnostics.serviceBus.verbose) {
+            this.#serviceBus.observeFetchEvent((payload, reqInit) => reportServiceBusDiags("observed universal fetch", payload, reqInit));
+            this.#serviceBus.observeFetchEventResponse((respPayload, fetchPayload) => reportServiceBusDiags("observed universal fetchResponse", fetchPayload, respPayload));
+            this.#serviceBus.observeFetchEventError((error, reqInit, fetchPayload) => reportServiceBusDiags("observed universal fetchRespError", error, reqInit, fetchPayload));
+            this.#serviceBus.observeEventSource((esPayload) => reportServiceBusDiags("observed universal eventSource", esPayload));
+        }
+
+        const ping = pingService((baseURL) => baseURL);
+        if (diagnostics.serviceBus.verbose) ping.observeEventSource(this.#serviceBus, (payload) => reportServiceBusDiags("observed ping SSE", payload));
+
+        const sfImpact = serverFileImpactService((baseURL) => baseURL);
+        sfImpact.observeEventSource(this.#serviceBus, (payload) => {
+            if (diagnostics.serviceBus.verbose) reportServiceBusDiags("observed file impact SSE", payload);
             location.reload();
         });
-        this.#consoleTunnel.addEventSourceEventListener("window.open", (evt) => {
-            const payload = JSON.parse(evt.data);
-            if (payload && "url" in payload) {
-                const windowInstance = window.open(payload.url, payload.target);
+
+        const uaOpenWindow = userAgentOpenWindowService((baseURL) => baseURL);
+        uaOpenWindow.observeEventSource(this.#serviceBus, (payload) => {
+            if (diagnostics.serviceBus.verbose) reportServiceBusDiags("observed open window SSE", payload);
+            if (payload && "location" in payload) {
+                const windowInstance = window.open(payload.location, payload.target);
                 // TODO: how do we track the windows we opened, across page reloads?
                 //windowsOpened[payload.target] = { ...payload, windowInstance }
                 windowInstance.focus();
             } else {
-                console.error(`invalid payload for window.open, expected { url: string; target?: string}: ${evt.data}`);
+                console.error(`invalid payload for window.open, expected { location: string; target?: string}: ${evt.data}`);
             }
         });
+
+        // this.#consoleTunnel = tunnels.registerEventSourceState(new EventSourceTunnelState(tunnels, (defaults) => ({
+        //     ...defaults,
+        //     identity: () => "Console SSE",
+        // })));
+        // this.#consoleTunnel.addEventSourceEventListener("ping", (evt) => { }, { diagnose: true });
+        // this.#consoleTunnel.addEventSourceEventListener("location.reload-console", (evt) => {
+        //     location.reload();
+        // });
+        // this.#consoleTunnel.addEventSourceEventListener("window.open", (evt) => {
+        //     const payload = JSON.parse(evt.data);
+        //     if (payload && "url" in payload) {
+        //         const windowInstance = window.open(payload.url, payload.target);
+        //         // TODO: how do we track the windows we opened, across page reloads?
+        //         //windowsOpened[payload.target] = { ...payload, windowInstance }
+        //         windowInstance.focus();
+        //     } else {
+        //         console.error(`invalid payload for window.open, expected { url: string; target?: string}: ${evt.data}`);
+        //     }
+        // });
     }
 
     #init(ctx) {
         const executiveArgs = this.args;
 
-        this.#initTunnels(ctx);
+        this.#initServiceBus(ctx);
         this.#navigation = executiveArgs.navigation.construct().init();
         this.#layouts = executiveArgs.layouts.construct().init({ navigation: this.#navigation });
         this.#state = executiveArgs.state.construct().init({ navigation: this.#navigation, layouts: this.#layouts });

@@ -249,232 +249,54 @@ function detectFileSysStyleRoute(text) {
     return parsedPath;
 }
 export { detectFileSysStyleRoute as detectFileSysStyleRoute };
-function httpEndpointAvailableAction(url1, action, state) {
-    const prepareHttpRequest = (url, state)=>{
-        const http = new XMLHttpRequest();
-        http.open("HEAD", url, true);
-        http.setRequestHeader("Content-Type", "text/plain");
-        return http;
-    };
-    const http1 = state?.prepareXMLHttpRequest ? state.prepareXMLHttpRequest(url1, state) : prepareHttpRequest(url1, state);
-    http1.onreadystatechange = function(xhrEvent) {
-        if (http1.readyState == 4) {
-            if (http1.status == 200) {
-                action({
-                    request: http1,
-                    url: url1,
-                    xhrEvent,
-                    state
-                });
-            } else {
-                if (state?.onInvalidStatus) {
-                    state.onInvalidStatus({
-                        request: http1,
-                        url: url1,
-                        xhrEvent,
-                        state
-                    });
-                }
-            }
-        }
-    };
-    try {
-        http1.send(null);
-    } catch (error) {
-        if (state?.onError) {
-            if (state?.onInvalidStatus) {
-                state.onInvalidStatus({
-                    request: http1,
-                    url: url1,
-                    xhrEvent,
-                    state,
-                    error
-                });
-            }
-        }
-    }
-}
-export { httpEndpointAvailableAction as httpEndpointAvailableAction };
-class LabeledBadge {
-    remoteBaseURL;
-    useBadgenLib;
-    importModule;
-    #initialized = false;
-    #isBadgenLibLoaded = false;
-    autoHTML;
-    constructor(argsSupplier){
-        const { args  } = governedArgs(argsSupplier, {
-            defaultArgs: {
-                remoteBaseURL: 'https://badgen.net/badge',
-                importModule: (lib, actuate)=>import(lib).then(actuate)
-                ,
-                useBadgenLib: true
-            }
-        });
-        this.remoteBaseURL = args.remoteBaseURL;
-        this.useBadgenLib = args.useBadgenLib;
-        this.importModule = args.importModule;
-    }
-    badgenArgs(args) {
-        const badgenArgs = {
-            status: args.status || "status",
-            ...args
-        };
-        return args?.enhanceBadgen ? args.enhanceBadgen(badgenArgs) : badgenArgs;
-    }
-    badgenRemoteURL(badgenArgs) {
-        const badge = this.badgenArgs(badgenArgs);
-        return `${this.remoteBaseURL}/${badge.label}/${badge.status}/${badge.color}`;
-    }
-    decorateHTML(badgenArgs, html) {
-        if (badgenArgs.elaborationText) {
-            html = `<span title="${badgenArgs.elaborationText}">${html}</span>`;
-        }
-        if (badgenArgs.actionable) {
-            html = `<a onclick="${badgenArgs.actionable}">${html}</a>`;
-        }
-        return html;
-    }
-    badgenRemoteImageHTML(badgenArgs) {
-        return this.decorateHTML(badgenArgs, `<img src="${this.badgenRemoteURL(badgenArgs)}">`);
-    }
-    init() {
-        if (this.#initialized) return this;
-        this.autoHTML = (badgenArgs)=>{
-            return this.badgenRemoteImageHTML(badgenArgs);
-        };
-        if (this.useBadgenLib) {
-            this.importModule("https://unpkg.com/badgen", ()=>{
-                this.autoHTML = (badgenArgs)=>{
-                    return this.decorateHTML(badgenArgs, badgen(this.badgenArgs(badgenArgs)));
-                };
-                this.#isBadgenLibLoaded = true;
-            });
-        }
-        this.#initialized = true;
-        return this;
-    }
-    get isBadgenLibLoaded() {
-        return this.#isBadgenLibLoaded;
-    }
-}
-class TunnelStatePresentation {
-    static defaultInitialStatus = "inactive";
-    summaryBadgeDomID;
-    elaborationHtmlDomID;
-    constructor(argsSupplier){
-        const { args  } = governedArgs(argsSupplier, {
-            defaultArgs: {
-                summaryBadgeDomID: "rf-universal-tunnel-state-summary-badge",
-                elaborationHtmlDomID: "rf-universal-tunnel-state-elaboration",
-                initialStatus: TunnelStatePresentation.defaultInitialStatus,
-                labeledBadge: new LabeledBadge().init(),
-                defaultLabel: "Tunnel"
-            }
-        });
-        this.summaryBadgeDomID = args.summaryBadgeDomID;
-        this.elaborationHtmlDomID = args.elaborationHtmlDomID;
-        this.labeledBadge = args.labeledBadge;
-        this.defaultLabel = args.defaultLabel;
-    }
-    badgenArgs(state, options) {
-        const status = state.status;
-        const label = options?.label ?? this.defaultLabel;
-        const color = options?.color ?? (status == "inactive" ? 'red' : status == "active" ? 'green' : 'orange');
-        const icon = options?.icon;
-        return this.labeledBadge.badgenArgs({
-            label,
-            labelColor: '555',
-            status,
-            color,
-            style: 'classic',
-            icon,
-            iconWidth: 13,
-            scale: 1,
-            ...options
-        });
-    }
-    update(state, options) {
-        const tspElem = document.getElementById(this.summaryBadgeDomID);
-        if (tspElem) {
-            tspElem.innerHTML = this.labeledBadge.autoHTML(this.badgenArgs(state, options));
-        } else {
-            console.warn(`Tunnel state could not be updated: DOM element id='${this.summaryBadgeDomID}' was not found.`);
-        }
-    }
-    display(state = true) {
-        if (this.summaryBadgeElement) {
-            this.summaryBadgeElement.style.display = state ? 'block' : 'none';
-        }
-    }
-    get summaryBadgeElement() {
-        return document.getElementById(this.summaryBadgeDomID);
-    }
-    get elaborationHtmlElement() {
-        return document.getElementById(this.elaborationHtmlDomID);
-    }
-    get isStatisticsPresentationPossible() {
-        return this.labeledBadge.isBadgenLibLoaded;
-    }
-}
-class TunnelReconnectStrategy {
-    static UNKNOWN = 0;
-    static WAITING = 1;
-    static TRYING = 2;
-    static COMPLETED = 3;
-    static ABORTED = 4;
+var ReconnectionState;
+(function(ReconnectionState1) {
+    ReconnectionState1["UNKNOWN"] = "unknown";
+    ReconnectionState1["WAITING"] = "waiting";
+    ReconnectionState1["TRYING"] = "trying";
+    ReconnectionState1["COMPLETED"] = "completed";
+    ReconnectionState1["ABORTED"] = "aborted";
+})(ReconnectionState || (ReconnectionState = {}));
+class ReconnectionStrategy {
     connect;
-    report;
     maxAttempts;
-    #attempt;
+    intervalMillecs;
+    onStateChange;
+    #state = ReconnectionState.UNKNOWN;
+    #attempt = 0;
     #interval;
-    #status = TunnelReconnectStrategy.UNKNOWN;
-    constructor(connect, report, maxAttempts = 15){
+    constructor(connect, options){
         this.connect = connect;
-        this.report = report;
-        this.maxAttempts = maxAttempts;
-        this.#attempt = 0;
+        this.maxAttempts = options?.maxAttempts ?? 15;
+        this.intervalMillecs = options?.intervalMillecs ?? 1000;
+        this.onStateChange = options?.onStateChange;
     }
     get attempt() {
         return this.#attempt;
     }
-    get status() {
-        return this.#status;
+    get state() {
+        return this.#state;
     }
-    set status(value) {
-        this.#status = value;
-        this.report(this);
-    }
-    get statusText() {
-        switch(this.#status){
-            case TunnelReconnectStrategy.UNKNOWN:
-                return "unknown";
-            case TunnelReconnectStrategy.WAITING:
-                return "waiting";
-            case TunnelReconnectStrategy.TRYING:
-                return `reconnecting ${this.#attempt}/${this.maxAttempts}`;
-            case TunnelReconnectStrategy.COMPLETED:
-                return "reconnected";
-            case TunnelReconnectStrategy.ABORTED:
-                return "aborted";
-        }
-        return "?";
+    set state(value) {
+        const previousStatus = this.#state;
+        this.#state = value;
+        this.onStateChange?.(this.#state, previousStatus, this);
     }
     reconnect() {
-        this.status = TunnelReconnectStrategy.WAITING;
+        this.state = ReconnectionState.WAITING;
         this.#interval = setInterval(()=>{
             this.#attempt++;
             if (this.#attempt > this.maxAttempts) {
-                this.exit(TunnelReconnectStrategy.ABORTED);
+                this.completed(ReconnectionState.ABORTED);
             } else {
-                this.status = TunnelReconnectStrategy.TRYING;
+                this.state = ReconnectionState.TRYING;
                 this.connect(this);
             }
-        }, 1000);
+        }, this.intervalMillecs);
         return this;
     }
-    exit(status = TunnelReconnectStrategy.COMPLETED) {
-        this.status = status;
+    completed(status = ReconnectionState.COMPLETED) {
+        this.state = status;
         if (this.#interval) {
             clearInterval(this.#interval);
             this.#interval = undefined;
@@ -482,353 +304,672 @@ class TunnelReconnectStrategy {
         return this;
     }
 }
-class EventSourceTunnelState {
-    static instanceIndex = 0;
-    static defaultInitialStatus = "inactive";
+function typeGuard(...requireKeysInSingleT) {
+    return (o)=>{
+        if (o && typeof o === "object") {
+            return !requireKeysInSingleT.find((p)=>!(p in o)
+            );
+        }
+        return false;
+    };
+}
+const isEventSourceConnectionHealthy = typeGuard("isHealthy", "connEstablishedOn");
+const isEventSourceConnectionUnhealthy = typeGuard("isHealthy", "connFailedOn");
+const isEventSourceReconnecting = typeGuard("isHealthy", "connFailedOn", "reconnectStrategy");
+const isEventSourceError = typeGuard("isEventSourceError", "errorEvent");
+const isEventSourceEndpointUnavailable = typeGuard("isEndpointUnavailable", "endpointURL");
+class EventSourceTunnel {
     esURL;
     esPingURL;
-    #identity;
-    #wrappedListeners = [];
-    #eventSourceSupplier;
-    #eventSource;
-    #status;
-    #statusErrorEvent;
-    #statePresentation;
-    #messageIdentitiesEncountered = {};
-    constructor(tunnel, argsSupplier){
-        this.esURL = `${tunnel.baseURL}/sse/tunnel`;
-        this.esPingURL = `${tunnel.baseURL}/sse/ping`;
-        const { args  } = governedArgs(argsSupplier, {
-            defaultArgs: {
-                eventSourceSupplier: ()=>new EventSource(this.esURL)
-                ,
-                statePresentation: ()=>tunnel.statePresentation
-                ,
-                identity: ()=>{
-                    EventSourceTunnelState.instanceIndex++;
-                    return `EventSourceTunnelState${EventSourceTunnelState.instanceIndex}`;
-                },
-                initialStatus: ()=>EventSourceTunnelState.defaultInitialStatus
-            }
-        });
-        this.#eventSourceSupplier = args.eventSourceSupplier;
-        this.#identity = args.identity();
-        this.#status = args.initialStatus ? args.initialStatus() : EventSourceTunnelState.defaultInitialStatus;
-        this.#statePresentation = args.statePresentation();
+    observerUniversalScopeID = "universal";
+    eventSourceFactory;
+    onConnStateChange;
+    onReconnStateChange;
+    #connectionState = {
+        isConnectionState: true
+    };
+    constructor(init){
+        this.esURL = init.esURL;
+        this.esPingURL = init.esPingURL;
+        this.eventSourceFactory = init.eventSourceFactory;
+        this.onConnStateChange = init.options?.onConnStateChange;
+        this.onReconnStateChange = init.options?.onReconnStateChange;
     }
-    init(reconnector1 = undefined) {
-        httpEndpointAvailableAction(this.esPingURL, (httpEAA)=>{
-            this.#eventSource = this.#eventSourceSupplier();
-            this.#eventSource.onopen = (event)=>{
-                this.status = "active";
-                if (reconnector1) reconnector1.exit();
-            };
-            this.#eventSource.onclose = (event)=>{
-                this.status = "inactive";
-                if (reconnector1) reconnector1.exit(TunnelReconnectStrategy.ABORTED);
-            };
-            this.#eventSource.onerror = (event)=>{
-                this.#eventSource.close();
-                this.#statusErrorEvent = event;
-                this.status = "error";
-                new TunnelReconnectStrategy((reconnector)=>{
-                    this.init(reconnector);
-                }, (reconnector)=>{
-                    this.#statePresentation.update(this, {
-                        enhanceBadgen: (suggested)=>{
-                            suggested.status = reconnector.statusText;
-                            return suggested;
-                        }
-                    });
-                }).reconnect();
-            };
-            if (this.#wrappedListeners.length > 0) {
-                this.#wrappedListeners.forEach((l)=>{
-                    this.#eventSource.addEventListener(l.identity, l.wrappedCB);
-                });
-            }
-        }, {
-            onInvalidStatus: (event)=>{
-                this.#status = "tunnel-unhealthy";
-                this.#statePresentation.update(this, {
-                    enhanceBadgen: (suggested)=>{
-                        suggested.status = "unavailable";
-                        suggested.elaborationText = `Ping URL ${this.esPingURL} is not available (click to hard-refresh)`;
-                        suggested.elaborationHTML = `<a href="${this.esPingURL}">Ping URL</a> was not available.`;
-                        suggested.actionable = ()=>{
-                            httpHardRefreshURL();
-                        };
-                        return suggested;
-                    }
-                });
-            }
-        });
-        return this;
-    }
-    get identity() {
-        return this.#identity;
-    }
-    get status() {
-        return this.#status;
-    }
-    set status(value) {
-        this.#status = value;
-        this.#statePresentation.update(this);
-    }
-    get statusErrorEvent() {
-        return this.#statusErrorEvent;
-    }
-    get statePresentation() {
-        return this.#statePresentation;
-    }
-    addEventSourceEventListener(identity, callback, options) {
-        const wrappedCB = (event)=>{
-            let encountered = this.#messageIdentitiesEncountered[identity];
-            if (!encountered) {
-                encountered = {
-                    count: 0
-                };
-                this.#messageIdentitiesEncountered[identity] = encountered;
-            }
-            encountered.count++;
-            const diagnose = options?.diagnose ?? false;
-            if (diagnose) {
-                console.info(`[TunnelState] message: ${identity}`, event, encountered);
-            }
-            callback(event);
-        };
-        this.#wrappedListeners.push({
-            identity,
-            wrappedCB,
-            options
-        });
-        if (this.#eventSource) {
-            this.#eventSource.addEventListener(identity, wrappedCB);
-        }
-        return this;
-    }
-}
-class Tunnels {
-    #esTunnels = {};
-    constructor(argsSupplier){
-        const { args  } = governedArgs(argsSupplier, {
-            defaultArgs: {
-                baseURL: "/tunnel",
-                statePresentation: new TunnelStatePresentation()
-            },
-            hookableDomElemsAttrName: "tunnel-hook-args-supplier",
-            hookableDomElems: [
-                document.documentElement,
-                document.head
-            ]
-        });
-        this.baseURL = args.baseURL;
-        this.statePresentation = args.statePresentation;
-    }
-    init() {
-        return this;
-    }
-    registerEventSourceState(eventSourceTunnelStateArg) {
-        const eventSourceTunnelState = typeof eventSourceTunnelStateArg === "function" ? eventSourceTunnelState(this) : eventSourceTunnelStateArg;
-        eventSourceTunnelState.init();
-        this.#esTunnels[eventSourceTunnelState.identity] = eventSourceTunnelState;
-        return eventSourceTunnelState;
-    }
-}
-export { LabeledBadge as LabeledBadge };
-export { TunnelStatePresentation as TunnelStatePresentation };
-export { TunnelReconnectStrategy as TunnelReconnectStrategy };
-export { EventSourceTunnelState as EventSourceTunnelState };
-export { Tunnels as Tunnels };
-class UserAgentBus {
-    #clientReqMessageBaseURL;
-    #config;
-    #registry = [];
-    #identifiables = {};
-    constructor(argsSupplier){
-        this.#config = flexibleArgs(argsSupplier, {
-            defaultArgs: {
-                hookableDomElemsAttrName: "user-interactions-args-supplier",
-                hookableDomElems: [
-                    document.documentElement,
-                    document.head
-                ],
-                domElemHookName: (element, potentialName = element.dataset.tunnelUi)=>{
-                    return potentialName == "auto" || potentialName == "yes" ? `tuiHook_${element.id || `${element.tagName}_${this.registry.length}`}` : potentialName;
-                },
-                discoverDomElemHook (element, discover = eval) {
-                    const hookName = this.domElemHookName(element);
-                    const hookFactory = jsTokenEvalResult(hookName, discover, (value, name)=>value
-                    , (name)=>{
-                        console.log(`[UserAgentBus.discoverDomElemHook] '${name}' is not a token for current scope (${element.tagName} ${element.id})`, element);
-                        return undefined;
-                    }, (error, name)=>{
-                        console.log(`[UserAgentBus.discoverDomElemHook] token discovery '${name}' generated error in current scope (${element.tagName} ${element.id}): ${error}`, error, element);
-                        return undefined;
-                    });
-                    if (hookFactory) {
-                        const hook = hookFactory(element, hookName, this);
-                        hook.operationsEE.emit("constructed", {
-                            element,
-                            hookName,
-                            hookFactory,
-                            uab: this
-                        });
-                        return this.register(hook);
-                    }
-                    return undefined;
-                },
-                prepareClientReqMessage: (hook, message)=>{
-                    return {
-                        nature: "UserAgentBus.message",
-                        tuiHookIdentity: hook.identity,
-                        ...message
+    init(reconnector1) {
+        fetch(this.esPingURL, {
+            method: "HEAD"
+        }).then((resp)=>{
+            if (resp.ok) {
+                const eventSource = this.eventSourceFactory.construct(this.esURL);
+                const coercedES = eventSource;
+                coercedES.onopen = ()=>{
+                    const connState = {
+                        isConnectionState: true,
+                        isHealthy: true,
+                        connEstablishedOn: new Date(),
+                        endpointURL: this.esURL,
+                        pingURL: this.esPingURL
                     };
-                },
-                determineMessageHook: (message, onNotFound = this.args.onHandleMessageHookIdNotFound)=>{
-                    const attemptedHookID = message.tuiHookIdentity;
-                    if (attemptedHookID) {
-                        let hook = this.#identifiables[attemptedHookID];
-                        if (!hook) hook = onNotFound(message, attemptedHookID, this);
-                        return hook;
+                    this.connectionState = connState;
+                    if (reconnector1) reconnector1.completed();
+                    this.eventSourceFactory.connected?.(eventSource);
+                };
+                coercedES.onerror = (event)=>{
+                    coercedES.close();
+                    const connState = {
+                        isConnectionState: true,
+                        isHealthy: false,
+                        connFailedOn: new Date(),
+                        isEventSourceError: true,
+                        errorEvent: event,
+                        reconnectStrategy: new ReconnectionStrategy((reconnector)=>{
+                            this.init(reconnector);
+                        }, {
+                            onStateChange: this.onReconnStateChange ? (active, previous, rs)=>{
+                                this.onReconnStateChange?.(active, previous, rs, this);
+                            } : undefined
+                        }).reconnect()
+                    };
+                    this.connectionState = connState;
+                };
+            } else {
+                const connState = {
+                    isConnectionState: true,
+                    isHealthy: false,
+                    connFailedOn: new Date(),
+                    isEndpointUnavailable: true,
+                    endpointURL: this.esURL,
+                    pingURL: this.esPingURL,
+                    httpStatus: resp.status,
+                    httpStatusText: resp.statusText
+                };
+                this.connectionState = connState;
+            }
+        }).catch((connectionError)=>{
+            const connState = {
+                isConnectionState: true,
+                isHealthy: false,
+                connFailedOn: new Date(),
+                pingURL: this.esPingURL,
+                connectionError,
+                isEndpointUnavailable: true,
+                endpointURL: this.esPingURL
+            };
+            this.connectionState = connState;
+        });
+        return this;
+    }
+    get connectionState() {
+        return this.#connectionState;
+    }
+    set connectionState(value) {
+        const previousConnState = this.#connectionState;
+        this.#connectionState = value;
+        this.onConnStateChange?.(this.#connectionState, previousConnState, this);
+    }
+}
+function eventSourceConnNarrative(tunnel, reconn) {
+    const sseState = tunnel.connectionState;
+    if (!reconn && isEventSourceReconnecting(sseState)) {
+        reconn = sseState.reconnectStrategy;
+    }
+    let reconnected = false;
+    if (reconn) {
+        switch(reconn.state){
+            case ReconnectionState.WAITING:
+            case ReconnectionState.TRYING:
+                return {
+                    summary: `reconnecting ${reconn.attempt}/${reconn.maxAttempts}`,
+                    color: "orange",
+                    isHealthy: false,
+                    summaryHint: `Trying to reconnect to ${tunnel.esURL}, reconnecting every ${reconn.intervalMillecs} milliseconds`
+                };
+            case ReconnectionState.ABORTED:
+                return {
+                    summary: `failed`,
+                    color: "red",
+                    isHealthy: false,
+                    summaryHint: `Unable to reconnect to ${tunnel.esURL} after ${reconn.maxAttempts} attempts, giving up`
+                };
+            case ReconnectionState.COMPLETED:
+                reconnected = true;
+                break;
+        }
+    }
+    if (isEventSourceConnectionHealthy(sseState)) {
+        return {
+            summary: reconnected ? "reconnected" : "connected",
+            color: "green",
+            isHealthy: true,
+            summaryHint: `Connection to ${sseState.endpointURL} verified using ${sseState.pingURL} on ${sseState.connEstablishedOn}`
+        };
+    }
+    let summary = "unknown";
+    let color = "purple";
+    let summaryHint = `the tunnel is not healthy, but not sure why`;
+    if (isEventSourceConnectionUnhealthy(sseState)) {
+        if (isEventSourceEndpointUnavailable(sseState)) {
+            summary = "unavailable";
+            summaryHint = `${sseState.endpointURL} not available`;
+            if (sseState.httpStatus) {
+                summary = `unavailable (${sseState.httpStatus})`;
+                summaryHint += ` (HTTP status: ${sseState.httpStatus}, ${sseState.httpStatusText})`;
+                color = "red";
+            }
+        } else {
+            if (isEventSourceError(sseState)) {
+                summary = "error";
+                summaryHint = JSON.stringify(sseState.errorEvent);
+                color = "red";
+            }
+        }
+    }
+    return {
+        isHealthy: false,
+        summary,
+        summaryHint,
+        color
+    };
+}
+export { isEventSourceConnectionHealthy as isEventSourceConnectionHealthy };
+export { isEventSourceConnectionUnhealthy as isEventSourceConnectionUnhealthy };
+export { isEventSourceReconnecting as isEventSourceReconnecting };
+export { isEventSourceError as isEventSourceError };
+export { isEventSourceEndpointUnavailable as isEventSourceEndpointUnavailable };
+export { EventSourceTunnel as EventSourceTunnel };
+export { eventSourceConnNarrative as eventSourceConnNarrative };
+const isIdentifiablePayload = typeGuard("payloadIdentity");
+function serviceBusArguments(options) {
+    const universalScopeID = "universal";
+    return {
+        eventNameStrategy: {
+            universalScopeID,
+            fetch: (payload)=>{
+                const identity = typeof payload === "string" ? payload : payload.payloadIdentity;
+                const payloadSpecificName = `fetch-${identity}`;
+                const universalName = `fetch`;
+                return {
+                    payloadSpecificName,
+                    universalName,
+                    selectedName: identity == universalScopeID ? universalName : payloadSpecificName
+                };
+            },
+            fetchResponse: (payload)=>{
+                const identity = typeof payload === "string" ? payload : payload.payloadIdentity;
+                const payloadSpecificName = `fetch-response-${identity}`;
+                const universalName = `fetch-response`;
+                return {
+                    payloadSpecificName,
+                    universalName,
+                    selectedName: identity == universalScopeID ? universalName : payloadSpecificName
+                };
+            },
+            fetchError: (payload)=>{
+                const identity = typeof payload === "string" ? payload : payload.payloadIdentity;
+                const payloadSpecificName = `fetch-error-${identity}`;
+                const universalName = `fetch-error`;
+                return {
+                    payloadSpecificName,
+                    universalName,
+                    selectedName: identity == universalScopeID ? universalName : payloadSpecificName
+                };
+            },
+            eventSource: (payload)=>{
+                const identity = typeof payload === "string" ? payload : payload.payloadIdentity;
+                const payloadSpecificName = `event-source-${identity}`;
+                const universalName = `event-source`;
+                return {
+                    payloadSpecificName,
+                    universalName,
+                    selectedName: identity == universalScopeID ? universalName : payloadSpecificName
+                };
+            },
+            eventSourceError: (payload)=>{
+                const identity = typeof payload === "string" ? payload : payload.payloadIdentity;
+                const payloadSpecificName = `event-source-error-${identity}`;
+                const universalName = `event-source-error`;
+                return {
+                    payloadSpecificName,
+                    universalName,
+                    selectedName: identity == universalScopeID ? universalName : payloadSpecificName
+                };
+            },
+            eventSourceInvalidPayload: ()=>{
+                const universalName = `event-source-invalid-payload`;
+                return {
+                    payloadSpecificName: undefined,
+                    universalName,
+                    selectedName: universalName
+                };
+            }
+        },
+        ...options
+    };
+}
+class ServiceBus extends EventTarget {
+    args;
+    tunnels = [];
+    eventListenersLog = [];
+    constructor(args){
+        super();
+        this.args = args;
+        if (args.esTunnels) this.registerEventSourceTunnels(args.esTunnels);
+    }
+    registerEventSourceTunnels(ests) {
+        for (const tunnel of ests((event)=>{
+            const eventSrcPayload = JSON.parse(event.data);
+            const esDetail = {
+                eventSrcPayload
+            };
+            this.dispatchNamingStrategyEvent(eventSrcPayload, isIdentifiablePayload(eventSrcPayload) ? this.args.eventNameStrategy.eventSource : this.args.eventNameStrategy.eventSourceInvalidPayload, esDetail);
+        })){
+            this.tunnels.push(tunnel);
+        }
+    }
+    dispatchNamingStrategyEvent(id, strategy, detail) {
+        const names = strategy(id);
+        if (names.payloadSpecificName) {
+            this.dispatchEvent(new CustomEvent(names.payloadSpecificName, {
+                detail
+            }));
+        }
+        this.dispatchEvent(new CustomEvent(names.universalName, {
+            detail
+        }));
+    }
+    addEventListener(type, listener, options) {
+        super.addEventListener(type, listener, options);
+        this.eventListenersLog.push({
+            name: type,
+            hook: listener
+        });
+    }
+    fetch(uase, suggestedCtx) {
+        const transactionID = "TODO:UUIDv5?";
+        const clientProvenance = "ServiceBus.fetch";
+        const ctx = {
+            ...suggestedCtx,
+            transactionID,
+            clientProvenance
+        };
+        const fetchPayload = uase.prepareFetchPayload(ctx, this);
+        const fetchInit = uase.prepareFetch(this.args.fetchBaseURL, fetchPayload, ctx, this);
+        const fetchDetail = {
+            ...fetchInit,
+            fetchPayload,
+            context: ctx,
+            fetchStrategy: this
+        };
+        this.dispatchNamingStrategyEvent(fetchPayload, this.args.eventNameStrategy.fetch, fetchDetail);
+        fetch(fetchInit.endpoint, fetchInit.requestInit).then((resp)=>{
+            if (resp.ok) {
+                resp.json().then((fetchRespRawJSON)=>{
+                    const fetchRespPayload = uase.prepareFetchResponsePayload(fetchPayload, fetchRespRawJSON, ctx, this);
+                    const fetchRespDetail = {
+                        fetchPayload,
+                        fetchRespPayload,
+                        context: ctx,
+                        fetchStrategy: this
+                    };
+                    this.dispatchNamingStrategyEvent(fetchPayload, this.args.eventNameStrategy.fetchResponse, fetchRespDetail);
+                });
+            } else {
+                const fetchErrorDetail = {
+                    ...fetchInit,
+                    fetchPayload,
+                    context: ctx,
+                    error: new Error(`${fetchInit.endpoint} invalid HTTP status ${resp.status} (${resp.statusText})`),
+                    fetchStrategy: this
+                };
+                this.dispatchNamingStrategyEvent(fetchPayload, this.args.eventNameStrategy.fetchError, fetchErrorDetail);
+            }
+        }).catch((error)=>{
+            const fetchErrorDetail = {
+                ...fetchInit,
+                fetchPayload,
+                context: ctx,
+                error,
+                fetchStrategy: this
+            };
+            this.dispatchNamingStrategyEvent(fetchPayload, this.args.eventNameStrategy.fetchError, fetchErrorDetail);
+            console.error(`${fetchInit.endpoint} POST error`, error, fetchInit);
+        });
+    }
+    observeFetchEvent(observer, fetchPayloadID) {
+        const names = this.args.eventNameStrategy.fetch(fetchPayloadID ?? this.args.eventNameStrategy.universalScopeID);
+        this.addEventListener(names.selectedName, (event)=>{
+            const typedCustomEvent = event;
+            const { fetchPayload , requestInit , context , fetchStrategy  } = typedCustomEvent.detail;
+            observer(fetchPayload, requestInit, context, fetchStrategy);
+        });
+    }
+    observeFetchEventResponse(observer, fetchRespPayloadID) {
+        const names = this.args.eventNameStrategy.fetchResponse(fetchRespPayloadID ?? this.args.eventNameStrategy.universalScopeID);
+        this.addEventListener(names.selectedName, (event)=>{
+            const typedCustomEvent = event;
+            const { fetchPayload , fetchRespPayload , context , fetchStrategy  } = typedCustomEvent.detail;
+            observer(fetchRespPayload, fetchPayload, context, fetchStrategy);
+        });
+    }
+    observeFetchEventError(observer, fetchPayloadID) {
+        const names = this.args.eventNameStrategy.fetchError(fetchPayloadID ?? this.args.eventNameStrategy.universalScopeID);
+        this.addEventListener(names.selectedName, (event)=>{
+            const typedCustomEvent = event;
+            const { fetchPayload , error , requestInit , context , fetchStrategy  } = typedCustomEvent.detail;
+            observer(error, requestInit, fetchPayload, context, fetchStrategy);
+        });
+    }
+    observeEventSource(observer, payloadID) {
+        const names = this.args.eventNameStrategy.eventSource(payloadID ?? this.args.eventNameStrategy.universalScopeID);
+        this.addEventListener(names.selectedName, (event)=>{
+            const typedCustomEvent = event;
+            const { eventSrcPayload  } = typedCustomEvent.detail;
+            observer(eventSrcPayload, this);
+        });
+    }
+    observeEventSourceError(observer, payloadID) {
+        const names = this.args.eventNameStrategy.eventSourceError(payloadID ?? this.args.eventNameStrategy.universalScopeID);
+        this.addEventListener(names.selectedName, (event)=>{
+            const typedCustomEvent = event;
+            const { eventSrcPayload , error  } = typedCustomEvent.detail;
+            observer(error, eventSrcPayload, this);
+        });
+    }
+}
+export { serviceBusArguments as serviceBusArguments };
+export { ServiceBus as ServiceBus };
+const pingPayloadIdentity = "ping";
+function isPingPayload(o) {
+    if (isIdentifiablePayload(o)) {
+        if (o.payloadIdentity == pingPayloadIdentity) {
+            return true;
+        }
+    }
+    return false;
+}
+function pingPayload() {
+    return {
+        payloadIdentity: pingPayloadIdentity
+    };
+}
+function pingService(endpointSupplier) {
+    const proxy = {
+        fetch: (fetchStrategy, ctx)=>{
+            fetchStrategy.fetch(proxy, ctx);
+        },
+        prepareContext: (ctx)=>ctx
+        ,
+        prepareFetchPayload: (ctx)=>{
+            return {
+                payloadIdentity: pingPayloadIdentity,
+                ...ctx
+            };
+        },
+        prepareFetchResponsePayload: (fetchPayload, fetchRespRawJSON)=>{
+            return {
+                payloadIdentity: fetchPayload.payloadIdentity,
+                fetchPayload,
+                fetchRespRawJSON
+            };
+        },
+        isEventSourcePayload: (_rawJSON)=>{
+            return true;
+        },
+        prepareEventSourcePayload: (rawJSON)=>{
+            return rawJSON;
+        },
+        prepareFetch: (baseURL, payload)=>{
+            return {
+                endpoint: endpointSupplier(baseURL),
+                requestInit: {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                }
+            };
+        },
+        observeFetch: (fetchStrategy, observer)=>{
+            fetchStrategy.observeFetchEvent(observer, pingPayloadIdentity);
+        },
+        observeFetchResponse: (fetchStrategy, observer)=>{
+            fetchStrategy.observeFetchEventResponse(observer, pingPayloadIdentity);
+        },
+        observeFetchRespError: (fetchStrategy, observer)=>{
+            fetchStrategy.observeFetchEventError(observer, pingPayloadIdentity);
+        },
+        observeEventSource: (eventSrcStrategy, observer)=>{
+            eventSrcStrategy.observeEventSource((payload, ess)=>{
+                observer(proxy.prepareEventSourcePayload(payload), ess);
+            }, pingPayloadIdentity);
+        },
+        observeEventSourceError: (eventSrcStrategy, observer)=>{
+            eventSrcStrategy.observeEventSourceError(observer, pingPayloadIdentity);
+        }
+    };
+    return proxy;
+}
+export { pingPayloadIdentity as pingPayloadIdentity };
+export { isPingPayload as isPingPayload };
+export { pingPayload as pingPayload };
+export { pingService as pingService };
+const serverFileImpactPayloadIdentity = "serverFileImpact";
+function isServerFileImpact(o) {
+    if (isIdentifiablePayload(o)) {
+        if (o.payloadIdentity == serverFileImpactPayloadIdentity) {
+            return true;
+        }
+    }
+    return false;
+}
+function serverFileImpact(sfi) {
+    return {
+        payloadIdentity: serverFileImpactPayloadIdentity,
+        ...sfi
+    };
+}
+function serverFileImpactService() {
+    const proxy = {
+        isEventSourcePayload: (rawJSON)=>{
+            return isServerFileImpact(rawJSON);
+        },
+        prepareEventSourcePayload: (rawJSON)=>{
+            return rawJSON;
+        },
+        observeEventSource: (eventSrcStrategy, observer)=>{
+            eventSrcStrategy.observeEventSource((payload, ess)=>{
+                observer(proxy.prepareEventSourcePayload(payload), ess);
+            }, serverFileImpactPayloadIdentity);
+        },
+        observeEventSourceError: (eventSrcStrategy, observer)=>{
+            eventSrcStrategy.observeEventSourceError(observer, serverFileImpactPayloadIdentity);
+        }
+    };
+    return proxy;
+}
+export { serverFileImpactPayloadIdentity as serverFileImpactPayloadIdentity };
+export { isServerFileImpact as isServerFileImpact };
+export { serverFileImpact as serverFileImpact };
+export { serverFileImpactService as serverFileImpactService };
+const uaOpenWindowPayloadIdentity = "uaOpenWindow";
+function isUserAgentOpenWindow(o) {
+    if (isIdentifiablePayload(o)) {
+        if (o.payloadIdentity == uaOpenWindowPayloadIdentity) {
+            return true;
+        }
+    }
+    return false;
+}
+function userAgentOpenWindow(sfi) {
+    return {
+        payloadIdentity: uaOpenWindowPayloadIdentity,
+        ...sfi
+    };
+}
+function userAgentOpenWindowService() {
+    const proxy = {
+        isEventSourcePayload: (rawJSON)=>{
+            return isUserAgentOpenWindow(rawJSON);
+        },
+        prepareEventSourcePayload: (rawJSON)=>{
+            return rawJSON;
+        },
+        observeEventSource: (eventSrcStrategy, observer)=>{
+            eventSrcStrategy.observeEventSource((payload, ess)=>{
+                observer(proxy.prepareEventSourcePayload(payload), ess);
+            }, uaOpenWindowPayloadIdentity);
+        },
+        observeEventSourceError: (eventSrcStrategy, observer)=>{
+            eventSrcStrategy.observeEventSourceError(observer, uaOpenWindowPayloadIdentity);
+        }
+    };
+    return proxy;
+}
+export { uaOpenWindowPayloadIdentity as uaOpenWindowPayloadIdentity };
+export { isUserAgentOpenWindow as isUserAgentOpenWindow };
+export { userAgentOpenWindow as userAgentOpenWindow };
+export { userAgentOpenWindowService as userAgentOpenWindowService };
+const logAccessPayloadIdentity = "logAccess";
+function isLogAccess(o) {
+    if (isIdentifiablePayload(o)) {
+        if (o.payloadIdentity == logAccessPayloadIdentity) {
+            return true;
+        }
+    }
+    return false;
+}
+function logAccess(sfi) {
+    return {
+        payloadIdentity: logAccessPayloadIdentity,
+        ...sfi
+    };
+}
+function logAccessService() {
+    const proxy = {
+        isEventSourcePayload: (rawJSON)=>{
+            return isLogAccess(rawJSON);
+        },
+        prepareEventSourcePayload: (rawJSON)=>{
+            return rawJSON;
+        },
+        observeEventSource: (eventSrcStrategy, observer)=>{
+            eventSrcStrategy.observeEventSource((payload, ess)=>{
+                observer(proxy.prepareEventSourcePayload(payload), ess);
+            }, logAccessPayloadIdentity);
+        },
+        observeEventSourceError: (eventSrcStrategy, observer)=>{
+            eventSrcStrategy.observeEventSourceError(observer, logAccessPayloadIdentity);
+        }
+    };
+    return proxy;
+}
+export { logAccessPayloadIdentity as logAccessPayloadIdentity };
+export { isLogAccess as isLogAccess };
+export { logAccess as logAccess };
+export { logAccessService as logAccessService };
+function esmModuleSupplier() {
+    return {
+        import: async (dependency, actuate)=>{
+            const module = await import(dependency);
+            return actuate ? actuate(module) : module;
+        }
+    };
+}
+function badgenBlock(init = {}) {
+    const { remoteBaseURL ="https://badgen.net/badge" , moduleSupplier =esmModuleSupplier() , tryBadgenLib =true ,  } = init;
+    const state = {
+        isBadgenLibLoadAttempted: false,
+        isBadgenLibLoaded: false
+    };
+    const block = {
+        moduleSupplier,
+        remoteBaseURL,
+        autoHTML: (content)=>{
+            if (state.isBadgenLibLoaded) {
+                if (window.badgen) {
+                    return block.decorateHTML(window.badgen(content), content);
+                }
+                console.warn(`[badgenBlock] isBadgenLibLoaded is true but window.badgen not found, resorting to ${remoteBaseURL}`);
+            }
+            return block.remoteImageURL(content);
+        },
+        init: async ()=>{
+            if (tryBadgenLib && !state.isBadgenLibLoadAttempted) {
+                await moduleSupplier.import("https://unpkg.com/badgen", async ()=>{
+                    state.isBadgenLibLoaded = true;
+                });
+                state.isBadgenLibLoadAttempted = true;
+            }
+            return block;
+        },
+        remoteURL: (content)=>`${block.remoteBaseURL}/${content.label}/${content.status}/${content.color}`
+        ,
+        remoteImageURL: (content)=>block.decorateHTML(`<img src="${block.remoteURL(content)}">`, content)
+        ,
+        decorateHTML: (html, content)=>{
+            if (content.title) {
+                html = `<span title="${content.title}">${html}</span>`;
+            }
+            if (content.action) {
+                html = `<a onclick="${content.action}">${html}</a>`;
+            }
+            return html;
+        },
+        isUsingRemote: ()=>state.isBadgenLibLoaded && window.badgen ? false : true
+    };
+    return block;
+}
+function badgenLiveBlock(lbInit) {
+    const { badgenBlockSupplier , badgeElementSupplier , renderBadgeEventSupplier , init ,  } = lbInit;
+    let badgenBlock1 = undefined;
+    const { eventTarget , eventName  } = renderBadgeEventSupplier(lbInit);
+    eventTarget.addEventListener(eventName, (event)=>{
+        const { badgeElement , content , display  } = event.detail;
+        if (badgenBlock1) {
+            badgeElement.innerHTML = badgenBlock1.autoHTML(content);
+        } else {}
+        if (display) block.display(display);
+    });
+    let content1 = {
+        status: "Unspecified"
+    };
+    const block = {
+        init: async ()=>{
+            badgenBlock1 = await badgenBlockSupplier(lbInit);
+            return init ? await init?.(block) : block;
+        },
+        content: (set, display)=>{
+            if (set) {
+                content1 = set;
+                if (eventTarget) {
+                    const badgeElement = badgeElementSupplier(lbInit);
+                    if (badgeElement) {
+                        eventTarget.dispatchEvent(new CustomEvent(eventName, {
+                            detail: {
+                                badgeElement,
+                                content: content1,
+                                display
+                            }
+                        }));
                     }
-                    return this.args.onHandleMessageHookIdNotProvided(message, this);
-                },
-                onDuplicateControlHook: (newHook, existingHook, identity)=>{
-                    console.warn(`[UserAgentBus.register] duplicate controlHook '${identity}' registered.`, newHook, existingHook, identity);
-                    return newHook;
-                },
-                onHandleMessageHookIdNotProvided: (message)=>{
-                    console.warn(`[UserAgentBus.onHandleMessageHookIdNotProvided] controlHook ID not provided in message (expecting message.tuiHookIdentity property).`, message, this.identifiables);
-                    return undefined;
-                },
-                onHandleMessageHookIdNotFound: (message, attemptedHookID)=>{
-                    console.warn(`[UserAgentBus.onHandleMessageHookIdNotFound] controlHook ID '${attemptedHookID}' in message not found.`, message, this.identifiables);
-                    return undefined;
+                } else {
+                    console.warn(`[badgenLiveBlock] content could not be updated: badgeElement was not found.`);
                 }
             }
-        });
-        this.#clientReqMessageBaseURL = this.#config.args.clientReqMessageBaseURL;
-        if (!this.#clientReqMessageBaseURL) throw Error("this.#config.args.clientReqMessageBaseURL expected in new UserAgentBus({ clientReqMessageBaseURL: ? })");
-    }
-    get clientReqMessageBaseURL() {
-        return this.#clientReqMessageBaseURL;
-    }
-    get config() {
-        return this.#config;
-    }
-    get args() {
-        return this.#config.args;
-    }
-    get registry() {
-        return this.#registry;
-    }
-    get domElemHookName() {
-        return this.#config.args.domElemHookName;
-    }
-    get discoverDomElemHook() {
-        return this.#config.args.discoverDomElemHook;
-    }
-    get identifiables() {
-        return this.#identifiables;
-    }
-    get prepareClientReqMessage() {
-        return this.#config.args.prepareClientReqMessage;
-    }
-    register(constructedHook) {
-        let registeredHook = constructedHook;
-        const identity = registeredHook.identity;
-        this.#registry.push(registeredHook);
-        if (identity) {
-            const existing = this.#identifiables[identity];
-            if (existing && this.args.onDuplicateControlHook) {
-                registeredHook = this.args.onDuplicateControlHook(registeredHook, existing, identity);
-            }
-            if (registeredHook) {
-                this.#identifiables[identity] = registeredHook;
-                const { operationsEE  } = registeredHook;
-                operationsEE.on("user-agent-request", (message)=>{
-                    this.sendClientReqMessage(registeredHook, message, true);
-                });
-                operationsEE.on("user-agent-notification", (message)=>{
-                    this.sendClientReqMessage(registeredHook, message, false);
-                });
-                operationsEE.emit("registered", {
-                    uab: this,
-                    identity
-                });
+            return content1;
+        },
+        display: (state)=>{
+            const badgeElement = badgeElementSupplier(lbInit);
+            if (badgeElement) {
+                badgeElement.style.display = state ? "block" : "none";
+            } else {
+                console.warn(`[badgenLiveBlock] content could not be display'd: badgeElement was not found.`);
             }
         }
-        return this;
-    }
-    sendClientReqMessage(hook, message1, fullDuplex) {
-        const transactionID = "TODO:UUIDv5?";
-        const clientProvenance = 'UserAgentBus.sendClientMessage';
-        const endpoint = this.#clientReqMessageBaseURL;
-        const payload = this.prepareClientReqMessage(hook, {
-            ...message1,
-            transactionID,
-            endpoint,
-            clientProvenance,
-            uab: this
-        });
-        console.log("[UserAgentBus.sendClientMessage]", payload);
-        const body = JSON.stringify(payload);
-        if (fullDuplex) {
-            fetch(endpoint, {
-                method: "POST",
-                body
-            }).then((res)=>res.json()
-            ).then((message)=>{
-                hook.operationsEE.emit("user-agent-server-response", {
-                    ...message,
-                    transactionID,
-                    endpoint,
-                    clientProvenance,
-                    uab: this
-                });
-            }).catch((error)=>{
-                hook.operationsEE.emit("user-agent-request-error", {
-                    body,
-                    error,
-                    transactionID,
-                    uab: this
-                });
-                console.error(`${endpoint} POST error`, body, error);
-            });
-        } else {
-            fetch(endpoint, {
-                method: "POST",
-                body
-            }).catch((error)=>{
-                hook.operationsEE.emit("user-agent-notification-error", {
-                    body,
-                    error,
-                    transactionID,
-                    uab: this
-                });
-                console.error(`${endpoint} POST error`, body, error);
-            });
-        }
-    }
-    handleServerMessage(message, onNotFound) {
-        const hook = this.args.determineMessageHook(message, onNotFound);
-        if (hook) {
-            const clientProvenance = 'UserAgentBus.handleServerMessage';
-            hook.operationsEE.emit("server-notification", {
-                ...message,
-                endpoint,
-                clientProvenance,
-                uab: this
-            });
-        }
-    }
-    async init() {
-        console.log(`[UserAgentBus.init]`, this);
-        return this;
-    }
+    };
+    return block;
 }
-export { UserAgentBus as UserAgentBus };
+export { esmModuleSupplier as esmModuleSupplier };
+export { badgenBlock as badgenBlock };
+export { badgenLiveBlock as badgenLiveBlock };
 function markdownItTransformer() {
     return {
         dependencies: undefined,

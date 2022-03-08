@@ -1,6 +1,8 @@
 import { colors, events, path } from "../../core/deps.ts";
 import { oak } from "./deps.ts";
 import * as wfs from "../../lib/fs/watch.ts";
+import * as ping from "../../lib/service-bus/service/ping.ts";
+import * as fi from "../../lib/service-bus/service/file-impact.ts";
 
 export interface WorkspaceTunnelConnection {
   readonly sseTarget: oak.ServerSentEventTarget;
@@ -18,7 +20,7 @@ export class WorkspaceTunnel<
   sseConnected(conn: Connection, ctx: ConnectionContext): void;
   sseInvalidRequest(ctx: ConnectionContext): void;
   ping(): void;
-  fileImpact(url: string, fsAbsPathAndFileName: string): void;
+  serverFileImpact(fsAbsPathAndFileName: string, url?: string): void;
 }> {
   #connections: Connection[] = [];
   #onlyOpen: ((value: Connection) => boolean) = (c) =>
@@ -30,19 +32,17 @@ export class WorkspaceTunnel<
     readonly factory: (ctx: ConnectionContext) => Connection,
   ) {
     super();
-    this.on("ping", () => {
+    this.on(ping.pingPayloadIdentity, () => {
       this.cleanConnections().forEach((c) =>
-        c.sseTarget.dispatchEvent(new oak.ServerSentEvent("ping", {}))
+        c.sseTarget.dispatchMessage(ping.pingPayload())
       );
     });
-    this.on("fileImpact", (url, fsAbsPathAndFileName) => {
+    this.on(fi.serverFileImpactPayloadIdentity, (fsAbsPathAndFileName, url) => {
       this.cleanConnections().forEach((c) =>
-        c.sseTarget.dispatchEvent(
-          new oak.ServerSentEvent("workspace.file-impact", {
-            url,
-            fsAbsPathAndFileName,
-          }),
-        )
+        c.sseTarget.dispatchMessage(fi.serverFileImpact({
+          serverFsAbsPathAndFileName: fsAbsPathAndFileName,
+          relativeUserAgentLocation: url,
+        }))
       );
     });
   }
@@ -147,10 +147,10 @@ export class WorkspaceMiddlewareSupplier {
           return;
         }
         this.tunnel.emitSync(
-          "fileImpact",
+          "serverFileImpact",
+          modified,
           this.config.fsEntryPublicationURL(modified) ??
             this.config.publicURL(),
-          modified,
         );
 
         // deno-fmt-ignore

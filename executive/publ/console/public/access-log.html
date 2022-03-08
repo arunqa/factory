@@ -9,7 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
     <script src="/universal-cc/component/ag-grid.js"></script>
     <script type="module">
-        import { actuationStrategy, UserAgentBus, EventEmitter } from "./path.lib.js";
+        import { actuationStrategy, ServiceBus, EventEmitter } from "./path.lib.js";
         // prepare global `executive` and "bootstrap" or _actuate_ the page.
         const strategy = actuationStrategy().args;
         const executive = strategy.actuate();
