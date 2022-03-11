@@ -1,5 +1,3 @@
-/// <reference lib="dom" />
-
 /**
  * importHtmlContent fetches HTML from a source, adopts selected nodes, and injects into the current document
  * @param input URL to acquire HTML from

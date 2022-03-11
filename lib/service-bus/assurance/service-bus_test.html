@@ -18,7 +18,10 @@
                 serverState.accessLogEnabled.fetch(serviceBus, { something: true });
                 alert(`Clicked ` + observer);
             }
-            serverState.accessLogEnabled.observeFetchResponse(serviceBus, (respPayload, fetchPayload) => report('observed sbFactory_testCheckbox1() fetchResponse', fetchPayload, respPayload));
+            serviceBus.observeFetchEventResponse(
+                (respPayload, fetchPayload) => report('observed sbFactory_testCheckbox1() fetchResponse', fetchPayload, respPayload),
+                serverState.accessLogEnabled
+            );
             // since this is a factory function return our new object
             return { ...factory, observer };
         }
@@ -40,7 +43,11 @@
     <p style="text-align: center;"><a href="#" onclick="location.reload()">Rerun Tests</a></p>
     <div id="mocha"></div>
     <div id="human-readable-results">
-        <div id="badge-container"></div>
+        <div>
+            <span id="es-badge-container"></span>
+            &nbsp;&nbsp;
+            <span id="ws-badge-container"></span>
+        </div>
         <div>
             <!-- when only data-service-bus is specified, we'll look for hook_testCheckbox1 (which is in the discovery method) -->
             <input class="form-check-input" type="checkbox" id="testCheckbox1" data-service-bus>
@@ -65,18 +72,11 @@
         import * as mod from "./service-bus_test.auto.js";
         const assert = chai.assert;
 
-        const tunnelStateBadge = mod.badgenLiveBlock({
-            badgenBlockSupplier: async () => {
-                const block = mod.badgenBlock();
-                block.init(); // async so don't depend on it, dependencies will be auto-loaded
-                return block;
-            },
-            badgeElementSupplier: () => document.getElementById("badge-container"),
-            renderBadgeEventSupplier: () => ({ eventTarget: document, eventName: "render-tunnel-state-badge-content" }),
-            init: (block) => block,
-        });
-        tunnelStateBadge.init(); // async so don't depend on it yet, dependencies will be auto-loaded
-        console.log("tunnelStateBadge", typeof tunnelStateBadge, tunnelStateBadge);
+        const esTunnelStateBadge = mod.badgenBlock();
+        esTunnelStateBadge.prepareRenderTarget(() => document.getElementById("es-badge-container"), "render-es-tunnel-state-badge-content");
+        const wsTunnelStateBadge = mod.badgenBlock();
+        wsTunnelStateBadge.prepareRenderTarget(() => document.getElementById("ws-badge-container"), "render-ws-tunnel-state-badge-content");
+        console.log("tunnelStateBadge", esTunnelStateBadge, wsTunnelStateBadge);
 
         describe("service-bus", () => {
             it("discover UI controls", () => {
@@ -85,7 +85,7 @@
                     fetchBaseURL: `${baseURL}/service-bus/mirror`,
                     esTunnels: function* (serviceBusOnMessage) {
                         const esURL = `${baseURL}/sse/tunnel?synthetic=yes`;
-                        const esPingURL = `${baseURL}/sse/ping`;
+                        const esEndpointValidator = mod.typicalConnectionValidator(`${baseURL}/sse/ping`);
                         const eventSourceFactory = {
                             construct: (esURL) => {
                                 // we have to prepare the entire EventSources
@@ -100,31 +100,75 @@
                                 return result;
                             }
                         };
-                        const tunnel = new mod.EventSourceTunnel({
-                            esURL, esPingURL, eventSourceFactory, options: {
+                        const esTunnel = new mod.EventSourceTunnel({
+                            esURL, esEndpointValidator, eventSourceFactory, options: {
                                 onConnStateChange: (active, previous, tunnel) => {
                                     const escn = mod.eventSourceConnNarrative(tunnel);
-                                    report("connection state", escn.summary, escn.summaryHint, active, previous);
-                                    tunnelStateBadge.content({ label: "Tunnel", status: escn.summary, title: escn.summaryHint, color: escn.color });
+                                    report("ES connection state", escn.summary, escn.summaryHint, active, previous);
+                                    esTunnelStateBadge.render({ content: { label: "SSE", status: escn.summary, title: escn.summaryHint, color: escn.color }, autoDisplay: true });
                                 },
                                 onReconnStateChange: (active, previous, reconnStrategy, tunnel) => {
                                     const escn = mod.eventSourceConnNarrative(tunnel, reconnStrategy);
-                                    report("reconnection state", active, previous, escn.summary, escn.summaryHint);
-                                    tunnelStateBadge.content({ label: "Tunnel", status: escn.summary, title: escn.summaryHint, color: escn.color });
+                                    report("ES reconnection state", active, previous, escn.summary, escn.summaryHint);
+                                    esTunnelStateBadge.render({ content: { label: "SSE", status: escn.summary, title: escn.summaryHint, color: escn.color }, autoDisplay: true });
                                 },
                             }
                         });
-                        tunnel.init();
-                        yield tunnel;
+                        esTunnel.init();
+                        yield esTunnel;
+                    },
+                    wsTunnels: function* (serviceBusOnMessage) {
+                        const wsEndpointValidator = mod.typicalConnectionValidator(`${baseURL}/ws/ping`);
+                        const wsURL = `${(window.location.protocol === "https:") ? "wss://" : "ws://"}${window.location.host}${baseURL}/ws/tunnel?synthetic=yes`;
+                        const webSocketFactory = {
+                            construct: (wsURL) => {
+                                // we have to prepare the entire WebSocket
+                                // each time we are called; this is because WSs
+                                // can error out and be dropped/recreated
+                                const result = new WebSocket(wsURL);
+                                // ServiceBus only handles raw messages and does
+                                // not do anything with listeners;
+                                result.onmessage = serviceBusOnMessage;
+                                return result;
+                            }
+                        };
+                        const esTunnel = new mod.WebSocketTunnel({
+                            wsURL, wsEndpointValidator, webSocketFactory, options: {
+                                onConnStateChange: (active, previous, tunnel) => {
+                                    const wscn = mod.webSocketConnNarrative(tunnel);
+                                    report("WS connection state", wscn.summary, wscn.summaryHint, active, previous);
+                                    wsTunnelStateBadge.render({ content: { label: "WebSocket", status: wscn.summary, title: wscn.summaryHint, color: wscn.color }, autoDisplay: true });
+                                },
+                                onReconnStateChange: (active, previous, reconnStrategy, tunnel) => {
+                                    const wscn = mod.webSocketConnNarrative(tunnel, reconnStrategy);
+                                    report("WS reconnection state", active, previous, wscn.summary, wscn.summaryHint);
+                                    wsTunnelStateBadge.render({ content: { label: "WebSocket", status: wscn.summary, title: wscn.summaryHint, color: wscn.color }, autoDisplay: true });
+                                },
+                            }
+                        });
+                        esTunnel.init();
+                        yield esTunnel;
                     }
                 }));
-                serviceBus.observeFetchEvent((payload, reqInit) => report('observed universal fetch', payload, reqInit));
-                serviceBus.observeFetchEventResponse((respPayload, fetchPayload) => report('observed universal fetchResponse', fetchPayload, respPayload));
-                serviceBus.observeFetchEventError((error, reqInit, fetchPayload) => report('observed universal fetchRespError', error, reqInit, fetchPayload));
+                // observe modality-specific payloads
+                serviceBus.observeFetchEvent((payload, reqInit) => reportServiceBusDiags("observed universal fetch", payload, reqInit));
+                serviceBus.observeFetchEventResponse((respPayload, fetchPayload) => reportServiceBusDiags("observed universal fetchResponse", fetchPayload, respPayload));
+                serviceBus.observeFetchEventError((error, reqInit, fetchPayload) => reportServiceBusDiags("observed universal fetchRespError", error, reqInit, fetchPayload));
+                serviceBus.observeEventSource((esPayload) => reportServiceBusDiags("observed universal EventSource", esPayload));
+                serviceBus.observeEventSourceError((esPayload) => reportServiceBusDiags("observed universal EventSource error", esPayload));
+                serviceBus.observeWebSocketSendEvent((esPayload) => reportServiceBusDiags("observed universal WebSocket send", esPayload));
+                serviceBus.observeWebSocketReceiveEvent((esPayload) => reportServiceBusDiags("observed universal WebSocket receive", esPayload));
+                serviceBus.observeWebSocketErrorEvent((esPayload) => reportServiceBusDiags("observed universal WebSocket error", esPayload));
+
+                // observe modality-independent payloads
+                serviceBus.observeUnsolicitedPayload((esPayload) => reportServiceBusDiags("observed universal unsolicited payload from SSE or WS", esPayload));
+                serviceBus.observeSolicitedPayload((esPayload) => reportServiceBusDiags("observed universal solicited payload from fetch or WS(TODO) ", esPayload));
+                serviceBus.observeReceivedPayload((esPayload) => reportServiceBusDiags("observed universal receive payload from fetch, SSE, or WS", esPayload));
 
                 const accessLogEnabled = mod.binaryStateService((baseURL) => baseURL, () => "testCheckbox1", () => ({ testCheckbox1State: true }));
                 const ping = mod.pingService((baseURL) => baseURL);
-                ping.observeEventSource(serviceBus, (payload) => report('observed ping SSE', payload));
+                serviceBus.observeEventSource((payload) => report('observed ping SSE', payload), ping);
+                serviceBus.observeWebSocketReceiveEvent((payload) => report('observed ping WS', payload), ping);
                 const serverState = {
                     ping,
                     accessLogEnabled,

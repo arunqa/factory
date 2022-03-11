@@ -6,8 +6,8 @@ import {
     detectFileSysStyleRoute,
     EventEmitter,
     transformMarkdownElems,
-    badgenLiveBlock,
     badgenBlock,
+    typicalConnectionValidator,
     ServiceBus,
     serviceBusArguments,
     EventSourceTunnel,
@@ -618,18 +618,8 @@ class Executive {
     }
 
     #initServiceBus(ctx) {
-        const consoleTunnelStateBadge = badgenLiveBlock({
-            // deno-lint-ignore require-await
-            badgenBlockSupplier: async () => {
-                const block = badgenBlock();
-                block.init(); // async so don't depend on it, dependencies will be auto-loaded
-                return block;
-            },
-            badgeElementSupplier: () => document.getElementById("rf-universal-tunnel-state-summary-badge"),
-            renderBadgeEventSupplier: () => ({ eventTarget: document, eventName: "render-rf-universal-tunnel-state-summary-badge-content" }),
-            init: (block) => block,
-        });
-        consoleTunnelStateBadge.init(); // async so don't depend on it yet, dependencies will be auto-loaded
+        const consoleTunnelStateBadge = badgenBlock();
+        consoleTunnelStateBadge.prepareRenderTarget(() => document.getElementById("rf-universal-tunnel-state-summary-badge"), "render-rf-universal-tunnel-state-summary-badge-content");
 
         const { diagnostics } = this.args;
         const reportServiceBusDiags = diagnostics.serviceBus.report;
@@ -641,7 +631,7 @@ class Executive {
             fetchBaseURL: `${baseURL}/user-agent-bus`,
             esTunnels: function* (serviceBusOnMessage) {
                 const esURL = `${baseURL}/sse/tunnel`;
-                const esPingURL = `${baseURL}/sse/ping`;
+                const esEndpointValidator = typicalConnectionValidator(`${baseURL}/sse/ping`);
                 const eventSourceFactory = {
                     construct: (esURL) => {
                         // we have to prepare the entire EventSources
@@ -657,16 +647,16 @@ class Executive {
                     }
                 };
                 consoleTunnel = new EventSourceTunnel({
-                    esURL, esPingURL, eventSourceFactory, options: {
+                    esURL, esEndpointValidator, eventSourceFactory, options: {
                         onConnStateChange: (active, previous, tunnel) => {
                             const escn = eventSourceConnNarrative(tunnel);
                             if (diagnostics.consoleTunnel.verbose) reportConsoleTunnelDiags("connection state", escn.summary, escn.summaryHint, active, previous);
-                            consoleTunnelStateBadge.content({ label: "Tunnel", status: escn.summary, title: escn.summaryHint, color: escn.color }, true);
+                            consoleTunnelStateBadge.render({ content: { label: "Tunnel", status: escn.summary, title: escn.summaryHint, color: escn.color }, autoDisplay: true });
                         },
                         onReconnStateChange: (active, previous, reconnStrategy, tunnel) => {
                             const escn = eventSourceConnNarrative(tunnel, reconnStrategy);
                             if (diagnostics.consoleTunnel.verbose) reportConsoleTunnelDiags("reconnection state", active, previous, escn.summary, escn.summaryHint);
-                            consoleTunnelStateBadge.content({ label: "Tunnel", status: escn.summary, title: escn.summaryHint, color: escn.color }, true);
+                            consoleTunnelStateBadge.render({ content: { label: "Tunnel", status: escn.summary, title: escn.summaryHint, color: escn.color }, autoDisplay: true });
                         },
                     }
                 });
@@ -676,23 +666,33 @@ class Executive {
         }));
         this.#consoleTunnel = consoleTunnel;
         if (diagnostics.serviceBus.verbose) {
+            // observe modality-specific payloads
             this.#serviceBus.observeFetchEvent((payload, reqInit) => reportServiceBusDiags("observed universal fetch", payload, reqInit));
             this.#serviceBus.observeFetchEventResponse((respPayload, fetchPayload) => reportServiceBusDiags("observed universal fetchResponse", fetchPayload, respPayload));
             this.#serviceBus.observeFetchEventError((error, reqInit, fetchPayload) => reportServiceBusDiags("observed universal fetchRespError", error, reqInit, fetchPayload));
-            this.#serviceBus.observeEventSource((esPayload) => reportServiceBusDiags("observed universal eventSource", esPayload));
+            this.#serviceBus.observeEventSource((esPayload) => reportServiceBusDiags("observed universal EventSource", esPayload));
+            this.#serviceBus.observeEventSourceError((esPayload) => reportServiceBusDiags("observed universal EventSource error", esPayload));
+            this.#serviceBus.observeWebSocketSendEvent((esPayload) => reportServiceBusDiags("observed universal WebSocket send", esPayload));
+            this.#serviceBus.observeWebSocketReceiveEvent((esPayload) => reportServiceBusDiags("observed universal WebSocket receive", esPayload));
+            this.#serviceBus.observeWebSocketErrorEvent((esPayload) => reportServiceBusDiags("observed universal WebSocket error", esPayload));
+
+            // observe modality-independent payloads
+            this.#serviceBus.observeUnsolicitedPayload((esPayload) => reportServiceBusDiags("observed universal unsolicited payload from SSE or WS", esPayload));
+            this.#serviceBus.observeSolicitedPayload((esPayload) => reportServiceBusDiags("observed universal solicited payload from fetch or WS(TODO) ", esPayload));
+            this.#serviceBus.observeReceivedPayload((esPayload) => reportServiceBusDiags("observed universal receive payload from fetch, SSE, or WS", esPayload));
         }
 
         const ping = pingService((baseURL) => baseURL);
         if (diagnostics.serviceBus.verbose) ping.observeEventSource(this.#serviceBus, (payload) => reportServiceBusDiags("observed ping SSE", payload));
 
         const sfImpact = serverFileImpactService((baseURL) => baseURL);
-        sfImpact.observeEventSource(this.#serviceBus, (payload) => {
+        this.#serviceBus.observeEventSource((payload) => {
             if (diagnostics.serviceBus.verbose) reportServiceBusDiags("observed file impact SSE", payload);
             location.reload();
-        });
+        }, sfImpact);
 
         const uaOpenWindow = userAgentOpenWindowService((baseURL) => baseURL);
-        uaOpenWindow.observeEventSource(this.#serviceBus, (payload) => {
+        this.#serviceBus.observeEventSource((payload) => {
             if (diagnostics.serviceBus.verbose) reportServiceBusDiags("observed open window SSE", payload);
             if (payload && "location" in payload) {
                 const windowInstance = window.open(payload.location, payload.target);
@@ -702,27 +702,7 @@ class Executive {
             } else {
                 console.error(`invalid payload for window.open, expected { location: string; target?: string}: ${evt.data}`);
             }
-        });
-
-        // this.#consoleTunnel = tunnels.registerEventSourceState(new EventSourceTunnelState(tunnels, (defaults) => ({
-        //     ...defaults,
-        //     identity: () => "Console SSE",
-        // })));
-        // this.#consoleTunnel.addEventSourceEventListener("ping", (evt) => { }, { diagnose: true });
-        // this.#consoleTunnel.addEventSourceEventListener("location.reload-console", (evt) => {
-        //     location.reload();
-        // });
-        // this.#consoleTunnel.addEventSourceEventListener("window.open", (evt) => {
-        //     const payload = JSON.parse(evt.data);
-        //     if (payload && "url" in payload) {
-        //         const windowInstance = window.open(payload.url, payload.target);
-        //         // TODO: how do we track the windows we opened, across page reloads?
-        //         //windowsOpened[payload.target] = { ...payload, windowInstance }
-        //         windowInstance.focus();
-        //     } else {
-        //         console.error(`invalid payload for window.open, expected { url: string; target?: string}: ${evt.data}`);
-        //     }
-        // });
+        }, uaOpenWindow);
     }
 
     #init(ctx) {

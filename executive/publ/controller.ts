@@ -297,7 +297,7 @@ export function typicalPublicationCtlSupplier<
           export * from "../../../../../github.com/resFactory/factory/lib/service-bus/core/mod.ts";
           export * from "../../../../../github.com/resFactory/factory/lib/service-bus/service/ping.ts";
           export * from "../../../../../github.com/resFactory/factory/lib/service-bus/service/file-impact.ts";
-          export * from "../../../../../github.com/resFactory/factory/lib/presentation/dom/block.ts";
+          export * from "../../../../../github.com/resFactory/factory/lib/presentation/custom-element/badge/mod.ts";
 
           `) +
             `// these are used by public/operational-context/server.auto.js for options/arguments\nexport const rfOperationalCtxArgs = ${

@@ -9,8 +9,11 @@
  *           service-bus_test.auto.js.
  */
 
+// export * as fingerprintJS from "https://openfpcdn.io/fingerprintjs/v3.3.3/esm.min.js";
+// export * as ghTimeCE from "https://unpkg.com/@github/time-elements@3.1.2/dist/index.js?module";
+
+export * from "../../presentation/custom-element/badge/mod.ts";
 export * from "../../conf/flexible-args.ts";
 export * from "../core/mod.ts";
 export * from "../service/ping.ts";
 export * from "../service/binary-state.ts";
-export * from "../../presentation/dom/block.ts";

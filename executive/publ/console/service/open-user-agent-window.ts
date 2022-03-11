@@ -8,6 +8,10 @@ export interface UserAgentOpenWindow {
   readonly target: string;
 }
 
+export interface ValidateUserAgentOpenWindow
+  extends govn.ValidatedPayload, UserAgentOpenWindow {
+}
+
 export function isUserAgentOpenWindow(o: unknown): o is UserAgentOpenWindow {
   if (govn.isIdentifiablePayload(o)) {
     if (o.payloadIdentity == uaOpenWindowPayloadIdentity) {
@@ -27,35 +31,32 @@ export function userAgentOpenWindow(
 }
 
 export function userAgentOpenWindowService(): govn.EventSourceService<
-  UserAgentOpenWindow
+  ValidateUserAgentOpenWindow
 > {
-  const proxy: govn.EventSourceService<UserAgentOpenWindow> = {
-    isEventSourcePayload: (
-      rawJSON,
-    ): rawJSON is UserAgentOpenWindow => {
-      // TODO: we should really do some error checking
-      return isUserAgentOpenWindow(rawJSON);
-    },
-    prepareEventSourcePayload: (rawJSON) => {
-      return rawJSON as UserAgentOpenWindow;
-    },
-    observeEventSource: (eventSrcStrategy, observer) => {
-      eventSrcStrategy.observeEventSource(
-        (payload, ess) => {
-          // EventSources are sent from server unsolicited so we need to type
-          // it ourselves (this is different than the fetch models which are
-          // already typed properly since they are not unsolicited)
-          observer(proxy.prepareEventSourcePayload(payload), ess);
-        },
-        uaOpenWindowPayloadIdentity,
-      );
-    },
-    observeEventSourceError: (eventSrcStrategy, observer) => {
-      eventSrcStrategy.observeEventSourceError(
-        observer,
-        uaOpenWindowPayloadIdentity,
-      );
-    },
-  };
-  return proxy;
+  const service:
+    & govn.EventSourceService<ValidateUserAgentOpenWindow>
+    & govn.WebSocketReceiveService<ValidateUserAgentOpenWindow> = {
+      serviceIdentity: uaOpenWindowPayloadIdentity,
+      payloadIdentity: uaOpenWindowPayloadIdentity,
+      isEventSourcePayload: (
+        rawJSON,
+      ): rawJSON is ValidateUserAgentOpenWindow => {
+        // TODO: we should really do some error checking
+        return isUserAgentOpenWindow(rawJSON);
+      },
+      prepareEventSourcePayload: (rawJSON) => {
+        return rawJSON as ValidateUserAgentOpenWindow;
+      },
+      isWebSocketReceivePayload: (
+        _rawJSON,
+      ): _rawJSON is ValidateUserAgentOpenWindow => true,
+      prepareWebSocketReceivePayload: (rawJSON) => {
+        // TODO: we should really do some error checking
+        const validated = rawJSON as govn.MutatableValidatedPayload;
+        validated.isValidatedPayload = true;
+        validated.isValidPayload = true;
+        return validated as ValidateUserAgentOpenWindow;
+      },
+    };
+  return service;
 }

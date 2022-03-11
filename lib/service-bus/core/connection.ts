@@ -1,3 +1,19 @@
+export interface ConnectionValidator {
+  readonly validationEndpointURL: string | URL | Request;
+  readonly validate: (rs?: ReconnectionStrategy) => Promise<Response>;
+}
+
+export function typicalConnectionValidator(
+  pingURL: string | URL | Request,
+): ConnectionValidator {
+  return {
+    validationEndpointURL: pingURL,
+    validate: () => {
+      return fetch(pingURL, { method: "HEAD" });
+    },
+  };
+}
+
 export interface ReconnectionStateChangeNotification {
   (
     active: ReconnectionState,

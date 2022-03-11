@@ -5,13 +5,15 @@ export interface BinaryStateServiceFetchPayload {
   state: "checked" | "unchecked";
 }
 
-export interface BinaryStateServiceFetchRespPayload {
+export interface BinaryStateServiceFetchRespPayload
+  extends govn.ValidatedPayload {
   payloadIdentity: string;
   fetchPayload: BinaryStateServiceFetchPayload;
   fetchRespRawJSON: unknown;
 }
 
-export interface BinaryStateServiceEventSourcePayload {
+export interface BinaryStateServiceReceivedPayload
+  extends govn.ValidatedPayload {
   payloadIdentity: string;
   state: "checked" | "unchecked";
 }
@@ -20,24 +22,21 @@ export function binaryStateService(
   endpointSupplier: (baseURL?: string) => string,
   identitySupplier: () => string,
   stateSupplier: () => "checked" | "unchecked",
-):
-  & govn.FetchService<
-    BinaryStateServiceFetchPayload,
-    BinaryStateServiceFetchRespPayload,
-    Record<string, unknown>
-  >
-  & govn.EventSourceService<BinaryStateServiceEventSourcePayload> {
+) {
   const proxy:
     & govn.FetchService<
       BinaryStateServiceFetchPayload,
       BinaryStateServiceFetchRespPayload,
       Record<string, unknown>
     >
-    & govn.EventSourceService<BinaryStateServiceEventSourcePayload> = {
+    & govn.EventSourceService<BinaryStateServiceReceivedPayload>
+    & govn.WebSocketReceiveService<BinaryStateServiceReceivedPayload> = {
+      serviceIdentity: identitySupplier(),
+      payloadIdentity: identitySupplier(),
       fetch: (fetchStrategy, ctx) => {
         fetchStrategy.fetch(proxy, ctx);
       },
-      prepareContext: (ctx) => ctx,
+      prepareFetchContext: (ctx) => ctx,
       prepareFetchPayload: (ctx) => {
         return {
           payloadIdentity: identitySupplier(),
@@ -51,16 +50,22 @@ export function binaryStateService(
           payloadIdentity: fetchPayload.payloadIdentity,
           fetchPayload,
           fetchRespRawJSON,
-        } as BinaryStateServiceFetchRespPayload;
+          isValidPayload: true,
+          isValidatedPayload: true,
+        };
       },
       isEventSourcePayload: (
         _rawJSON,
-      ): _rawJSON is BinaryStateServiceEventSourcePayload => {
+      ): _rawJSON is BinaryStateServiceReceivedPayload => {
         // TODO: we should really do some error checking
         return true;
       },
       prepareEventSourcePayload: (rawJSON) => {
-        return rawJSON as BinaryStateServiceEventSourcePayload;
+        // TODO: we should really do some error checking
+        const validated = rawJSON as govn.MutatableValidatedPayload;
+        validated.isValidatedPayload = true;
+        validated.isValidPayload = true;
+        return validated as BinaryStateServiceReceivedPayload;
       },
       prepareFetch: (baseURL, payload) => {
         return {
@@ -71,20 +76,18 @@ export function binaryStateService(
           },
         };
       },
-      observeFetch: (fetchStrategy, observer) => {
-        fetchStrategy.observeFetchEvent(observer, identitySupplier());
+      isWebSocketReceivePayload: (
+        _rawJSON,
+      ): _rawJSON is BinaryStateServiceReceivedPayload => {
+        // TODO: we should really do some error checking
+        return true;
       },
-      observeFetchResponse: (fetchStrategy, observer) => {
-        fetchStrategy.observeFetchEventResponse(observer, identitySupplier());
-      },
-      observeFetchRespError: (fetchStrategy, observer) => {
-        fetchStrategy.observeFetchEventError(observer, identitySupplier());
-      },
-      observeEventSource: (eventSrcStrategy, observer) => {
-        eventSrcStrategy.observeEventSource(observer, identitySupplier());
-      },
-      observeEventSourceError: (eventSrcStrategy, observer) => {
-        eventSrcStrategy.observeEventSourceError(observer, identitySupplier());
+      prepareWebSocketReceivePayload: (rawJSON) => {
+        // TODO: we should really do some error checking
+        const validated = rawJSON as govn.MutatableValidatedPayload;
+        validated.isValidatedPayload = true;
+        validated.isValidPayload = true;
+        return validated as BinaryStateServiceReceivedPayload;
       },
     };
   return proxy;

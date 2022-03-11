@@ -6,19 +6,18 @@ export interface PingFetchPayload {
   payloadIdentity: typeof pingPayloadIdentity;
 }
 
-export interface PingFetchRespPayload {
+export interface PingEventReceivedPayload extends govn.ValidatedPayload {
   payloadIdentity: typeof pingPayloadIdentity;
+}
+
+export interface PingFetchRespPayload extends PingEventReceivedPayload {
   fetchPayload: PingFetchPayload;
   fetchRespRawJSON: unknown;
 }
 
-export interface PingEventSourcePayload {
-  payloadIdentity: typeof pingPayloadIdentity;
-}
-
 export function isPingPayload(
   o: unknown,
-): o is PingFetchPayload | PingEventSourcePayload {
+): o is PingFetchPayload | PingEventReceivedPayload {
   if (govn.isIdentifiablePayload(o)) {
     if (o.payloadIdentity == pingPayloadIdentity) {
       return true;
@@ -27,30 +26,44 @@ export function isPingPayload(
   return false;
 }
 
-export function pingPayload(): PingFetchPayload | PingEventSourcePayload {
+export function pingPayload(): PingFetchPayload | PingEventReceivedPayload {
   return { payloadIdentity: pingPayloadIdentity };
+}
+
+export function pingWebSocketSendPayload():
+  | string
+  | Blob
+  | ArrayBufferView
+  | ArrayBufferLike {
+  return JSON.stringify(pingPayload());
 }
 
 export function pingService(
   endpointSupplier: (baseURL?: string) => string,
-):
-  & govn.FetchService<
-    PingFetchPayload,
-    PingFetchRespPayload,
-    Record<string, unknown>
-  >
-  & govn.EventSourceService<PingEventSourcePayload> {
-  const proxy:
+) {
+  const service:
     & govn.FetchService<
       PingFetchPayload,
       PingFetchRespPayload,
       Record<string, unknown>
     >
-    & govn.EventSourceService<PingEventSourcePayload> = {
+    & govn.EventSourceService<PingEventReceivedPayload>
+    & govn.WebSocketReceiveService<PingEventReceivedPayload> = {
+      serviceIdentity: pingPayloadIdentity,
+      payloadIdentity: pingPayloadIdentity,
       fetch: (fetchStrategy, ctx) => {
-        fetchStrategy.fetch(proxy, ctx);
+        fetchStrategy.fetch(service, ctx);
       },
-      prepareContext: (ctx) => ctx,
+      prepareFetch: (baseURL, payload) => {
+        return {
+          endpoint: endpointSupplier(baseURL), // we accept the suggested endpoint
+          requestInit: {
+            method: "POST",
+            body: JSON.stringify(payload),
+          },
+        };
+      },
+      prepareFetchContext: (ctx) => ctx,
       prepareFetchPayload: (ctx) => {
         return {
           payloadIdentity: pingPayloadIdentity,
@@ -65,45 +78,29 @@ export function pingService(
           fetchRespRawJSON,
         } as PingFetchRespPayload;
       },
-      isEventSourcePayload: (_rawJSON): _rawJSON is PingEventSourcePayload => {
+      isEventSourcePayload: (
+        _rawJSON,
+      ): _rawJSON is PingEventReceivedPayload => {
         // TODO: we should really do some error checking
         return true;
       },
       prepareEventSourcePayload: (rawJSON) => {
-        return rawJSON as PingEventSourcePayload;
+        // TODO: we should really do some error checking
+        const validated = rawJSON as govn.MutatableValidatedPayload;
+        validated.isValidatedPayload = true;
+        validated.isValidPayload = true;
+        return validated as PingEventReceivedPayload;
       },
-      prepareFetch: (baseURL, payload) => {
-        return {
-          endpoint: endpointSupplier(baseURL), // we accept the suggested endpoint
-          requestInit: {
-            method: "POST",
-            body: JSON.stringify(payload),
-          },
-        };
-      },
-      observeFetch: (fetchStrategy, observer) => {
-        fetchStrategy.observeFetchEvent(observer, pingPayloadIdentity);
-      },
-      observeFetchResponse: (fetchStrategy, observer) => {
-        fetchStrategy.observeFetchEventResponse(observer, pingPayloadIdentity);
-      },
-      observeFetchRespError: (fetchStrategy, observer) => {
-        fetchStrategy.observeFetchEventError(observer, pingPayloadIdentity);
-      },
-      observeEventSource: (eventSrcStrategy, observer) => {
-        eventSrcStrategy.observeEventSource(
-          (payload, ess) => {
-            // EventSources are sent from server unsolicited so we need to type
-            // it ourselves (this is different than the fetch models which are
-            // already typed properly since they are not unsolicited)
-            observer(proxy.prepareEventSourcePayload(payload), ess);
-          },
-          pingPayloadIdentity,
-        );
-      },
-      observeEventSourceError: (eventSrcStrategy, observer) => {
-        eventSrcStrategy.observeEventSourceError(observer, pingPayloadIdentity);
+      isWebSocketReceivePayload: (
+        _rawJSON,
+      ): _rawJSON is PingEventReceivedPayload => true,
+      prepareWebSocketReceivePayload: (rawJSON) => {
+        // TODO: we should really do some error checking
+        const validated = rawJSON as govn.MutatableValidatedPayload;
+        validated.isValidatedPayload = true;
+        validated.isValidPayload = true;
+        return validated as PingEventReceivedPayload;
       },
     };
-  return proxy;
+  return service;
 }

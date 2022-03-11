@@ -1,16 +1,9 @@
-import * as govn from "../governance.ts";
 import * as c from "./connection.ts";
 import * as safety from "../../safety/mod.ts";
 
 // Using Server Sent Events (SSEs or "EventSource") on anything but HTTP/2 connections is not recommended.
 // See [EventSource](https://developer.mozilla.org/en-US/docs/Web/API/EventSource) warning section.
 // See [EventSource: why no more than 6 connections?](https://stackoverflow.com/questions/16852690/sseeventsource-why-no-more-than-6-connections).
-
-export interface EventSourceCustomEventDetail<
-  Payload extends govn.IdentifiablePayload,
-> {
-  readonly eventSrcPayload: Payload;
-}
 
 export interface EventSourceConnectionState {
   readonly isConnectionState: true;
@@ -103,7 +96,8 @@ interface ReconnectionStateChangeNotification {
 
 export interface EventSourceStateInit<EventSource> {
   readonly esURL: string;
-  readonly esPingURL: string;
+  readonly esEndpointValidator: c.ConnectionValidator;
+  readonly userAgentFingerprint: string;
   readonly eventSourceFactory: EventSourceFactory<EventSource>;
   readonly options?: {
     readonly onConnStateChange?: ConnectionStateChangeNotification;
@@ -114,7 +108,7 @@ export interface EventSourceStateInit<EventSource> {
 // deno-lint-ignore no-explicit-any
 export class EventSourceTunnel<EventSource = any> {
   readonly esURL: string;
-  readonly esPingURL: string;
+  readonly esEndpointValidator: c.ConnectionValidator;
   readonly observerUniversalScopeID: "universal" = "universal";
   readonly eventSourceFactory: EventSourceFactory<EventSource>;
   readonly onConnStateChange?: ConnectionStateChangeNotification;
@@ -126,14 +120,14 @@ export class EventSourceTunnel<EventSource = any> {
 
   constructor(init: EventSourceStateInit<EventSource>) {
     this.esURL = init.esURL;
-    this.esPingURL = init.esPingURL;
+    this.esEndpointValidator = init.esEndpointValidator;
     this.eventSourceFactory = init.eventSourceFactory;
     this.onConnStateChange = init.options?.onConnStateChange;
     this.onReconnStateChange = init.options?.onReconnStateChange;
   }
 
   init(reconnector?: c.ReconnectionStrategy) {
-    fetch(this.esPingURL, { method: "HEAD" }).then((resp) => {
+    this.esEndpointValidator.validate(reconnector).then((resp) => {
       if (resp.ok) {
         // this.eventSourceFactory() should assign onmessage by default
         const eventSource = this.eventSourceFactory.construct(this.esURL);
@@ -155,7 +149,7 @@ export class EventSourceTunnel<EventSource = any> {
             isHealthy: true,
             connEstablishedOn: new Date(),
             endpointURL: this.esURL,
-            pingURL: this.esPingURL,
+            pingURL: this.esEndpointValidator.validationEndpointURL.toString(),
           };
           this.connectionState = connState;
           if (reconnector) reconnector.completed();
@@ -171,6 +165,7 @@ export class EventSourceTunnel<EventSource = any> {
             isEventSourceError: true,
             errorEvent: event,
             reconnectStrategy: new c.ReconnectionStrategy((reconnector) => {
+              // recursively call init() until success or aborted exit
               this.init(reconnector);
             }, {
               onStateChange: this.onReconnStateChange
@@ -181,7 +176,6 @@ export class EventSourceTunnel<EventSource = any> {
             }).reconnect(),
           };
           this.connectionState = connState;
-          // recursively call init() until success or aborted exit
         };
       } else {
         const connState:
@@ -192,7 +186,7 @@ export class EventSourceTunnel<EventSource = any> {
             connFailedOn: new Date(),
             isEndpointUnavailable: true,
             endpointURL: this.esURL,
-            pingURL: this.esPingURL,
+            pingURL: this.esEndpointValidator.validationEndpointURL.toString(),
             httpStatus: resp.status,
             httpStatusText: resp.statusText,
           };
@@ -205,10 +199,10 @@ export class EventSourceTunnel<EventSource = any> {
           isConnectionState: true,
           isHealthy: false,
           connFailedOn: new Date(),
-          pingURL: this.esPingURL,
+          pingURL: this.esEndpointValidator.validationEndpointURL.toString(),
           connectionError,
           isEndpointUnavailable: true,
-          endpointURL: this.esPingURL,
+          endpointURL: this.esURL,
         };
       this.connectionState = connState;
     });
@@ -253,7 +247,7 @@ export function eventSourceConnNarrative(
           color: "orange",
           isHealthy: false,
           summaryHint:
-            `Trying to reconnect to ${tunnel.esURL}, reconnecting every ${reconn.intervalMillecs} milliseconds`,
+            `Trying to reconnect to ${tunnel.esURL} (ES), reconnecting every ${reconn.intervalMillecs} milliseconds`,
         };
 
       case c.ReconnectionState.ABORTED:
@@ -262,7 +256,7 @@ export function eventSourceConnNarrative(
           color: "red",
           isHealthy: false,
           summaryHint:
-            `Unable to reconnect to ${tunnel.esURL} after ${reconn.maxAttempts} attempts, giving up`,
+            `Unable to reconnect to ${tunnel.esURL} (ES) after ${reconn.maxAttempts} attempts, giving up`,
         };
 
       case c.ReconnectionState.COMPLETED:
@@ -280,20 +274,20 @@ export function eventSourceConnNarrative(
       color: "green",
       isHealthy: true,
       summaryHint:
-        `Connection to ${sseState.endpointURL} verified using ${sseState.pingURL} on ${sseState.connEstablishedOn}`,
+        `Connection to ${sseState.endpointURL} (ES) verified using ${sseState.pingURL} on ${sseState.connEstablishedOn}`,
     };
   }
 
   const isHealthy = false;
   let summary = "unknown";
   let color = "purple";
-  let summaryHint = `the tunnel is not healthy, but not sure why`;
+  let summaryHint = `the EventSource tunnel is not healthy, but not sure why`;
   if (isEventSourceConnectionUnhealthy(sseState)) {
     if (isEventSourceEndpointUnavailable(sseState)) {
-      summary = "unavailable";
-      summaryHint = `${sseState.endpointURL} not available`;
+      summary = "ES unavailable";
+      summaryHint = `${sseState.endpointURL} (ES) not available`;
       if (sseState.httpStatus) {
-        summary = `unavailable (${sseState.httpStatus})`;
+        summary = `ES unavailable (${sseState.httpStatus})`;
         summaryHint +=
           ` (HTTP status: ${sseState.httpStatus}, ${sseState.httpStatusText})`;
         color = "red";

@@ -7,6 +7,9 @@ export interface LogAccess extends s.StaticServedTarget {
   readonly payloadIdentity: typeof logAccessPayloadIdentity;
 }
 
+export interface ValidatedLogAccess extends LogAccess, govn.ValidatedPayload {
+}
+
 export function isLogAccess(o: unknown): o is LogAccess {
   if (govn.isIdentifiablePayload(o)) {
     if (o.payloadIdentity == logAccessPayloadIdentity) {
@@ -16,9 +19,7 @@ export function isLogAccess(o: unknown): o is LogAccess {
   return false;
 }
 
-export function logAccess(
-  sfi: Omit<LogAccess, "payloadIdentity">,
-): LogAccess {
+export function logAccess(sfi: s.StaticServedTarget): LogAccess {
   return {
     payloadIdentity: logAccessPayloadIdentity,
     ...sfi,
@@ -26,35 +27,37 @@ export function logAccess(
 }
 
 export function logAccessService(): govn.EventSourceService<
-  LogAccess
+  ValidatedLogAccess
 > {
-  const proxy: govn.EventSourceService<LogAccess> = {
-    isEventSourcePayload: (
-      rawJSON,
-    ): rawJSON is LogAccess => {
+  const service:
+    & govn.EventSourceService<ValidatedLogAccess>
+    & govn.WebSocketReceiveService<ValidatedLogAccess> = {
+      serviceIdentity: logAccessPayloadIdentity,
+      payloadIdentity: logAccessPayloadIdentity,
+      isEventSourcePayload: (
+        rawJSON,
+      ): rawJSON is ValidatedLogAccess => {
+        // TODO: we should really do some error checking
+        return isLogAccess(rawJSON);
+      },
+      prepareEventSourcePayload: (rawJSON) => {
+        // TODO: we should really do some error checking
+        const validated = rawJSON as govn.MutatableValidatedPayload;
+        validated.isValidatedPayload = true;
+        validated.isValidPayload = true;
+        return validated as ValidatedLogAccess;
+      },
       // TODO: we should really do some error checking
-      return isLogAccess(rawJSON);
-    },
-    prepareEventSourcePayload: (rawJSON) => {
-      return rawJSON as LogAccess;
-    },
-    observeEventSource: (eventSrcStrategy, observer) => {
-      eventSrcStrategy.observeEventSource(
-        (payload, ess) => {
-          // EventSources are sent from server unsolicited so we need to type
-          // it ourselves (this is different than the fetch models which are
-          // already typed properly since they are not unsolicited)
-          observer(proxy.prepareEventSourcePayload(payload), ess);
-        },
-        logAccessPayloadIdentity,
-      );
-    },
-    observeEventSourceError: (eventSrcStrategy, observer) => {
-      eventSrcStrategy.observeEventSourceError(
-        observer,
-        logAccessPayloadIdentity,
-      );
-    },
-  };
-  return proxy;
+      isWebSocketReceivePayload: (
+        _rawJSON,
+      ): _rawJSON is ValidatedLogAccess => true,
+      prepareWebSocketReceivePayload: (rawJSON) => {
+        // TODO: we should really do some error checking
+        const validated = rawJSON as govn.MutatableValidatedPayload;
+        validated.isValidatedPayload = true;
+        validated.isValidPayload = true;
+        return validated as ValidatedLogAccess;
+      },
+    };
+  return service;
 }

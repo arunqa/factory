@@ -14,6 +14,10 @@ export interface MutatableServerFileImpact {
 export interface ServerFileImpact extends Readonly<MutatableServerFileImpact> {
 }
 
+export interface ValidatedServerFileImpact
+  extends govn.ValidatedPayload, ServerFileImpact {
+}
+
 export function isServerFileImpact(o: unknown): o is ServerFileImpact {
   if (govn.isIdentifiablePayload(o)) {
     if (o.payloadIdentity == serverFileImpactPayloadIdentity) {
@@ -24,7 +28,7 @@ export function isServerFileImpact(o: unknown): o is ServerFileImpact {
 }
 
 export function serverFileImpact(
-  sfi: Omit<ServerFileImpact, "payloadIdentity">,
+  sfi: Omit<ServerFileImpact, "payloadIdentity" | "isValidated" | "isValid">,
 ): ServerFileImpact {
   return {
     payloadIdentity: serverFileImpactPayloadIdentity,
@@ -33,35 +37,39 @@ export function serverFileImpact(
 }
 
 export function serverFileImpactService(): govn.EventSourceService<
-  ServerFileImpact
+  ValidatedServerFileImpact
 > {
-  const proxy: govn.EventSourceService<ServerFileImpact> = {
-    isEventSourcePayload: (
-      rawJSON,
-    ): rawJSON is ServerFileImpact => {
-      // TODO: we should really do some error checking
-      return isServerFileImpact(rawJSON);
-    },
-    prepareEventSourcePayload: (rawJSON) => {
-      return rawJSON as ServerFileImpact;
-    },
-    observeEventSource: (eventSrcStrategy, observer) => {
-      eventSrcStrategy.observeEventSource(
-        (payload, ess) => {
-          // EventSources are sent from server unsolicited so we need to type
-          // it ourselves (this is different than the fetch models which are
-          // already typed properly since they are not unsolicited)
-          observer(proxy.prepareEventSourcePayload(payload), ess);
-        },
-        serverFileImpactPayloadIdentity,
-      );
-    },
-    observeEventSourceError: (eventSrcStrategy, observer) => {
-      eventSrcStrategy.observeEventSourceError(
-        observer,
-        serverFileImpactPayloadIdentity,
-      );
-    },
-  };
+  const proxy:
+    & govn.EventSourceService<ValidatedServerFileImpact>
+    & govn.WebSocketReceiveService<ServerFileImpact> = {
+      serviceIdentity: serverFileImpactPayloadIdentity,
+      payloadIdentity: serverFileImpactPayloadIdentity,
+      isEventSourcePayload: (
+        rawJSON,
+      ): rawJSON is ValidatedServerFileImpact => {
+        // TODO: we should really do some error checking
+        return isServerFileImpact(rawJSON);
+      },
+      prepareEventSourcePayload: (rawJSON) => {
+        // TODO: we should really do some error checking
+        const validated = rawJSON as govn.MutatableValidatedPayload;
+        validated.isValidatedPayload = true;
+        validated.isValidPayload = true;
+        return validated as ValidatedServerFileImpact;
+      },
+      isWebSocketReceivePayload: (
+        rawJSON,
+      ): rawJSON is ValidatedServerFileImpact => {
+        // TODO: we should really do some error checking
+        return isServerFileImpact(rawJSON);
+      },
+      prepareWebSocketReceivePayload: (rawJSON) => {
+        // TODO: we should really do some error checking
+        const validated = rawJSON as govn.MutatableValidatedPayload;
+        validated.isValidatedPayload = true;
+        validated.isValidPayload = true;
+        return validated as ValidatedServerFileImpact;
+      },
+    };
   return proxy;
 }
