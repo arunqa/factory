@@ -695,7 +695,7 @@ class Executive {
         this.#serviceBus.observeReceivedPayload((payload) => {
             if (diagnostics.serviceBus.verbose) reportServiceBusDiags("observed open window SSE (RPC/WS/SSE)", payload);
             if (payload && "location" in payload) {
-                const uaOpenWindowStorageKey = "userAgentOpenWindowService";
+                const uaOpenWindowStorageKey = uaOpenWindow.serviceIdentity;
                 const uaOpenWindowState = sessionStorage.getItem(uaOpenWindowStorageKey);
                 if (!uaOpenWindowState) {
                     const windowInstance = window.open(payload.location, payload.target);
