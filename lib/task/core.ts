@@ -1,8 +1,8 @@
 import * as colors from "https://deno.land/std@0.123.0/fmt/colors.ts";
-import * as events from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.3/mod.ts";
+import * as events from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.4/mod.ts";
 
 // we export this since it's comprises the core Taskfile.ts "Tasks" instance.
-export { EventEmitter } from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.3/mod.ts";
+export { EventEmitter } from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.4/mod.ts";
 
 const kebabCaseToCamelTaskName = (text: string) =>
   // find one or more characters after - and replace with single uppercase

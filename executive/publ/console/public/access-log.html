@@ -13,51 +13,6 @@
         // prepare global `executive` and "bootstrap" or _actuate_ the page.
         const strategy = actuationStrategy().args;
         const executive = strategy.actuate();
-
-        function tuiHook_isAccessLoggingEnabled(element, identity, uab) {
-            const operationsEE = new EventEmitter();
-            const hook = { identity, element, operationsEE };
-            operationsEE.on("user-agent-server-response", (message) => {
-                console.log('[tuiHook_isAccessLoggingEnabled.hook]', identity, 'user-agent-server-response', message);
-                element.checked = message.state;
-            });
-            element.onchange = (evt) => {
-                const message = { state: evt.srcElement.checked };
-                operationsEE.emit("user-agent-request", message);
-                console.log('[tuiHook_isAccessLoggingEnabled.hook]', identity, 'user-agent-request', message);
-                // evt.srcElement.checked = !evt.srcElement.checked;
-            }
-            executive.consoleTunnel.addEventSourceEventListener("feature-state", (evt) => {
-                const data = JSON.parse(evt.data);
-                if (data && data.feature == "isAccessLoggingEnabled") {
-                    element.checked = data.state;
-                }
-            });
-            return hook;
-        }
-
-        const uab = new UserAgentBus({ clientReqMessageBaseURL: '/console/user-agent-bus' });
-        document.querySelectorAll("[data-tunnel-ui]").forEach(e => uab.discoverDomElemHook(e, (token) => eval(token)));
-        uab.init();
-
-        executive.consoleTunnel.addEventSourceEventListener("log-access", (evt) => {
-            if (accessLogAgGrid) {
-                const data = JSON.parse(evt.data);
-                accessLogAgGridConfig.api.applyTransaction({
-                    add: [{
-                        "date": new Date().toISOString(),
-                        "status": data.status,
-                        "location": data.locationHref,
-                        "target": data.fsTarget,
-                        "symlink": data.fsTargetSymLink || '',
-                        "extn": data.extn,
-                    }]
-                });
-                accessLogAgGridConfig.columnApi.autoSizeAllColumns();
-            } else {
-                console.log('accessLogAgGrid not available in log-access');
-            }
-        });
     </script>
     <script>
         // <ag-grid> web component uses config-eval-js="accessLogAgGridConfig" to define the initial grid
@@ -66,12 +21,12 @@
             gridDefn: {
                 defaultColDef: { resizable: true },
                 columnDefs: [
-                    { field: "date", "sortable": true },
-                    { field: "extn", "sortable": true },
-                    { field: "status", "sortable": true },
-                    { field: "location", "sortable": true },
-                    { field: "target", "sortable": true },
-                    { field: "symlink", "sortable": true },
+                    { field: "created_at", headerName: 'Date', sortable: true },
+                    { field: "asset_nature", headerName: 'Nature', sortable: true },
+                    { field: "status", headerName: 'Status', sortable: true },
+                    { field: "location_href", headerName: 'Location', sortable: true },
+                    { field: "filesys_target_path", headerName: 'Target', sortable: true },
+                    { field: "filesys_target_symlink", headerName: 'Symlink', sortable: true },
                 ],
                 rowData: []
             },
@@ -82,7 +37,28 @@
         const registerAccessLogAgGrid = (grid, gridConfig, gridDomElem) => {
             accessLogAgGrid = grid;
             accessLogAgGridConfig = gridConfig;
+            fetchAccessLog();
         };
+
+        async function fetchAccessLog() {
+            const response = await fetch('/SQL/unsafe', {
+                method: "POST",
+                headers: {
+                    'Content-type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    // these columns should be an identical match to the expectations in accessLogAgGridConfig.columnDefs
+                    SQL: `select created_at, asset_nature, status, location_href, filesys_target_path, filesys_target_symlink
+                            from publ_server_static_access_log`,
+                    // rowNature can be "rows" for array of arrays, or "records" for array of objects with keys as column names
+                    rowNature: "records"
+                })
+            });
+            const sqlResult = await response.json();
+            accessLogAgGridConfig.api.setRowData(sqlResult.records);
+            accessLogAgGridConfig.columnApi.autoSizeAllColumns();
+        }
     </script>
 </head>
 
@@ -91,14 +67,6 @@
         <article>
             <header>
                 <h1>Access Log</h1>
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="isAccessLoggingEnabled" data-tunnel-ui="auto">
-                    <label class="form-check-label" for="isAccessLoggingEnabled">Should server-side access logs to be
-                        seen
-                        here? <mark>Use sparingly</mark> because it's resource intensive. TODO: find out why each entry
-                        is
-                        being duplicated.</label>
-                </div>
             </header>
 
             <section class="card">

@@ -33,6 +33,7 @@ import * as redirectC from "../../core/content/redirects.rf.ts";
 
 import * as sqlObsC from "../../lib/db/observability.rf.ts";
 import * as ocC from "../../core/content/operational-context.ts";
+import * as psDB from "./publication-db.ts";
 
 export const assetMetricsWalkOptions: fs.WalkOptions = {
   skip: [/\.git/],
@@ -251,6 +252,7 @@ export interface PublicationOperationalContext {
   readonly isLiveReloadRequest: boolean;
   readonly iterationCount: number;
   readonly produceOperationalCtxCargo: (home: string) => Promise<void>;
+  readonly publStateDB: () => psDB.Database;
 }
 
 export interface Preferences<

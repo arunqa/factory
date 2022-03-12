@@ -5,7 +5,7 @@ import * as wfs from "../../../lib/fs/watch.ts";
 import * as ping from "../../../lib/service-bus/service/ping.ts";
 import * as fis from "../../../lib/service-bus/service/file-impact.ts";
 import * as uaows from "./service/open-user-agent-window.ts";
-import * as las from "./service/log-access.ts";
+import * as db from "../publication-db.ts";
 
 export interface ConsoleTunnelConnection {
   readonly sseTarget: oak.ServerSentEventTarget;
@@ -25,7 +25,6 @@ export class ConsoleTunnel<
   ping(): void;
   serverFileImpact(fsAbsPathAndFileName: string, url?: string): void;
   uaOpenWindow(location: string, target: "console-prime"): void;
-  logAccess(sat: s.StaticServedTarget): void;
   featureState(feature: string, state: unknown): void;
 }> {
   #connections: Connection[] = [];
@@ -37,6 +36,7 @@ export class ConsoleTunnel<
     readonly sseHealthEndpointURL: string,
     readonly sseEndpointURL: string,
     readonly factory: (ctx: ConnectionContext) => Connection,
+    readonly database: db.Database,
   ) {
     super();
     this.on(ping.pingPayloadIdentity, () => {
@@ -62,13 +62,6 @@ export class ConsoleTunnel<
           target,
         }))
       );
-    });
-    this.on(las.logAccessPayloadIdentity, (sat) => {
-      if (this.#isAccessLoggingEnabled) {
-        this.cleanConnections().forEach((c) =>
-          c.sseTarget.dispatchMessage(las.logAccess(sat))
-        );
-      }
     });
     this.on("featureState", (feature, state) => {
       this.cleanConnections().forEach((c) =>
@@ -140,6 +133,7 @@ export class ConsoleMiddlewareSupplier {
     readonly app: oak.Application,
     readonly router: oak.Router,
     readonly staticEE: s.StaticEventEmitter,
+    readonly database: db.Database,
     options?: Partial<ConsoleMiddlewareSupplierOptions>,
   ) {
     this.htmlEndpointURL = options?.htmlEndpointURL ?? "/console";
@@ -149,6 +143,7 @@ export class ConsoleMiddlewareSupplier {
         `${this.htmlEndpointURL}/sse/ping`,
         `${this.htmlEndpointURL}/sse/tunnel`,
         (ctx) => ({ sseTarget: ctx.oakCtx.sendEvents() }),
+        this.database,
       );
 
     router.get(this.tunnel.sseHealthEndpointURL, (ctx) => {
@@ -225,12 +220,5 @@ export class ConsoleMiddlewareSupplier {
       console.info(colors.magenta(`*** ${colors.yellow(relWatchPath(modified))} impacted *** ${colors.gray(`${this.tunnel.connections.length} browser tab refresh requests sent`)}`));
     });
     yield wfs.typicalWatchableFS(this.contentHome, contentRootPathEE);
-  }
-
-  // deno-lint-ignore require-await
-  async staticAccess(event: s.StaticServedEvent) {
-    if (event.target) {
-      this.tunnel.emit("logAccess", event.target);
-    }
   }
 }

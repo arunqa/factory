@@ -1,10 +1,11 @@
-import { colors, events, log, path } from "../../core/deps.ts";
+import { colors, events, path } from "../../core/deps.ts";
 import * as rfGovn from "../../governance/mod.ts";
 import * as human from "../../lib/text/human.ts";
 import * as whs from "../../lib/text/whitespace.ts";
 import * as bjs from "../../lib/package/bundle-js.ts";
 import * as server from "./server.ts";
 import * as publ from "./publication.ts";
+import * as psDB from "./publication-db.ts";
 
 declare global {
   function touchWatchedSemaphoreFile(): Promise<void>;
@@ -249,17 +250,8 @@ export function typicalPublicationCtlSupplier<
     ? new Date(Number(timestampAtEntryEnv) * 1000)
     : new Date();
 
+  // deno-lint-ignore require-await
   return async (): Promise<ExecutiveController<OperationalCtx>> => {
-    const fh = new log.handlers.FileHandler("DEBUG", {
-      formatter: (logRecord) => JSON.stringify(logRecord),
-      filename: modulePath("pubctl-diagnostics.jsonl"),
-      mode: "a",
-    });
-    await fh.setup();
-    const serverDiagnosticsLogger = new log.Logger("server", "DEBUG", {
-      handlers: [fh],
-    });
-
     const serverListenEnvVarsPrefix = `${pubCtlEnvVarsPrefix}SERVER_`;
     const listenPort = Number.parseInt(
       Deno.env.get(`${serverListenEnvVarsPrefix}LISTEN_PORT`) ?? "8003",
@@ -274,11 +266,32 @@ export function typicalPublicationCtlSupplier<
     const badgenRemoteBaseURL = Deno.env.get(
       "RF_UNIVERSAL_BADGEN_REMOTE_BASE_URL",
     );
+
+    const serverStateDB = new psDB.Database({
+      fileName: () => modulePath("pubctl.sqlite.db"),
+      autoCloseOnUnload: true,
+      events: () => new psDB.DatabaseEventEmitter(),
+      transactions: (db) => db,
+    });
+
+    serverStateDB.dbee.on("openedDatabase", () => {
+      console.info(
+        colors.dim(`opened database ${serverStateDB.dbStoreFsPath}`),
+      );
+    });
+    serverStateDB.dbee.on("closingDatabase", () => {
+      console.info(
+        colors.dim(`closing database ${serverStateDB.dbStoreFsPath}`),
+      );
+    });
+    serverStateDB.init();
+
     const ocGuess: publ.PublicationOperationalContext = {
       processStartTimestamp,
       isExperimentalOperationalCtx,
       isLiveReloadRequest,
       iterationCount: processIterationCount,
+      publStateDB: () => serverStateDB,
       produceOperationalCtxCargo: async (home) => {
         await Deno.writeTextFile(
           path.join(home, "deps.js.ts"),
@@ -290,7 +303,7 @@ export function typicalPublicationCtlSupplier<
            * deps.auto.js assuming that deps.auto.js exists as a "twin".
            * For instructions, see resFactory/factory/lib/package/README.md
            */
-          export * from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.3/mod.ts";
+          export * from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.4/mod.ts";
 
           // relative to public/operational-context/deps.js.ts (using managed Git repo structure)
           // TODO: remove hardcoding
@@ -337,7 +350,7 @@ export function typicalPublicationCtlSupplier<
     };
 
     const serverOptions: server.PublicationServerOptions = {
-      serverDiagnosticsLogger,
+      serverStateDB,
       staticIndex: "index.html",
       listenPort,
       listenHostname,

@@ -1,4 +1,4 @@
-import { colors, events, log, path } from "../../core/deps.ts";
+import { colors, events, path } from "../../core/deps.ts";
 import { async, oak } from "./deps.ts";
 import * as rfStd from "../../core/std/mod.ts";
 import * as p from "./publication.ts";
@@ -8,6 +8,8 @@ import * as s from "./static.ts";
 import * as c from "./console/mod.ts";
 import * as ws from "./workspace.ts";
 import * as assure from "./assurance.ts";
+import * as pDB from "./publication-db.ts";
+import * as pdbProxy from "./publication-db-proxy.ts";
 
 export interface PublicationServerAccessContext
   extends p.PublicationOperationalContext {
@@ -35,7 +37,8 @@ export interface PublicationServerOptions {
     fsAbsPathAndFileName: string,
   ) => string | undefined;
   readonly staticIndex?: "index.html" | string;
-  readonly serverDiagnosticsLogger?: log.Logger;
+  readonly serverStateDB: pDB.Database;
+  // readonly serverDiagnosticsLogger?: log.Logger;
 }
 
 export class PublicationServerLifecyleManager {
@@ -92,9 +95,11 @@ export class PublicationServer {
     fsAbsPathAndFileName: string,
   ) => string | undefined;
   readonly staticIndex: "index.html" | string;
+  readonly serverStateDB: pDB.Database;
   #console?: c.ConsoleMiddlewareSupplier;
   #workspace?: ws.WorkspaceMiddlewareSupplier;
   #assurance?: assure.AssuranceMiddlewareSupplier;
+  #pdbProxy?: pdbProxy.DatabaseProxyMiddlewareSupplier;
 
   constructor(
     readonly publication: p.Publication<p.PublicationOperationalContext>,
@@ -108,6 +113,7 @@ export class PublicationServer {
       new bjs.TransformTypescriptEventEmitter();
     this.listenPort = options.listenPort;
     this.listenHostname = options.listenHostname;
+    this.serverStateDB = options.serverStateDB;
     this.publicURL = options.publicURL;
     this.fsEntryPublicationURL = options.fsEntryPublicationURL ??
       ((fsAbsPathAndFileName) => {
@@ -143,6 +149,12 @@ export class PublicationServer {
         );
       }
     });
+    // deno-lint-ignore require-await
+    this.staticEE.on("served", async (ssoe) => {
+      if (ssoe.target) {
+        this.serverStateDB.persistStaticServed(ssoe.target);
+      }
+    });
   }
 
   get console(): c.ConsoleMiddlewareSupplier | undefined {
@@ -159,16 +171,12 @@ export class PublicationServer {
       app,
       router,
       staticEE,
+      this.serverStateDB,
       {
         openWindowOnInit: { url: "/" },
         ...options,
       },
     );
-    this.staticEE.on("served", async (sae) => {
-      // whenever a file is served by the web server, "tell" the console so that
-      // it can be available as diagnostics in a web browser
-      await this.#console?.staticAccess(sae);
-    });
   }
 
   protected prepareWorkspace(
@@ -186,11 +194,6 @@ export class PublicationServer {
       router,
       options,
     );
-    this.staticEE.on("served", async (sae) => {
-      // whenever a file is served by the web server, "tell" the console so that
-      // it can be available as diagnostics in a web browser
-      await this.#console?.staticAccess(sae);
-    });
   }
 
   protected prepareAssurance(
@@ -208,11 +211,18 @@ export class PublicationServer {
       router,
       options,
     );
-    this.staticEE.on("served", async (sae) => {
-      // whenever a file is served by the web server, "tell" the console so that
-      // it can be available as diagnostics in a web browser
-      await this.#console?.staticAccess(sae);
-    });
+  }
+
+  protected prepareDatabaseProxy(
+    app: oak.Application,
+    router: oak.Router,
+  ) {
+    this.#pdbProxy = new pdbProxy.DatabaseProxyMiddlewareSupplier(
+      app,
+      router,
+      this.serverStateDB,
+      "/SQL/unsafe",
+    );
   }
 
   // deno-lint-ignore require-await
@@ -235,6 +245,7 @@ export class PublicationServer {
     this.prepareConsole(app, router, this.staticEE);
     this.prepareWorkspace(app, router);
     this.prepareAssurance(app, router);
+    this.prepareDatabaseProxy(app, router);
 
     if (this.#console) {
       app.use(async (ctx, next) => {
