@@ -73,6 +73,15 @@ class EventEmitter {
             this.once(event, listener);
         });
     }
+    clone(cloneListeners = true) {
+        const emitter = new EventEmitter();
+        if (cloneListeners) {
+            for (const [key, set] of this._events_)emitter._events_.set(key, new Set([
+                ...set
+            ]));
+        }
+        return emitter;
+    }
 }
 export { EventEmitter as EventEmitter };
 function humanFriendlyBytes(bytes, si = false, dp = 1) {
@@ -1183,49 +1192,6 @@ export { uaOpenWindowPayloadIdentity as uaOpenWindowPayloadIdentity };
 export { isUserAgentOpenWindow as isUserAgentOpenWindow };
 export { userAgentOpenWindow as userAgentOpenWindow };
 export { userAgentOpenWindowService as userAgentOpenWindowService };
-const logAccessPayloadIdentity = "logAccess";
-function isLogAccess(o) {
-    if (isIdentifiablePayload(o)) {
-        if (o.payloadIdentity == logAccessPayloadIdentity) {
-            return true;
-        }
-    }
-    return false;
-}
-function logAccess(sfi) {
-    return {
-        payloadIdentity: logAccessPayloadIdentity,
-        ...sfi
-    };
-}
-function logAccessService() {
-    const service = {
-        serviceIdentity: logAccessPayloadIdentity,
-        payloadIdentity: logAccessPayloadIdentity,
-        isEventSourcePayload: (rawJSON)=>{
-            return isLogAccess(rawJSON);
-        },
-        prepareEventSourcePayload: (rawJSON)=>{
-            const validated = rawJSON;
-            validated.isValidatedPayload = true;
-            validated.isValidPayload = true;
-            return validated;
-        },
-        isWebSocketReceivePayload: (_rawJSON)=>true
-        ,
-        prepareWebSocketReceivePayload: (rawJSON)=>{
-            const validated = rawJSON;
-            validated.isValidatedPayload = true;
-            validated.isValidPayload = true;
-            return validated;
-        }
-    };
-    return service;
-}
-export { logAccessPayloadIdentity as logAccessPayloadIdentity };
-export { isLogAccess as isLogAccess };
-export { logAccess as logAccess };
-export { logAccessService as logAccessService };
 (()=>{
     var L = (t, i)=>()=>(i || (i = {
                 exports: {}

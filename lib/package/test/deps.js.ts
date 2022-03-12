@@ -13,7 +13,7 @@
  *           if it doesn't exist just create a empty file named deps.auto.js.
  */
 
-export * from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.3/mod.ts";
+export * from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.4/mod.ts";
 
 export * from "../../text/human.ts";
 export * from "../../text/whitespace.ts";

@@ -14,7 +14,7 @@
  */
 
 // export * as fingerprintJS from "https://openfpcdn.io/fingerprintjs/v3.3.3/esm.min.js";
-export * from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.3/mod.ts";
+export * from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.4/mod.ts";
 
 export * from "../../../../lib/text/human.ts";
 export * from "../../../../lib/text/whitespace.ts";
@@ -24,6 +24,5 @@ export * from "../../../../lib/service-bus/core/mod.ts";
 export * from "../../../../lib/service-bus/service/ping.ts";
 export * from "../../../../lib/service-bus/service/file-impact.ts";
 export * from "../service/open-user-agent-window.ts";
-export * from "../service/log-access.ts";
 export * from "../../../../lib/presentation/custom-element/badge/mod.ts";
 export * from "../../../../lib/presentation/dom/markdown-it.js";
