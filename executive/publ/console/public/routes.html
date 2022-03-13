@@ -52,7 +52,9 @@
         /* Create the expander/arrow with a unicode, and style it */
         .leaf::before {
             content: "\25B6";
+            /* use same character to get right indent level */
             color: white;
+            /* hide it using background color */
             display: inline-block;
             margin-right: 6px;
         }
@@ -99,8 +101,8 @@
                     <h5 class="card-title"><code>publication.state.resourcesTree</code>
                     </h5>
                     <p>Resource Factory <code>publication.ts</code> captures all originated resource routes into
-                        <code>PublicationState</code>'s <code>resourcesTree</code> field of type <a href="#"
-                            data-ws-editable-src="/factory/governance/route.ts"><code>rfGovn.RouteTree</code></a>.
+                        <code>PublicationState</code>'s <code>resourcesTree</code> field of type <a
+                            href="/workspace/editor-redirect/factory/governance/route.ts"><code>rfGovn.RouteTree</code></a>.
                     </p>
                     <p>What follows is a JSON representation of the entire tree. The <code>items</code> field in the
                         <code>resourcesTree</code> is what is inspectable above.
@@ -111,13 +113,22 @@
         </article>
     </main>
 
+    <!-- consider replacing renderjson.js with https://github.com/mohsen1/json-formatter-js for <a>/URL formatting -->
     <script src="https://cdn.rawgit.com/caldwell/renderjson/master/renderjson.js"></script>
-    <script>
+    <script type="module">
         document.addEventListener('DOMContentLoaded', function () {
             fetch("/publication/inspect/routes.json").then(resp => resp.json()).then(routes => {
+                renderjson.set_icons('▶︎ ', '▼ ');
                 renderjson.set_show_to_level(1);
+                renderjson.set_replacer(undefined);
                 document.getElementById("routes-json").prepend(renderjson(routes));
 
+                const routeNodePropsReplacer = (key, value) => {
+                    if (key == "fileSysPath") {
+                        return `<a href="test">${value}</a>`
+                    }
+                    return value;
+                };
                 const routeNodeProps = document.getElementById("route-node-properties")
                 const handleNodes = (parentUL, items) => {
                     items.sort((a, b) => (a.label > b.label) ? 1 : -1).forEach(i => {
@@ -137,6 +148,7 @@
                                 expander.parentElement.querySelector(".nested").classList.toggle("active");
                                 expander.classList.toggle("expander-down");
                                 routeNodeProps.innerHTML = "";
+                                renderjson.set_replacer(routeNodePropsReplacer);
                                 routeNodeProps.prepend(renderjson(i));
                             });
                         } else {
@@ -144,6 +156,7 @@
                             li.innerHTML = i.label;
                             li.addEventListener("click", function () {
                                 routeNodeProps.innerHTML = "";
+                                renderjson.set_replacer(routeNodePropsReplacer);
                                 routeNodeProps.prepend(renderjson(i));
                             });
                         }

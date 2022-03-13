@@ -120,34 +120,66 @@ export class WorkspaceMiddlewareSupplier {
       }
     });
 
-    const editorResolverEndpoint = `${this.htmlEndpointURL}/editor-resolver`;
-    router.get(`${editorResolverEndpoint}/(.*)`, (ctx) => {
-      const srcFileNameRequested = ctx.request.url.pathname.substring(
-        editorResolverEndpoint.length,
-      );
-      let srcFileNameResolved = srcFileNameRequested;
-      if (srcFileNameResolved.startsWith("/factory/")) {
-        srcFileNameResolved = path.resolve(
+    // setup the following routes:
+    // * /workspace/editor-resolver/factory/**/* to get JSON for where a RF source file can be found
+    // * /workspace/editor-redirect/factory/**/* to redirect to an RF source file (e.g. opens VSCode)
+    // * /workspace/editor-resolver/publication/**/* to get JSON for where a publication source file can be found
+    // * /workspace/editor-redirect/factory/**/* to redirect to a publication source file (e.g. opens VSCode)
+    // * /workspace/editor-resolver/abs/**/* to get JSON for where an arbitrary server (abs path) file can be found
+    // * /workspace/editor-redirect/abs/**/* to redirect to and arbitrary server file can be found (e.g. opens VSCode)
+    [{
+      scope: "/factory",
+      srcFileRequested: (ctx: oak.Context, endpoint: string) =>
+        ctx.request.url.pathname.substring(
+          endpoint.length + 1, // skip the leading slash
+        ),
+      srcFileMapper: (candidate: string) =>
+        path.resolve(
           path.fromFileUrl(import.meta.url),
           "../../..",
-          srcFileNameResolved.substring(9),
+          candidate,
+        ),
+    }, {
+      scope: "/publication",
+      srcFileRequested: (ctx: oak.Context, endpoint: string) =>
+        ctx.request.url.pathname.substring(
+          endpoint.length + 1, // skip the leading slash
+        ),
+      srcFileMapper: (candidate: string) => path.resolve(Deno.cwd(), candidate),
+    }, {
+      scope: "/abs",
+      srcFileRequested: (ctx: oak.Context, endpoint: string) =>
+        ctx.request.url.pathname.substring(
+          endpoint.length, // keep the leading slash
+        ),
+      srcFileMapper: (candidate: string) => candidate,
+    }].forEach((endpoint) => {
+      const resolverEndpoint =
+        `${this.htmlEndpointURL}/editor-resolver${endpoint.scope}`;
+      router.get(`${resolverEndpoint}/(.*)`, (ctx) => {
+        const req = endpoint.srcFileRequested(ctx, resolverEndpoint);
+        const mapped = endpoint.srcFileMapper(req);
+        ctx.response.body = JSON.stringify(
+          {
+            ...this.config.wsEditorResolver(mapped),
+            srcFileNameRequested: req,
+            srcFileNameMapped: mapped,
+          },
         );
-      } else {
-        // since the server is usually started in the root of the target
-        // workspace we can assume current working directory so we just
-        // remove the starting slash and take the rest
-        srcFileNameResolved = path.resolve(
-          Deno.cwd(),
-          srcFileNameResolved.substring(1),
-        );
-      }
-      ctx.response.body = JSON.stringify(
-        {
-          ...this.config.wsEditorResolver(srcFileNameResolved),
-          srcFileNameRequested,
-          srcFileNameResolved,
-        },
-      );
+      });
+
+      const editorRedirectEndpoint =
+        `${this.htmlEndpointURL}/editor-redirect${endpoint.scope}`;
+      router.get(`${editorRedirectEndpoint}/(.*)`, (ctx) => {
+        const req = endpoint.srcFileRequested(ctx, resolverEndpoint);
+        const mapped = endpoint.srcFileMapper(req);
+        const resolved = this.config.wsEditorResolver(mapped);
+        if (resolved) {
+          ctx.response.redirect(resolved.editableTargetURI);
+        } else {
+          ctx.response.body = `${req} (${mapped}) not editable.`;
+        }
+      });
     });
   }
 

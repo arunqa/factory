@@ -24,9 +24,16 @@
                 <div class="col-sm-6">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">Environment Variables</h5>
-                            <p class="card-text">Your primary configuration is in <code>.envrc</code></p>
-                            <a href="#" class="btn btn-primary" data-ws-editable-src="/.envrc">Open
+                            <h5 class="card-title">Environment Variables for Configuration</h5>
+                            <p class="card-text">As suggested by our use of 12-factor app guidelines, we <a
+                                    href="https://12factor.net/config">store our configuration in the environment</a>
+                                whenever possible. Your primary configuration is in <a
+                                    href="https://direnv.net/"><code>direnv</code>-managed</a> <a
+                                    href="/workspace/editor-redirect/publication/.envrc"><code>.envrc</code></a>.</p>
+                            <p>If you need to modify any configurable environment variables in <code>.envrc</code>
+                                you'll need to run <code>direnv allow</code> and restart the publication server.
+                            </p>
+                            <a href="/workspace/editor-redirect/publication/.envrc" class="btn btn-primary">Open
                                 <code>.envrc</code></a>
                         </div>
                     </div>
@@ -104,28 +111,18 @@
                         access logging can be controlled from the browser dynamically.
                         * Create feature flags API endpoint so that unlimited Unleash-like FF's can be integrated
                         * Implement [Oak eTag](https://github.com/oakserver/oak#etag-support) before going to production
+                        * Implement [effector.dev](https://effector.dev/) for business logic (with XState for mor complex requirements)
 
                         ## Components
 
-                        * Check out [Minze](https://minze.dev/guide/introduction.html), Atomico, Tonic, and other lightweight CE frameworks.
+                        * Check out [Minze](https://minze.dev/guide/introduction.html), Atomico, Tonic, and other lightweight CE frameworks to create our own library and conventions. It's best to not use other frameworks as dependencies.
                         * Use [µhtml](https://github.com/WebReflection/uhtml#readme) for DOM-friendly dynamic rendering.
                         * Use [µce](https://github.com/WebReflection/uce) for µhtml-based Custom Elements.
                         * Use [µce\-template](https://github.com/WebReflection/uce-template#readme) for a Vue 3 inspired Custom Elements toolless alternative.
 
-                        ## HTML-friendly Scripts Dependency Bundling Convenience
+                        ## Experiment
 
-                        Figure out how to replace `&lt;md-block>` dependencies with something like `&lt;html data-deps="md-block">`[^whyDeps]
-                        to encapsulate "bundles" easily and dynamically load them. We can define multiple "bundles" and pull them
-                        in dynamically using `&lt;html data-deps="bundle1,bundle2">` easily. `bundle1`, `bundle2` could just function
-                        "hooks" which, when called, would just be looked up and executed using $script or similar.
-
-                        [^whyDeps]: `&lt;html data-deps="..."> uses Deno's `deps.ts` naming convention.
-
-                        ```html
-                        &lt;!-- Markdown in HTML, with Prism syntax highlighting: https://md-block.verou.me/ --&gt;
-                        &lt;link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/themes/prism-coy.min.css" rel="stylesheet" />
-                        &lt;script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.27.0/prism.min.js">&lt;/script>
-                        &lt;script type="module" src="https://md-block.verou.me/md-block.js">&lt;/script>
+                        * See [Building data\-centric apps with a reactive relational database](https://riffle.systems/essays/prelude/) for interesting way to use SQLite.
                         ```
                     </pre>
                 </section>
