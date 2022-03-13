@@ -3,22 +3,26 @@ import { oak } from "./deps.ts";
 import * as ping from "../../lib/service-bus/service/ping.ts";
 
 export interface AssuranceSyntheticEventSrcTunnelConnection {
+  readonly userAgentID: string;
   readonly sseTarget: oak.ServerSentEventTarget;
 }
 
 export class AssuranceSyntheticEventSrcTunnel<
   Connection extends AssuranceSyntheticEventSrcTunnelConnection =
     AssuranceSyntheticEventSrcTunnelConnection,
-  // deno-lint-ignore no-explicit-any
-  ConnectionContext extends { oakCtx: oak.Context<any> } = {
+  ConnectionContext extends {
     // deno-lint-ignore no-explicit-any
-    oakCtx: oak.Context<any>;
+    readonly oakCtx: oak.Context<any>;
+    readonly userAgentIdSupplier: (ctx: oak.Context) => string;
+  } = {
+    // deno-lint-ignore no-explicit-any
+    readonly oakCtx: oak.Context<any>;
+    readonly userAgentIdSupplier: (ctx: oak.Context) => string;
   },
 > extends events.EventEmitter<{
   sseHealthRequest(ctx: ConnectionContext): void;
   sseConnected(conn: Connection, ctx: ConnectionContext): void;
   sseInvalidRequest(ctx: ConnectionContext): void;
-  ping(): void;
 }> {
   #connections: Connection[] = [];
   #onlyOpen: ((value: Connection) => boolean) = (c) =>
@@ -27,14 +31,17 @@ export class AssuranceSyntheticEventSrcTunnel<
   constructor(
     readonly sseHealthEndpointURL: string,
     readonly sseEndpointURL: string,
-    readonly factory: (ctx: ConnectionContext) => Connection,
+    readonly factory: (
+      userAgentID: string,
+      ctx: ConnectionContext,
+    ) => Connection,
   ) {
     super();
-    this.on(ping.pingPayloadIdentity, () => {
-      this.cleanConnections().forEach((c) =>
-        c.sseTarget.dispatchMessage(ping.pingPayload())
-      );
-    });
+    // this.on("sseConnected", (conn, ctx) => {
+    //   console.log(
+    //     `[${this.#connections.length}] AssuranceSyntheticEventSrcTunnelConnection ${conn.userAgentID}, ${ctx.oakCtx.request.url}`,
+    //   );
+    // });
   }
 
   get connections(): Connection[] {
@@ -47,11 +54,24 @@ export class AssuranceSyntheticEventSrcTunnel<
   }
 
   connect(ctx: ConnectionContext, pingOnConnect = true): Connection {
-    const connection = this.factory(ctx);
-    this.cleanConnections().push(connection);
+    const userAgentID = ctx.userAgentIdSupplier(ctx.oakCtx);
+    this.cleanConnections();
+    const foundConnIndex = this.#connections.findIndex((c) =>
+      c.userAgentID == userAgentID
+    );
+    if (foundConnIndex != -1) {
+      const foundConn = this.#connections[foundConnIndex];
+      foundConn.sseTarget.close();
+    }
+    const connection = this.factory(userAgentID, ctx);
+    if (foundConnIndex != -1) {
+      this.#connections[foundConnIndex] = connection;
+    } else {
+      this.#connections.push(connection);
+    }
     this.emit("sseConnected", connection, ctx);
     if (pingOnConnect) {
-      this.emit("ping");
+      connection.sseTarget.dispatchMessage(ping.pingPayload());
     }
     return connection;
   }
@@ -81,8 +101,6 @@ export class AssuranceSyntheticWebSocketTunnel<
   ping(): void;
 }> {
   #connections: Connection[] = [];
-  #onlyOpen: ((value: Connection) => boolean) = (c) =>
-    c.webSocket.readyState == WebSocket.CLOSED ? false : true;
 
   constructor(
     readonly wsHealthEndpointURL: string,
@@ -160,6 +178,7 @@ export class AssuranceMiddlewareSupplier {
         fsAbsPathAndFileName: string,
       ) => string | undefined;
       readonly publicURL: (path?: string) => string;
+      readonly userAgentIdSupplier: (ctx: oak.Context) => string;
     },
     readonly app: oak.Application,
     readonly router: oak.Router,
@@ -170,20 +189,32 @@ export class AssuranceMiddlewareSupplier {
       new AssuranceSyntheticEventSrcTunnel(
         `${this.htmlEndpointURL}/sse/ping`,
         `${this.htmlEndpointURL}/sse/tunnel`,
-        (ctx) => ({ sseTarget: ctx.oakCtx.sendEvents() }),
+        (userAgentID, ctx) => ({
+          userAgentID,
+          sseTarget: ctx.oakCtx.sendEvents(),
+        }),
       );
 
     router.get(this.esTunnel.sseHealthEndpointURL, (ctx) => {
       ctx.response.body =
         `SSE endpoint ${this.esTunnel.sseEndpointURL} available`;
-      this.esTunnel.emit("sseHealthRequest", { oakCtx: ctx });
+      this.esTunnel.emit("sseHealthRequest", {
+        oakCtx: ctx,
+        userAgentIdSupplier: this.config.userAgentIdSupplier,
+      });
     });
 
     router.get(this.esTunnel.sseEndpointURL, (ctx) => {
       if (ctx.request.accepts("text/event-stream")) {
-        this.esTunnel.connect({ oakCtx: ctx });
+        this.esTunnel.connect({
+          oakCtx: ctx,
+          userAgentIdSupplier: this.config.userAgentIdSupplier,
+        });
       } else {
-        this.esTunnel.emit("sseInvalidRequest", { oakCtx: ctx });
+        this.esTunnel.emit("sseInvalidRequest", {
+          oakCtx: ctx,
+          userAgentIdSupplier: this.config.userAgentIdSupplier,
+        });
       }
     });
 

@@ -8,24 +8,27 @@ import * as uaows from "./service/open-user-agent-window.ts";
 import * as db from "../publication-db.ts";
 
 export interface ConsoleTunnelConnection {
+  readonly userAgentID: string;
   readonly sseTarget: oak.ServerSentEventTarget;
 }
 
 export class ConsoleTunnel<
   Connection extends ConsoleTunnelConnection = ConsoleTunnelConnection,
-  // deno-lint-ignore no-explicit-any
-  ConnectionContext extends { oakCtx: oak.Context<any> } = {
+  ConnectionContext extends {
     // deno-lint-ignore no-explicit-any
-    oakCtx: oak.Context<any>;
+    readonly oakCtx: oak.Context<any>;
+    readonly userAgentIdSupplier: (ctx: oak.Context) => string;
+  } = {
+    // deno-lint-ignore no-explicit-any
+    readonly oakCtx: oak.Context<any>;
+    readonly userAgentIdSupplier: (ctx: oak.Context) => string;
   },
 > extends events.EventEmitter<{
   sseHealthRequest(ctx: ConnectionContext): void;
   sseConnected(conn: Connection, ctx: ConnectionContext): void;
   sseInvalidRequest(ctx: ConnectionContext): void;
-  ping(): void;
   serverFileImpact(fsAbsPathAndFileName: string, url?: string): void;
   uaOpenWindow(location: string, target: "console-prime"): void;
-  featureState(feature: string, state: unknown): void;
 }> {
   #connections: Connection[] = [];
   #onlyOpen: ((value: Connection) => boolean) = (c) =>
@@ -35,15 +38,18 @@ export class ConsoleTunnel<
   constructor(
     readonly sseHealthEndpointURL: string,
     readonly sseEndpointURL: string,
-    readonly factory: (ctx: ConnectionContext) => Connection,
+    readonly factory: (
+      userAgentID: string,
+      ctx: ConnectionContext,
+    ) => Connection,
     readonly database: db.Database,
   ) {
     super();
-    this.on(ping.pingPayloadIdentity, () => {
-      this.cleanConnections().forEach((c) =>
-        c.sseTarget.dispatchMessage(ping.pingPayload())
-      );
-    });
+    // this.on("sseConnected", (conn, ctx) => {
+    //   console.log(
+    //     `[${this.#connections.length}] ConsoleTunnelConnection ${conn.userAgentID}, ${ctx.oakCtx.request.url}`,
+    //   );
+    // });
     this.on(
       fis.serverFileImpactPayloadIdentity,
       (fsAbsPathAndFileName, url) => {
@@ -61,13 +67,6 @@ export class ConsoleTunnel<
           location,
           target,
         }))
-      );
-    });
-    this.on("featureState", (feature, state) => {
-      this.cleanConnections().forEach((c) =>
-        c.sseTarget.dispatchEvent(
-          new oak.ServerSentEvent("feature-state", { feature, state }),
-        )
       );
     });
   }
@@ -90,16 +89,24 @@ export class ConsoleTunnel<
   }
 
   connect(ctx: ConnectionContext, pingOnConnect = true): Connection {
-    const connection = this.factory(ctx);
-    this.cleanConnections().push(this.factory(ctx));
+    const userAgentID = ctx.userAgentIdSupplier(ctx.oakCtx);
+    this.cleanConnections();
+    const foundConnIndex = this.#connections.findIndex((c) =>
+      c.userAgentID == userAgentID
+    );
+    if (foundConnIndex != -1) {
+      const foundConn = this.#connections[foundConnIndex];
+      foundConn.sseTarget.close();
+    }
+    const connection = this.factory(userAgentID, ctx);
+    if (foundConnIndex != -1) {
+      this.#connections[foundConnIndex] = connection;
+    } else {
+      this.#connections.push(connection);
+    }
     this.emit("sseConnected", connection, ctx);
     if (pingOnConnect) {
-      this.emit("ping");
-      this.emit(
-        "featureState",
-        "isAccessLoggingEnabled",
-        this.isAccessLoggingEnabled,
-      );
+      connection.sseTarget.dispatchMessage(ping.pingPayload());
     }
     return connection;
   }
@@ -134,6 +141,7 @@ export class ConsoleMiddlewareSupplier {
     readonly router: oak.Router,
     readonly staticEE: s.StaticEventEmitter,
     readonly database: db.Database,
+    readonly userAgentIdSupplier: (ctx: oak.Context) => string,
     options?: Partial<ConsoleMiddlewareSupplierOptions>,
   ) {
     this.htmlEndpointURL = options?.htmlEndpointURL ?? "/console";
@@ -142,14 +150,20 @@ export class ConsoleMiddlewareSupplier {
       new ConsoleTunnel(
         `${this.htmlEndpointURL}/sse/ping`,
         `${this.htmlEndpointURL}/sse/tunnel`,
-        (ctx) => ({ sseTarget: ctx.oakCtx.sendEvents() }),
+        (userAgentID, ctx) => ({
+          userAgentID,
+          sseTarget: ctx.oakCtx.sendEvents(),
+        }),
         this.database,
       );
 
     router.get(this.tunnel.sseHealthEndpointURL, (ctx) => {
       ctx.response.body =
         `SSE endpoint ${this.tunnel.sseEndpointURL} available`;
-      this.tunnel.emit("sseHealthRequest", { oakCtx: ctx });
+      this.tunnel.emit("sseHealthRequest", {
+        oakCtx: ctx,
+        userAgentIdSupplier: this.userAgentIdSupplier,
+      });
     });
 
     router.post(`${this.htmlEndpointURL}/user-agent-bus`, async (ctx) => {
@@ -163,7 +177,10 @@ export class ConsoleMiddlewareSupplier {
 
     router.get(this.tunnel.sseEndpointURL, (ctx) => {
       if (ctx.request.accepts("text/event-stream")) {
-        this.tunnel.connect({ oakCtx: ctx });
+        this.tunnel.connect({
+          oakCtx: ctx,
+          userAgentIdSupplier: this.userAgentIdSupplier,
+        });
         if (options?.openWindowOnInit) {
           this.tunnel.emit(
             "uaOpenWindow",
@@ -172,7 +189,10 @@ export class ConsoleMiddlewareSupplier {
           );
         }
       } else {
-        this.tunnel.emit("sseInvalidRequest", { oakCtx: ctx });
+        this.tunnel.emit("sseInvalidRequest", {
+          oakCtx: ctx,
+          userAgentIdSupplier: this.userAgentIdSupplier,
+        });
       }
     });
 

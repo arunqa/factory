@@ -97,6 +97,13 @@ export class PublicationServer {
   ) => string | undefined;
   readonly staticIndex: "index.html" | string;
   readonly serverStateDB: pDB.Database;
+  readonly userAgentIdSupplier = (ctx: oak.Context) => {
+    // for now assume there's only one Console per server so the userAgent ID
+    // is just the caller's URL (which should be unique enough). TODO: add
+    // cookie or other authentication / identity support when multiple users
+    // will be found.
+    return ctx.request.url.toString();
+  };
   #console?: c.ConsoleMiddlewareSupplier;
   #workspace?: ws.WorkspaceMiddlewareSupplier;
   #assurance?: assure.AssuranceMiddlewareSupplier;
@@ -187,6 +194,7 @@ export class PublicationServer {
       router,
       staticEE,
       this.serverStateDB,
+      this.userAgentIdSupplier,
       {
         openWindowOnInit: { url: "/" },
         ...options,
@@ -205,6 +213,7 @@ export class PublicationServer {
         fsEntryPublicationURL: this.fsEntryPublicationURL,
         publicURL: this.publicURL,
         wsEditorResolver: this.publication.ds.contentStrategy.wsEditorResolver,
+        userAgentIdSupplier: this.userAgentIdSupplier,
       },
       app,
       router,
@@ -222,6 +231,7 @@ export class PublicationServer {
         contentRootPath: this.publication.config.contentRootPath,
         fsEntryPublicationURL: this.fsEntryPublicationURL,
         publicURL: this.publicURL,
+        userAgentIdSupplier: this.userAgentIdSupplier,
       },
       app,
       router,
