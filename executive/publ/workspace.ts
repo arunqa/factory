@@ -3,6 +3,7 @@ import { oak } from "./deps.ts";
 import * as wfs from "../../lib/fs/watch.ts";
 import * as ping from "../../lib/service-bus/service/ping.ts";
 import * as fi from "../../lib/service-bus/service/file-impact.ts";
+import * as ws from "../../lib/workspace/mod.ts";
 
 export interface WorkspaceTunnelConnection {
   readonly sseTarget: oak.ServerSentEventTarget;
@@ -89,6 +90,9 @@ export class WorkspaceMiddlewareSupplier {
         fsAbsPathAndFileName: string,
       ) => string | undefined;
       readonly publicURL: (path?: string) => string;
+      readonly wsEditorResolver: ws.WorkspaceEditorTargetResolver<
+        ws.WorkspaceEditorTarget
+      >;
     },
     readonly app: oak.Application,
     readonly router: oak.Router,
@@ -114,6 +118,36 @@ export class WorkspaceMiddlewareSupplier {
       } else {
         this.tunnel.emit("sseInvalidRequest", { oakCtx: ctx });
       }
+    });
+
+    const editorResolverEndpoint = `${this.htmlEndpointURL}/editor-resolver`;
+    router.get(`${editorResolverEndpoint}/(.*)`, (ctx) => {
+      const srcFileNameRequested = ctx.request.url.pathname.substring(
+        editorResolverEndpoint.length,
+      );
+      let srcFileNameResolved = srcFileNameRequested;
+      if (srcFileNameResolved.startsWith("/factory/")) {
+        srcFileNameResolved = path.resolve(
+          path.fromFileUrl(import.meta.url),
+          "../../..",
+          srcFileNameResolved.substring(9),
+        );
+      } else {
+        // since the server is usually started in the root of the target
+        // workspace we can assume current working directory so we just
+        // remove the starting slash and take the rest
+        srcFileNameResolved = path.resolve(
+          Deno.cwd(),
+          srcFileNameResolved.substring(1),
+        );
+      }
+      ctx.response.body = JSON.stringify(
+        {
+          ...this.config.wsEditorResolver(srcFileNameResolved),
+          srcFileNameRequested,
+          srcFileNameResolved,
+        },
+      );
     });
   }
 

@@ -2,6 +2,7 @@ import { colors, events, path } from "../../core/deps.ts";
 import { async, oak } from "./deps.ts";
 import * as rfStd from "../../core/std/mod.ts";
 import * as p from "./publication.ts";
+import * as pmw from "./publication-middleware.ts";
 import * as wfs from "../../lib/fs/watch.ts";
 import * as bjs from "../../lib/package/bundle-js.ts";
 import * as s from "./static.ts";
@@ -100,6 +101,7 @@ export class PublicationServer {
   #workspace?: ws.WorkspaceMiddlewareSupplier;
   #assurance?: assure.AssuranceMiddlewareSupplier;
   #pdbProxy?: pdbProxy.DatabaseProxyMiddlewareSupplier;
+  #pmw?: pmw.PublicationMiddlewareSupplier;
 
   constructor(
     readonly publication: p.Publication<p.PublicationOperationalContext>,
@@ -161,6 +163,19 @@ export class PublicationServer {
     return this.#console;
   }
 
+  protected preparePublicationInspect(
+    app: oak.Application,
+    router: oak.Router,
+  ) {
+    this.#pmw = new pmw.PublicationMiddlewareSupplier(
+      app,
+      router,
+      this.publication,
+      this.serverStateDB,
+      "/publication",
+    );
+  }
+
   protected prepareConsole(
     app: oak.Application,
     router: oak.Router,
@@ -189,6 +204,7 @@ export class PublicationServer {
         contentRootPath: this.publication.config.contentRootPath,
         fsEntryPublicationURL: this.fsEntryPublicationURL,
         publicURL: this.publicURL,
+        wsEditorResolver: this.publication.ds.contentStrategy.wsEditorResolver,
       },
       app,
       router,
@@ -242,6 +258,7 @@ export class PublicationServer {
       this.serverEE,
     );
 
+    this.preparePublicationInspect(app, router);
     this.prepareConsole(app, router, this.staticEE);
     this.prepareWorkspace(app, router);
     this.prepareAssurance(app, router);

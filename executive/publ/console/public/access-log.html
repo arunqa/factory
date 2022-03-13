@@ -49,8 +49,10 @@
                 },
                 body: JSON.stringify({
                     // these columns should be an identical match to the expectations in accessLogAgGridConfig.columnDefs
-                    SQL: `select created_at, asset_nature, status, location_href, filesys_target_path, filesys_target_symlink
-                            from publ_server_static_access_log`,
+                    SQL: `  SELECT created_at, asset_nature, status, location_href, filesys_target_path, filesys_target_symlink
+                              FROM publ_server_static_access_log
+                          ORDER BY created_at DESC
+                             LIMIT 100`,
                     // rowNature can be "rows" for array of arrays, or "records" for array of objects with keys as column names
                     rowNature: "records"
                 })

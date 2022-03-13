@@ -38,6 +38,11 @@ export function isDatabaseProxySqlSelectService(
   return false;
 }
 
+/**
+ * Registers an endpoint (usually /SQL/unsafe) which accepts arbitrary SQL and
+ * executes it against the publication server's SQLite database which is used to
+ * store access logs, errors, and other diagnostic information for the server.
+ */
 export class DatabaseProxyMiddlewareSupplier {
   constructor(
     readonly app: oak.Application,

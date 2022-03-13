@@ -6,6 +6,7 @@
     <meta charset="utf-8">
     <link rel="stylesheet" type="text/css" href="./path.actuate.css" />
     <script src="./path.actuate.js" type="module"></script>
+    <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.js"></script>
 </head>
 
 <!-- always use Semantic tags whenever possible (https://html.spec.whatwg.org/multipage/sections.html#the-article-element) -->
@@ -23,10 +24,10 @@
                 <div class="col-sm-6">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">Special title treatment</h5>
-                            <p class="card-text">With supporting text below as a natural lead-in to additional content.
-                            </p>
-                            <a href="#" class="btn btn-primary">Go somewhere</a>
+                            <h5 class="card-title">Environment Variables</h5>
+                            <p class="card-text">Your primary configuration is in <code>.envrc</code></p>
+                            <a href="#" class="btn btn-primary" data-ws-editable-src="/.envrc">Open
+                                <code>.envrc</code></a>
                         </div>
                     </div>
                 </div>
@@ -39,6 +40,33 @@
                             <a href="#" class="btn btn-primary">Go somewhere</a>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Renderers</h5>
+
+                    <div id="renderersGrid" class="ag-theme-alpine"></div>
+                    <script>
+                        const target = document.querySelector('#renderersGrid');
+                        if (target) {
+                            fetch("/publication/inspect/renderers.json").then(resp => resp.json()).then(renderers => {
+                                const columnDefs = [
+                                    { field: "identity" },
+                                    { field: "nature" },
+                                    { field: "source" }
+                                ];
+                                const gridOptions = {
+                                    columnDefs: columnDefs,
+                                    rowData: renderers,
+                                    domLayout: 'autoHeight',
+                                };
+                                new agGrid.Grid(target, gridOptions);
+                                //gridOptions.columnApi.autoSizeAllColumns();
+                            })
+                        }
+                    </script>
                 </div>
             </div>
 

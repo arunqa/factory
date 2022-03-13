@@ -88,6 +88,20 @@ class ContextBarComponent extends HTMLElement {
 
                         <li class="sidebar-title">Publication</li>
 
+                        <li class="sidebar-item">
+                            <a href="/console/routes.html" class='sidebar-link'>
+                                <i class="bi bi-activity"></i>
+                                <span>Routes</span>
+                            </a>
+                        </li>
+
+                        <li class="sidebar-item">
+                            <a href="/console/databases.html" class='sidebar-link'>
+                                <i class="bi bi-activity"></i>
+                                <span>Databases</span>
+                            </a>
+                        </li>
+
                         <li class="sidebar-item  has-sub">
                             <a href="#" class='sidebar-link'>
                                 <i class="bi bi-stack"></i>
@@ -475,6 +489,26 @@ class PageState {
         return this;
     }
 
+    resolveWorkspaceEditableSources() {
+        document.querySelectorAll("[data-ws-editable-src]").forEach((element) => {
+            const getEditableEndpoint = `/workspace/editor-resolver${element.dataset.wsEditableSrc}`;
+            fetch(getEditableEndpoint).then(resp => resp.json()).then(wsEditable => {
+                if (wsEditable?.editableTargetURI) {
+                    switch (element.tagName) {
+                        case "A":
+                            element.href = wsEditable?.editableTargetURI;
+                            break;
+
+                        default:
+                            console.warn(`found data-ws-editable-src attribute in ${element.tagName} but don't know how to update it.`);
+                    }
+                } else {
+                    console.warn(`found data-ws-editable-src attribute in ${element.tagName} but ${getEditableEndpoint} did not return { editableTargetURI: string }.`);
+                }
+            });
+        })
+    }
+
     mutateStateContent() {
         for (const nl of document.querySelectorAll("#sidebar ul.menu li.sidebar-item a.sidebar-link")) {
             if (nl.href == window.location) {
@@ -482,6 +516,7 @@ class PageState {
                 nl.parentElement.setAttribute("aria-current", "page");
             }
         }
+        this.resolveWorkspaceEditableSources();
     }
 }
 

@@ -11,3 +11,4 @@
 
 export * from "./badge/mod.ts";
 export * from "./pattern/mod.ts";
+export * from "./workspace-editable/mod.ts";

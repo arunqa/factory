@@ -35,6 +35,7 @@
         import * as mod from "./mod.auto.js";
         import * as patternBDD from "./pattern/mod_bdd.js";
         import * as badgeBDD from "./badge/mod_bdd.js";
+        import * as wsEditableBDD from "./workspace-editable/mod_bdd.js";
 
         const universalDepsSupplier = () => ({ ...mod, });
         const testDepsSupplier = () => ({
@@ -45,6 +46,7 @@
         // pass dependencies into test cases, don't pollute global
         await patternBDD.describeModule(universalDepsSupplier, testDepsSupplier);
         await badgeBDD.describeModule(universalDepsSupplier, testDepsSupplier);
+        await wsEditableBDD.describeModule(universalDepsSupplier, testDepsSupplier);
 
         mocha.run();
     </script>

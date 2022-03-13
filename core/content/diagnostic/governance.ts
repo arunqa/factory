@@ -1,15 +1,6 @@
 import * as fsA from "../../../lib/fs/fs-analytics.ts";
-import * as govn from "../../../governance/mod.ts";
 import * as o from "../../std/observability.ts";
 import * as m from "../../../lib/metrics/mod.ts";
-
-export interface DiagnosticsResourcesState {
-  readonly routes: {
-    readonly renderRoutes: boolean;
-    readonly resourcesTree: govn.RouteTree;
-  };
-  readonly renderers: boolean;
-}
 
 export interface PreProduceObservabilityState {
   readonly metrics?: {

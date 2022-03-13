@@ -31,7 +31,6 @@ import * as mdr from "../../core/render/markdown/mod.ts";
 import * as diagC from "../../core/content/diagnostic/mod.ts";
 import * as redirectC from "../../core/content/redirects.rf.ts";
 
-import * as sqlObsC from "../../lib/db/observability.rf.ts";
 import * as ocC from "../../core/content/operational-context.ts";
 import * as psDB from "./publication-db.ts";
 
@@ -456,7 +455,6 @@ export interface PublicationState {
   readonly resourcesIndex: PublicationResourcesIndex<unknown>;
   readonly persistedIndex: PublicationPersistedIndex;
   readonly producerStats: PublicationProducersStatistics;
-  readonly diagnostics: () => diagC.DiagnosticsResourcesState;
   assetsMetrics?: fsA.AssetsMetricsResult;
 }
 
@@ -632,6 +630,8 @@ export interface Publication<
   readonly config: Configuration<OperationalContext>;
   readonly produce: () => Promise<void>;
   readonly state: PublicationState;
+  // deno-lint-ignore no-explicit-any
+  readonly ds: html.DesignSystemFactory<any, any, any, any>;
 }
 
 export abstract class TypicalPublication<
@@ -683,13 +683,6 @@ export abstract class TypicalPublication<
       resourcesIndex: new PublicationResourcesIndex(),
       producerStats: new PublicationProducersStatistics(),
       persistedIndex,
-      diagnostics: () => ({
-        routes: {
-          resourcesTree: routes.resourcesTree,
-          renderRoutes: this.diagsOptions.routes,
-        },
-        renderers: this.diagsOptions.renderers,
-      }),
     };
     this.state.observability.events.emit("healthStatusSupplier", this);
     this.fspEventsEmitter.on(
@@ -833,15 +826,8 @@ export abstract class TypicalPublication<
   operationalCtxOriginators() {
     if (!this.config.produceOperationalCtxContent()) return [];
 
-    const { fsRouteFactory, diagnosticsRoute, observabilityRoute } =
-      this.config;
-    const diagnostics = this.state.diagnostics();
+    const { fsRouteFactory, observabilityRoute } = this.config;
     return [
-      diagC.diagnosticsResources(
-        diagnosticsRoute,
-        fsRouteFactory,
-        diagnostics,
-      ),
       diagC.observabilityPreProduceResources(
         observabilityRoute,
         fsRouteFactory,
@@ -854,7 +840,6 @@ export abstract class TypicalPublication<
           observability: this.state.observability,
         },
       ),
-      sqlObsC.observabilityResources(diagnosticsRoute, fsRouteFactory),
     ];
   }
 
