@@ -90,11 +90,14 @@ export function isFlexibleMutatedDesignSystemArgumentsSupplier(
   return isDesignSystemArgumentsSupplier(o);
 }
 
-export function designSystemTemplate(identity: string) {
+export function designSystemTemplate(
+  identity: string,
+  location: govn.LocationSupplier,
+) {
   return html.htmlLayoutTemplate<
     html.HelperFunctionOrString<html.HtmlLayout>,
     html.HtmlLayout
-  >(identity);
+  >(identity, location);
 }
 
 export const typicalDesignSystemBodyPartial: html.HtmlPartial<html.HtmlLayout> =
@@ -102,6 +105,7 @@ export const typicalDesignSystemBodyPartial: html.HtmlPartial<html.HtmlLayout> =
 
 export const designSystemNoDecorationPage = designSystemTemplate(
   "ds/page/no-decoration",
+  { moduleImportMetaURL: import.meta.url },
 )`${typicalDesignSystemBodyPartial}`;
 
 export function layoutFrontmatter(
@@ -429,6 +433,7 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
   readonly prettyUrlIndexUnitName = "index";
   constructor(
     readonly identity: govn.RenderStrategyIdentity,
+    readonly location: govn.LocationSupplier,
     readonly layoutStrategies: DesignSystemLayouts<Layout>,
     readonly dsAssetsBaseURL: string,
     readonly universalAssetsBaseURL: string,

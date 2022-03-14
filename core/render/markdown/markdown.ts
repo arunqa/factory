@@ -136,6 +136,9 @@ export function autoCorrectPrettyUrlImagesRule(defaultRender: any) {
 export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
   // deno-lint-ignore no-explicit-any
   readonly mdiRenderer: any;
+  readonly location: govn.LocationSupplier = {
+    moduleImportMetaURL: import.meta.url,
+  };
 
   constructor(
     readonly identity: string,
@@ -371,6 +374,9 @@ export class MarkdownLayouts
 export class MarkdownRenderStrategy
   implements govn.RenderStrategy<md.MarkdownResource, govn.HtmlSupplier> {
   readonly identity = "markdown";
+  readonly location: govn.LocationSupplier = {
+    moduleImportMetaURL: import.meta.url,
+  };
 
   constructor(
     readonly layoutStrategies: MarkdownLayouts,

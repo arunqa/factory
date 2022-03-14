@@ -12,16 +12,33 @@ export class PublicationMiddlewareSupplier {
     readonly serverStateDB: pDB.Database | undefined,
     readonly htmlEndpointURL: string,
   ) {
+    router.get(`${this.htmlEndpointURL}/inspect/project.json`, (ctx) => {
+      const projectRootPath = publication.config.operationalCtx.projectRootPath;
+      ctx.response.body = JSON.stringify({
+        "Project Home": {
+          nature: "path-project",
+          path: projectRootPath("/", true),
+        },
+        "Environment": {
+          nature: "file-project",
+          file: projectRootPath("/.envrc", true),
+          isEditable: true,
+        },
+        "Design System": {
+          nature: "design-system",
+          designSystem: this.publication.ds.designSystem,
+          isEditable: true,
+        },
+      });
+    });
+
     router.get(`${this.htmlEndpointURL}/inspect/renderers.json`, (ctx) => {
       const renderers = [];
       for (
         const layout of publication.ds.designSystem.layoutStrategies.layouts
           .values()
       ) {
-        renderers.push({
-          identity: layout.identity,
-          nature: "HtmlLayoutStrategy",
-        });
+        renderers.push(layout);
       }
       ctx.response.body = JSON.stringify(renderers);
     });

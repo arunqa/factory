@@ -2,7 +2,7 @@ import * as p from "../partial/mod.ts";
 import * as t from "./typical.ts";
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const smartNavigationPage = t.lightningTemplate("lds/page/default")`<!DOCTYPE html>
+export const smartNavigationPage = t.lightningTemplate("lds/page/default", {moduleImportMetaURL: import.meta.url})`<!DOCTYPE html>
 <html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "smartNavigationPage")}>
   <head>
     ${p.typicalHeadPartial}

@@ -49,3 +49,46 @@ export function humanFriendlyPhrase(text: string) {
     (letter) => letter.toUpperCase(),
   );
 }
+
+/**
+ * humanPath shortens a potentially long slash-delimited path into a short one
+ * by keeping as much of the starting and ending paths (which are important
+ * for humans).
+ * @param original the text we want to humanize
+ * @param maxLength the number of characters to keep at start + end
+ * @param formatBasename an optional function which should be called to format the basename
+ * @returns the string shortened to maxLength and formatted with
+ */
+export const humanPath = (
+  original: string,
+  maxLength = 50,
+  formatBasename?: (basename: string) => string,
+) => {
+  const tokens = original.split("/");
+  const basename = tokens[tokens.length - 1];
+
+  //remove first and last elements from the array
+  tokens.splice(0, 1);
+  tokens.splice(tokens.length - 1, 1);
+
+  if (original.length < maxLength) {
+    return (tokens.length > 0 ? (tokens.join("/") + "/") : "") +
+      (formatBasename ? formatBasename(basename) : basename);
+  }
+
+  //remove the current lenth and also space for 3 dots and slash
+  const remLen = maxLength - basename.length - 4;
+  if (remLen > 0) {
+    //recreate our path
+    const path = tokens.join("/");
+    //handle the case of an odd length
+    const lenA = Math.ceil(remLen / 2);
+    const lenB = Math.floor(remLen / 2);
+    //rebuild the path from beginning and end
+    const pathA = path.substring(0, lenA);
+    const pathB = path.substring(path.length - lenB);
+    return pathA + "..." + pathB + "/" +
+      (formatBasename ? formatBasename(basename) : basename);
+  }
+  return (formatBasename ? formatBasename(basename) : basename);
+};

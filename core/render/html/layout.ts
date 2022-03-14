@@ -39,6 +39,7 @@ export function htmlLayoutContributions(): hGovn.HtmlLayoutContributions {
 
 export function htmlLayoutTemplate<T, Layout extends hGovn.HtmlLayout>(
   identity: string,
+  location: govn.LocationSupplier,
 ): hGovn.TemplateLiteralHtmlLayout<T, Layout> {
   return (literals, ...suppliedExprs) => {
     const interpolate: (layout: Layout, body?: string) => string = (
@@ -87,6 +88,7 @@ export function htmlLayoutTemplate<T, Layout extends hGovn.HtmlLayout>(
     };
     const layoutStrategy: hGovn.HtmlLayoutStrategy<Layout> = {
       identity,
+      location,
       rendered: async (layout) => {
         const resource = layout.bodySource;
         const ftcOptions = { functionArgs: [layout] };

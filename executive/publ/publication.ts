@@ -246,7 +246,7 @@ export class PublicationPersistedIndex {
 }
 
 export interface PublicationHomePathSupplier {
-  (relative: string): fsg.FileSysPathText;
+  (relative: string, abs?: boolean): fsg.FileSysPathText;
 }
 
 export interface PublicationOperationalContext {

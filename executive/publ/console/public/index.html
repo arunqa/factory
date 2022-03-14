@@ -21,7 +21,7 @@
             </header> <!-- note use of <header> for article now, not page -->
 
             <div class="row">
-                <div class="col-sm-6">
+                <div class="col-sm-4">
                     <div class="card">
                         <div class="card-body">
                             <h5 class="card-title">Environment Variables for Configuration</h5>
@@ -38,13 +38,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-sm-6">
+                <div class="col-sm-8">
                     <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Special title treatment</h5>
-                            <p class="card-text">With supporting text below as a natural lead-in to additional content.
-                            </p>
-                            <a href="#" class="btn btn-primary">Go somewhere</a>
+                        <div class="table-responsive">
+                            <table id="project-inspector" class="table mb-0 table-lg">
+                                <!-- will be filled in by script -->
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -55,25 +54,6 @@
                     <h5 class="card-title">Renderers</h5>
 
                     <div id="renderersGrid" class="ag-theme-alpine"></div>
-                    <script>
-                        const target = document.querySelector('#renderersGrid');
-                        if (target) {
-                            fetch("/publication/inspect/renderers.json").then(resp => resp.json()).then(renderers => {
-                                const columnDefs = [
-                                    { field: "identity" },
-                                    { field: "nature" },
-                                    { field: "source" }
-                                ];
-                                const gridOptions = {
-                                    columnDefs: columnDefs,
-                                    rowData: renderers,
-                                    domLayout: 'autoHeight',
-                                };
-                                new agGrid.Grid(target, gridOptions);
-                                //gridOptions.columnApi.autoSizeAllColumns();
-                            })
-                        }
-                    </script>
                 </div>
             </div>
 
@@ -129,6 +109,101 @@
             </section>
         </article>
     </main>
+
+    <script type="module">
+        import { humanPath } from "./deps.auto.js";
+
+        document.addEventListener('DOMContentLoaded', function () {
+            fetch("/publication/inspect/project.json").then(resp => resp.json()).then(project => {
+                const table = document.getElementById("project-inspector");
+                for (const entry of Object.entries(project)) {
+                    const [key, value] = entry;
+                    // Create an empty <tr> element and add it to the 1st position of the table:
+                    const row = table.insertRow();
+
+                    // Insert new cells (<td> elements) at the 1st and 2nd position of the "new" <tr> element:
+                    const keyCell = row.insertCell(0);
+                    const valueCell = row.insertCell(1);
+
+                    // Add some text to the new cells:
+                    keyCell.innerHTML = key;
+                    if (typeof value === "object") {
+                        switch (value?.nature) {
+                            case "path-project":
+                                valueCell.innerHTML = humanPath(value.path, 75);
+                                valueCell.title = value.path;
+                                break;
+
+                            case "file-project":
+                                if (value?.isEditable) {
+                                    const editorRedirect = `/workspace/editor-redirect/abs${value.file}`;
+                                    valueCell.innerHTML = humanPath(value.file, 75, (basename) => `<a href="${editorRedirect}" class="fw-bold">${basename}</a>`);
+                                    valueCell.title = editorRedirect;
+                                } else {
+                                    valueCell.innerHTML = value.file;
+                                }
+                                break;
+
+                            case "design-system":
+                                let src = value.designSystem.location.moduleImportMetaURL;
+                                let srcHref = undefined;
+                                if (src.startsWith("file://")) {
+                                    src = src.substring(7);
+                                    const editorRedirect = `/workspace/editor-redirect/abs${src}`;
+                                    srcHref = humanPath(src, 50, (basename) => `<a href="${editorRedirect}" class="fw-bold">${basename}</a>`);
+                                } else {
+                                    srcHref = humanPath(src, 50, (basename) => `<a href="${src}" class="fw-bold">${basename}</a>`);
+                                }
+                                valueCell.innerHTML = `<span class="fw-bold">${value.designSystem.identity}</span> (${srcHref})`;
+                                break;
+                            default:
+                                valueCell.innerHTML = JSON.stringify(value);
+                        }
+                    } else {
+                        valueCell.innerHTML = value.toString();
+                    }
+                }
+            });
+
+            const renderersGridElem = document.querySelector('#renderersGrid');
+            if (renderersGridElem) {
+                fetch("/publication/inspect/renderers.json").then(resp => resp.json()).then(renderers => {
+                    const columnDefs = [
+                        { field: "identity" },
+                        {
+                            field: "location",
+                            cellRenderer: "locationCellRenderer",
+                        }
+                    ];
+                    const gridOptions = {
+                        columnDefs: columnDefs,
+                        rowData: renderers,
+                        domLayout: 'autoHeight',
+                        onGridReady: (event) => event.columnApi.autoSizeAllColumns(),
+                        components: {
+                            // see https://www.ag-grid.com/javascript-grid/components/
+                            locationCellRenderer: (params) => {
+                                if ("location" in params.data) {
+                                    let src = params.data.location.moduleImportMetaURL;
+                                    let srcHref = undefined;
+                                    if (src.startsWith("file://")) {
+                                        src = src.substring(7);
+                                        const editorRedirect = `/workspace/editor-redirect/abs${src}`;
+                                        srcHref = humanPath(src, 90, (basename) => `<a href="${editorRedirect}" class="fw-bold">${basename}</a>`);
+                                    } else {
+                                        srcHref = humanPath(src, 90, (basename) => `<a href="${src}" class="fw-bold">${basename}</a>`);
+                                    }
+                                    return srcHref;
+                                }
+                                return params.value;
+                            },
+                        },
+                    };
+                    new agGrid.Grid(renderersGridElem, gridOptions);
+                })
+            }
+        });
+    </script>
 </body>
 
 </html>

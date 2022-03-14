@@ -1,13 +1,17 @@
+import * as govn from "../../../../../governance/mod.ts";
 import * as html from "../../../../render/html/mod.ts";
 import * as c from "../../../../../core/std/content.ts";
 import * as ldsGovn from "../../governance.ts";
 import * as p from "../partial/mod.ts";
 
-export function lightningTemplate(identity: string): ldsGovn.LightningTemplate {
+export function lightningTemplate(
+  identity: string,
+  location: govn.LocationSupplier,
+): ldsGovn.LightningTemplate {
   return html.htmlLayoutTemplate<
     html.HelperFunctionOrString<ldsGovn.LightningLayout>,
     ldsGovn.LightningLayout
-  >(identity);
+  >(identity, location);
 }
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
@@ -43,7 +47,7 @@ export const typicalPageSurroundBodyPostPartial: ldsGovn.LightningPartial = (lay
   </body>`
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const homePage = lightningTemplate("lds/page/home")`<!DOCTYPE html>
+export const homePage = lightningTemplate("lds/page/home", {moduleImportMetaURL: import.meta.url})`<!DOCTYPE html>
 <html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "homePage")}>
     ${typicalPageSurroundBodyPrePartial}
 
@@ -58,7 +62,7 @@ export const homePage = lightningTemplate("lds/page/home")`<!DOCTYPE html>
 </html>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const innerIndexPage = lightningTemplate("lds/page/inner-index")`<!DOCTYPE html>
+export const innerIndexPage = lightningTemplate("lds/page/inner-index", {moduleImportMetaURL: import.meta.url})`<!DOCTYPE html>
 <html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "innerIndexPage")}>
     ${typicalPageSurroundBodyPrePartial}
 
@@ -77,7 +81,7 @@ export const innerIndexPage = lightningTemplate("lds/page/inner-index")`<!DOCTYP
 </html>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const innerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto")`<!DOCTYPE html>
+export const innerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto", {moduleImportMetaURL: import.meta.url})`<!DOCTYPE html>
 <html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "innerIndexAutoPage")}>
     ${typicalPageSurroundBodyPrePartial}
 
@@ -97,7 +101,7 @@ export const innerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto")
 </html>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const noDefinitiveLayoutPage = lightningTemplate("lds/page/no-layout")`<!DOCTYPE html>
+export const noDefinitiveLayoutPage = lightningTemplate("lds/page/no-layout", {moduleImportMetaURL: import.meta.url})`<!DOCTYPE html>
 <html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "noDefinitiveLayoutPage")}>
   <head>
     ${p.typicalHeadPartial}
@@ -121,4 +125,4 @@ export const noDefinitiveLayoutPage = lightningTemplate("lds/page/no-layout")`<!
 </html>`;
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
-export const noDecorationPage = lightningTemplate("lds/page/no-decoration")`${p.typicalBodyPartial}`;
+export const noDecorationPage = lightningTemplate("lds/page/no-decoration", {moduleImportMetaURL: import.meta.url})`${p.typicalBodyPartial}`;

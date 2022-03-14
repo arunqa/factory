@@ -120,8 +120,28 @@ function humanFriendlyPhrase(text) {
     return text.replace(/[^a-zA-Z0-9 ]/g, " ").replace(/\s\s+/g, " ").replace(/(^\w{1})|(\s+\w{1})/g, (letter)=>letter.toUpperCase()
     );
 }
+const humanPath = (original, maxLength = 50, formatBasename)=>{
+    const tokens = original.split("/");
+    const basename = tokens[tokens.length - 1];
+    tokens.splice(0, 1);
+    tokens.splice(tokens.length - 1, 1);
+    if (original.length < maxLength) {
+        return (tokens.length > 0 ? tokens.join("/") + "/" : "") + (formatBasename ? formatBasename(basename) : basename);
+    }
+    const remLen = maxLength - basename.length - 4;
+    if (remLen > 0) {
+        const path = tokens.join("/");
+        const lenA = Math.ceil(remLen / 2);
+        const lenB = Math.floor(remLen / 2);
+        const pathA = path.substring(0, lenA);
+        const pathB = path.substring(path.length - lenB);
+        return pathA + "..." + pathB + "/" + (formatBasename ? formatBasename(basename) : basename);
+    }
+    return formatBasename ? formatBasename(basename) : basename;
+};
 export { humanFriendlyBytes as humanFriendlyBytes };
 export { humanFriendlyPhrase as humanFriendlyPhrase };
+export { humanPath as humanPath };
 function minWhitespaceIndent(text) {
     const match = text.match(/^[ \t]*(?=\S)/gm);
     return match ? match.reduce((r, a)=>Math.min(r, a.length)

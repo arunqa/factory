@@ -30,7 +30,7 @@ export class ExecutiveControllerEventsEmitter<
 }> {}
 
 export interface ExecutiveControllerHomePathSupplier {
-  (relative: string): string;
+  (relative: string, abs?: boolean): string;
 }
 
 export interface ExecutiveController<

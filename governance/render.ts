@@ -1,6 +1,10 @@
 import * as fm from "./frontmatter.ts";
 import * as m from "./model.ts";
 
+export interface LocationSupplier {
+  readonly moduleImportMetaURL: string;
+}
+
 export interface MutableRenderMetricsSupplier {
   renderMeasure: PerformanceMeasure;
 }
@@ -16,6 +20,7 @@ export interface RenderContextSupplier<Context> {
 }
 
 export interface LayoutStrategy<Layout, LayoutResult> {
+  readonly location: LocationSupplier;
   readonly rendered: (layout: Layout) => Promise<LayoutResult>;
   readonly renderedSync: (source: Layout) => LayoutResult;
 }
@@ -80,6 +85,7 @@ export type RenderStrategyIdentity = string;
 export interface RenderStrategy<Layout, LayoutResult>
   extends LayoutStrategiesSupplier<Layout, LayoutResult> {
   readonly identity: RenderStrategyIdentity;
+  readonly location: LocationSupplier;
   readonly inferredLayoutStrategy: (
     s: Partial<
       | fm.FrontmatterSupplier<fm.UntypedFrontmatter>

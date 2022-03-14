@@ -80,6 +80,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   ) {
     super(
       "LightningDS",
+      { moduleImportMetaURL: import.meta.url },
       new LightingDesignSystemLayouts(),
       "/lightning",
       universalAssetsBaseURL,
