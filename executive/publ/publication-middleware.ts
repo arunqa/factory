@@ -9,7 +9,7 @@ export class PublicationMiddlewareSupplier {
     readonly app: oak.Application,
     readonly router: oak.Router,
     readonly publication: p.Publication<p.PublicationOperationalContext>,
-    readonly database: pDB.Database,
+    readonly serverStateDB: pDB.Database | undefined,
     readonly htmlEndpointURL: string,
   ) {
     router.get(`${this.htmlEndpointURL}/inspect/renderers.json`, (ctx) => {
@@ -51,7 +51,9 @@ export class PublicationMiddlewareSupplier {
       `${this.htmlEndpointURL}/inspect/databases/server.json`,
       (ctx) => {
         ctx.response.body = JSON.stringify({
-          sqliteFileName: this.database.dbStoreFsPath,
+          sqliteFileName: this.serverStateDB
+            ? this.serverStateDB.dbStoreFsPath
+            : `this.serverStateDB not provided`,
         });
       },
     );

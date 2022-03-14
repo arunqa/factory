@@ -42,7 +42,7 @@ export class ConsoleTunnel<
       userAgentID: string,
       ctx: ConnectionContext,
     ) => Connection,
-    readonly database: db.Database,
+    readonly serverStateDB?: db.Database,
   ) {
     super();
     // this.on("sseConnected", (conn, ctx) => {
@@ -140,7 +140,7 @@ export class ConsoleMiddlewareSupplier {
     readonly app: oak.Application,
     readonly router: oak.Router,
     readonly staticEE: s.StaticEventEmitter,
-    readonly database: db.Database,
+    readonly serverStateDB: db.Database | undefined,
     readonly userAgentIdSupplier: (ctx: oak.Context) => string,
     options?: Partial<ConsoleMiddlewareSupplierOptions>,
   ) {
@@ -154,7 +154,7 @@ export class ConsoleMiddlewareSupplier {
           userAgentID,
           sseTarget: ctx.oakCtx.sendEvents(),
         }),
-        this.database,
+        this.serverStateDB,
       );
 
     router.get(this.tunnel.sseHealthEndpointURL, (ctx) => {

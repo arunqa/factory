@@ -38,7 +38,7 @@ export interface PublicationServerOptions {
     fsAbsPathAndFileName: string,
   ) => string | undefined;
   readonly staticIndex?: "index.html" | string;
-  readonly serverStateDB: pDB.Database;
+  readonly serverStateDB?: pDB.Database;
   // readonly serverDiagnosticsLogger?: log.Logger;
 }
 
@@ -96,7 +96,7 @@ export class PublicationServer {
     fsAbsPathAndFileName: string,
   ) => string | undefined;
   readonly staticIndex: "index.html" | string;
-  readonly serverStateDB: pDB.Database;
+  readonly serverStateDB?: pDB.Database;
   readonly userAgentIdSupplier = (ctx: oak.Context) => {
     // for now assume there's only one Console per server so the userAgent ID
     // is just the caller's URL (which should be unique enough). TODO: add
@@ -160,7 +160,7 @@ export class PublicationServer {
     });
     // deno-lint-ignore require-await
     this.staticEE.on("served", async (ssoe) => {
-      if (ssoe.target) {
+      if (ssoe.target && this.serverStateDB) {
         this.serverStateDB.persistStaticServed(ssoe.target);
       }
     });
@@ -243,12 +243,14 @@ export class PublicationServer {
     app: oak.Application,
     router: oak.Router,
   ) {
-    this.#pdbProxy = new pdbProxy.DatabaseProxyMiddlewareSupplier(
-      app,
-      router,
-      this.serverStateDB,
-      "/SQL/unsafe",
-    );
+    if (this.serverStateDB) {
+      this.#pdbProxy = new pdbProxy.DatabaseProxyMiddlewareSupplier(
+        app,
+        router,
+        this.serverStateDB,
+        "/SQL/unsafe",
+      );
+    }
   }
 
   // deno-lint-ignore require-await

@@ -287,6 +287,7 @@ export function typicalPublicationCtlSupplier<
     serverStateDB.init();
 
     const ocGuess: publ.PublicationOperationalContext = {
+      projectRootPath: modulePath,
       processStartTimestamp,
       isExperimentalOperationalCtx,
       isLiveReloadRequest,

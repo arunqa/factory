@@ -245,13 +245,18 @@ export class PublicationPersistedIndex {
   }
 }
 
+export interface PublicationHomePathSupplier {
+  (relative: string): fsg.FileSysPathText;
+}
+
 export interface PublicationOperationalContext {
+  readonly projectRootPath: PublicationHomePathSupplier;
   readonly processStartTimestamp: Date;
   readonly isExperimentalOperationalCtx: boolean;
   readonly isLiveReloadRequest: boolean;
   readonly iterationCount: number;
   readonly produceOperationalCtxCargo: (home: string) => Promise<void>;
-  readonly publStateDB: () => psDB.Database;
+  readonly publStateDB?: () => psDB.Database;
 }
 
 export interface Preferences<
