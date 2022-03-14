@@ -270,25 +270,27 @@ function typicalConnectionValidator(pingURL) {
 }
 var ReconnectionState;
 (function(ReconnectionState1) {
-    ReconnectionState1["UNKNOWN"] = "unknown";
-    ReconnectionState1["WAITING"] = "waiting";
+    ReconnectionState1["IDLE"] = "idle";
     ReconnectionState1["TRYING"] = "trying";
     ReconnectionState1["COMPLETED"] = "completed";
     ReconnectionState1["ABORTED"] = "aborted";
 })(ReconnectionState || (ReconnectionState = {}));
 class ReconnectionStrategy {
-    connect;
     maxAttempts;
     intervalMillecs;
     onStateChange;
-    #state = ReconnectionState.UNKNOWN;
+    #state = ReconnectionState.IDLE;
     #attempt = 0;
-    #interval;
-    constructor(connect, options){
-        this.connect = connect;
+    constructor(options){
         this.maxAttempts = options?.maxAttempts ?? 15;
         this.intervalMillecs = options?.intervalMillecs ?? 1000;
         this.onStateChange = options?.onStateChange;
+    }
+    get isTrying() {
+        return this.#state == ReconnectionState.TRYING;
+    }
+    get isAborted() {
+        return this.#state == ReconnectionState.ABORTED;
     }
     get attempt() {
         return this.#attempt;
@@ -302,24 +304,16 @@ class ReconnectionStrategy {
         this.onStateChange?.(this.#state, previousStatus, this);
     }
     reconnect() {
-        this.state = ReconnectionState.WAITING;
-        this.#interval = setInterval(()=>{
-            this.#attempt++;
-            if (this.#attempt > this.maxAttempts) {
-                this.completed(ReconnectionState.ABORTED);
-            } else {
-                this.state = ReconnectionState.TRYING;
-                this.connect(this);
-            }
-        }, this.intervalMillecs);
+        this.#attempt++;
+        if (this.#attempt > this.maxAttempts) {
+            this.completed(ReconnectionState.ABORTED);
+        } else {
+            this.state = ReconnectionState.TRYING;
+        }
         return this;
     }
     completed(status = ReconnectionState.COMPLETED) {
         this.state = status;
-        if (this.#interval) {
-            clearInterval(this.#interval);
-            this.#interval = undefined;
-        }
         return this;
     }
 }
@@ -350,6 +344,7 @@ class EventSourceTunnel {
     #connectionState = {
         isConnectionState: true
     };
+    #reconnStrategy;
     constructor(init){
         this.esURL = init.esURL;
         this.esEndpointValidator = init.esEndpointValidator;
@@ -357,22 +352,45 @@ class EventSourceTunnel {
         this.onConnStateChange = init.options?.onConnStateChange;
         this.onReconnStateChange = init.options?.onReconnStateChange;
     }
-    init(reconnector1) {
-        this.esEndpointValidator.validate(reconnector1).then((resp)=>{
+    isReconnecting() {
+        return this.#reconnStrategy ? this.#reconnStrategy : false;
+    }
+    isReconnectAborted() {
+        return this.#reconnStrategy && this.#reconnStrategy.isAborted ? true : false;
+    }
+    connected(es, connState) {
+        if (this.#reconnStrategy) this.#reconnStrategy.completed();
+        this.eventSourceFactory.connected?.(es);
+        this.connectionState = connState;
+        this.#reconnStrategy = undefined;
+    }
+    prepareReconnect(connState) {
+        this.#reconnStrategy = this.#reconnStrategy ?? new ReconnectionStrategy({
+            onStateChange: this.onReconnStateChange ? (active, previous, rs)=>{
+                this.onReconnStateChange?.(active, previous, rs, this);
+            } : undefined
+        });
+        connState = {
+            ...connState,
+            reconnectStrategy: this.#reconnStrategy
+        };
+        this.connectionState = connState;
+        return this.#reconnStrategy.reconnect();
+    }
+    init() {
+        if (this.isReconnectAborted()) return;
+        this.esEndpointValidator.validate(this.#reconnStrategy).then((resp)=>{
             if (resp.ok) {
                 const eventSource = this.eventSourceFactory.construct(this.esURL);
                 const coercedES = eventSource;
                 coercedES.onopen = ()=>{
-                    const connState = {
+                    this.connected(eventSource, {
                         isConnectionState: true,
                         isHealthy: true,
                         connEstablishedOn: new Date(),
                         endpointURL: this.esURL,
                         pingURL: this.esEndpointValidator.validationEndpointURL.toString()
-                    };
-                    this.connectionState = connState;
-                    if (reconnector1) reconnector1.completed();
-                    this.eventSourceFactory.connected?.(eventSource);
+                    });
                 };
                 coercedES.onerror = (event)=>{
                     coercedES.close();
@@ -381,16 +399,11 @@ class EventSourceTunnel {
                         isHealthy: false,
                         connFailedOn: new Date(),
                         isEventSourceError: true,
-                        errorEvent: event,
-                        reconnectStrategy: new ReconnectionStrategy((reconnector)=>{
-                            this.init(reconnector);
-                        }, {
-                            onStateChange: this.onReconnStateChange ? (active, previous, rs)=>{
-                                this.onReconnStateChange?.(active, previous, rs, this);
-                            } : undefined
-                        }).reconnect()
+                        errorEvent: event
                     };
-                    this.connectionState = connState;
+                    const reconnectStrategy = this.prepareReconnect(connState);
+                    setTimeout(()=>this.init()
+                    , reconnectStrategy.intervalMillecs);
                 };
             } else {
                 const connState = {
@@ -403,7 +416,9 @@ class EventSourceTunnel {
                     httpStatus: resp.status,
                     httpStatusText: resp.statusText
                 };
-                this.connectionState = connState;
+                const reconnectStrategy = this.prepareReconnect(connState);
+                setTimeout(()=>this.init()
+                , reconnectStrategy.intervalMillecs);
             }
         }).catch((connectionError)=>{
             const connState = {
@@ -415,7 +430,9 @@ class EventSourceTunnel {
                 isEndpointUnavailable: true,
                 endpointURL: this.esURL
             };
-            this.connectionState = connState;
+            const reconnectStrategy = this.prepareReconnect(connState);
+            setTimeout(()=>this.init()
+            , reconnectStrategy.intervalMillecs);
         });
         return this;
     }
@@ -428,15 +445,12 @@ class EventSourceTunnel {
         this.onConnStateChange?.(this.#connectionState, previousConnState, this);
     }
 }
-function eventSourceConnNarrative(tunnel, reconn) {
+function eventSourceConnNarrative(tunnel) {
     const sseState = tunnel.connectionState;
-    if (!reconn && isEventSourceReconnecting(sseState)) {
-        reconn = sseState.reconnectStrategy;
-    }
+    const reconn = tunnel.isReconnecting();
     let reconnected = false;
     if (reconn) {
         switch(reconn.state){
-            case ReconnectionState.WAITING:
             case ReconnectionState.TRYING:
                 return {
                     summary: `reconnecting ${reconn.attempt}/${reconn.maxAttempts}`,
@@ -446,7 +460,7 @@ function eventSourceConnNarrative(tunnel, reconn) {
                 };
             case ReconnectionState.ABORTED:
                 return {
-                    summary: `failed`,
+                    summary: `ABORTED`,
                     color: "red",
                     isHealthy: false,
                     summaryHint: `Unable to reconnect to ${tunnel.esURL} (ES) after ${reconn.maxAttempts} attempts, giving up`
@@ -861,6 +875,7 @@ class WebSocketTunnel {
     #connectionState = {
         isConnectionState: true
     };
+    #reconnStrategy;
     constructor(init){
         this.wsURL = init.wsURL;
         this.wsEndpointValidator = init.wsEndpointValidator;
@@ -869,23 +884,46 @@ class WebSocketTunnel {
         this.onReconnStateChange = init.options?.onReconnStateChange;
         this.allowClose = init.options?.allowClose;
     }
-    init(reconnector1) {
-        this.wsEndpointValidator.validate(reconnector1).then((resp)=>{
+    isReconnecting() {
+        return this.#reconnStrategy ? this.#reconnStrategy : false;
+    }
+    isReconnectAborted() {
+        return this.#reconnStrategy && this.#reconnStrategy.isAborted ? true : false;
+    }
+    connected(ws, connState) {
+        if (this.#reconnStrategy) this.#reconnStrategy.completed();
+        this.webSocketFactory.connected?.(ws);
+        this.connectionState = connState;
+        this.#reconnStrategy = undefined;
+    }
+    prepareReconnect(connState) {
+        this.#reconnStrategy = this.#reconnStrategy ?? new ReconnectionStrategy({
+            onStateChange: this.onReconnStateChange ? (active, previous, rs)=>{
+                this.onReconnStateChange?.(active, previous, rs, this);
+            } : undefined
+        });
+        connState = {
+            ...connState,
+            reconnectStrategy: this.#reconnStrategy
+        };
+        this.connectionState = connState;
+        return this.#reconnStrategy.reconnect();
+    }
+    init() {
+        if (this.isReconnectAborted()) return;
+        this.wsEndpointValidator.validate(this.#reconnStrategy).then((resp)=>{
             if (resp.ok) {
                 if (this.#activeSocket) this.#activeSocket.close();
                 this.#activeSocket = undefined;
                 const ws = this.#activeSocket = this.webSocketFactory.construct(this.wsURL);
                 ws.onopen = ()=>{
-                    const connState = {
+                    this.connected(ws, {
                         isConnectionState: true,
                         isHealthy: true,
                         connEstablishedOn: new Date(),
                         endpointURL: this.wsURL,
                         pingURL: this.wsEndpointValidator.validationEndpointURL.toString()
-                    };
-                    this.connectionState = connState;
-                    if (reconnector1) reconnector1.completed();
-                    this.webSocketFactory.connected?.(ws);
+                    });
                 };
                 ws.onclose = (event)=>{
                     const allowClose = this.allowClose?.(event, this) ?? false;
@@ -895,16 +933,11 @@ class WebSocketTunnel {
                             isHealthy: false,
                             connFailedOn: new Date(),
                             isCloseEvent: true,
-                            closeEvent: event,
-                            reconnectStrategy: new ReconnectionStrategy((reconnector)=>{
-                                this.init(reconnector);
-                            }, {
-                                onStateChange: this.onReconnStateChange ? (active, previous, rs)=>{
-                                    this.onReconnStateChange?.(active, previous, rs, this);
-                                } : undefined
-                            }).reconnect()
+                            closeEvent: event
                         };
-                        this.connectionState = connState;
+                        const reconnectStrategy = this.prepareReconnect(connState);
+                        setTimeout(()=>this.init()
+                        , reconnectStrategy.intervalMillecs);
                     }
                 };
                 ws.onerror = (event)=>{
@@ -914,16 +947,11 @@ class WebSocketTunnel {
                         isHealthy: false,
                         connFailedOn: new Date(),
                         isEventSourceError: true,
-                        errorEvent: event,
-                        reconnectStrategy: new ReconnectionStrategy((reconnector)=>{
-                            this.init(reconnector);
-                        }, {
-                            onStateChange: this.onReconnStateChange ? (active, previous, rs)=>{
-                                this.onReconnStateChange?.(active, previous, rs, this);
-                            } : undefined
-                        }).reconnect()
+                        errorEvent: event
                     };
-                    this.connectionState = connState;
+                    const reconnectStrategy = this.prepareReconnect(connState);
+                    setTimeout(()=>this.init()
+                    , reconnectStrategy.intervalMillecs);
                 };
             } else {
                 const connState = {
@@ -936,7 +964,9 @@ class WebSocketTunnel {
                     httpStatus: resp.status,
                     httpStatusText: resp.statusText
                 };
-                this.connectionState = connState;
+                const reconnectStrategy = this.prepareReconnect(connState);
+                setTimeout(()=>this.init()
+                , reconnectStrategy.intervalMillecs);
             }
         }).catch((connectionError)=>{
             const connState = {
@@ -948,7 +978,9 @@ class WebSocketTunnel {
                 isEndpointUnavailable: true,
                 endpointURL: this.wsURL
             };
-            this.connectionState = connState;
+            const reconnectStrategy = this.prepareReconnect(connState);
+            setTimeout(()=>this.init()
+            , reconnectStrategy.intervalMillecs);
         });
         return this;
     }
@@ -972,7 +1004,6 @@ function webSocketConnNarrative(tunnel, reconn) {
     let reconnected = false;
     if (reconn) {
         switch(reconn.state){
-            case ReconnectionState.WAITING:
             case ReconnectionState.TRYING:
                 return {
                     summary: `reconnecting ${reconn.attempt}/${reconn.maxAttempts}`,

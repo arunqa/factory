@@ -117,6 +117,7 @@ export class EventSourceTunnel<EventSource = any> {
   // isHealthy can be true or false for known states, or undefined at init
   // for "unknown" state
   #connectionState: EventSourceConnectionState = { isConnectionState: true };
+  #reconnStrategy?: c.ReconnectionStrategy;
 
   constructor(init: EventSourceStateInit<EventSource>) {
     this.esURL = init.esURL;
@@ -126,8 +127,48 @@ export class EventSourceTunnel<EventSource = any> {
     this.onReconnStateChange = init.options?.onReconnStateChange;
   }
 
-  init(reconnector?: c.ReconnectionStrategy) {
-    this.esEndpointValidator.validate(reconnector).then((resp) => {
+  isReconnecting(): c.ReconnectionStrategy | false {
+    return this.#reconnStrategy ? this.#reconnStrategy : false;
+  }
+
+  isReconnectAborted(): boolean {
+    return this.#reconnStrategy && this.#reconnStrategy.isAborted
+      ? true
+      : false;
+  }
+
+  connected(es: EventSource, connState: EventSourceConnectionHealthy) {
+    if (this.#reconnStrategy) this.#reconnStrategy.completed();
+    this.eventSourceFactory.connected?.(es);
+
+    // update messages and listeners as to our new state; at this point the
+    // reconnection state in this.#reconnStrategy is available
+    this.connectionState = connState;
+
+    // now reset the reconnection strategy because messages are updated
+    this.#reconnStrategy = undefined;
+  }
+
+  prepareReconnect(connState: EventSourceConnectionUnhealthy) {
+    this.#reconnStrategy = this.#reconnStrategy ?? new c.ReconnectionStrategy({
+      onStateChange: this.onReconnStateChange
+        ? (active, previous, rs) => {
+          this.onReconnStateChange?.(active, previous, rs, this);
+        }
+        : undefined,
+    });
+    connState = {
+      ...connState,
+      reconnectStrategy: this.#reconnStrategy,
+    };
+    this.connectionState = connState;
+    return this.#reconnStrategy.reconnect();
+  }
+
+  init() {
+    if (this.isReconnectAborted()) return;
+
+    this.esEndpointValidator.validate(this.#reconnStrategy).then((resp) => {
       if (resp.ok) {
         // this.eventSourceFactory() should assign onmessage by default
         const eventSource = this.eventSourceFactory.construct(this.esURL);
@@ -144,16 +185,13 @@ export class EventSourceTunnel<EventSource = any> {
         };
 
         coercedES.onopen = () => {
-          const connState: EventSourceConnectionHealthy = {
+          this.connected(eventSource, {
             isConnectionState: true,
             isHealthy: true,
             connEstablishedOn: new Date(),
             endpointURL: this.esURL,
             pingURL: this.esEndpointValidator.validationEndpointURL.toString(),
-          };
-          this.connectionState = connState;
-          if (reconnector) reconnector.completed();
-          this.eventSourceFactory.connected?.(eventSource);
+          });
         };
 
         coercedES.onerror = (event) => {
@@ -164,18 +202,9 @@ export class EventSourceTunnel<EventSource = any> {
             connFailedOn: new Date(),
             isEventSourceError: true,
             errorEvent: event,
-            reconnectStrategy: new c.ReconnectionStrategy((reconnector) => {
-              // recursively call init() until success or aborted exit
-              this.init(reconnector);
-            }, {
-              onStateChange: this.onReconnStateChange
-                ? (active, previous, rs) => {
-                  this.onReconnStateChange?.(active, previous, rs, this);
-                }
-                : undefined,
-            }).reconnect(),
           };
-          this.connectionState = connState;
+          const reconnectStrategy = this.prepareReconnect(connState);
+          setTimeout(() => this.init(), reconnectStrategy.intervalMillecs);
         };
       } else {
         const connState:
@@ -190,7 +219,8 @@ export class EventSourceTunnel<EventSource = any> {
             httpStatus: resp.status,
             httpStatusText: resp.statusText,
           };
-        this.connectionState = connState;
+        const reconnectStrategy = this.prepareReconnect(connState);
+        setTimeout(() => this.init(), reconnectStrategy.intervalMillecs);
       }
     }).catch((connectionError: Error) => {
       const connState:
@@ -204,7 +234,8 @@ export class EventSourceTunnel<EventSource = any> {
           isEndpointUnavailable: true,
           endpointURL: this.esURL,
         };
-      this.connectionState = connState;
+      const reconnectStrategy = this.prepareReconnect(connState);
+      setTimeout(() => this.init(), reconnectStrategy.intervalMillecs);
     });
 
     // we return 'this' to allow convenient method chaining
@@ -231,16 +262,12 @@ export interface EventSourceConnNarrative {
 
 export function eventSourceConnNarrative(
   tunnel: EventSourceTunnel,
-  reconn?: c.ReconnectionStrategy,
 ): EventSourceConnNarrative {
   const sseState = tunnel.connectionState;
-  if (!reconn && isEventSourceReconnecting(sseState)) {
-    reconn = sseState.reconnectStrategy;
-  }
+  const reconn = tunnel.isReconnecting();
   let reconnected = false;
   if (reconn) {
     switch (reconn.state) {
-      case c.ReconnectionState.WAITING:
       case c.ReconnectionState.TRYING:
         return {
           summary: `reconnecting ${reconn.attempt}/${reconn.maxAttempts}`,
@@ -252,7 +279,7 @@ export function eventSourceConnNarrative(
 
       case c.ReconnectionState.ABORTED:
         return {
-          summary: `failed`,
+          summary: `ABORTED`,
           color: "red",
           isHealthy: false,
           summaryHint:
