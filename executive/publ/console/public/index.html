@@ -259,7 +259,7 @@
     </main>
 
     <script type="module">
-        import { humanPath } from "./deps.auto.js";
+        import { humanPath, editableFileRefHTML, locationEditorHTML } from "./deps.auto.js";
 
         document.addEventListener('DOMContentLoaded', function () {
             fetch("/publication/inspect/project.json").then(resp => resp.json()).then(project => {
@@ -284,26 +284,16 @@
 
                             case "file-project":
                                 if (value?.isEditable) {
-                                    const editorRedirect = `/workspace/editor-redirect/abs${value.file}`;
-                                    valueCell.innerHTML = humanPath(value.file, 75, (basename) => `<a href="${editorRedirect}" class="fw-bold">${basename}</a>`);
-                                    valueCell.title = editorRedirect;
+                                    valueCell.innerHTML = editableFileRefHTML(value.file, 75);
                                 } else {
                                     valueCell.innerHTML = value.file;
                                 }
                                 break;
 
                             case "design-system":
-                                let src = value.designSystem.location.moduleImportMetaURL;
-                                let srcHref = undefined;
-                                if (src.startsWith("file://")) {
-                                    src = src.substring(7);
-                                    const editorRedirect = `/workspace/editor-redirect/abs${src}`;
-                                    srcHref = humanPath(src, 50, (basename) => `<a href="${editorRedirect}" class="fw-bold">${basename}</a>`);
-                                } else {
-                                    srcHref = humanPath(src, 50, (basename) => `<a href="${src}" class="fw-bold">${basename}</a>`);
-                                }
-                                valueCell.innerHTML = `<span class="fw-bold"><a href="/console/presentation/design-system.html">${value.designSystem.identity}</a></span> (${srcHref})`;
+                                valueCell.innerHTML = `<span class="fw-bold"><a href="/console/presentation/design-system.html">${value.designSystem.identity}</a></span> (${locationEditorHTML(value.designSystem.location, 50)})`;
                                 break;
+
                             default:
                                 valueCell.innerHTML = JSON.stringify(value);
                         }

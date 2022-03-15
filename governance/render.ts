@@ -1,9 +1,6 @@
 import * as fm from "./frontmatter.ts";
 import * as m from "./model.ts";
-
-export interface LocationSupplier {
-  readonly moduleImportMetaURL: string;
-}
+import { LocationSupplier } from "./module.ts";
 
 export interface MutableRenderMetricsSupplier {
   renderMeasure: PerformanceMeasure;

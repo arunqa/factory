@@ -22,7 +22,8 @@
 
             <div class="card">
                 <div class="card-body">
-                    This publication uses the <b><span id="design-system-identity"></span></b> design system located at <span id="design-system-location"></span>.
+                    This publication uses the <b><span id="design-system-identity"></span></b> design system located at
+                    <span id="design-system-location"></span>.
                 </div>
             </div>
 
@@ -37,16 +38,15 @@
     </main>
 
     <script type="module">
-        import { humanPath } from "../deps.auto.js";
+        import { locationEditorHTML } from "../deps.auto.js";
 
         document.addEventListener('DOMContentLoaded', function () {
             const renderersGridElem = document.querySelector('#renderersGrid');
             if (renderersGridElem) {
                 fetch("/publication/inspect/project.json").then(resp => resp.json()).then(project => {
                     const ds = project["Design System"].designSystem;
-                console.dir(ds);
                     document.getElementById("design-system-identity").innerHTML = ds?.identity;
-                    document.getElementById("design-system-location").innerHTML = ds?.location?.moduleImportMetaURL;
+                    document.getElementById("design-system-location").innerHTML = locationEditorHTML(ds.location, 90);
                 });
 
                 fetch("/publication/inspect/renderers.json").then(resp => resp.json()).then(renderers => {
@@ -64,21 +64,7 @@
                         onGridReady: (event) => event.columnApi.autoSizeAllColumns(),
                         components: {
                             // see https://www.ag-grid.com/javascript-grid/components/
-                            locationCellRenderer: (params) => {
-                                if ("location" in params.data) {
-                                    let src = params.data.location.moduleImportMetaURL;
-                                    let srcHref = undefined;
-                                    if (src.startsWith("file://")) {
-                                        src = src.substring(7);
-                                        const editorRedirect = `/workspace/editor-redirect/abs${src}`;
-                                        srcHref = humanPath(src, 90, (basename) => `<a href="${editorRedirect}" class="fw-bold">${basename}</a>`);
-                                    } else {
-                                        srcHref = humanPath(src, 90, (basename) => `<a href="${src}" class="fw-bold">${basename}</a>`);
-                                    }
-                                    return srcHref;
-                                }
-                                return params.value;
-                            },
+                            locationCellRenderer: (params) => "location" in params.data ? locationEditorHTML(params.data.location, 90) : params.value,
                         },
                     };
                     new agGrid.Grid(renderersGridElem, gridOptions);
