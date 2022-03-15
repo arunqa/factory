@@ -4,12 +4,12 @@
 
 <head>
     <meta charset="utf-8">
-    <link rel="stylesheet" type="text/css" href="./path.actuate.css" />
+    <link rel="stylesheet" type="text/css" href="../path.actuate.css" />
     <!-- $script used by component/ag-grid.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
     <script src="/universal-cc/component/ag-grid.js"></script>
     <script type="module">
-        import { actuationStrategy, ServiceBus, EventEmitter } from "./path.lib.js";
+        import { actuationStrategy, ServiceBus, EventEmitter } from "../path.lib.js";
         // prepare global `executive` and "bootstrap" or _actuate_ the page.
         const strategy = actuationStrategy().args;
         const executive = strategy.actuate();
@@ -28,7 +28,8 @@
                     { field: "filesys_target_path", headerName: 'Target', sortable: true },
                     { field: "filesys_target_symlink", headerName: 'Symlink', sortable: true },
                 ],
-                rowData: []
+                rowData: [],
+                onGridReady: (event) => event.columnApi.autoSizeAllColumns(),
             },
         }
 

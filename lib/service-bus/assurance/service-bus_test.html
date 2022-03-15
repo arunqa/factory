@@ -151,19 +151,19 @@
                     }
                 }));
                 // observe modality-specific payloads
-                serviceBus.observeFetchEvent((payload, reqInit) => reportServiceBusDiags("observed universal fetch", payload, reqInit));
-                serviceBus.observeFetchEventResponse((respPayload, fetchPayload) => reportServiceBusDiags("observed universal fetchResponse", fetchPayload, respPayload));
-                serviceBus.observeFetchEventError((error, reqInit, fetchPayload) => reportServiceBusDiags("observed universal fetchRespError", error, reqInit, fetchPayload));
-                serviceBus.observeEventSource((esPayload) => reportServiceBusDiags("observed universal EventSource", esPayload));
-                serviceBus.observeEventSourceError((esPayload) => reportServiceBusDiags("observed universal EventSource error", esPayload));
-                serviceBus.observeWebSocketSendEvent((esPayload) => reportServiceBusDiags("observed universal WebSocket send", esPayload));
-                serviceBus.observeWebSocketReceiveEvent((esPayload) => reportServiceBusDiags("observed universal WebSocket receive", esPayload));
-                serviceBus.observeWebSocketErrorEvent((esPayload) => reportServiceBusDiags("observed universal WebSocket error", esPayload));
+                serviceBus.observeFetchEvent((payload, reqInit) => console.log("observed universal fetch", payload, reqInit));
+                serviceBus.observeFetchEventResponse((respPayload, fetchPayload) => console.log("observed universal fetchResponse", fetchPayload, respPayload));
+                serviceBus.observeFetchEventError((error, reqInit, fetchPayload) => console.log("observed universal fetchRespError", error, reqInit, fetchPayload));
+                serviceBus.observeEventSource((esPayload) => console.log("observed universal EventSource", esPayload));
+                serviceBus.observeEventSourceError((esPayload) => console.log("observed universal EventSource error", esPayload));
+                serviceBus.observeWebSocketSendEvent((esPayload) => console.log("observed universal WebSocket send", esPayload));
+                serviceBus.observeWebSocketReceiveEvent((esPayload) => console.log("observed universal WebSocket receive", esPayload));
+                serviceBus.observeWebSocketErrorEvent((esPayload) => console.log("observed universal WebSocket error", esPayload));
 
                 // observe modality-independent payloads
-                serviceBus.observeUnsolicitedPayload((esPayload) => reportServiceBusDiags("observed universal unsolicited payload from SSE or WS", esPayload));
-                serviceBus.observeSolicitedPayload((esPayload) => reportServiceBusDiags("observed universal solicited payload from fetch or WS(TODO) ", esPayload));
-                serviceBus.observeReceivedPayload((esPayload) => reportServiceBusDiags("observed universal receive payload from fetch, SSE, or WS", esPayload));
+                serviceBus.observeUnsolicitedPayload((esPayload) => console.log("observed universal unsolicited payload from SSE or WS", esPayload));
+                serviceBus.observeSolicitedPayload((esPayload) => console.log("observed universal solicited payload from fetch or WS(TODO) ", esPayload));
+                serviceBus.observeReceivedPayload((esPayload) => console.log("observed universal receive payload from fetch, SSE, or WS", esPayload));
 
                 const accessLogEnabled = mod.binaryStateService((baseURL) => baseURL, () => "testCheckbox1", () => ({ testCheckbox1State: true }));
                 const ping = mod.pingService((baseURL) => baseURL);

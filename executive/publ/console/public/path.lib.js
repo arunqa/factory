@@ -81,146 +81,64 @@ class ContextBarComponent extends HTMLElement {
                     <ul class="menu">
                         <li class="sidebar-item">
                             <a href="/console/" class='sidebar-link'>
-                                <i class="bi bi-grid-fill"></i>
+                                <i class="fa-solid fa-house"></i>
                                 <span>Home</span>
                             </a>
                         </li>
 
                         <li class="sidebar-title">Publication</li>
 
-                        <li class="sidebar-item">
-                            <a href="/console/routes.html" class='sidebar-link'>
-                                <i class="bi bi-activity"></i>
-                                <span>Routes</span>
-                            </a>
-                        </li>
-
-                        <li class="sidebar-item">
-                            <a href="/console/databases.html" class='sidebar-link'>
-                                <i class="bi bi-activity"></i>
-                                <span>Databases</span>
-                            </a>
-                        </li>
-
-                        <li class="sidebar-item  has-sub">
+                        <li class="sidebar-item has-sub">
                             <a href="#" class='sidebar-link'>
-                                <i class="bi bi-stack"></i>
-                                <span>Components</span>
+                                <i class="fa-solid fa-file-code"></i>
+                                <span>Resources</span>
                             </a>
-                            <ul class="submenu ">
-                                <li class="submenu-item ">
-                                    <a href="component-alert.html">Alert</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="component-badge.html">Badge</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="component-breadcrumb.html">Breadcrumb</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="component-button.html">Button</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="component-card.html">Card</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="component-carousel.html">Carousel</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="component-dropdown.html">Dropdown</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="component-list-group.html">List Group</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="component-modal.html">Modal</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="component-navs.html">Navs</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="component-pagination.html">Pagination</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="component-progress.html">Progress</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="component-spinner.html">Spinner</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="component-tooltip.html">Tooltip</a>
+                            <ul class="submenu">
+                                <li class="submenu-item">
+                                    <a href="/console/resources/routes.html">Routes</a>
                                 </li>
                             </ul>
                         </li>
 
-                        <li class="sidebar-item  has-sub">
+                        <li class="sidebar-item has-sub">
                             <a href="#" class='sidebar-link'>
-                                <i class="bi bi-collection-fill"></i>
-                                <span>Extra Components</span>
+                                <i class="fa-solid fa-desktop"></i>
+                                <span>Presentation</span>
                             </a>
                             <ul class="submenu ">
-                                <li class="submenu-item ">
-                                    <a href="extra-component-avatar.html">Avatar</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="extra-component-sweetalert.html">Sweet Alert</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="extra-component-toastify.html">Toastify</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="extra-component-rating.html">Rating</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="extra-component-divider.html">Divider</a>
+                                <li class="submenu-item">
+                                    <a href="/console/presentation/design-system.html">Design System</a>
                                 </li>
                             </ul>
                         </li>
 
-                        <li class="sidebar-item  has-sub">
+                        <li class="sidebar-item has-sub">
                             <a href="#" class='sidebar-link'>
-                                <i class="bi bi-grid-1x2-fill"></i>
-                                <span>Layouts</span>
+                                <i class="fa-solid fa-binoculars"></i>
+                                <span>Observability</span>
                             </a>
-                            <ul class="submenu ">
-                                <li class="submenu-item ">
-                                    <a href="layout-default.html">Default Layout</a>
+                            <ul class="submenu">
+                                <li class="submenu-item">
+                                    <a href="/console/observability/environment.html">Environment</a>
                                 </li>
-                                <li class="submenu-item ">
-                                    <a href="layout-vertical-1-column.html">1 Column</a>
+                                <li class="submenu-item">
+                                    <a href="/console/observability/health.html">Health</a>
                                 </li>
-                                <li class="submenu-item ">
-                                    <a href="layout-vertical-navbar.html">Vertical Navbar</a>
+                                <li class="submenu-item">
+                                    <a href="/console/observability/asset-analytics.html">Assets Analytics</a>
                                 </li>
-                                <li class="submenu-item ">
-                                    <a href="layout-rtl.html">RTL Layout</a>
-                                </li>
-                                <li class="submenu-item ">
-                                    <a href="layout-horizontal.html">Horizontal Menu</a>
+                                <li class="submenu-item">
+                                    <a href="/console/observability/access-log.html">Server Access Log</a>
                                 </li>
                             </ul>
                         </li>
 
-                        <li class="sidebar-title">Observability</li>
+                        <li class="sidebar-title">pubctl.ts Controller</li>
 
                         <li class="sidebar-item">
-                            <a href="/console/health.html" class='sidebar-link'>
-                                <i class="bi bi-activity"></i>
-                                <span>Health</span>
-                            </a>
-                        </li>
-
-                        <li class="sidebar-item">
-                            <a href="/console/observability.html" class='sidebar-link'>
-                                <i class="bi bi-bar-chart-steps"></i>
-                                <span>Assets Analytics</span>
-                            </a>
-                        </li>
-
-                        <li class="sidebar-item">
-                            <a href="/console/access-log.html" class='sidebar-link'>
-                                <i class="bi bi-grid-1x2-fill"></i>
-                                <span>Access Log</span>
+                            <a href="/console/structured-data-sources.html" class='sidebar-link'>
+                                <i class="fa-solid fa-database"></i>
+                                <span>Structured Data Sources</span>
                             </a>
                         </li>
 
@@ -231,19 +149,17 @@ class ContextBarComponent extends HTMLElement {
                             </a>
                         </li>
 
-                        <li class="sidebar-title">pubctl.ts Controller</li>
+                        <li class="sidebar-item">
+                            <a href="/console/diagnostics.html" class='sidebar-link'>
+                                <i class="bi bi-puzzle"></i>
+                                <span>Diagnostics</span>
+                            </a>
+                        </li>
 
                         <li class="sidebar-item">
                             <a onclick="fetch('/server/restart')" href="#" class='sidebar-link'>
                                 <i class="bi bi-life-preserver"></i>
                                 <span>Restart pubctl.ts</span>
-                            </a>
-                        </li>
-
-                        <li class="sidebar-item">
-                            <a href="/console/diagnostics.html" class='sidebar-link'>
-                                <i class="bi bi-puzzle"></i>
-                                <span>Diagnostics</span>
                             </a>
                         </li>
                     </ul>

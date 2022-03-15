@@ -6,7 +6,6 @@
     <meta charset="utf-8">
     <link rel="stylesheet" type="text/css" href="./path.actuate.css" />
     <script src="./path.actuate.js" type="module"></script>
-    <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.js"></script>
 </head>
 
 <!-- always use Semantic tags whenever possible (https://html.spec.whatwg.org/multipage/sections.html#the-article-element) -->
@@ -33,8 +32,9 @@
                             <p>If you need to modify any configurable environment variables in <code>.envrc</code>
                                 you'll need to run <code>direnv allow</code> and restart the publication server.
                             </p>
-                            <a href="/workspace/editor-redirect/publication/.envrc" class="btn btn-primary">Open
+                            <a href="/workspace/editor-redirect/publication/.envrc" class="btn btn-secondary">Open
                                 <code>.envrc</code></a>
+                            <a href="observability/environment.html" class="btn">Inspect Env Vars</a>
                         </div>
                     </div>
                 </div>
@@ -46,14 +46,6 @@
                             </table>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Renderers</h5>
-
-                    <div id="renderersGrid" class="ag-theme-alpine"></div>
                 </div>
             </div>
 
@@ -103,6 +95,162 @@
                         ## Experiment
 
                         * See [Building data\-centric apps with a reactive relational database](https://riffle.systems/essays/prelude/) for interesting way to use SQLite.
+
+                        ## From README.md
+
+                        ### Framework
+
+                        - Consider replacing or augmenting `shah/ts-safety` with [garronej/tsafe](https://github.com/garronej/tsafe)
+                        because it has more capabilities for ensuring type safety. `tsafe` can be used
+                        with AJV to validate frontmatter and models at compile time and runtime.
+                        - Allow certain Deno modules to flag themselves for automatic SSR through
+                        serverless services. We can use something like `module.ssrs.rf.ts` to indicate
+                        that a route like `/module` gets created and that route proxies everything to
+                        that "SSR service" (`ssrs`). [Overlord](https://github.com/KhaledSakr/overlord)
+                        is a good example of that capability.
+                        - Integrate [command palette for the web](https://github.com/benwinding/command-pal) for easier navigation of directives, searching, etc.
+                        - Incorporate [Pandoc Markdown CSS Theme](https://jez.io/pandoc-markdown-css-theme/)
+                        [Tufte Pandoc CSS](https://github.com/jez/tufte-pandoc-css), and [notion.css](https://sreeram-venkitesh.github.io/notion.css/)
+                        as alternate Markdown layouts. Allow Markdown author to choose their layout using
+                        `.resFactory` directives.
+                        - Use [deno-ci](https://github.com/justjavac/deno-ci) to store traceability data
+                        in observability diagnostics to indicate whether build was done in CI/CD
+                        environment.
+                        - Incorporate [polyglot-tag](https://github.com/rpaterson/polyglot-tag) approach
+                        in renderers and design systems (e.g. partials, pages, etc.) so that arbitrary
+                        languages can be called and assembled.
+                        - Incorporate [Design decisions](https://prpl.dev/design-decisions) into docs.
+                        - How can web workers improve rendering performance?
+                        - Use
+                        [Deno Deploy or PgDCP for Serverless Functions as
+                        Proxies](https://css-tricks.com/serverless-functions-as-proxies/)
+                        - Integrate [Plausible](https://github.com/plausible/analytics),
+                        [Fathom](https://github.com/usefathom/fathom) or custom analytics framework
+                        plus add type-safe Google Analytics into Design System base classes.
+                        - For tracking click throughs integrate with Funnelytics.io,
+                            [BPMN Engine](https://github.com/paed01/bpmn-engine) or similar.
+                        - Review
+                            [server\-side conversion tracking](https://digiday.com/marketing/wtf-is-server-side-conversion-tracking/)
+                            to see how we might be able to use routes, aliases, etc. to manage tracking
+                            and then we can integrate with innovators, suppliers, etc. and our
+                            publications.
+                        - Integrate [denodash](https://github.com/brianboyko/denodash) for refinery
+                        calls, enhancing EventEmitter, finding nodes in a tree, and a variety of other
+                        useful functional programming uses.
+                        - Integrate
+                        [Islands Architecture](https://jasonformat.com/islands-architecture/)
+                        - Evaluate [Snel](https://github.com/crewdevio/Snel) for Svelte integration
+                        - [Marko](https://markojs.com/) is a similar idea but only supports NPM
+                        - Evaluate [xstate](https://cdn.skypack.dev/xstate) to incorporate FSMs where
+                        appropriate.
+                        - Check out [PHP-based Grav](https://getgrav.org/features) for some great ideas
+                        such as aggressive caching, package manager, multi-site capabilities, custom
+                        page headers, automatic Page Link Handling, dynamic image manipulation and
+                        documentation.
+
+                        ### Bunders and Builders
+
+                        - Allow poly-build capability using [Parcel](https://parceljs.org/), [esbuild](https://esbuild.github.io/),
+                        [Rome](https://rome.tools/), and other bundlers and builders. This space is
+                        very active and we should not reinvent the wheel.
+
+                        ### Context
+
+                        - Add `Partial<govn.RenderContextSupplier<*Context>>` to HtmlLayout, JsonLayout,
+                        etc so that pages, partials, etc. can easily see which "environment" like
+                        production, sandbox, devl, test, etc. they are running in.
+                        - This is especially helpful to show banners across the top/bottom of sites in
+                            dev/test/sandbox environments for clarity.
+                        - Allow contexts to be carried into ClientCargo so generated web assets can
+                            use `location.hostname` as a way of indicating devl/sandbox/prod contexts.
+
+                        ### Models
+
+                        - Use [Ajv JSON schema validator](https://ajv.js.org/) to validate models since
+                        need to be type-safe but fully extensible across resources.
+                        - Decide how much alignment or separation there should be between frontmatter
+                        and models. Should frontmatter and models be the same or is there room for
+                        both? For example, frontmatter might be schema-free but models are type-safe?
+
+                        ### Redirects
+
+                        - Implement special link shortener and asset trackingredirects for web assets.
+                        This would allow `domain.com/x/ABC` type definitions to allow automatic
+                        generation of redirects tied to shortcode (`ABC`). Also, it would allow easy
+                        implementation of [Scarf Gateway](https://about.scarf.sh/scarf-gateway) style
+                        resource tracking (see related [Nomia](https://github.com/scarf-sh/nomia/)
+                        project for universal resource namespaces).
+
+                        ### Visualization
+
+                        - [Livemark](https://github.com/frictionlessdata/livemark) is a static page
+                        generator that extends Markdown with interactive charts, tables, scripts, and
+                        more. Should be a good comparable for us to incorporate into Factory.
+
+                        ### Database Functionality
+
+                        - [Evidence](https://github.com/evidence-dev/evidence) enables analysts to
+                        deliver a polished business intelligence system using SQL and markdown. This
+                        is a great approach that we should integrate.
+                        [Hacker News Discussion](https://news.ycombinator.com/item?id=28304781).
+                        - Use [Rakam](https://rakam.io/) as a guide to define our data as code and
+                        enable our analytics teams to get insights from your data without SQL. Check
+                        out [metriql](https://metriql.com/) as a way to integrate Metrics across
+                        databases - as a PgDCP source/sink.
+
+                        ### Unit tests using Resource Factory's documentation
+
+                        - Implement URL fetch originator that can pull in Markdown files like README.md
+                        from any source. We can then demo how we can integrate, for example, the
+                        design-system/README.md directly into an Resource Factory generated site. This
+                        way Markdown can be kept anywhere and included through URLs directly into
+                        publications.
+                        - Review [Astro](https://docs.astro.build/getting-started), Hugo, Lume, and
+                        other SSG documentation to craft our unit tests. The most advanced
+                        functionality should come from our own documentation. This means creating data
+                        in SQLite to mimic DB behavior.
+
+                        ### Frontmatter
+
+                        - [HUGE, a Hugo framework](https://www.thenewdynamic.com/article/introducing-huge-a-hugo-framework/)
+                        seems to have some good idea about how to use Frontmatter in Markdown to drive
+                        some interesting behaviors.
+                        - Unify frontmatter and model in resources so that FM is more about unstructured
+                        data while model is structured and type-safe
+                        - Use
+                        [Superstruct Describing Types](https://docs.superstructjs.org/guides/06-using-typescript#describing-types)
+                        feature to create a frontmatter guard-based "typer" that allows untyped
+                        frontmatter to be turned into a typed structure consumable by resources.
+                        - Use this for RouteSupplier route unit declarations that will be used to
+                            build RouteTree nodes
+                        - Use this for LayoutSupplier declarations
+                        - Consider [Ajv JSON schema validator](https://ajv.js.org/) for validating
+                            frontmatter in JS instead of just TypeScript.
+
+                        ### Images
+
+                        - Check out [imgIX](https://docs.imgix.com/setup/serving-images) for either
+                        direct integration or guidance to build our own Deno Deploy-based serverless
+                        services for similar capabilities.
+
+                        ### Originators
+
+                        ### Refinery Middleware
+
+                        ### Type-safety
+
+                        ### Lint
+
+                        - When building clean after `deno-clear-caches`, getting
+                        `Warning Implicitly using latest version (v1.0) for https://deno.land/x/hierarkey/mod.ts`
+                        from one of the libraries. Need to figure out which one and pin it to a
+                        specific version (see SSCD notes).
+
+                        # References
+
+                        - [Bedrock: The SQLitening](https://mozilla.github.io/meao/2018/03/28/bedrock-the-sqlitening/)
+                        - [The Baked Data architectural pattern](https://simonwillison.net/2021/Jul/28/baked-data/)
+
                         ```
                     </pre>
                 </section>
@@ -154,7 +302,7 @@
                                 } else {
                                     srcHref = humanPath(src, 50, (basename) => `<a href="${src}" class="fw-bold">${basename}</a>`);
                                 }
-                                valueCell.innerHTML = `<span class="fw-bold">${value.designSystem.identity}</span> (${srcHref})`;
+                                valueCell.innerHTML = `<span class="fw-bold"><a href="/console/presentation/design-system.html">${value.designSystem.identity}</a></span> (${srcHref})`;
                                 break;
                             default:
                                 valueCell.innerHTML = JSON.stringify(value);
@@ -164,44 +312,6 @@
                     }
                 }
             });
-
-            const renderersGridElem = document.querySelector('#renderersGrid');
-            if (renderersGridElem) {
-                fetch("/publication/inspect/renderers.json").then(resp => resp.json()).then(renderers => {
-                    const columnDefs = [
-                        { field: "identity" },
-                        {
-                            field: "location",
-                            cellRenderer: "locationCellRenderer",
-                        }
-                    ];
-                    const gridOptions = {
-                        columnDefs: columnDefs,
-                        rowData: renderers,
-                        domLayout: 'autoHeight',
-                        onGridReady: (event) => event.columnApi.autoSizeAllColumns(),
-                        components: {
-                            // see https://www.ag-grid.com/javascript-grid/components/
-                            locationCellRenderer: (params) => {
-                                if ("location" in params.data) {
-                                    let src = params.data.location.moduleImportMetaURL;
-                                    let srcHref = undefined;
-                                    if (src.startsWith("file://")) {
-                                        src = src.substring(7);
-                                        const editorRedirect = `/workspace/editor-redirect/abs${src}`;
-                                        srcHref = humanPath(src, 90, (basename) => `<a href="${editorRedirect}" class="fw-bold">${basename}</a>`);
-                                    } else {
-                                        srcHref = humanPath(src, 90, (basename) => `<a href="${src}" class="fw-bold">${basename}</a>`);
-                                    }
-                                    return srcHref;
-                                }
-                                return params.value;
-                            },
-                        },
-                    };
-                    new agGrid.Grid(renderersGridElem, gridOptions);
-                })
-            }
         });
     </script>
 </body>
