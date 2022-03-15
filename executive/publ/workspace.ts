@@ -153,6 +153,10 @@ export class WorkspaceMiddlewareSupplier {
       }
     });
 
+    router.get(`${this.htmlEndpointURL}/inspect/env-vars.json`, (ctx) => {
+      ctx.response.body = JSON.stringify(Deno.env.toObject());
+    });
+
     // setup the following routes:
     // * /workspace/editor-resolver/factory/**/* to get JSON for where a RF source file can be found
     // * /workspace/editor-redirect/factory/**/* to redirect to an RF source file (e.g. opens VSCode)
