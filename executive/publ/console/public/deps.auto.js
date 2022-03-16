@@ -142,6 +142,84 @@ class EventEmitter {
     }
 }
 export { EventEmitter as EventEmitter };
+function isBoolean(any) {
+    return typeof any === "boolean";
+}
+function isNull(any) {
+    return any === null;
+}
+function isUndefined(any) {
+    return typeof any === "undefined";
+}
+function isNumber(any) {
+    return typeof any === "number";
+}
+function isString(any) {
+    return typeof any === "string";
+}
+function isSymbol(any) {
+    return typeof any === "symbol";
+}
+function isFunction(any) {
+    return typeof any === "function";
+}
+function reflect(any, ancestors, options) {
+    if (isBoolean(any) || isNull(any) || isUndefined(any) || isNumber(any) || isString(any) || isSymbol(any)) {
+        const enhanceScalar = options?.enhanceScalar;
+        const response = {
+            value: any,
+            type: typeof any
+        };
+        if (isSymbol(any)) {
+            response.description = any.description;
+        }
+        return enhanceScalar ? enhanceScalar(response, ancestors) : response;
+    }
+    if (isFunction(any)) {
+        const enhanceFunction = options?.enhanceFunction;
+        const fn = {
+            value: any,
+            name: any.name,
+            type: typeof any,
+            stringify: any.toString()
+        };
+        return enhanceFunction ? enhanceFunction(fn, ancestors) : fn;
+    }
+    const enhanceObject = options?.enhanceObject;
+    let propertiesNames = Object.getOwnPropertyNames(any);
+    if (options?.objPropsFilter) {
+        propertiesNames = propertiesNames.filter(options?.objPropsFilter);
+    }
+    const symbols = Object.getOwnPropertySymbols(any);
+    const obj = {
+        value: any,
+        type: typeof any,
+        properties: propertiesNames.map((prop)=>({
+                ...reflect(any[prop], ancestors ? [
+                    ...ancestors,
+                    any
+                ] : [
+                    any
+                ], options),
+                key: prop,
+                propertyDescription: Object.getOwnPropertyDescriptor(any, prop)
+            })
+        ),
+        symbols: symbols.map((sym)=>({
+                ...reflect(any[sym], ancestors ? [
+                    ...ancestors,
+                    any
+                ] : [
+                    any
+                ], options),
+                key: sym
+            })
+        ),
+        stringify: any.toString()
+    };
+    return enhanceObject ? enhanceObject(obj) : obj;
+}
+export { reflect as reflect };
 function minWhitespaceIndent(text) {
     const match = text.match(/^[ \t]*(?=\S)/gm);
     return match ? match.reduce((r, a)=>Math.min(r, a.length)

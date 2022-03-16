@@ -16,6 +16,7 @@
 // export * as fingerprintJS from "https://openfpcdn.io/fingerprintjs/v3.3.3/esm.min.js";
 export * from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.4/mod.ts";
 
+export * from "../../../../lib/reflect/mod.ts";
 export * from "../../../../lib/text/human.ts";
 export * from "../../../../lib/text/whitespace.ts";
 export * from "../../../../lib/conf/flexible-args.ts";
