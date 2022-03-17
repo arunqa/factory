@@ -159,7 +159,6 @@ export class DatabaseConnectionEnvConfiguration
         `Required property ${name} was not supplied in Environment, expected: ${
           attempts.map((a) => a.envVarName).join(" or ")
         })`,
-        { cause: attempts },
       ),
     );
     return undefined;
