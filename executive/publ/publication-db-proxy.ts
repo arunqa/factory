@@ -47,7 +47,7 @@ export class DatabaseProxyMiddlewareSupplier {
   constructor(
     readonly app: oak.Application,
     readonly router: oak.Router,
-    readonly database: pDB.Database,
+    readonly database: pDB.PublicationDatabase,
     readonly htmlEndpointURL: string,
   ) {
     router.post(this.htmlEndpointURL, async (ctx) => {

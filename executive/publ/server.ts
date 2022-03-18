@@ -38,7 +38,7 @@ export interface PublicationServerOptions {
     fsAbsPathAndFileName: string,
   ) => string | undefined;
   readonly staticIndex?: "index.html" | string;
-  readonly serverStateDB?: pDB.Database;
+  readonly serverStateDB?: pDB.PublicationDatabase;
   // readonly serverDiagnosticsLogger?: log.Logger;
 }
 
@@ -96,7 +96,7 @@ export class PublicationServer {
     fsAbsPathAndFileName: string,
   ) => string | undefined;
   readonly staticIndex: "index.html" | string;
-  readonly serverStateDB?: pDB.Database;
+  readonly serverStateDB?: pDB.PublicationDatabase;
   readonly userAgentIdSupplier = (ctx: oak.Context) => {
     // for now assume there's only one Console per server so the userAgent ID
     // is just the caller's URL (which should be unique enough). TODO: add

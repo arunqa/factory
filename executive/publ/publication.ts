@@ -256,7 +256,8 @@ export interface PublicationOperationalContext {
   readonly isLiveReloadRequest: boolean;
   readonly iterationCount: number;
   readonly produceOperationalCtxCargo: (home: string) => Promise<void>;
-  readonly publStateDB?: () => psDB.Database;
+  readonly publStateDB: () => psDB.PublicationDatabase;
+  readonly publStateDbLocation: (relative?: boolean) => string;
 }
 
 export interface Preferences<

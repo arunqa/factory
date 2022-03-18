@@ -1,193 +1,65 @@
-import { events } from "../../core/deps.ts";
-import { sqlite } from "./deps.ts";
+import { path } from "../../core/deps.ts";
+import * as sqlite from "../../lib/db/sqlite-db.ts";
 import * as s from "./static.ts";
+import * as pdbs from "./publication-db-schema.auto.ts";
 
-// nomenclature and conventions should follow PgDCP whenever possible
+const moduleHome = path.dirname(path.fromFileUrl(import.meta.url));
 
-export interface DatabaseInit<
-  Transactions extends DatabaseTransactions,
-  DBEE extends DatabaseEventEmitter,
-> {
-  readonly fileName: () => string;
-  readonly events: (db: Database<Transactions, DBEE>) => DBEE;
-  readonly transactions: (db: Database<Transactions, DBEE>) => Transactions;
-  readonly autoCloseOnUnload: boolean;
-}
-
-export interface QueryExecutionRowsSupplier<
-  R extends sqlite.Row = sqlite.Row,
-> {
-  readonly rows: Array<R>;
-  readonly SQL: string;
-  readonly params?: sqlite.QueryParameterSet;
-}
-
-export interface QueryExecutionRecordsSupplier<
-  O extends sqlite.RowObject = sqlite.RowObject,
-> {
-  readonly records: Array<O>;
-  readonly SQL: string;
-  readonly params?: sqlite.QueryParameterSet;
-}
-
-export interface QueryRowsExecutor {
-  <R extends sqlite.Row = sqlite.Row>(
-    SQL: string,
-    params?: sqlite.QueryParameterSet,
-  ): QueryExecutionRowsSupplier<R>;
-}
-
-export interface QueryRecordsExecutor {
-  <O extends sqlite.RowObject = sqlite.RowObject>(
-    SQL: string,
-    params?: sqlite.QueryParameterSet,
-  ): QueryExecutionRecordsSupplier<O>;
-}
-
-export interface ConnectionContext {
-  readonly dbee: DatabaseEventEmitter;
-  readonly rowsDQL: QueryRowsExecutor;
-  readonly recordsDQL: QueryRecordsExecutor;
-  readonly rowsDML: QueryRowsExecutor;
-  readonly rowsDDL: QueryRowsExecutor;
-}
-
-export interface SqliteConnectionContext extends ConnectionContext {
-  readonly dbStore: sqlite.DB;
-  readonly dbStoreFsPath: string;
-}
-
-export class DatabaseEventEmitter extends events.EventEmitter<{
-  openingDatabase(cc: ConnectionContext): void;
-  openedDatabase(cc: ConnectionContext): void;
-  closingDatabase(cc: ConnectionContext): void;
-  closedDatabase(cc: ConnectionContext): void;
-
-  constructStorage(cc: ConnectionContext): void;
-  constructIdempotent(cc: ConnectionContext): void;
-  populateSeedData(cc: ConnectionContext): void;
-
-  executedDDL(result: QueryExecutionRowsSupplier): void;
-  executedDML(result: QueryExecutionRowsSupplier): void;
-  executedDQL(
-    result: QueryExecutionRowsSupplier | QueryExecutionRecordsSupplier,
-  ): void;
-
-  persistedStaticServed(
-    sat: s.StaticServedTarget,
-    qers: QueryExecutionRowsSupplier | QueryExecutionRecordsSupplier,
-  ): void;
-}> {
-}
-
-export interface DatabaseTransactions {
-  persistStaticServed(sat: s.StaticServedTarget): void;
-}
-
-export class Database<
-  Transactions extends DatabaseTransactions = DatabaseTransactions,
-  DBEE extends DatabaseEventEmitter = DatabaseEventEmitter,
-> implements ConnectionContext {
-  readonly isConnectionContext = true;
-  readonly dbStoreFsPath: string;
-  readonly dbStore: sqlite.DB;
-  readonly dbee: DBEE;
-  readonly dbTX: Transactions;
-
-  constructor(init: DatabaseInit<Transactions, DBEE>) {
-    this.dbStoreFsPath = init.fileName();
-    this.dbStore = new sqlite.DB(this.dbStoreFsPath, { mode: "create" });
-    this.dbee = init.events(this);
-    this.dbTX = init.transactions(this);
-
-    if (init.autoCloseOnUnload) {
-      globalThis.addEventListener("unload", () => this.close());
-    }
-  }
-
-  close() {
-    this.dbee.emitSync("closingDatabase", this);
-    this.dbStore.close(true);
-    this.dbee.emitSync("closedDatabase", this);
-  }
+export class PublicationDatabase
+  extends sqlite.Database<sqlite.DatabaseEventEmitter> {
+  activeHost?: pdbs.PublHost;
+  activeBuildEvent?: pdbs.PublBuildEvent;
+  activeServerService?: pdbs.PublServerService;
 
   init() {
-    this.dbee.emitSync("openingDatabase", this);
-
-    this.dbee.on("constructIdempotent", () => {
-      this.rowsDDL(
-        `CREATE TABLE IF NOT EXISTS publ_server_static_access_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        status int NOT NULL,
-        asset_nature text NOT NULL,
-        location_href text NOT NULL,
-        filesys_target_path text NOT NULL,
-        filesys_target_symlink text)`,
+    this.dbee.on("constructStorage", () => {
+      this.dbStore.execute(
+        Deno.readTextFileSync(
+          path.join(moduleHome, "publication-db-schema.sql"),
+        ),
       );
     });
 
-    this.dbee.on("openedDatabase", () => {
-      this.dbee.emitSync("constructStorage", this);
-      this.dbee.emitSync("constructIdempotent", this);
-      this.dbee.emitSync("populateSeedData", this);
+    this.dbee.on("populateSeedData", () => {
+      this.activeHost = this.insertedRecord<
+        pdbs.publ_host_insertable,
+        pdbs.PublHost
+      >(
+        { host: Deno.hostname(), mutation_count: 0 },
+        "publ_host",
+        {
+          insertSQL: (suggestedSQL, values, names) => {
+            return `${
+              suggestedSQL(names, values)
+            } ON CONFLICT(host) DO UPDATE SET mutation_count=mutation_count+1`;
+          },
+          // we supply our own SQL; in case of ON CONFLICT the insert won't occur
+          // so the normal last_insert_rowid() won't work
+          afterInsertSQL: (_suggestedSQL, insert) => {
+            return ["SELECT * from publ_host where host = :host", {
+              host: insert.host,
+            }];
+          },
+          transformInserted: (record) =>
+            pdbs.transformPublHost.fromTable(
+              record as unknown as pdbs.mutable_publ_host,
+            ),
+        },
+      );
     });
 
-    this.dbee.emitSync("openedDatabase", this);
-  }
-
-  rowsDDL<Row extends sqlite.Row>(
-    SQL: string,
-    params?: sqlite.QueryParameterSet | undefined,
-  ): QueryExecutionRowsSupplier<Row> {
-    const rows = this.dbStore.query<Row>(SQL, params);
-    const result: QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
-    this.dbee.emit("executedDDL", result);
-    return result;
-  }
-
-  rowsDML<Row extends sqlite.Row>(
-    SQL: string,
-    params?: sqlite.QueryParameterSet | undefined,
-  ): QueryExecutionRowsSupplier<Row> {
-    const rows = this.dbStore.query<Row>(SQL, params);
-    const result: QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
-    this.dbee.emit("executedDML", result);
-    return result;
-  }
-
-  rowsDQL<Row extends sqlite.Row>(
-    SQL: string,
-    params?: sqlite.QueryParameterSet | undefined,
-  ): QueryExecutionRowsSupplier<Row> {
-    const rows = this.dbStore.query<Row>(SQL, params);
-    const result: QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
-    this.dbee.emit("executedDQL", result);
-    return result;
-  }
-
-  recordsDQL<Object extends sqlite.RowObject>(
-    SQL: string,
-    params?: sqlite.QueryParameterSet | undefined,
-  ): QueryExecutionRecordsSupplier<Object> {
-    const records = this.dbStore.queryEntries<Object>(SQL, params);
-    const result: QueryExecutionRecordsSupplier<Object> = {
-      records,
-      SQL,
-      params,
-    };
-    this.dbee.emit("executedDQL", result);
-    return result;
+    super.init();
   }
 
   persistStaticServed(
     sat: s.StaticServedTarget,
-  ): QueryExecutionRowsSupplier | QueryExecutionRecordsSupplier {
+  ): sqlite.QueryExecutionRowsSupplier | sqlite.QueryExecutionRecordsSupplier {
     const result = this.rowsDML(
       `INSERT INTO publ_server_static_access_log
-                   (status, asset_nature, location_href, filesys_target_path, filesys_target_symlink)
-            VALUES (?, ?, ?, ?, ?)`,
+                   (publ_server_service_id, status, asset_nature, location_href, filesys_target_path, filesys_target_symlink)
+            VALUES (?, ?, ?, ?, ?, ?)`,
       [
+        this.activeServerService?.publServerServiceId,
         sat.status,
         sat.extn,
         sat.locationHref,
@@ -195,7 +67,70 @@ export class Database<
         sat.fsTargetSymLink,
       ],
     );
-    this.dbee.emit("persistedStaticServed", sat, result);
     return result;
+  }
+
+  persistBuildEvent(
+    pbe: Omit<pdbs.PublBuildEventInsertable, "publHostId">,
+  ) {
+    if (!this.activeHost) {
+      console.error(
+        `[PublicationDatabase] persistBuildEvent should not be called without an activeHost`,
+      );
+      return;
+    }
+
+    const insert: pdbs.publ_build_event_insertable = pdbs
+      .transformPublBuildEvent.insertable({
+        ...pbe,
+        publHostId: this.activeHost.publHostId,
+      });
+    this.activeBuildEvent = this.insertedRecord<
+      pdbs.publ_build_event_insertable,
+      pdbs.PublBuildEvent
+    >(insert, pdbs.transformPublBuildEvent.tableName, {
+      transformInserted: (record) =>
+        pdbs.transformPublBuildEvent.fromTable(
+          record as unknown as pdbs.mutable_publ_build_event,
+        ),
+      onNotInserted: (insert, _names, _SQL, insertErr) => {
+        console.dir(insert);
+        console.dir(insertErr);
+        return undefined;
+      },
+    });
+    return this.activeBuildEvent;
+  }
+
+  persistServerService(
+    ss: Omit<pdbs.PublServerServiceInsertable, "publBuildEventId">,
+  ) {
+    if (!this.activeBuildEvent) {
+      console.error(
+        `[PublicationDatabase] persistServerService should not be called without an activeBuildEvent`,
+      );
+      return;
+    }
+
+    const insert: pdbs.publ_server_service_insertable = pdbs
+      .transformPublServerService.insertable({
+        ...ss,
+        publBuildEventId: this.activeBuildEvent.publBuildEventId,
+      });
+    this.activeServerService = this.insertedRecord<
+      pdbs.publ_server_service_insertable,
+      pdbs.PublServerService
+    >(insert, pdbs.transformPublServerService.tableName, {
+      transformInserted: (record) =>
+        pdbs.transformPublServerService.fromTable(
+          record as unknown as pdbs.mutable_publ_server_service,
+        ),
+      onNotInserted: (insert, _names, _SQL, insertErr) => {
+        console.dir(insert);
+        console.dir(insertErr);
+        return undefined;
+      },
+    });
+    return this.activeServerService;
   }
 }

@@ -42,7 +42,7 @@ export class ConsoleTunnel<
       userAgentID: string,
       ctx: ConnectionContext,
     ) => Connection,
-    readonly serverStateDB?: db.Database,
+    readonly serverStateDB?: db.PublicationDatabase,
   ) {
     super();
     // this.on("sseConnected", (conn, ctx) => {
@@ -140,7 +140,7 @@ export class ConsoleMiddlewareSupplier {
     readonly app: oak.Application,
     readonly router: oak.Router,
     readonly staticEE: s.StaticEventEmitter,
-    readonly serverStateDB: db.Database | undefined,
+    readonly serverStateDB: db.PublicationDatabase | undefined,
     readonly userAgentIdSupplier: (ctx: oak.Context) => string,
     options?: Partial<ConsoleMiddlewareSupplierOptions>,
   ) {

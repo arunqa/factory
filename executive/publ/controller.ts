@@ -3,9 +3,11 @@ import * as rfGovn from "../../governance/mod.ts";
 import * as human from "../../lib/text/human.ts";
 import * as whs from "../../lib/text/whitespace.ts";
 import * as bjs from "../../lib/package/bundle-js.ts";
+import * as sqlite from "../../lib/db/sqlite-db.ts";
 import * as server from "./server.ts";
 import * as publ from "./publication.ts";
 import * as psDB from "./publication-db.ts";
+import * as psds from "./publication-db-schema.auto.ts";
 
 declare global {
   function touchWatchedSemaphoreFile(): Promise<void>;
@@ -92,6 +94,7 @@ export class Executive<
   async serve(publication = this.publications[0]) {
     const ctl = this.controller;
     const oc = ctl.operationalCtx;
+    const db = oc.publStateDB();
     const ps = new class extends server.PublicationServer {
       server() {
         const result = super.server();
@@ -100,17 +103,30 @@ export class Executive<
           if (this.console) await this.console.tunnel.cleanup();
         });
         result.app.addEventListener("listen", (event) => {
-          if (oc.processStartTimestamp) {
-            const iteration = oc.iterationCount || -1;
-            const duration = new Date().valueOf() -
-              oc.processStartTimestamp.valueOf();
-            // deno-fmt-ignore
-            console.info(`   Built in: ${colors.brightMagenta((duration / 1000).toString())} seconds ${colors.dim(`(iteration ${iteration})`)}`);
-          }
+          const iterationIndex = oc.iterationCount || -1;
+          const buildCompletedAt = new Date();
+          const buildDurationMs = buildCompletedAt.valueOf() -
+            oc.processStartTimestamp.valueOf();
+          const be: Omit<psds.PublBuildEventInsertable, "publHostId"> = {
+            buildInitiatedAt: oc.processStartTimestamp,
+            buildCompletedAt: new Date(),
+            buildDurationMs,
+            iterationIndex,
+            resourcesOriginatedCount:
+              this.publication.state.resourcesIndex.resourcesIndex.length,
+            resourcesPersistedCount:
+              this.publication.state.persistedIndex.persistedDestFiles.size,
+            resourcesMemoizedCount: this.publication.config.memoizeProducers
+              ? publication.state.resourcesIndex.memoizedProducers.size
+              : undefined,
+          };
+          db.persistBuildEvent(be);
+          // deno-fmt-ignore
+          console.info(`   Built in: ${colors.brightMagenta((buildDurationMs / 1000).toString())} seconds ${colors.dim(`(iteration ${iterationIndex})`)}`);
           // deno-fmt-ignore
           console.info(`    Serving: ${colors.yellow(this.publication.config.destRootPath)}`);
           // deno-fmt-ignore
-          console.info(`Publication: ${colors.green(this.publication.state.resourcesIndex.resourcesIndex.length.toString())} resources, ${colors.green(this.publication.state.persistedIndex.persistedDestFiles.size.toString())} persisted${this.publication.config.memoizeProducers ? `, ${colors.green(publication.state.resourcesIndex.memoizedProducers.size.toString())} memoized` : ''}`);
+          console.info(`Publication: ${colors.green(be.resourcesOriginatedCount.toString())} resources, ${colors.green(be.resourcesPersistedCount.toString())} persisted${be.resourcesMemoizedCount ? `, ${colors.green(be.resourcesMemoizedCount.toString())} memoized` : ''}`);
           const mem = Deno.memoryUsage();
           console.info(
             `     Memory: ${colors.gray("rss")} ${
@@ -123,9 +139,18 @@ export class Executive<
               human.humanFriendlyBytes(mem.external)
             }`,
           );
+          // deno-fmt-ignore
+          console.info(`   Database: ${colors.yellow(this.publication.config.operationalCtx.publStateDbLocation?.(true) || "none")}`);
+          const serviceStartedAt = new Date();
           console.info(
-            `    ======== Ready to serve [${new Date()}] ========`,
+            `    ======== Ready to serve [${serviceStartedAt}] ========`,
           );
+          db.persistServerService({
+            listenHost: this.listenHostname,
+            listenPort: this.listenPort,
+            publishUrl: this.publicURL(),
+            serviceStartedAt,
+          });
           // deno-fmt-ignore
           console.info(`    Address: ${colors.brightBlue(ps.publicURL('/'))} ${colors.dim(`(listening on ${event.hostname}:${event.port})`)}`);
           if (ps.console) {
@@ -267,11 +292,11 @@ export function typicalPublicationCtlSupplier<
       "RF_UNIVERSAL_BADGEN_REMOTE_BASE_URL",
     );
 
-    const serverStateDB = new psDB.Database({
-      fileName: () => modulePath("pubctl.sqlite.db"),
+    const storageFileName = modulePath("pubctl.sqlite.db");
+    const serverStateDB = new psDB.PublicationDatabase({
+      storageFileName: () => storageFileName,
       autoCloseOnUnload: true,
-      events: () => new psDB.DatabaseEventEmitter(),
-      transactions: (db) => db,
+      events: () => new sqlite.DatabaseEventEmitter(),
     });
 
     serverStateDB.dbee.on("openedDatabase", () => {
@@ -293,6 +318,7 @@ export function typicalPublicationCtlSupplier<
       isLiveReloadRequest,
       iterationCount: processIterationCount,
       publStateDB: () => serverStateDB,
+      publStateDbLocation: () => storageFileName,
       produceOperationalCtxCargo: async (home) => {
         await Deno.writeTextFile(
           path.join(home, "deps.js.ts"),
@@ -332,7 +358,7 @@ export function typicalPublicationCtlSupplier<
           serverAutoJsDepsAbsPath,
           "// purposefully empty, will be filled in by bundleJsFromTsTwin, see see resFactory/factory/lib/package/README.md",
         );
-        bjs.bundleJsFromTsTwin(
+        await bjs.bundleJsFromTsTwin(
           bjs.jsPotentialTsTwin(
             bjs.typicalJsNamingStrategy(serverAutoJsDepsAbsPath),
           ),
@@ -355,7 +381,7 @@ export function typicalPublicationCtlSupplier<
       staticIndex: "index.html",
       listenPort,
       listenHostname,
-      publicURL: (path?) => {
+      publicURL: (path = "/") => {
         return `${publicUrlLocation}${path}`;
       },
     };

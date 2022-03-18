@@ -9,7 +9,7 @@ export class PublicationMiddlewareSupplier {
     readonly app: oak.Application,
     readonly router: oak.Router,
     readonly publication: p.Publication<p.PublicationOperationalContext>,
-    readonly serverStateDB: pDB.Database | undefined,
+    readonly serverStateDB: pDB.PublicationDatabase | undefined,
     readonly htmlEndpointURL: string,
   ) {
     router.get(`${this.htmlEndpointURL}/inspect/project.json`, (ctx) => {
