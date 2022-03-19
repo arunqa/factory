@@ -1,6 +1,6 @@
-import { events } from "../../core/deps.ts";
-import { oak } from "./deps.ts";
-import * as ping from "../../lib/service-bus/service/ping.ts";
+import { events } from "../../../../core/deps.ts";
+import { oak } from "../deps.ts";
+import * as ping from "../../../../lib/service-bus/service/ping.ts";
 
 export interface AssuranceSyntheticEventSrcTunnelConnection {
   readonly userAgentID: string;
@@ -184,6 +184,9 @@ export class AssuranceMiddlewareSupplier {
     readonly router: oak.Router,
     options?: Partial<AssuranceMiddlewareSupplierOptions>,
   ) {
+    // REMINDER: if you add any routes here, make them easily testable by adding
+    // them to executive/publ/server/inspect.http
+
     this.htmlEndpointURL = options?.htmlEndpointURL ?? "/assurance-synthetic";
     this.esTunnel = options?.esTunnel ??
       new AssuranceSyntheticEventSrcTunnel(

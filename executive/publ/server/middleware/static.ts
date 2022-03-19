@@ -1,5 +1,5 @@
-import { events, path } from "../../core/deps.ts";
-import { oak } from "./deps.ts";
+import { events, path } from "../../../../core/deps.ts";
+import { oak } from "../deps.ts";
 
 export type ResolvedStaticPathOnServer = string;
 

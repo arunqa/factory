@@ -1,8 +1,13 @@
-import { oak } from "./deps.ts";
-import * as p from "./publication.ts";
-import * as rJSON from "../../core/content/routes.json.ts";
-import * as pDB from "./publication-db.ts";
-import "../../lib/db/sql.ts"; // for window.globalSqlDbConns
+import { oak } from "../../deps.ts";
+import * as p from "../../../publication.ts";
+import * as rJSON from "../../../../../core/content/routes.json.ts";
+import * as pDB from "../../../publication-db.ts";
+import * as rflPath from "../../../../../lib/path/mod.ts";
+import "../../../../../lib/db/sql.ts"; // for window.globalSqlDbConns
+
+import "./user-agent/inspect-project.ts"; // for type-checking only (user agent is TS -> JS compiled)
+
+const modulePath = rflPath.pathRelativeToModuleCWD(import.meta.url);
 
 export class PublicationMiddlewareSupplier {
   constructor(
@@ -11,10 +16,17 @@ export class PublicationMiddlewareSupplier {
     readonly publication: p.Publication<p.PublicationOperationalContext>,
     readonly serverStateDB: pDB.PublicationDatabase | undefined,
     readonly htmlEndpointURL: string,
+    readonly registerTsJsRoute: (
+      endpointWithoutExtn: string,
+      tsSrcRootSpecifier: string,
+    ) => void,
   ) {
+    // REMINDER: if you add any routes here, make them easily testable by adding
+    // them to executive/publ/server/inspect.http
+
     router.get(`${this.htmlEndpointURL}/inspect/project.json`, (ctx) => {
       const projectRootPath = publication.config.operationalCtx.projectRootPath;
-      ctx.response.body = JSON.stringify({
+      const resp = {
         "Project Home": {
           nature: "path-project",
           path: projectRootPath("/", true),
@@ -27,10 +39,15 @@ export class PublicationMiddlewareSupplier {
         "Design System": {
           nature: "design-system",
           designSystem: this.publication.ds.designSystem,
-          isEditable: true,
         },
-      });
+      };
+      ctx.response.body = JSON.stringify(resp);
     });
+
+    this.registerTsJsRoute(
+      `${this.htmlEndpointURL}/inspect/project`,
+      modulePath("./user-agent/inspect-project.ts"),
+    );
 
     router.get(`${this.htmlEndpointURL}/inspect/renderers.json`, (ctx) => {
       const renderers = [];

@@ -1,9 +1,11 @@
-import { colors, events, path } from "../../core/deps.ts";
-import { oak } from "./deps.ts";
-import * as wfs from "../../lib/fs/watch.ts";
-import * as ping from "../../lib/service-bus/service/ping.ts";
-import * as fi from "../../lib/service-bus/service/file-impact.ts";
-import * as ws from "../../lib/workspace/mod.ts";
+import { colors, events, path } from "../../../../../core/deps.ts";
+import { oak } from "../../deps.ts";
+import * as wfs from "../../../../../lib/fs/watch.ts";
+import * as ping from "../../../../../lib/service-bus/service/ping.ts";
+import * as fi from "../../../../../lib/service-bus/service/file-impact.ts";
+import * as ws from "../../../../../lib/workspace/mod.ts";
+
+import "./ua-editable.ts"; // for type-checking only ("UA" is for user agent TS -> JS compile)
 
 export interface WorkspaceTunnelConnection {
   readonly userAgentID: string;
@@ -119,6 +121,9 @@ export class WorkspaceMiddlewareSupplier {
     readonly router: oak.Router,
     options?: Partial<WorkspaceMiddlewareSupplierOptions>,
   ) {
+    // REMINDER: if you add any routes here, make them easily testable by adding
+    // them to executive/publ/server/inspect.http
+
     this.htmlEndpointURL = options?.htmlEndpointURL ?? "/workspace";
     this.tunnel = options?.tunnel ??
       new WorkspaceTunnel(
@@ -161,7 +166,7 @@ export class WorkspaceMiddlewareSupplier {
     // * /workspace/editor-resolver/factory/**/* to get JSON for where a RF source file can be found
     // * /workspace/editor-redirect/factory/**/* to redirect to an RF source file (e.g. opens VSCode)
     // * /workspace/editor-resolver/publication/**/* to get JSON for where a publication source file can be found
-    // * /workspace/editor-redirect/factory/**/* to redirect to a publication source file (e.g. opens VSCode)
+    // * /workspace/editor-redirect/publication/**/* to redirect to a publication source file (e.g. opens VSCode)
     // * /workspace/editor-resolver/abs/**/* to get JSON for where an arbitrary server (abs path) file can be found
     // * /workspace/editor-redirect/abs/**/* to redirect to and arbitrary server file can be found (e.g. opens VSCode)
     [{

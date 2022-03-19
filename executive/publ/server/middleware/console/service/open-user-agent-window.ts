@@ -1,4 +1,4 @@
-import * as govn from "../../../../lib/service-bus/governance.ts";
+import * as govn from "../../../../../../lib/service-bus/governance.ts";
 
 export const uaOpenWindowPayloadIdentity = "uaOpenWindow" as const;
 

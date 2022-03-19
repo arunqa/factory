@@ -1,7 +1,7 @@
 // this file is symlink'd by executive/publ/controller.ts:
 //
-// from executive/publ/console/public/server.js   (canonical)
-//   to public/operational-context/server.auto.js (reference)
+// from executive/publ/server/middleware/workspace/ua-operational-ctx.js   (canonical)
+//   to public/operational-context/server.auto.js                          (reference)
 //
 // It's imported as a module by all pages when they run in Console mode by
 // pubctl.ts; it is run only by the browser, not at build time by Deno. If

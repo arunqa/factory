@@ -260,50 +260,51 @@
     </main>
 
     <script type="module">
-        import { humanPath, editableFileRefHTML, locationEditorHTML } from "./deps.auto.js";
+        import { humanPath, editableFileRefHTML, locationEditorHTML, projectInitFx, $project } from "./deps.auto.js";
+        $project.watch(project => {
+            if (!project) return;
+            const table = document.getElementById("project-inspector");
+            for (const entry of Object.entries(project)) {
+                const [key, value] = entry;
+                // Create an empty <tr> element and add it to the 1st position of the table:
+                const row = table.insertRow();
 
-        document.addEventListener('DOMContentLoaded', function () {
-            fetch("/publication/inspect/project.json").then(resp => resp.json()).then(project => {
-                const table = document.getElementById("project-inspector");
-                for (const entry of Object.entries(project)) {
-                    const [key, value] = entry;
-                    // Create an empty <tr> element and add it to the 1st position of the table:
-                    const row = table.insertRow();
+                // Insert new cells (<td> elements) at the 1st and 2nd position of the "new" <tr> element:
+                const keyCell = row.insertCell(0);
+                const valueCell = row.insertCell(1);
 
-                    // Insert new cells (<td> elements) at the 1st and 2nd position of the "new" <tr> element:
-                    const keyCell = row.insertCell(0);
-                    const valueCell = row.insertCell(1);
+                // Add some text to the new cells:
+                keyCell.innerHTML = key;
+                if (typeof value === "object") {
+                    switch (value?.nature) {
+                        case "path-project":
+                            valueCell.innerHTML = humanPath(value.path, 75);
+                            valueCell.title = value.path;
+                            break;
 
-                    // Add some text to the new cells:
-                    keyCell.innerHTML = key;
-                    if (typeof value === "object") {
-                        switch (value?.nature) {
-                            case "path-project":
-                                valueCell.innerHTML = humanPath(value.path, 75);
-                                valueCell.title = value.path;
-                                break;
+                        case "file-project":
+                            if (value?.isEditable) {
+                                valueCell.innerHTML = editableFileRefHTML(value.file, 75);
+                            } else {
+                                valueCell.innerHTML = value.file;
+                            }
+                            break;
 
-                            case "file-project":
-                                if (value?.isEditable) {
-                                    valueCell.innerHTML = editableFileRefHTML(value.file, 75);
-                                } else {
-                                    valueCell.innerHTML = value.file;
-                                }
-                                break;
+                        case "design-system":
+                            valueCell.innerHTML = `<span class="fw-bold"><a href="/console/presentation/design-system.html">${value.designSystem.identity}</a></span> (${locationEditorHTML(value.designSystem.location, 50)})`;
+                            break;
 
-                            case "design-system":
-                                valueCell.innerHTML = `<span class="fw-bold"><a href="/console/presentation/design-system.html">${value.designSystem.identity}</a></span> (${locationEditorHTML(value.designSystem.location, 50)})`;
-                                break;
-
-                            default:
-                                valueCell.innerHTML = JSON.stringify(value);
-                        }
-                    } else {
-                        valueCell.innerHTML = value.toString();
+                        default:
+                            valueCell.innerHTML = JSON.stringify(value);
                     }
+                } else {
+                    valueCell.innerHTML = value.toString();
                 }
-            });
+            }
         });
+
+        // projectInitFx will fill $project effector store and trigger watches
+        document.addEventListener('DOMContentLoaded', projectInitFx);
     </script>
 </body>
 

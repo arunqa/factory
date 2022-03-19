@@ -1,11 +1,11 @@
-import { colors, events, path } from "../../../core/deps.ts";
-import { oak } from "../deps.ts";
+import { colors, events, path } from "../../../../../core/deps.ts";
+import { oak } from "../../deps.ts";
 import * as s from "../static.ts";
-import * as wfs from "../../../lib/fs/watch.ts";
-import * as ping from "../../../lib/service-bus/service/ping.ts";
-import * as fis from "../../../lib/service-bus/service/file-impact.ts";
-import * as uaows from "./service/open-user-agent-window.ts";
-import * as db from "../publication-db.ts";
+import * as wfs from "../../../../../lib/fs/watch.ts";
+import * as ping from "../../../../../lib/service-bus/service/ping.ts";
+import * as fis from "../../../../../lib/service-bus/service/file-impact.ts";
+// import * as uaows from "./service/open-user-agent-window.ts";
+import * as db from "../../../publication-db.ts";
 
 export interface ConsoleTunnelConnection {
   readonly userAgentID: string;
@@ -61,14 +61,14 @@ export class ConsoleTunnel<
         );
       },
     );
-    this.on(uaows.uaOpenWindowPayloadIdentity, (location, target) => {
-      this.cleanConnections().forEach((c) =>
-        c.sseTarget.dispatchMessage(uaows.userAgentOpenWindow({
-          location,
-          target,
-        }))
-      );
-    });
+    // this.on(uaows.uaOpenWindowPayloadIdentity, (location, target) => {
+    //   this.cleanConnections().forEach((c) =>
+    //     c.sseTarget.dispatchMessage(uaows.userAgentOpenWindow({
+    //       location,
+    //       target,
+    //     }))
+    //   );
+    // });
   }
 
   get connections(): Connection[] {
@@ -144,7 +144,7 @@ export class ConsoleMiddlewareSupplier {
     readonly userAgentIdSupplier: (ctx: oak.Context) => string,
     options?: Partial<ConsoleMiddlewareSupplierOptions>,
   ) {
-    this.htmlEndpointURL = options?.htmlEndpointURL ?? "/console";
+    this.htmlEndpointURL = options?.htmlEndpointURL ?? "/console2";
     this.staticIndex = "index.html";
     this.tunnel = options?.tunnel ??
       new ConsoleTunnel(
@@ -201,7 +201,7 @@ export class ConsoleMiddlewareSupplier {
       home: () =>
         path.resolve(
           path.fromFileUrl(import.meta.url),
-          "../../../..",
+          "../../../../../..",
         ),
     }].forEach((proxy) => {
       router.get(

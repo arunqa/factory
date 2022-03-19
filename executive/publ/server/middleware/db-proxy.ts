@@ -1,6 +1,6 @@
-import { oak } from "./deps.ts";
-import * as safety from "../../lib/safety/mod.ts";
-import * as pDB from "./publication-db.ts";
+import { oak } from "../deps.ts";
+import * as safety from "../../../../lib/safety/mod.ts";
+import * as pDB from "../../publication-db.ts";
 
 export const firstWordRegEx = /^\s*([a-zA-Z0-9]+)/;
 
@@ -50,6 +50,9 @@ export class DatabaseProxyMiddlewareSupplier {
     readonly database: pDB.PublicationDatabase,
     readonly htmlEndpointURL: string,
   ) {
+    // REMINDER: if you add any routes here, make them easily testable by adding
+    // them to executive/publ/server/inspect.http
+
     router.post(this.htmlEndpointURL, async (ctx) => {
       const body = ctx.request.body();
       const payload = await body.value;

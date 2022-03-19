@@ -1,16 +1,17 @@
-import { colors, events, path } from "../../core/deps.ts";
+import { colors, events, path } from "../../../core/deps.ts";
 import { async, oak } from "./deps.ts";
-import * as rfStd from "../../core/std/mod.ts";
-import * as p from "./publication.ts";
-import * as pmw from "./publication-middleware.ts";
-import * as wfs from "../../lib/fs/watch.ts";
-import * as bjs from "../../lib/package/bundle-js.ts";
-import * as s from "./static.ts";
-import * as c from "./console/mod.ts";
-import * as ws from "./workspace.ts";
-import * as assure from "./assurance.ts";
-import * as pDB from "./publication-db.ts";
-import * as pdbProxy from "./publication-db-proxy.ts";
+import * as rfStd from "../../../core/std/mod.ts";
+import * as p from "../publication.ts";
+import * as pmw from "./middleware/publication/mod.ts";
+import * as wfs from "../../../lib/fs/watch.ts";
+import * as bjs from "../../../lib/package/bundle-js.ts";
+import * as s from "./middleware/static.ts";
+import * as c from "./middleware/console/mod.ts";
+import * as c2 from "./middleware/console2/mod.ts";
+import * as ws from "./middleware/workspace/mod.ts";
+import * as assure from "./middleware/assurance.ts";
+import * as pDB from "../publication-db.ts";
+import * as pdbProxy from "./middleware/db-proxy.ts";
 
 export interface PublicationServerAccessContext
   extends p.PublicationOperationalContext {
@@ -39,7 +40,6 @@ export interface PublicationServerOptions {
   ) => string | undefined;
   readonly staticIndex?: "index.html" | string;
   readonly serverStateDB?: pDB.PublicationDatabase;
-  // readonly serverDiagnosticsLogger?: log.Logger;
 }
 
 export class PublicationServerLifecyleManager {
@@ -104,6 +104,7 @@ export class PublicationServer {
     // will be found.
     return ctx.request.url.toString();
   };
+  readonly tsJsCache = new Map<string, bjs.CacheableTypescriptSource>();
   #console?: c.ConsoleMiddlewareSupplier;
   #workspace?: ws.WorkspaceMiddlewareSupplier;
   #assurance?: assure.AssuranceMiddlewareSupplier;
@@ -170,9 +171,13 @@ export class PublicationServer {
     return this.#console;
   }
 
-  protected preparePublicationInspect(
+  protected preparePublicationMW(
     app: oak.Application,
     router: oak.Router,
+    registerTsJsRoute: (
+      endpointWithoutExtn: string,
+      tsSrcRootSpecifier: string,
+    ) => void,
   ) {
     this.#pmw = new pmw.PublicationMiddlewareSupplier(
       app,
@@ -180,6 +185,7 @@ export class PublicationServer {
       this.publication,
       this.serverStateDB,
       "/publication",
+      registerTsJsRoute,
     );
   }
 
@@ -199,6 +205,14 @@ export class PublicationServer {
         openWindowOnInit: { url: "/" },
         ...options,
       },
+    );
+
+    new c2.ConsoleMiddlewareSupplier(
+      app,
+      router,
+      staticEE,
+      this.serverStateDB,
+      this.userAgentIdSupplier,
     );
   }
 
@@ -253,9 +267,69 @@ export class PublicationServer {
     }
   }
 
+  protected prepareUserAgentScripts(router: oak.Router) {
+    // the right hand value must return governance.ServerUserAgentContext object
+    const scriptRightHandValue = () => {
+      const publFsEntryResolver =
+        this.publication.config.operationalCtx.projectRootPath;
+      const factoryFsEntryHome = path.resolve(
+        path.fromFileUrl(import.meta.url),
+        "../../../..",
+      );
+
+      // we have to resolve the names fully because these will be served to JS;
+      // we cannot pass in functions to JS because the context of server is
+      // different from the user-agent context; .slice(0, -1) chops last /
+      const publRelativeHome = publFsEntryResolver("/").slice(0, -1);
+      const publAbsHome = publFsEntryResolver("/", true).slice(0, -1);
+      return `{
+        project: {
+          publFsEntryPath: (relative, abs) => {
+            return abs ? \`${publAbsHome}\${relative}\` : \`${publRelativeHome}\${relative}\` ;
+          },
+          factoryFsEntryPath: (relative, abs) => {
+            return abs ? \`${factoryFsEntryHome}\${relative}\` : \`${
+        path.relative(publAbsHome, factoryFsEntryHome)
+      }\${relative}\` ;
+          },
+        },
+      }`;
+    };
+
+    router.get(`/server-ua-context.mjs`, (ctx) => {
+      ctx.response.headers.set("Content-Type", "text/javascript");
+      ctx.response.body =
+        `export default /* serverContext: governance.ServerUserAgentContext */ ${scriptRightHandValue()}`;
+    });
+
+    // see https://github.com/pillarjs/path-to-regexp for RegExp
+    router.get("/server-ua-context.([c]?)js", (ctx) => {
+      ctx.response.headers.set("Content-Type", "text/javascript");
+      ctx.response.body = `var publServerContext = ${scriptRightHandValue()}`;
+    });
+  }
+
   // deno-lint-ignore require-await
-  async persistDiagnostics(diagnostics: unknown) {
-    console.error(diagnostics);
+  async persistDiagnostics(
+    locationHref: string,
+    errorSummary: string,
+    diagnostics: unknown,
+  ) {
+    const stored = this.serverStateDB?.persistServerError({
+      locationHref,
+      errorSummary,
+      errorElaboration: JSON.stringify(diagnostics),
+    });
+    console.error(
+      `${colors.red(`error at ${colors.magenta(locationHref)}`)} ${
+        colors.dim(
+          `stored in ${
+            this.publication.config.operationalCtx.publStateDbLocation(true)
+          } table ${stored?.tableName} ID ${stored?.logged
+            ?.publServerErrorLogId}`,
+        )
+      }`,
+    );
   }
 
   protected server() {
@@ -270,7 +344,33 @@ export class PublicationServer {
       this.serverEE,
     );
 
-    this.preparePublicationInspect(app, router);
+    const registerTsJsRoute = (
+      endpointWithoutExtn: string,
+      tsSrcRootSpecifier: string,
+    ) => {
+      router.get(
+        // see https://github.com/pillarjs/path-to-regexp for RegExp rules
+        `${endpointWithoutExtn}(\.min\.mjs|\.mjs|\.min\.ts|\.ts)`,
+        async (ctx) => {
+          const cached = await bjs.transformTypescriptToCacheableJS(
+            this.tsJsCache,
+            {
+              tsSrcRootSpecifier,
+              tsEmitBundle: "module",
+            },
+            {
+              minify: ctx.request.url.pathname.indexOf(".min.") != -1,
+              cacheKey: ctx.request.url.pathname,
+            },
+          );
+          ctx.response.headers.set("Content-Type", "text/javascript");
+          ctx.response.body = cached?.javaScript ??
+            `// unable to transform ${tsSrcRootSpecifier} to Javascript`;
+        },
+      );
+    };
+
+    this.preparePublicationMW(app, router, registerTsJsRoute);
     this.prepareConsole(app, router, this.staticEE);
     this.prepareWorkspace(app, router);
     this.prepareAssurance(app, router);
@@ -288,15 +388,23 @@ export class PublicationServer {
       });
     }
 
-    app.addEventListener("error", (evt) => {
+    this.prepareUserAgentScripts(router);
+
+    app.addEventListener("error", (event) => {
       // don't show errors which don't have a message
-      if (!evt.message || evt.message.trim().length == 0) return;
+      if (!event.message || event.message.trim().length == 0) return;
 
       // if the errors is a transient networking issue, ignore it
-      if (evt.message == "connection closed before message completed") return;
+      if (event.message == "connection closed before message completed") return;
 
-      console.error(
-        colors.red(`*** Oak error *** [${colors.yellow(evt.message)}]`),
+      this.persistDiagnostics(
+        "Oak ApplicationErrorEventListener",
+        event.message,
+        {
+          oakEvent: event,
+          nature: "oak-app-error",
+          event,
+        },
       );
     });
 
@@ -315,14 +423,19 @@ export class PublicationServer {
       try {
         await next();
       } catch (error) {
-        await this.persistDiagnostics({
-          oakAppCtx: ctx,
-          nature: "oak-app-error-mw",
-          error,
-        });
+        await this.persistDiagnostics(
+          ctx.request.url.pathname,
+          "oak-app-error-mw",
+          {
+            oakAppCtx: ctx,
+            nature: "oak-app-error-mw",
+            error,
+          },
+        );
       }
     });
 
+    // custom route to force and error so we can test the diagnostics storage
     router.get("/error", (_ctx) => {
       throw new Error("an error has been thrown");
     });

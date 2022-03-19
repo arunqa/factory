@@ -38,16 +38,20 @@
     </main>
 
     <script type="module">
-        import { locationEditorHTML } from "../deps.auto.js";
+        import { locationEditorHTML, projectInitFx, $project } from "../deps.auto.js";
+
+        $project.watch(project => {
+            if (project) {
+                const ds = project["Design System"].designSystem;
+                document.getElementById("design-system-identity").innerHTML = ds?.identity;
+                document.getElementById("design-system-location").innerHTML = locationEditorHTML(ds.location, 90);
+            }
+        });
 
         document.addEventListener('DOMContentLoaded', function () {
             const renderersGridElem = document.querySelector('#renderersGrid');
             if (renderersGridElem) {
-                fetch("/publication/inspect/project.json").then(resp => resp.json()).then(project => {
-                    const ds = project["Design System"].designSystem;
-                    document.getElementById("design-system-identity").innerHTML = ds?.identity;
-                    document.getElementById("design-system-location").innerHTML = locationEditorHTML(ds.location, 90);
-                });
+                projectInitFx(); // initializes $project effector store and triggers watches
 
                 fetch("/publication/inspect/renderers.json").then(resp => resp.json()).then(renderers => {
                     const columnDefs = [

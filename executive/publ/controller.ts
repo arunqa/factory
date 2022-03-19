@@ -4,7 +4,7 @@ import * as human from "../../lib/text/human.ts";
 import * as whs from "../../lib/text/whitespace.ts";
 import * as bjs from "../../lib/package/bundle-js.ts";
 import * as sqlite from "../../lib/db/sqlite-db.ts";
-import * as server from "./server.ts";
+import * as server from "./server/server.ts";
 import * as publ from "./publication.ts";
 import * as psDB from "./publication-db.ts";
 import * as psds from "./publication-db-schema.auto.ts";
@@ -363,13 +363,17 @@ export function typicalPublicationCtlSupplier<
             bjs.typicalJsNamingStrategy(serverAutoJsDepsAbsPath),
           ),
         );
-        // symlink resFactory/factory/executive/publ/server.js to public/operational-context/server.auto.js
-        // which will allow console to "hook into" non-console pages; operational-context/server.auto.js is
-        // included via <script> tag in pages that want to have auto-reload and other "workspace" functions.
+        // symlink resFactory/factory/executive/publ/server/middleware/workspace/ua-operational-ctx.js to
+        // public/operational-context/server.auto.js which will allow console to "hook into" non-console
+        // pages; operational-context/server.auto.js is included via <script> tag in pages that want to
+        // have auto-reload and other "workspace" functions.
         await Deno.symlink(
           path.join(
             path.dirname(path.fromFileUrl(import.meta.url)),
-            "server.js",
+            "server",
+            "middleware",
+            "workspace",
+            "ua-operational-ctx.js",
           ),
           path.join(home, "server.auto.js"),
         );

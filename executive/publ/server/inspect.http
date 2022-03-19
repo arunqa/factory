@@ -1,0 +1,195 @@
+// ===========================================================================
+// HTTP APIs Client inspection Utilities
+// * https://marketplace.visualstudio.com/items?itemName=humao.rest-client
+// * To help maintain proper secrets, the client API calls use 12-factor app
+//   strategy of using granular environment variables. If you're running this
+//   in VS Code be sure to call VS Code from the same environment where
+//   `pubctl.ts` will be run so that `.envrc` will be origin'd properly.
+//
+// This should work (yes, it's a little wierd but follow it exactly because
+// the first `cd` is necessary to use `direnv` in that specific path but the
+// factory.mgit.code-workspace assumes it's being run from $HOME/workspaces):
+//
+//   ❯ cd $HOME/workspaces/github.com/resFactory/factory
+//   ❯ code ../../../factory.mgit.code-workspace
+// ===========================================================================
+
+# ----------------------------------------------------------------------------
+# Typescript to Javascript auto-bundling
+# ----------------------------------------------------------------------------
+# *.auto.js routes are served by static using TS/JS "twin" renderer
+# *.ts routes are served by server.ts by rendering TS to JS when required
+# *.mjs routes are served by server.ts by rendering TS to JS when required
+# ----------------------------------------------------------------------------
+
+@serverURL = {{$processEnv PUBCTL_SERVER_PUBLIC_URL_LOCATION}}
+
+GET {{serverURL}}/server-ua-context.mjs
+Accept: text/javascript
+
+###
+
+GET {{serverURL}}/server-ua-context.js
+Accept: text/javascript
+
+###
+
+GET {{serverURL}}/server-ua-context.cjs
+Accept: text/javascript
+
+###
+
+# Forces an error, to test whether errors are trapped properly
+
+GET {{serverURL}}/error
+
+###
+
+# ----------------------------------------------------------------------------
+# /SQL/unsafe publication-db routes which can run arbitrary SQL DQL (select)
+# statements onpubctl.sqlite.db and return results as either rows or records.
+# ----------------------------------------------------------------------------
+@sqlUnsafeURL = {{serverURL}}/SQL/unsafe
+
+# list all columns defined in the database
+
+POST {{sqlUnsafeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "SELECT sqlite_master.name as table_name, table_info.* FROM sqlite_master JOIN pragma_table_info(sqlite_master.name) as table_info",
+  "rowNature": "records"
+}
+
+###
+POST {{sqlUnsafeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "select * from publ_host",
+  "rowNature": "records"
+}
+
+###
+POST {{sqlUnsafeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "select * from publ_build_event",
+  "rowNature": "rows"
+}
+
+###
+POST {{sqlUnsafeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "select * from publ_server_service",
+  "rowNature": "records"
+}
+
+###
+POST {{sqlUnsafeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "SELECT created_at, asset_nature, status, location_href, filesys_target_path, filesys_target_symlink FROM publ_server_static_access_log ORDER BY created_at DESC LIMIT 100",
+  "rowNature": "records"
+}
+
+###
+POST {{sqlUnsafeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "SELECT * from publ_server_error_log LIMIT 50",
+  "rowNature": "records"
+}
+
+# --------------------
+# /publication routes
+# --------------------
+
+###
+
+@publicationEndpoint = {{serverURL}}/publication
+@publicationInspectEndpoint = {{publicationEndpoint}}/inspect
+
+###
+
+GET {{publicationInspectEndpoint}}/project.ts
+Content-Type: text/javascript
+Accept: text/javascript
+###
+
+GET {{publicationInspectEndpoint}}/project.min.ts
+Content-Type: text/javascript
+Accept: text/javascript
+
+###
+
+GET {{publicationInspectEndpoint}}/project.mjs
+Content-Type: text/javascript
+Accept: text/javascript
+
+###
+
+GET {{publicationInspectEndpoint}}/project.min.mjs
+Content-Type: text/javascript
+Accept: text/javascript
+
+###
+
+GET {{publicationInspectEndpoint}}/project.json
+Content-Type: application/json
+
+###
+
+GET {{publicationInspectEndpoint}}/renderers.json
+Content-Type: application/json
+
+###
+
+GET {{publicationInspectEndpoint}}/routes.json
+Content-Type: application/json
+
+###
+
+GET {{publicationInspectEndpoint}}/databases/content.json
+Content-Type: application/json
+
+###
+
+GET {{publicationInspectEndpoint}}/databases/server.json
+Content-Type: application/json
+
+###
+# ------------------
+# /workspace routes
+# ------------------
+
+@workspaceEndpoint = {{serverURL}}/workspace
+@workspaceEventSourceEndpoint = {{workspaceEndpoint}}/sse
+@workspaceInspectEndpoint = {{workspaceEndpoint}}/inspect
+
+GET {{workspaceEventSourceEndpoint}}/ping
+Content-Type: application/json
+
+###
+
+GET {{workspaceInspectEndpoint}}/env-vars.json
+Content-Type: application/json
+
+// TODO: make these testable via inspect.http
+// * /workspace/editor-resolver/factory/**/* to get JSON for where a RF source file can be found
+// * /workspace/editor-redirect/factory/**/* to redirect to an RF source file (e.g. opens VSCode)
+// * /workspace/editor-resolver/publication/**/* to get JSON for where a publication source file can be found
+// * /workspace/editor-redirect/publication/**/* to redirect to a publication source file (e.g. opens VSCode)
+// * /workspace/editor-resolver/abs/**/* to get JSON for where an arbitrary server (abs path) file can be found
+// * /workspace/editor-redirect/abs/**/* to redirect to and arbitrary server file can be found (e.g. opens VSCode)
