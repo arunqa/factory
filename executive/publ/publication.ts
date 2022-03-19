@@ -1,4 +1,4 @@
-import { colors, fs, log, path } from "../../core/deps.ts";
+import { colors, fs, path } from "../../core/deps.ts";
 import * as rfGovn from "../../governance/mod.ts";
 import * as rfStd from "../../core/std/mod.ts";
 
