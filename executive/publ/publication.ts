@@ -307,7 +307,6 @@ export class Configuration<
   readonly contentRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
   readonly appName: string;
-  readonly logger: log.Logger;
   readonly mGitResolvers: git.ManagedGitResolvers<string>;
   readonly routeGitRemoteResolver: rfGovn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
@@ -331,7 +330,6 @@ export class Configuration<
     this.persistClientCargo = prefs.persistClientCargo;
     this.destRootPath = prefs.destRootPath;
     this.appName = prefs.appName;
-    this.logger = log.getLogger();
     this.routeGitRemoteResolver = prefs.routeGitRemoteResolver;
     this.wsEditorResolver = prefs.wsEditorResolver;
     this.routeLocationResolver = prefs.routeLocationResolver;
