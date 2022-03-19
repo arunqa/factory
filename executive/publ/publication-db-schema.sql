@@ -48,3 +48,13 @@ CREATE TABLE IF NOT EXISTS publ_server_static_access_log (
     publ_server_service_id INTEGER NOT NULL,
     FOREIGN KEY(publ_server_service_id) REFERENCES publ_server_service(publ_server_service_id)
 );
+
+CREATE TABLE IF NOT EXISTS publ_server_error_log (
+    publ_server_error_log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    location_href TEXT NOT NULL,
+    error_summary TEXT NOT NULL,
+    error_elaboration JSON,
+    publ_server_service_id INTEGER NOT NULL,
+    FOREIGN KEY(publ_server_service_id) REFERENCES publ_server_service(publ_server_service_id)
+);

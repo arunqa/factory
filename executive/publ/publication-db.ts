@@ -1,6 +1,6 @@
 import { path } from "../../core/deps.ts";
 import * as sqlite from "../../lib/db/sqlite-db.ts";
-import * as s from "./static.ts";
+import * as s from "./server/middleware/static.ts";
 import * as pdbs from "./publication-db-schema.auto.ts";
 
 const moduleHome = path.dirname(path.fromFileUrl(import.meta.url));
@@ -70,6 +70,23 @@ export class PublicationDatabase
     return result;
   }
 
+  // persistServerError(
+  //   err: Omit<pdbs.PublServerErrorLogInsertable, "publServerServiceId">,
+  // ): sqlite.QueryExecutionRowsSupplier | sqlite.QueryExecutionRecordsSupplier {
+  //   const result = this.rowsDML(
+  //     `INSERT INTO publ_server_error_log
+  //                  (publ_server_service_id, location_href, error_summary, error_elaboration)
+  //           VALUES (?, ?, ?, ?)`,
+  //     [
+  //       this.activeServerService?.publServerServiceId,
+  //       err.locationHref,
+  //       err.errorSummary,
+  //       err.errorElaboration,
+  //     ],
+  //   );
+  //   return result;
+  // }
+
   persistBuildEvent(
     pbe: Omit<pdbs.PublBuildEventInsertable, "publHostId">,
   ) {
@@ -132,5 +149,37 @@ export class PublicationDatabase
       },
     });
     return this.activeServerService;
+  }
+
+  persistServerError(
+    err: Omit<pdbs.PublServerErrorLogInsertable, "publServerServiceId">,
+  ) {
+    if (!this.activeServerService) {
+      console.error(
+        `[PublicationDatabase] persistServerService should not be called without an activeServerService`,
+      );
+      return undefined;
+    }
+
+    const insert: pdbs.publ_server_error_log_insertable = pdbs
+      .transformPublServerErrorLog.insertable({
+        ...err,
+        publServerServiceId: this.activeServerService.publServerServiceId,
+      });
+    const logged = this.insertedRecord<
+      pdbs.publ_server_error_log_insertable,
+      pdbs.PublServerErrorLog
+    >(insert, pdbs.transformPublServerErrorLog.tableName, {
+      transformInserted: (record) =>
+        pdbs.transformPublServerErrorLog.fromTable(
+          record as unknown as pdbs.publ_server_error_log,
+        ),
+      onNotInserted: (insert, _names, _SQL, insertErr) => {
+        console.dir(insert);
+        console.dir(insertErr);
+        return undefined;
+      },
+    });
+    return { tableName: pdbs.transformPublServerErrorLog.tableName, logged };
   }
 }

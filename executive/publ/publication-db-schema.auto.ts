@@ -304,3 +304,72 @@ export const transformPublServerStaticAccessLog = {
     return insertable;
   },
 };
+
+export interface mutable_publ_server_error_log {
+  publ_server_error_log_id: number; // primary key
+  created_at?: Date; // default value: CURRENT_TIMESTAMP
+  location_href: string;
+  error_summary: string;
+  error_elaboration?: UnknownJSON;
+  publ_server_service_id: number;
+}
+
+export const PublServerErrorLogTableName = "publ_server_error_log";
+export type publ_server_error_log = Readonly<mutable_publ_server_error_log>;
+export type MutablePublServerErrorLog = TableToObject<
+  mutable_publ_server_error_log
+>;
+export type PublServerErrorLog = Readonly<MutablePublServerErrorLog>;
+export type publ_server_error_log_insertable =
+  & Omit<publ_server_error_log, "publ_server_error_log_id" | "created_at">
+  & Partial<Pick<publ_server_error_log, "created_at">>;
+export type mutable_publ_server_error_log_insertable =
+  & Omit<
+    mutable_publ_server_error_log,
+    "publ_server_error_log_id" | "created_at"
+  >
+  & Partial<Pick<mutable_publ_server_error_log, "created_at">>;
+export type PublServerErrorLogInsertable =
+  & Omit<PublServerErrorLog, "publServerErrorLogId" | "createdAt">
+  & Partial<Pick<PublServerErrorLog, "createdAt">>;
+export type publ_server_error_log_updateable =
+  & Omit<publ_server_error_log, "publ_server_error_log_id" | "created_at">
+  & Partial<Pick<publ_server_error_log, "created_at">>;
+export type PublServerErrorLogUpdatable =
+  & Omit<PublServerErrorLog, "publServerErrorLogId" | "createdAt">
+  & Partial<Pick<PublServerErrorLog, "createdAt">>;
+
+export const transformPublServerErrorLog = {
+  tableName: "publ_server_error_log",
+  fromTable: (t: publ_server_error_log): PublServerErrorLog => ({
+    publServerErrorLogId: t.publ_server_error_log_id,
+    createdAt: t.created_at,
+    locationHref: t.location_href,
+    errorSummary: t.error_summary,
+    errorElaboration: t.error_elaboration,
+    publServerServiceId: t.publ_server_service_id,
+  }),
+  toTable: (o: PublServerErrorLog): publ_server_error_log => ({
+    publ_server_error_log_id: o.publServerErrorLogId,
+    created_at: o.createdAt,
+    location_href: o.locationHref,
+    error_summary: o.errorSummary,
+    error_elaboration: o.errorElaboration,
+    publ_server_service_id: o.publServerServiceId,
+  }),
+  insertable: (
+    o: PublServerErrorLogInsertable,
+  ): publ_server_error_log_insertable => {
+    const insertable: mutable_publ_server_error_log_insertable = {
+      created_at: o.createdAt,
+      location_href: o.locationHref,
+      error_summary: o.errorSummary,
+      error_elaboration: o.errorElaboration,
+      publ_server_service_id: o.publServerServiceId,
+    };
+    if (typeof insertable.created_at === "undefined") {
+      delete insertable.created_at; // allow RDBMS to supply the defaultValue CURRENT_TIMESTAMP
+    }
+    return insertable;
+  },
+};
