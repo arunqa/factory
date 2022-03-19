@@ -2,6 +2,51 @@ import { events } from "./deps.ts";
 import * as terser from "https://cdn.jsdelivr.net/gh/lumeland/terser-deno@v5.9.0/deno/mod.js";
 import * as fsi from "../fs/inspect.ts";
 
+export interface CacheableTypescriptSource {
+  readonly ts: TypescriptSupplier;
+  readonly tsSrcFileStat: Deno.FileInfo;
+  readonly javaScript: string;
+  isNewerThanCached: (fi: Deno.FileInfo) => boolean;
+}
+
+export type TsSrcFileJsCache = Map<string, CacheableTypescriptSource>;
+
+export async function transformTypescriptToCacheableJS(
+  tsJsCache: TsSrcFileJsCache,
+  ts: TypescriptSupplier,
+  options?: TransformTypescriptOptions & {
+    cacheKey?: string;
+    readonly minify: boolean;
+  },
+) {
+  const cacheKey = options?.cacheKey ?? ts.tsSrcRootSpecifier;
+  const tsSrcFileStat = await Deno.lstat(ts.tsSrcRootSpecifier);
+  let cached = tsJsCache.get(cacheKey);
+  if (!cached || cached.isNewerThanCached(tsSrcFileStat)) {
+    await transformTypescriptToJS(ts, {
+      onBundledToJS: async (event) => {
+        const javaScript = options?.minify
+          ? await event.minifiedJS()
+          : await event.bundledJS();
+        cached = {
+          ts,
+          tsSrcFileStat,
+          javaScript,
+          isNewerThanCached: (fi: Deno.FileInfo) => {
+            if (tsSrcFileStat.mtime && fi.mtime) {
+              return fi.mtime.valueOf() > tsSrcFileStat.mtime.valueOf();
+            }
+            // if we don't have mtime we'll cache forever
+            return false;
+          },
+        };
+        tsJsCache.set(cacheKey, cached);
+      },
+    });
+  }
+  return cached;
+}
+
 export interface TerserOptions {
   /** Use when minifying an ES6 module. */
   module: boolean;
@@ -79,7 +124,7 @@ export interface TransformTypescriptOptions {
     rootSpecifier: string,
     dfi: Deno.FileInfo,
   ) => Promise<true | [string, unknown]>;
-  readonly onBundledToJS: (
+  readonly onBundledToJS?: (
     evt: BundledTypescriptEvent & BundledJavascriptSupplier,
   ) => Promise<void>;
 }
