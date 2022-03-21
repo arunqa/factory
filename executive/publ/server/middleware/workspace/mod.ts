@@ -112,7 +112,7 @@ export class WorkspaceMiddlewareSupplier {
         fsAbsPathAndFileName: string,
       ) => string | undefined;
       readonly publicURL: (path?: string) => string;
-      readonly wsEditorResolver: ws.WorkspaceEditorTargetResolver<
+      readonly wsEditorResolver?: ws.WorkspaceEditorTargetResolver<
         ws.WorkspaceEditorTarget
       >;
       readonly userAgentIdSupplier: (ctx: oak.Context) => string;
@@ -203,7 +203,7 @@ export class WorkspaceMiddlewareSupplier {
         const mapped = endpoint.srcFileMapper(req);
         ctx.response.body = JSON.stringify(
           {
-            ...this.config.wsEditorResolver(mapped),
+            ...this.config.wsEditorResolver?.(mapped),
             srcFileNameRequested: req,
             srcFileNameMapped: mapped,
           },
@@ -215,7 +215,7 @@ export class WorkspaceMiddlewareSupplier {
       router.get(`${editorRedirectEndpoint}/(.*)`, (ctx) => {
         const req = endpoint.srcFileRequested(ctx, resolverEndpoint);
         const mapped = endpoint.srcFileMapper(req);
-        const resolved = this.config.wsEditorResolver(mapped);
+        const resolved = this.config.wsEditorResolver?.(mapped);
         if (resolved) {
           ctx.response.redirect(resolved.editableTargetURI);
         } else {

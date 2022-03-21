@@ -13,32 +13,34 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
     | undefined;
   let changelogReportHref: string | undefined;
   const buildStatusHTML = layout.contentStrategy.mGitResolvers
-    .cicdBuildStatusHTML(layout);
+    ?.cicdBuildStatusHTML(layout);
   if (layout.contentStrategy.git) {
     const cached = layout.contentStrategy.git.cached;
     gitBranch = cached.currentBranch || "??";
     remoteCommit = cached.mostRecentCommit
-      ? layout.contentStrategy.mGitResolvers.remoteCommit(
+      ? layout.contentStrategy.mGitResolvers?.remoteCommit(
         cached.mostRecentCommit,
         layout.contentStrategy.git,
       )
       : undefined;
     remoteAsset = layout.activeRoute
-      ? layout.contentStrategy.routeGitRemoteResolver(
+      ? layout.contentStrategy.routeGitRemoteResolver?.(
         layout.activeRoute,
         gitBranch,
         layout.contentStrategy.git,
       )
       : undefined;
     changelogReportHref = cached.mostRecentCommit
-      ? layout.contentStrategy.mGitResolvers.changelogReportAnchorHref(
+      ? layout.contentStrategy.mGitResolvers?.changelogReportAnchorHref(
         cached.mostRecentCommit,
       )
       : undefined;
   }
   let wsAsset: ws.WorkspaceEditorTarget | undefined;
   if (layout.activeRoute) {
-    wsAsset = layout.contentStrategy.wsEditorRouteResolver(layout.activeRoute);
+    wsAsset = layout.contentStrategy.wsEditorRouteResolver?.(
+      layout.activeRoute,
+    );
   }
   // we hide the footer using display:none and then stickyFooter() in universal-cc/script/typical-aft.js will display it in the proper place
   // deno-fmt-ignore
@@ -49,7 +51,7 @@ export const footerFixedCopyrightBuildPartial: ldsGovn.LightningPartial = (
         <p class="slds-text-body_small">
           Publication created <span is="time-ago" date="${layout.contentStrategy.renderedAt}"/>
           ${remoteCommit ? ` (${changelogReportHref ? `<a href="${changelogReportHref}" class="git-changelog">triggered</a>`: 'triggered'} by <a href="${remoteCommit.remoteURL}" class="git-remote-commit" title="${remoteCommit.commit.subject}">${remoteCommit.commit.authorName}</a>)` : ''}
-          ${buildStatusHTML}
+          ${buildStatusHTML ?? "<!-- no layout.contentStrategy.mGitResolvers -->"}
         </p>
         <p class="slds-text-body_small">
         ${remoteAsset

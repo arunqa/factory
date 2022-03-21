@@ -208,6 +208,7 @@ export class PublicationServer {
     );
 
     new c2.ConsoleMiddlewareSupplier(
+      this.publication,
       app,
       router,
       staticEE,

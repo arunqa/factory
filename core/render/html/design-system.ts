@@ -198,7 +198,6 @@ export interface DesignSystemAssetLocations
   readonly brandStylesheet: DesignSystemAssetLocationSupplier; // white label ("brandable")
   readonly brandComponent: DesignSystemAssetLocationSupplier; // white label ("brandable")
   readonly brandFavIcon: DesignSystemAssetLocationSupplier; // white label ("brandable")
-  readonly operationalCtx: DesignSystemAssetLocationSupplier; // operational context (e.g. server.auto.js)
 }
 
 // deno-lint-ignore no-empty-interface
@@ -261,25 +260,27 @@ export interface DesignSystemContentStrategy<
   LayoutText extends html.HtmlLayoutText<Layout>,
   AssetLocations extends DesignSystemAssetLocations,
   Navigation extends DesignSystemNavigationStrategy<Layout>,
+  OperationalCtxClientCargo = unknown,
 > {
   readonly git?: git.GitExecutive;
-  readonly mGitResolvers: git.ManagedGitResolvers<string>;
-  readonly routeGitRemoteResolver: govn.RouteGitRemoteResolver<
+  readonly mGitResolvers?: git.ManagedGitResolvers<string>;
+  readonly routeGitRemoteResolver?: govn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
-  readonly wsEditorResolver: ws.WorkspaceEditorTargetResolver<
+  readonly wsEditorResolver?: ws.WorkspaceEditorTargetResolver<
     ws.WorkspaceEditorTarget
   >;
-  readonly wsEditorRouteResolver: govn.RouteWorkspaceEditorResolver<
+  readonly wsEditorRouteResolver?: govn.RouteWorkspaceEditorResolver<
     ws.WorkspaceEditorTarget
   >;
   readonly layoutText: LayoutText;
   readonly assets: AssetLocations;
   readonly navigation: Navigation;
-  readonly termsManager: k.TermsManager;
+  readonly termsManager?: k.TermsManager;
   readonly renderedAt: Date;
   readonly lintReporter?: DesignSystemLintReporter<Layout>;
   readonly initContributions?: DesignSystemLayoutContribsInitializer<Layout>;
+  readonly operationalCtxClientCargo: OperationalCtxClientCargo;
 }
 
 export type UntypedDesignSystemContentStrategy = DesignSystemContentStrategy<
@@ -437,7 +438,6 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
     readonly layoutStrategies: DesignSystemLayouts<Layout>,
     readonly dsAssetsBaseURL: string,
     readonly universalAssetsBaseURL: string,
-    readonly operationalCtxAssetsBaseURL: string,
   ) {
   }
 
@@ -564,39 +564,6 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
     };
   }
 
-  clientCargoAssetsJS(
-    base = "", // should NOT be terminated by / since assets will be prefixed by /
-    ...appendJS: string[]
-  ): string[] {
-    return [
-      `assetsBaseAbsURL() { return "${base}" }`,
-      `image(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; }`,
-      `favIcon(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; }`,
-      `script(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; }`,
-      `stylesheet(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; }`,
-      `component(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; }`,
-      `model(relURL) { return \`\${this.assetsBaseAbsURL()}\${relURL}\`; }`,
-      `dsImage(relURL) { return \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/image\${relURL}\`; }`,
-      `dsScript(relURL) { return  \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/script\${relURL}\`; }`,
-      `dsStylesheet(relURL) { return \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/style\${relURL}\`; }`,
-      `dsComponent(relURL) { return \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/component\${relURL}\`; }`,
-      `dsModel(relURL) { return \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/model\${relURL}\`; }`,
-      `uImage(relURL) { return \`\${this.assetsBaseAbsURL()}${this.universalAssetsBaseURL}/image\${relURL}\`; }`,
-      `uScript(relURL) { return  \`\${this.assetsBaseAbsURL()}${this.universalAssetsBaseURL}/script\${relURL}\`; }`,
-      `uStylesheet(relURL) { return \`\${this.assetsBaseAbsURL()}${this.universalAssetsBaseURL}/style\${relURL}\`; }`,
-      `uComponent(relURL) { return \`\${this.assetsBaseAbsURL()}${this.universalAssetsBaseURL}/component\${relURL}\`; }`,
-      `uModel(relURL) { return \`\${this.assetsBaseAbsURL()}${this.universalAssetsBaseURL}/model\${relURL}\`; }`,
-      `brandImage(relURL) { return this.image(\`/brand/\${relURL}\`); }`,
-      `brandScript(relURL) { return this.script(\`/brand/\${relURL}\`); }`,
-      `brandStylesheet(relURL) { return this.stylesheet(\`/brand/\${relURL}\`); }`,
-      `brandComponent(relURL) { return this.component(\`/brand/\${relURL}\`); }`,
-      `brandModel(relURL) { return this.model(\`/brand/\${relURL}\`); }`,
-      `brandFavIcon(relURL) { return this.favIcon(\`/brand/\${relURL}\`); }`,
-      `operationalCtx(relURL) { return \`\${this.assetsBaseAbsURL()}${this.operationalCtxAssetsBaseURL}\${relURL}\`; }`,
-      ...appendJS,
-    ];
-  }
-
   /**
    * Server-side and client-side access to asset locators. For image, favIcon,
    * script, and stylesheet that is app-specific (meaning managed outside of
@@ -611,6 +578,7 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
     base = "", // should NOT be terminated by / since assets will be prefixed by /
     inherit?: Partial<html.DesignSystemAssetLocations>,
   ): html.DesignSystemAssetLocations {
+    // these must match, precisely, what is in design system Javascript rfLayout()
     return {
       dsImage: (relURL) => `${this.dsAssetsBaseURL}/image${relURL}`,
       dsScript: (relURL) => `${this.dsAssetsBaseURL}/script${relURL}`,
@@ -631,13 +599,6 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
       brandScript: (relURL) => `${base}/brand${relURL}`,
       brandStylesheet: (relURL) => `${base}/brand${relURL}`,
       brandComponent: (relURL) => `${base}/brand${relURL}`,
-      operationalCtx: (relURL) =>
-        `${this.operationalCtxAssetsBaseURL}${relURL}`,
-      clientCargoValue: () => {
-        return `{
-          ${this.clientCargoAssetsJS(base).join(",\n          ")}
-        }`;
-      },
       ...inherit,
     };
   }

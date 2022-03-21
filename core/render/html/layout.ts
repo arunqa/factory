@@ -4,20 +4,111 @@ import * as c from "../../../core/std/content.ts";
 import * as contrib from "../contributions.ts";
 import * as r from "../../../core/std/render.ts";
 import * as obs from "../../../core/std/observability.ts";
+import * as e from "../../../lib/text/escape.ts";
 
-export const htmlLayoutOriginDataAttrs:
-  hGovn.HtmlLayoutOriginDomDataAttrsResolver = (
+// hide properties that could have circular references which will break JSON.stringify()
+export const jsonStringifyRouteReplacer = (key: string, value: unknown) =>
+  ["notifications", "owner", "parent", "children", "ancestors"].find((name) =>
+      name == key
+    )
+    ? "(ignored)"
+    : value;
+
+export const htmlOperationalCtxDataAttrs:
+  hGovn.HtmlOperationalCtxDomDataAttrsResolver = (
+    layout: hGovn.HtmlLayout,
+  ): string => {
+    return `data-rf-operational-ctx='${
+      e.escapeHtmlCustom(
+        JSON.stringify(layout.operationalCtxClientCargo),
+        e.matchHtmlRegExpForAttrSingleQuote,
+      )
+    }'`;
+  };
+
+export const htmlMetaOriginDomDataAttrs:
+  hGovn.HtmlMetaOriginDomDataAttrsResolver = (
+    layout: hGovn.HtmlLayout,
+  ): string => {
+    return `${
+      layout.frontmatter
+        ? `data-rf-origin-frontmatter='${
+          e.escapeHtmlCustom(
+            JSON.stringify(layout.frontmatter),
+            e.matchHtmlRegExpForAttrSingleQuote,
+          )
+        }'`
+        : ""
+    }`;
+  };
+
+export const htmlNavigationOriginDomDataAttrs:
+  hGovn.HtmlNavigationOriginDomDataAttrsResolver = (
+    layout: hGovn.HtmlLayout,
+  ): string => {
+    return `${
+      layout.activeRoute
+        ? `data-rf-origin-nav-active-route='${
+          e.escapeHtmlCustom(
+            JSON.stringify(layout.activeRoute, jsonStringifyRouteReplacer),
+            e.matchHtmlRegExpForAttrSingleQuote,
+          )
+        }'`
+        : ""
+    }`;
+  };
+
+export const htmlDesignSystemOriginDataAttrs:
+  hGovn.HtmlDesignSystemOriginDomDataAttrsResolver = (
     layout: hGovn.HtmlLayout,
     srcModuleImportMetaURL: string,
     symbol: string,
   ): string => {
     const ls = layout.layoutSS.layoutStrategy;
-    return `data-rf-origin-layout-symbol="${symbol}" ${
-      r.isIdentifiableLayoutStrategy(ls)
-        ? `data-rf-origin-layout-name="${ls.identity}"`
+    return `${
+      layout.activeRoute
+        ? `data-rf-origin-design-system='${
+          e.escapeHtmlCustom(
+            JSON.stringify({
+              identity: layout.designSystem.identity,
+              layout: {
+                symbol,
+                name: r.isIdentifiableLayoutStrategy(ls)
+                  ? ls.identity
+                  : undefined,
+                src: srcModuleImportMetaURL,
+                diagnostics: layout.diagnostics,
+              },
+              isPrettyURL: true, // TODO: if RF ever makes it optional, update this and account for it
+              moduleAssetsBaseAbsURL: "", // TODO fill in base URL
+              dsAssetsBaseAbsURL: layout.designSystem.dsAssetsBaseURL,
+              universalAssetsBaseAbsURL:
+                layout.designSystem.universalAssetsBaseURL,
+            }),
+            e.matchHtmlRegExpForAttrSingleQuote,
+          )
+        }'`
         : ""
-    }" data-rf-origin-layout-src="${srcModuleImportMetaURL}"`;
+    }`;
   };
+
+export const typicalHtmlOriginResolvers: hGovn.HtmlOriginResolvers = {
+  meta: htmlMetaOriginDomDataAttrs,
+  navigation: htmlNavigationOriginDomDataAttrs,
+  designSystem: htmlDesignSystemOriginDataAttrs,
+  operationalCtx: htmlOperationalCtxDataAttrs,
+  dataAttrs: (layout, srcModuleImportMetaURL, layoutSymbol) => {
+    return `${typicalHtmlOriginResolvers.meta(layout)} ${
+      typicalHtmlOriginResolvers.navigation(layout)
+    } ${
+      typicalHtmlOriginResolvers.designSystem(
+        layout,
+        srcModuleImportMetaURL,
+        layoutSymbol,
+      )
+    } ${typicalHtmlOriginResolvers.operationalCtx(layout)}`;
+  },
+};
 
 const bodyAsync = (
   instance: govn.FlexibleContent | govn.FlexibleContentSync | govn.HtmlSupplier,

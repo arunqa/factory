@@ -5,63 +5,6 @@ import * as ext from "./extensions.ts";
 export const typicalBodyPartial: ldsGovn.LightningPartial = (_, body) =>
   body || "<!-- no lightningBody -->";
 
-// hide properties that could have circular references which will break JSON.stringify()
-const routeJsonReplacer = (key: string, value: unknown) =>
-  ["notifications", "owner", "parent", "children", "ancestors"].find((
-      name,
-    ) => name == key
-    )
-    ? "(ignored)"
-    : value;
-
-export const clientCargoPartial: ldsGovn.LightningPartial = (layout) => {
-  // deno-fmt-ignore (because we don't want ${...} wrapped)
-  return `<script>
-    "use strict";
-    const ${layout.clientCargoPropertyName} = {
-      route: ${layout.activeRoute ? JSON.stringify(layout.activeRoute, routeJsonReplacer) : `undefined`},
-      frontmatter: ${layout.frontmatter ? JSON.stringify(layout.frontmatter) : `undefined`},
-      urlRelToSelf(relURL) { return ((location.pathname.endsWith('/') ? location.pathname : \`\${location.pathname}/\`) + (relURL || '')).replace(/\\/\\/+/g, "/")}, // account for pretty URL
-      selfURL(relURL) { return relURL.startsWith('./') ? this.urlRelToSelf(relURL.substring(1)) : (relURL.startsWith('../') ? this.urlRelToSelf(relURL) : relURL)},
-      assets: ${layout.contentStrategy.assets.clientCargoValue(layout)},
-      navigation: ${layout.contentStrategy.navigation.clientCargoValue(layout)},
-      diagnostics: ${layout.diagnostics ? "true" : "false"},
-      activate: undefined, // set to (cargo) => { ... } to call in lightningActivatePage() before any other activation done
-      finalize: undefined, // set to (cargo, ...) => { ... } to call in lightningActivatePage() after all other activation done
-      location(relURL) { return \`\${this.route?.terminal?.qualifiedPath}\${relURL}\` },
-      navigate(absURL) { window.location = absURL; },
-      resolvePrettyUrlHref: (path) => {
-          if (window.location.pathname.endsWith('/')) return path; // we're a pretty URL, no change
-          if (path.startsWith('/')) return path;                   // absolute path, no change
-          if (path.startsWith('../')) return path.substr(3);       // relative path but we're not using pretty URL so strip first unit
-          return path;                                             // not sure, leave it alone
-      },
-      lightingIconURL(identity, layout) {
-        const collection = typeof identity === "string" ? "utility" : identity.collection;
-        const name = typeof identity === "string" ? identity : identity.name;
-        return this.assets.ldsIcons(
-          \`/\${collection}-sprite/svg/symbols.svg#\${name}\`,
-        );
-      },
-      lifecycle: {
-        provisionAfterContentLoaded: (provisionCtx) => {
-          const provisionEvent = new CustomEvent("${layout.clientCargoPropertyName}.provisionAfterContentLoaded", {
-            detail: { ${layout.clientCargoPropertyName}, ...provisionCtx }
-          });
-          window.dispatchEvent(provisionEvent);
-        },
-      }
-    };
-
-    document.addEventListener('DOMContentLoaded', function () {
-      ${layout.clientCargoPropertyName}.lifecycle.provisionAfterContentLoaded({ provisionedOn: new Date() });
-    });
-    </script>`;
-};
-
-export const bodyAttrsPartial: ldsGovn.LightningPartial = (layout) =>
-  ` onload="if (typeof lightningActivatePage == 'function') { lightningActivatePage(${layout.clientCargoPropertyName}, lightningActivateAllPageItems); } else { console.warn('lightningActivatePage(cargo) not available'); }"`;
-
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const typicalHeadPartial: ldsGovn.LightningPartial = (layout) => `
 ${layout.contributions.head.contributions("fore").contributions.join("\n")}
@@ -77,12 +20,20 @@ ${layout.contributions.head.contributions("fore").contributions.join("\n")}
      and dependency manager. You should use this instead of <script> tags.
      TODO: consider https://addyosmani.com/basket.js/ as well -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
-<script src="${layout.contentStrategy.assets.operationalCtx("/server.auto.js")}" type="module"></script>
-<script src="${layout.contentStrategy.assets.uScript("/typical.js")}"></script> <!-- TODO: merge typical.js with universal.js? -->
+<script src="${layout.contentStrategy.assets.uScript("/typical.js")}"></script>
 <script src="${layout.contentStrategy.assets.dsScript("/lightning.js")}"></script>
+
+<!-- TODO: only include experimental-operational-ctx.mjs if running in a server -->
+<script src="${layout.contentStrategy.assets.uScript("/experimental-operational-ctx.mjs")}" type="module"></script>
+
 ${dia.clientDiagramsContributionsPartial(layout)}
 ${ext.clientExtensionsContributionsPartial(layout)}
-${clientCargoPartial(layout)}
+<script>
+  // Discover, detect, and configure Resource Factory server-side layout knowledge
+  // on the user agent (client) side. lightningDSLayout() is defined in lightning.js;
+  // after it is initialized, it will call event "rfUniversalLayout.init"
+  const ${layout.clientCargoPropertyName} = lightningDSLayout({ diagnose: true });
+</script>
 <link rel="shortcut icon" href="${layout.contentStrategy.assets.favIcon("/asset/image/favicon.ico")}"/>
 <title>${layout.layoutText.title(layout)}</title>
 <!-- Google Tag Manager -->

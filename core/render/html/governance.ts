@@ -15,7 +15,7 @@ export interface HtmlLayoutClientCargoPersister {
 export type HtmlLayoutClientCargoJavaScriptValue = string;
 
 export interface HtmlLayoutClientCargoValueSupplier {
-  readonly clientCargoValue: <Layout extends HtmlLayout>(
+  readonly clientCargoValue?: <Layout extends HtmlLayout>(
     layout: Layout,
   ) => HtmlLayoutClientCargoJavaScriptValue;
 }
@@ -69,8 +69,32 @@ export interface HtmlLayoutText<Layout> {
   readonly title: (layout: Layout) => string;
 }
 
-export interface HtmlLayoutOriginDomDataAttrsResolver {
+export interface HtmlOperationalCtxDomDataAttrsResolver {
+  (layout: HtmlLayout): string;
+}
+
+export interface HtmlMetaOriginDomDataAttrsResolver {
+  (layout: HtmlLayout): string;
+}
+
+export interface HtmlNavigationOriginDomDataAttrsResolver {
+  (layout: HtmlLayout): string;
+}
+
+export interface HtmlDesignSystemOriginDomDataAttrsResolver {
   (layout: HtmlLayout, srcModuleImportMetaURL: string, symbol: string): string;
+}
+
+export interface HtmlOriginResolvers {
+  readonly meta: HtmlMetaOriginDomDataAttrsResolver;
+  readonly navigation: HtmlNavigationOriginDomDataAttrsResolver;
+  readonly designSystem: HtmlDesignSystemOriginDomDataAttrsResolver;
+  readonly operationalCtx: HtmlOperationalCtxDomDataAttrsResolver;
+  readonly dataAttrs: (
+    layout: HtmlLayout,
+    srcModuleImportMetaURL: string,
+    symbol: string,
+  ) => string;
 }
 
 export interface HtmlLayoutNavigationContext {
@@ -86,6 +110,7 @@ like production, sandbox, devl, test, etc. they are running in.
 export interface HtmlLayout<
   // deno-lint-ignore no-explicit-any
   LayoutText extends HtmlLayoutText<any> = HtmlLayoutText<any>,
+  OperationalCtxClientCargo = unknown,
 > extends
   Partial<govn.FrontmatterSupplier<govn.UntypedFrontmatter>>,
   HtmlLayoutClientCargoSupplier,
@@ -99,7 +124,8 @@ export interface HtmlLayout<
   readonly layoutSS: HtmlLayoutStrategySupplier<any>;
   readonly contributions: HtmlLayoutContributions;
   readonly layoutText: LayoutText;
-  readonly origin: HtmlLayoutOriginDomDataAttrsResolver;
+  readonly origin: HtmlOriginResolvers;
+  readonly operationalCtxClientCargo: OperationalCtxClientCargo;
 }
 
 /**

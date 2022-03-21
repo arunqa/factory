@@ -1,2 +1,2 @@
-# created during test executions
-pubctl-diagnostics.jsonl
+# created during server executions
+executive/publ/server/middleware/console2/public

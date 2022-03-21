@@ -345,7 +345,7 @@ export function defaultRouteWorkspaceEditorResolver(
 export class TypicalRouteFactory implements govn.RouteFactory {
   constructor(
     readonly routeLocationResolver: RouteLocationResolver,
-    readonly routeWSEditorResolver: govn.RouteWorkspaceEditorResolver<
+    readonly routeWSEditorResolver?: govn.RouteWorkspaceEditorResolver<
       ws.WorkspaceEditorTarget
     >,
   ) {

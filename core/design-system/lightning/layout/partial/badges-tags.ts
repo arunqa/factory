@@ -3,6 +3,10 @@ import * as k from "../../../../../lib/knowledge/mod.ts";
 
 export const frontmatterTagsPartial: ldsGovn.LightningPartial = (layout) => {
   const tm = layout.contentStrategy.termsManager;
+  if (!tm) {
+    return "<!-- no layout.contentStrategy.termsManager in frontmatterTagsPartial -->";
+  }
+
   const badge = (term: k.Term) => {
     const ns = tm.termNamespace(term);
     // deno-fmt-ignore (because we don't want ${...} wrapped)

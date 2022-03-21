@@ -68,7 +68,6 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
   constructor(
     readonly extnManager: govn.ExtensionsManager,
     readonly universalAssetsBaseURL: string,
-    readonly operationalCtxBaseURL: string,
     readonly emptyContentModelLayoutSS:
       & govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier>
       & govn.ModelLayoutStrategySupplier<Layout, govn.HtmlSupplier> = {
@@ -84,7 +83,6 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
       new LightingDesignSystemLayouts(),
       "/lightning",
       universalAssetsBaseURL,
-      operationalCtxBaseURL,
     );
     this.directives.push(
       new direc.ProxiedContentInfuseInterpolateDirective(this.extnManager),
@@ -103,16 +101,6 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
     const ldsAssets: ldsGovn.LightningAssetLocations = {
       ...dsAssets,
       ldsIcons: (relURL) => `${this.dsAssetsBaseURL}/image/slds-icons${relURL}`,
-      clientCargoValue: () => {
-        return `{
-          ${
-          this.clientCargoAssetsJS(
-            base,
-            `ldsIcons(relURL) { return \`\${this.assetsBaseAbsURL()}${this.dsAssetsBaseURL}/image/slds-icons\${relURL}\`; }`,
-          ).join(",\n          ")
-        }
-        }`;
-      },
     };
     return ldsAssets;
   }
@@ -175,12 +163,14 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
           activeRoute,
           activeTreeNode,
           clientCargoPropertyName: "clientLayout",
-          origin: html.htmlLayoutOriginDataAttrs,
+          origin: html.typicalHtmlOriginResolvers,
+          operationalCtxClientCargo: contentStrategy.operationalCtxClientCargo,
           ...layoutArgs,
         })
         : this.contributions(),
       clientCargoPropertyName: "clientLayout",
-      origin: html.htmlLayoutOriginDataAttrs,
+      operationalCtxClientCargo: contentStrategy.operationalCtxClientCargo,
+      origin: html.typicalHtmlOriginResolvers,
       ...layoutArgs,
     };
     if (contentStrategy.lintReporter && layoutArgs?.diagnostics) {

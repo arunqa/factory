@@ -8,7 +8,7 @@ export interface PreProduceObservabilityState {
     readonly renderUniversalPEF: boolean;
     readonly renderUniversalJSON: boolean;
   };
-  readonly observability: o.Observability;
+  readonly observability?: o.Observability;
 }
 
 export interface PostProduceObservabilityState {
@@ -27,5 +27,5 @@ export interface PostProduceObservabilityState {
     readonly renderInHealth: boolean;
     readonly filter: (name: string, value: string) => boolean;
   };
-  readonly observability: o.Observability;
+  readonly observability?: o.Observability;
 }

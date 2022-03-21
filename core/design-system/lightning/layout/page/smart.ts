@@ -3,14 +3,14 @@ import * as t from "./typical.ts";
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const smartNavigationPage = t.lightningTemplate("lds/page/default", {moduleImportMetaURL: import.meta.url})`<!DOCTYPE html>
-<html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "smartNavigationPage")}>
+<html lang="en" ${(layout) => layout.origin.dataAttrs(layout, import.meta.url, "smartNavigationPage")}>
   <head>
     ${p.typicalHeadPartial}
     ${(layout) => layout.contributions.scripts.contributions()}
     ${(layout) => layout.contributions.stylesheets.contributions()}
     ${(layout) => layout.contributions.head.contributions("aft")}
   </head>
-  <body${p.bodyAttrsPartial}>
+  <body>
   ${(layout) => layout.contributions.body.contributions("fore")}
   ${p.redirectConsoleContainerPartial}
   ${p.resourceDiagnosticsPartial}

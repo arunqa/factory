@@ -252,10 +252,10 @@ export interface PublicationHomePathSupplier {
 export interface PublicationOperationalContext {
   readonly projectRootPath: PublicationHomePathSupplier;
   readonly processStartTimestamp: Date;
-  readonly isExperimentalOperationalCtx: boolean;
-  readonly isLiveReloadRequest: boolean;
-  readonly iterationCount: number;
-  readonly produceOperationalCtxCargo: (home: string) => Promise<void>;
+  readonly isExperimentalOperationalCtx?: boolean;
+  readonly isLiveReloadRequest?: boolean;
+  readonly iterationCount?: number;
+  readonly produceOperationalCtxCargo?: (home: string) => Promise<void>;
   readonly publStateDB: () => psDB.PublicationDatabase;
   readonly publStateDbLocation: (relative?: boolean) => string;
 }
@@ -264,18 +264,18 @@ export interface Preferences<
   OperationalContext extends PublicationOperationalContext,
 > {
   readonly operationalCtx: OperationalContext;
-  readonly observability: rfStd.Observability;
   readonly contentRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
-  readonly appName: string;
-  readonly envVarNamesPrefix: string;
-  readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
-  readonly mGitResolvers: git.ManagedGitResolvers<string>;
-  readonly routeGitRemoteResolver: rfGovn.RouteGitRemoteResolver<
+  readonly observability?: rfStd.Observability;
+  readonly appName?: string;
+  readonly envVarNamesPrefix?: string;
+  readonly persistClientCargo?: html.HtmlLayoutClientCargoPersister;
+  readonly mGitResolvers?: git.ManagedGitResolvers<string>;
+  readonly routeGitRemoteResolver?: rfGovn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
   readonly routeLocationResolver?: rfStd.RouteLocationResolver;
-  readonly wsEditorResolver: ws.WorkspaceEditorTargetResolver<
+  readonly wsEditorResolver?: ws.WorkspaceEditorTargetResolver<
     ws.WorkspaceEditorTarget
   >;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
@@ -283,49 +283,51 @@ export interface Preferences<
     config: Configuration<OperationalContext>,
   ) => fsT.FileSysAssetWalker[];
   readonly extensionsManager: rfGovn.ExtensionsManager;
-  readonly termsManager: k.TermsManager;
-  readonly memoizeProducers: boolean;
+  readonly termsManager?: k.TermsManager;
+  readonly memoizeProducers?: boolean;
 }
 
 export class Configuration<
   OperationalContext extends PublicationOperationalContext,
 > implements Omit<Preferences<OperationalContext>, "assetsMetricsWalkers"> {
   readonly operationalCtx: OperationalContext;
-  readonly observability: rfStd.Observability;
+  readonly observability?: rfStd.Observability;
   readonly telemetry: telem.Instrumentation<telem.UntypedBaggage> = new telem
     .Telemetry();
   readonly metrics = new metrics.TypicalMetrics();
-  readonly envVarNamesPrefix: string;
+  readonly envVarNamesPrefix?: string;
   readonly assetsMetricsWalkers: fsT.FileSysAssetWalker[];
   readonly git?: git.GitExecutive;
   readonly fsRouteFactory: rfStd.FileSysRouteFactory;
   readonly routeLocationResolver?: rfStd.RouteLocationResolver;
   readonly extensionsManager: rfGovn.ExtensionsManager;
-  readonly termsManager: k.TermsManager;
+  readonly termsManager?: k.TermsManager;
   readonly observabilityRoute: rfGovn.Route;
   readonly diagnosticsRoute: rfGovn.Route;
   readonly contentRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
-  readonly appName: string;
-  readonly mGitResolvers: git.ManagedGitResolvers<string>;
-  readonly routeGitRemoteResolver: rfGovn.RouteGitRemoteResolver<
+  readonly appName?: string;
+  readonly mGitResolvers?: git.ManagedGitResolvers<string>;
+  readonly routeGitRemoteResolver?: rfGovn.RouteGitRemoteResolver<
     html.GitRemoteAnchor
   >;
-  readonly wsEditorResolver: ws.WorkspaceEditorTargetResolver<
+  readonly wsEditorResolver?: ws.WorkspaceEditorTargetResolver<
     ws.WorkspaceEditorTarget
   >;
-  readonly persistClientCargo: html.HtmlLayoutClientCargoPersister;
+  readonly persistClientCargo?: html.HtmlLayoutClientCargoPersister;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
-  readonly memoizeProducers: boolean;
+  readonly memoizeProducers?: boolean;
 
   constructor(prefs: Preferences<OperationalContext>) {
     this.operationalCtx = prefs.operationalCtx;
     this.observability = prefs.observability;
     this.mGitResolvers = prefs.mGitResolvers;
-    this.git = git.discoverGitWorktreeExecutiveSync(
-      prefs.contentRootPath,
-      (gp) => new git.TypicalGit(gp, this.mGitResolvers),
-    );
+    this.git = this.mGitResolvers
+      ? git.discoverGitWorktreeExecutiveSync(
+        prefs.contentRootPath,
+        (gp) => new git.TypicalGit(gp, this.mGitResolvers!),
+      )
+      : undefined;
     this.contentRootPath = prefs.contentRootPath;
     this.persistClientCargo = prefs.persistClientCargo;
     this.destRootPath = prefs.destRootPath;
@@ -335,7 +337,9 @@ export class Configuration<
     this.routeLocationResolver = prefs.routeLocationResolver;
     this.fsRouteFactory = new rfStd.FileSysRouteFactory(
       this.routeLocationResolver || rfStd.defaultRouteLocationResolver(),
-      rfStd.defaultRouteWorkspaceEditorResolver(this.wsEditorResolver),
+      this.wsEditorResolver
+        ? rfStd.defaultRouteWorkspaceEditorResolver(this.wsEditorResolver)
+        : undefined,
     );
     this.observabilityRoute = ocC.observabilityRoute(this.fsRouteFactory);
     this.diagnosticsRoute = ocC.diagnosticsRoute(this.fsRouteFactory);
@@ -454,7 +458,7 @@ export const isDiagnosticsOptionsSupplier = safety.typeGuard<
 >("metrics", "renderers", "routes");
 
 export interface PublicationState {
-  readonly observability: rfStd.Observability;
+  readonly observability?: rfStd.Observability;
   readonly resourcesTree: rfGovn.RouteTree;
   readonly resourcesIndex: PublicationResourcesIndex<unknown>;
   readonly persistedIndex: PublicationPersistedIndex;
@@ -678,7 +682,7 @@ export abstract class TypicalPublication<
       isDiagnosticsOptionsSupplier,
       () => defaultDiagsOptions,
     );
-    this.config.mGitResolvers.registerResolver(routes.gitAssetPublUrlResolver);
+    this.config.mGitResolvers?.registerResolver(routes.gitAssetPublUrlResolver);
     this.diagsOptions = diagsConfig.configureSync();
     const persistedIndex = new PublicationPersistedIndex();
     this.state = {
@@ -688,7 +692,7 @@ export abstract class TypicalPublication<
       producerStats: new PublicationProducersStatistics(),
       persistedIndex,
     };
-    this.state.observability.events.emit("healthStatusSupplier", this);
+    this.state.observability?.events.emit("healthStatusSupplier", this);
     this.fspEventsEmitter.on(
       "afterPersistFlexibleFile",
       // deno-lint-ignore require-await
@@ -769,7 +773,7 @@ export abstract class TypicalPublication<
 
       // Symlink any files that are considered "cargo" that must be carried to
       // the client (known as "client-cargo").
-      this.config.persistClientCargo(this.config.destRootPath),
+      this.config.persistClientCargo?.(this.config.destRootPath),
     ]);
   }
 
@@ -1039,7 +1043,10 @@ export abstract class TypicalPublication<
 
   async *resources<Resource>(refine: rfGovn.ResourceRefinerySync<Resource>) {
     for await (const originator of this.originators()) {
-      if (rfStd.isObservabilityHealthComponentSupplier(originator)) {
+      if (
+        this.state.observability &&
+        rfStd.isObservabilityHealthComponentSupplier(originator)
+      ) {
         this.state.observability.events.emitSync(
           "healthStatusSupplier",
           originator,
@@ -1186,7 +1193,7 @@ export abstract class TypicalPublication<
 
     const ocCtxRoute = ocC.operationalCtxRoute(this.config.fsRouteFactory);
     if (ocCtxRoute.terminal) {
-      this.config.operationalCtx.produceOperationalCtxCargo(
+      this.config.operationalCtx.produceOperationalCtxCargo?.(
         path.join(this.config.destRootPath, ocCtxRoute.terminal.qualifiedPath),
       );
     } else {

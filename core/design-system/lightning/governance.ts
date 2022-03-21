@@ -55,13 +55,13 @@ export type LightningContextBarSubjectImageSrc = string | [
 ];
 
 export interface LightningBranding {
-  readonly contextBarSubject:
+  readonly contextBarSubject?:
     | LightningContextBarSubject
     | ((
       lnc: html.HtmlLayoutNavigationContext,
       assets: LightningAssetLocations,
     ) => LightningContextBarSubject);
-  readonly contextBarSubjectImageSrc:
+  readonly contextBarSubjectImageSrc?:
     | LightningContextBarSubjectImageSrc
     | ((
       assets: LightningAssetLocations,

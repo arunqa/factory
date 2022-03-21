@@ -11,7 +11,7 @@ export const contextBarPartial: ldsGovn.LightningPartial = (layout) => {
   if (typeof subject === "string") {
     subjectLabel = subject;
     subjectHref = layout.contentStrategy.navigation.home;
-  } else {
+  } else if (Array.isArray(subject)) {
     subjectLabel = subject[0];
     subjectHref = subject[1];
   }
@@ -23,7 +23,7 @@ export const contextBarPartial: ldsGovn.LightningPartial = (layout) => {
   if (typeof subjectImgSrc === "string") {
     subjectImgSrcText = subjectImgSrc;
     subjectImgSrcHref = subjectHref;
-  } else {
+  } else if (Array.isArray(subjectImgSrc)) {
     subjectImgSrcText = subjectImgSrc[0];
     subjectImgSrcHref = subjectImgSrc[1];
   }
@@ -33,15 +33,19 @@ export const contextBarPartial: ldsGovn.LightningPartial = (layout) => {
     <section class="slds-container_x-large slds-container_center slds-p-left_small slds-p-right_small">
   <!-- top section - 1 -->
     <div class="slds-clearfix">
+      ${subjectLabel || subjectImgSrcText ? `
       <div class="slds-float_left">
         <div class="slds-context-bar__primary">
+          ${subjectImgSrcText ? `
           <div class="slds-context-bar__icon-action">
             <a href="${subjectImgSrcHref}"><img src="${subjectImgSrcText}" width="30" height="30" alt="" class="slds-m-top_xx-small"></a>
           </div>
+          `:''}
+          ${subjectLabel ? `
           <span class="slds-context-bar__label-action slds-context-bar__app-name slds-m-top_xx-small">
           <span class="slds-truncate" title="${subjectLabel}"><a style="color: #000;" href="${subjectHref}">${subjectLabel}</a></span></span>
-      </div>
-      </div>
+      </div>`:''}
+      </div>`:''}
       <div class="slds-float_left" style="vertical-align: middle">
         <span id="rf-universal-tunnel-state-summary-badge" style="display:none; position:relative; top: 10px; ">Seeing this message? Report as a RF Tunnel State bug.</span>
       </div>

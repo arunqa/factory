@@ -30,7 +30,7 @@ export const typicalPageSurroundBodyPrePartial: ldsGovn.LightningPartial = (layo
     ${layout.contributions.stylesheets.contributions().contributions.join("\n")}
     ${layout.contributions.head.contributions("aft").contributions.join("\n")}
   </head>
-  <body${p.bodyAttrsPartial(layout)}>
+  <body>
     ${layout.contributions.body.contributions("fore").contributions.join("\n")}
     ${p.redirectConsoleContainerPartial(layout)}
     ${p.resourceDiagnosticsPartial(layout)}
@@ -48,7 +48,7 @@ export const typicalPageSurroundBodyPostPartial: ldsGovn.LightningPartial = (lay
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const homePage = lightningTemplate("lds/page/home", {moduleImportMetaURL: import.meta.url})`<!DOCTYPE html>
-<html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "homePage")}>
+<html lang="en" ${(layout) => layout.origin.dataAttrs(layout, import.meta.url, "homePage")}>
     ${typicalPageSurroundBodyPrePartial}
 
     <main class="container flex slds-m-vertical_small slds-container--center">
@@ -63,7 +63,7 @@ export const homePage = lightningTemplate("lds/page/home", {moduleImportMetaURL:
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const innerIndexPage = lightningTemplate("lds/page/inner-index", {moduleImportMetaURL: import.meta.url})`<!DOCTYPE html>
-<html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "innerIndexPage")}>
+<html lang="en" ${(layout) => layout.origin.dataAttrs(layout, import.meta.url, "innerIndexPage")}>
     ${typicalPageSurroundBodyPrePartial}
 
     <main class="slds-container_x-large slds-container_center slds-p-around_medium">
@@ -82,7 +82,7 @@ export const innerIndexPage = lightningTemplate("lds/page/inner-index", {moduleI
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const innerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto", {moduleImportMetaURL: import.meta.url})`<!DOCTYPE html>
-<html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "innerIndexAutoPage")}>
+<html lang="en" ${(layout) => layout.origin.dataAttrs(layout, import.meta.url, "innerIndexAutoPage")}>
     ${typicalPageSurroundBodyPrePartial}
 
     <main class="slds-container_x-large slds-container_center slds-p-around_medium">
@@ -102,7 +102,7 @@ export const innerIndexAutoPage = lightningTemplate("lds/page/inner-index-auto",
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const noDefinitiveLayoutPage = lightningTemplate("lds/page/no-layout", {moduleImportMetaURL: import.meta.url})`<!DOCTYPE html>
-<html lang="en" ${(layout) => layout.origin(layout, import.meta.url, "noDefinitiveLayoutPage")}>
+<html lang="en" ${(layout) => layout.origin.dataAttrs(layout, import.meta.url, "noDefinitiveLayoutPage")}>
   <head>
     ${p.typicalHeadPartial}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/styles/default.min.css">
@@ -111,7 +111,7 @@ export const noDefinitiveLayoutPage = lightningTemplate("lds/page/no-layout", {m
     <title>SLDS Diagnostics</title>
     ${(layout) => layout.contributions.head.contributions("aft")}
   </head>
-  <body${p.bodyAttrsPartial}>
+  <body>
     ${p.redirectConsoleContainerPartial}
     <h1>SLDS Diagnostics</h2>
     You did not choose a proper layout either programmtically or through frontmatter.

@@ -6,6 +6,7 @@ export type ResolvedStaticPathOnServer = string;
 export interface StaticContentContextSupplier {
   // deno-lint-ignore no-explicit-any
   readonly oakCtx: oak.Context<any>;
+  readonly servedCount: number;
 }
 
 export interface StaticServedTarget {
@@ -63,16 +64,19 @@ export function staticContentMiddleware(
   staticEE: StaticEventEmitter,
   staticIndex: string,
   translatePath?: (path: string) => string,
+  beforeFirstServe?: (sccs: StaticContentContextSupplier) => Promise<void>,
   // deno-lint-ignore no-explicit-any
 ): oak.Middleware<any> {
+  let servedCount = 0;
   return async (ctx) => {
     const resourcePathRequestedByUA = ctx.request.url.pathname;
     const resolvedStaticPathOnServer = translatePath
       ? translatePath(resourcePathRequestedByUA)
       : resourcePathRequestedByUA;
-    const sccs: StaticContentContextSupplier = { oakCtx: ctx };
+    const sccs: StaticContentContextSupplier = { oakCtx: ctx, servedCount };
     const staticAssetsHome = content.staticAssetsHome;
     try {
+      if (servedCount == 0 && beforeFirstServe) await beforeFirstServe(sccs);
       await staticEE.emit("before", sccs);
       await staticEE.emit("transform", {
         sccs,
@@ -101,5 +105,6 @@ export function staticContentMiddleware(
         { sccs, error, target: resolvedStaticPathOnServer },
       );
     }
+    servedCount++;
   };
 }

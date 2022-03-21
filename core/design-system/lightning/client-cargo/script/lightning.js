@@ -1,5 +1,42 @@
 "use strict";
 
+/**
+ * lightningDSLayout provides convenience functions which uses "origin" data stored in
+ * <html> data attributes and layout context in <body> data attributes to
+ * compute a variety of layout properties specific to the active page such as:
+ *   - computing URLs of the current page and relatives, accounting pretty URLs
+ *   - computing location of assets in module, design-system, and universal scopes
+ *   - handling operational context (lifecycle) custom events
+ * @param {*} prepareLayoutCtx results of rfOriginContext(), rfLayoutContext() and other options
+ * @returns layout convenience functions for the current page (operates as a "class" with "this" so don't try to use spreads on the result);
+ *          init() should be called when it's ready for use
+ */
+function lightningDSLayout(prepareLayoutCtx) {
+  return rfUniversalLayout({
+    ...prepareLayoutCtx,
+    enhanceResult: (layoutResult) => {
+      layoutResult.assets.ldsIcons = (relURL) => { return `${layoutResult.assets.dsAssetsBaseAbsURL()}/image/slds-icons${relURL}`; }
+      layoutResult.lightingIconURL = (identity) => {
+        const collection = typeof identity === "string" ? "utility" : identity.collection;
+        const name = typeof identity === "string" ? identity : identity.name;
+        return layoutResult.assets.ldsIcons(
+          `/${collection}-sprite/svg/symbols.svg#${name}`,
+        );
+      }
+    },
+    autoInitProvisionCtx: {
+      afterInit: (clientLayout) => {
+        if (typeof lightningActivatePage == 'function') {
+          lightningActivatePage(clientLayout, lightningActivateAllPageItems);
+          if (prepareLayoutCtx.diagnose) console.log("lightningActivatePage called for", clientLayout);
+        } else {
+          console.error('lightningActivatePage(clientLayout) not available');
+        }
+      }
+    }
+  });
+}
+
 const assignlightningIconSvgUseBase = (svgUses, layout) => {
   const fixIconsRef = (use, refAttrName) => {
     const href = use.getAttribute(refAttrName);

@@ -42,10 +42,10 @@ export function observabilityPostProduceResources<
   return {
     resourcesFactories: async function* () {
       yield* m.metricsFactorySuppliers(parentRoute, rf, state);
-      if (state.renderHealth) {
+      if (state.observability && state.renderHealth) {
         yield {
           resourceFactory: async () => {
-            const health = await state.observability.serviceHealth(
+            const health = await state.observability!.serviceHealth(
               {
                 includeEnv: state.envVars.renderInHealth,
                 envVarFilter: state.envVars.filter,

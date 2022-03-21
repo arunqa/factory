@@ -321,62 +321,62 @@ export function typicalPublicationCtlSupplier<
       publStateDbLocation: () => storageFileName,
       produceOperationalCtxCargo: async (home) => {
         await Deno.writeTextFile(
-          path.join(home, "deps.js.ts"),
-          whs.unindentWhitespace(`
-          /**
-           * deps.js.ts is a Typescript-friendly Deno-style strategy of bringing in
-           * selective server-side Typescript functions and modules into client-side
-           * browser and other user agent Javascript. deps.js.ts is Deno-bundled into
-           * deps.auto.js assuming that deps.auto.js exists as a "twin".
-           * For instructions, see resFactory/factory/lib/package/README.md
-           */
-          export * from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.4/mod.ts";
-
-          // relative to public/operational-context/deps.js.ts (using managed Git repo structure)
-          // TODO: remove hardcoding
-          export * from "../../../../../github.com/resFactory/factory/lib/service-bus/core/mod.ts";
-          export * from "../../../../../github.com/resFactory/factory/lib/service-bus/service/ping.ts";
-          export * from "../../../../../github.com/resFactory/factory/lib/service-bus/service/file-impact.ts";
-          export * from "../../../../../github.com/resFactory/factory/lib/presentation/custom-element/badge/mod.ts";
-
-          `) +
-            `// these are used by public/operational-context/server.auto.js for options/arguments\nexport const rfOperationalCtxArgs = ${
-              JSON.stringify(
-                {
-                  isExperimentalOperationalCtx,
-                  publicUrlLocation,
-                  badgenRemoteBaseURL,
-                },
-                undefined,
-                "  ",
-              )
-            };
-          `,
-        );
-        const serverAutoJsDepsAbsPath = path.join(home, "deps.auto.js");
-        await Deno.writeTextFile(
-          serverAutoJsDepsAbsPath,
-          "// purposefully empty, will be filled in by bundleJsFromTsTwin, see see resFactory/factory/lib/package/README.md",
-        );
-        await bjs.bundleJsFromTsTwin(
-          bjs.jsPotentialTsTwin(
-            bjs.typicalJsNamingStrategy(serverAutoJsDepsAbsPath),
+          path.join(home, "index.json"),
+          JSON.stringify(
+            {
+              isExperimentalOperationalCtx,
+              publicUrlLocation,
+              badgenRemoteBaseURL,
+            },
+            undefined,
+            "  ",
           ),
         );
-        // symlink resFactory/factory/executive/publ/server/middleware/workspace/ua-operational-ctx.js to
-        // public/operational-context/server.auto.js which will allow console to "hook into" non-console
-        // pages; operational-context/server.auto.js is included via <script> tag in pages that want to
-        // have auto-reload and other "workspace" functions.
-        await Deno.symlink(
-          path.join(
-            path.dirname(path.fromFileUrl(import.meta.url)),
-            "server",
-            "middleware",
-            "workspace",
-            "ua-operational-ctx.js",
-          ),
-          path.join(home, "server.auto.js"),
-        );
+        if (isExperimentalOperationalCtx) {
+          await Deno.writeTextFile(
+            path.join(home, "deps.js.ts"),
+            whs.unindentWhitespace(`
+            /**
+             * deps.js.ts is a Typescript-friendly Deno-style strategy of bringing in
+             * selective server-side Typescript functions and modules into client-side
+             * browser and other user agent Javascript. deps.js.ts is Deno-bundled into
+             * deps.auto.js assuming that deps.auto.js exists as a "twin".
+             * For instructions, see resFactory/factory/lib/package/README.md
+             */
+            export * from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.4/mod.ts";
+
+            // relative to public/operational-context/deps.js.ts (using managed Git repo structure)
+            // TODO: remove hardcoding
+            export * from "../../../../../github.com/resFactory/factory/lib/service-bus/core/mod.ts";
+            export * from "../../../../../github.com/resFactory/factory/lib/service-bus/service/ping.ts";
+            export * from "../../../../../github.com/resFactory/factory/lib/service-bus/service/file-impact.ts";
+            export * from "../../../../../github.com/resFactory/factory/lib/presentation/custom-element/badge/mod.ts";`),
+          );
+          const serverAutoJsDepsAbsPath = path.join(home, "deps.auto.js");
+          await Deno.writeTextFile(
+            serverAutoJsDepsAbsPath,
+            "// purposefully empty, will be filled in by bundleJsFromTsTwin, see see resFactory/factory/lib/package/README.md",
+          );
+          await bjs.bundleJsFromTsTwin(
+            bjs.jsPotentialTsTwin(
+              bjs.typicalJsNamingStrategy(serverAutoJsDepsAbsPath),
+            ),
+          );
+          // symlink resFactory/factory/executive/publ/server/middleware/workspace/ua-operational-ctx.js to
+          // public/operational-context/server.auto.js which will allow console to "hook into" non-console
+          // pages; operational-context/server.auto.js is included via <script> tag in pages that want to
+          // have auto-reload and other "workspace" functions.
+          await Deno.symlink(
+            path.join(
+              path.dirname(path.fromFileUrl(import.meta.url)),
+              "server",
+              "middleware",
+              "workspace",
+              "ua-operational-ctx.js",
+            ),
+            path.join(home, "server.auto.js"),
+          );
+        }
       },
     };
 

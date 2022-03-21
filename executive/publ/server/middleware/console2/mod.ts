@@ -6,6 +6,151 @@ import * as ping from "../../../../../lib/service-bus/service/ping.ts";
 import * as fis from "../../../../../lib/service-bus/service/file-impact.ts";
 // import * as uaows from "./service/open-user-agent-window.ts";
 import * as db from "../../../publication-db.ts";
+import * as rflPath from "../../../../../lib/path/mod.ts";
+
+import * as rfStd from "../../../../../core/std/mod.ts";
+import * as p from "../../../publication.ts";
+
+import * as safety from "../../../../../lib/safety/mod.ts";
+
+import * as ds from "../../../../../core/render/html/mod.ts";
+import * as lds from "../../../../../core/design-system/lightning/mod.ts";
+
+const modulePath = rflPath.pathRelativeToModuleCWD(import.meta.url);
+
+export class ConsoleSiteConfiguration
+  extends p.Configuration<p.PublicationOperationalContext> {
+  constructor(
+    readonly publication: p.Publication<p.PublicationOperationalContext>,
+  ) {
+    super({
+      appName: "rfConsole",
+      operationalCtx: {
+        processStartTimestamp: new Date(),
+        projectRootPath: modulePath,
+        publStateDB: publication.config.operationalCtx.publStateDB,
+        publStateDbLocation:
+          publication.config.operationalCtx.publStateDbLocation,
+      },
+      contentRootPath: modulePath("content"),
+      destRootPath: modulePath("public"),
+      extensionsManager: publication.config.extensionsManager,
+      // routeLocationResolver: publication.config.routeLocationResolver,
+      // mGitResolvers: publication.config.mGitResolvers,
+      // routeGitRemoteResolver: publication.config.routeGitRemoteResolver,
+      // wsEditorResolver: publication.config.wsEditorResolver,
+      memoizeProducers: true,
+    });
+  }
+}
+
+export interface VisualCuesFrontmatter {
+  readonly "syntax-highlight": "highlight.js";
+}
+
+export const isVisualCuesFrontmatter = safety.typeGuard<VisualCuesFrontmatter>(
+  "syntax-highlight",
+);
+
+export const isVisualCuesFrontmatterSupplier = safety.typeGuard<
+  { "visual-cues": VisualCuesFrontmatter }
+>("visual-cues");
+
+export class ConsoleDesignSystem implements lds.LightningDesignSystemFactory {
+  readonly designSystem: lds.LightingDesignSystem<lds.LightningLayout>;
+  readonly contentStrategy: lds.LightingDesignSystemContentStrategy;
+
+  constructor(
+    config: p.Configuration<p.PublicationOperationalContext>,
+    routes: p.PublicationRoutes,
+  ) {
+    this.designSystem = new lds.LightingDesignSystem(
+      config.extensionsManager,
+      "/universal-cc",
+    );
+    this.contentStrategy = {
+      git: config.git,
+      layoutText: new lds.LightingDesignSystemText(),
+      navigation: new lds.LightingDesignSystemNavigation(
+        true,
+        routes.navigationTree,
+      ),
+      assets: this.designSystem.assets(),
+      branding: {
+        contextBarSubject: config.appName,
+        contextBarSubjectImageSrc: (assets) =>
+          assets.image("/asset/image/brand/logo-icon-100x100.png"),
+      },
+      mGitResolvers: config.mGitResolvers,
+      routeGitRemoteResolver: config.routeGitRemoteResolver,
+      renderedAt: new Date(),
+      wsEditorResolver: config.wsEditorResolver,
+      wsEditorRouteResolver: config.wsEditorResolver
+        ? rfStd.defaultRouteWorkspaceEditorResolver(
+          config.wsEditorResolver,
+        )
+        : undefined,
+      initContributions: (layout) => {
+        const suggested = layout.designSystem.contributions();
+        if (layout.frontmatter) {
+          return this.frontmatterInitContribs(layout, suggested);
+        }
+        suggested.scripts.aft
+          `<script src="/script/social-proof-wc/social-proof.js"></script>`;
+        return suggested;
+      },
+      termsManager: config.termsManager,
+      operationalCtxClientCargo: {
+        acquireFromURL: "/operational-context/index.json",
+        assetsBaseURL: "/operational-context",
+      },
+    };
+  }
+
+  frontmatterInitContribs(
+    layout: Omit<lds.LightningLayout, "contributions">,
+    suggested: ds.HtmlLayoutContributions,
+  ): ds.HtmlLayoutContributions {
+    if (layout.frontmatter) {
+      if (isVisualCuesFrontmatterSupplier(layout.frontmatter)) {
+        const visualCues = layout.frontmatter?.["visual-cues"];
+        if (isVisualCuesFrontmatter(visualCues)) {
+          const highlighter = visualCues["syntax-highlight"];
+          switch (highlighter) {
+            case "highlight.js":
+              suggested.stylesheets.aft
+                `<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/styles/default.min.css">`;
+              suggested.scripts.aft
+                `<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/highlight.min.js"></script>`;
+              suggested.body.aft`<script>hljs.highlightAll();</script>`;
+              break;
+            default:
+              // TODO: report as lint diagnostic or some other way
+              console.error(
+                `Frontmatter "visual-cues"."syntax-highlighter" is invalid type: "${highlighter}" in ${layout
+                  .activeRoute?.terminal?.qualifiedPath}`,
+              );
+          }
+        }
+      }
+    }
+    return suggested;
+  }
+}
+
+export class ConsoleSite
+  extends p.TypicalPublication<p.PublicationOperationalContext> {
+  constructor(config: ConsoleSiteConfiguration) {
+    super(config);
+  }
+
+  constructDesignSystem(
+    config: p.Configuration<p.PublicationOperationalContext>,
+    routes: p.PublicationRoutes,
+  ) {
+    return new ConsoleDesignSystem(config, routes);
+  }
+}
 
 export interface ConsoleTunnelConnection {
   readonly userAgentID: string;
@@ -125,18 +270,15 @@ export interface ConsoleMiddlewareSupplierOptions {
 }
 
 export class ConsoleMiddlewareSupplier {
-  readonly contentHome = path.join(
-    path.dirname(import.meta.url).substring(
-      "file://".length,
-    ),
-    "public",
-  );
+  readonly consoleSiteConfig: ConsoleSiteConfiguration;
   readonly tunnel: ConsoleTunnel;
   readonly openWindowOnInit?: { url: string };
   readonly htmlEndpointURL: string;
   readonly staticIndex: "index.html" | string;
+  #consoleSite?: ConsoleSite;
 
   constructor(
+    readonly publication: p.Publication<p.PublicationOperationalContext>,
     readonly app: oak.Application,
     readonly router: oak.Router,
     readonly staticEE: s.StaticEventEmitter,
@@ -144,6 +286,7 @@ export class ConsoleMiddlewareSupplier {
     readonly userAgentIdSupplier: (ctx: oak.Context) => string,
     options?: Partial<ConsoleMiddlewareSupplierOptions>,
   ) {
+    this.consoleSiteConfig = new ConsoleSiteConfiguration(publication);
     this.htmlEndpointURL = options?.htmlEndpointURL ?? "/console2";
     this.staticIndex = "index.html";
     this.tunnel = options?.tunnel ??
@@ -220,11 +363,21 @@ export class ConsoleMiddlewareSupplier {
     router.get(
       `${this.htmlEndpointURL}/(.*)`,
       s.staticContentMiddleware(
-        { staticAssetsHome: this.contentHome },
+        { staticAssetsHome: this.consoleSiteConfig.destRootPath },
         this.staticEE,
         this.staticIndex,
         (requestUrlPath) =>
           requestUrlPath.substring(this.htmlEndpointURL.length),
+        async () => {
+          console.log(
+            colors.magenta(`Building Console site:`),
+            colors.brightBlue(this.consoleSiteConfig.contentRootPath),
+            " => ",
+            colors.yellow(this.consoleSiteConfig.destRootPath),
+          );
+          this.#consoleSite = new ConsoleSite(this.consoleSiteConfig);
+          await this.#consoleSite.produce();
+        },
       ),
     );
   }
@@ -232,13 +385,16 @@ export class ConsoleMiddlewareSupplier {
   *watchableFileSysPaths(): Generator<wfs.WatchableFileSysPath> {
     const contentRootPathEE = new wfs.WatchableFileSysEventEmitter();
     const relWatchPath = (target: string) =>
-      path.relative(this.contentHome, target);
+      path.relative(this.consoleSiteConfig.contentRootPath, target);
     // deno-lint-ignore require-await
     contentRootPathEE.on("impacted", async ({ path: modified }) => {
       this.tunnel.emit("serverFileImpact", modified);
       // deno-fmt-ignore
       console.info(colors.magenta(`*** ${colors.yellow(relWatchPath(modified))} impacted *** ${colors.gray(`${this.tunnel.connections.length} browser tab refresh requests sent`)}`));
     });
-    yield wfs.typicalWatchableFS(this.contentHome, contentRootPathEE);
+    yield wfs.typicalWatchableFS(
+      this.consoleSiteConfig.contentRootPath,
+      contentRootPathEE,
+    );
   }
 }
