@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventSource Tunnel Assurance</title>
+    <script src="//cdn.rawgit.com/Alorel/console-log-html/master/console-log-html.min.js"></script>
+</head>
+
+<body>
+    This page will test tunnels. You should be running an ES-capable tunnel on whatever is running this HTML page.
+    <ol>
+        <li>It first runs an inaccurate (invalid) ES validation URL <span id="badEsValidateURL"
+                style="color: silver"></span></li>
+        <li>It then runs an inaccurate (invalid) ES URL <span id="badEsURL" style="color: silver"></span></li>
+        <li>It finally runs an accurate (valid) ES and validation URL combination <span id="accurateES"
+                style="color: silver"></span></li>
+    </ol>
+    If you see <code>connected</code> in the badge, after the test completes, then everything worked.
+    <div id="badge"></div>
+    <ul id="container_redirectConsole"></ul>
+
+    <script type="module">
+        // this should fill in window.badgen
+        import "https://unpkg.com/badgen@3.2.2/dist/index.browser.js";
+        import * as mod from "./mod.auto.js";
+        const syntheticBaseURL = '/assurance-synthetic';
+        const accurateES = { validateURL: `${syntheticBaseURL}/sse/ping`, esURL: `${syntheticBaseURL}/sse/tunnel` };
+        const badEsValidateURL = { validateURL: "/bad/sse/ping!", esURL: "/assurance-synthetic/sse/tunnel" };
+        const badEsURL = { validateURL: `${syntheticBaseURL}/sse/ping`, esURL: "/bad/sse/tunnel" };
+
+        document.getElementById("accurateES").innerText = JSON.stringify(accurateES);
+        document.getElementById("badEsValidateURL").innerText = JSON.stringify(badEsValidateURL);
+        document.getElementById("badEsURL").innerText = JSON.stringify(badEsURL);
+
+        ConsoleLogHTML.connect(document.getElementById("container_redirectConsole"));
+
+        const tunnel = mod.esTunnel({
+            constructEventSource: (esURL) => new EventSource(esURL),
+            millisecsBetweenReconnectAttempts: 250,
+            maxReconnectAttempts: 3
+        });
+        tunnel.connect.watch((args) => console.log('connect', args));
+        tunnel.reconnect.watch((args) => console.log('reconnect', args));
+        tunnel.connected.watch((args) => console.log('connected -- YAY!', args));
+        tunnel.abort.watch((args) => {
+            console.log('aborted', args);
+            if (args.validateURL.startsWith("/bad")) {
+                console.log("***** Now testing bad ES URL");
+                tunnel.connect(badEsURL);
+            } else {
+                console.log("***** Finally testing accurate (good) URL");
+                tunnel.connect(accurateES);
+            }
+        });
+        tunnel.$status.watch((status) => {
+            document.getElementById("badge").innerHTML = window.badgen({ status, label: "Tunnel", color: status == "connected" ? "green" : "red" });
+        });
+        console.log("***** Testing bad validation URL first");
+        tunnel.connect(badEsValidateURL);
+    </script>
+</body>
+
+</html>
