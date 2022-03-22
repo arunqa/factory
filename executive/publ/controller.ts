@@ -343,14 +343,11 @@ export function typicalPublicationCtlSupplier<
              * deps.auto.js assuming that deps.auto.js exists as a "twin".
              * For instructions, see resFactory/factory/lib/package/README.md
              */
-            export * from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.4/mod.ts";
 
+            import "https://unpkg.com/badgen@3.2.2/dist/index.browser.js";
             // relative to public/operational-context/deps.js.ts (using managed Git repo structure)
             // TODO: remove hardcoding
-            export * from "../../../../../github.com/resFactory/factory/lib/service-bus/core/mod.ts";
-            export * from "../../../../../github.com/resFactory/factory/lib/service-bus/service/ping.ts";
-            export * from "../../../../../github.com/resFactory/factory/lib/service-bus/service/file-impact.ts";
-            export * from "../../../../../github.com/resFactory/factory/lib/presentation/custom-element/badge/mod.ts";`),
+            export * from "../../../../../github.com/resFactory/factory/lib/tunnel/mod.js.ts";`),
           );
           const serverAutoJsDepsAbsPath = path.join(home, "deps.auto.js");
           await Deno.writeTextFile(
@@ -363,8 +360,8 @@ export function typicalPublicationCtlSupplier<
             ),
           );
           // symlink resFactory/factory/executive/publ/server/middleware/workspace/ua-operational-ctx.js to
-          // public/operational-context/server.auto.js which will allow console to "hook into" non-console
-          // pages; operational-context/server.auto.js is included via <script> tag in pages that want to
+          // public/operational-context/server.auto.mjs which will allow console to "hook into" non-console
+          // pages; operational-context/server.auto.mjs is included via <script> tag in pages that want to
           // have auto-reload and other "workspace" functions.
           await Deno.symlink(
             path.join(
@@ -374,7 +371,7 @@ export function typicalPublicationCtlSupplier<
               "workspace",
               "ua-operational-ctx.js",
             ),
-            path.join(home, "server.auto.js"),
+            path.join(home, "server.auto.mjs"),
           );
         }
       },

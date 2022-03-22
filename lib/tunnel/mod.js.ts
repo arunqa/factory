@@ -69,10 +69,18 @@ export function esTunnel(options: EventSourceTunnelOptions) {
   const abort = domain.createEvent("abort");
 
   const $status = domain.createStore("initial")
-    .on(connect, () => "connecting")
+    .on(
+      connect,
+      (_: unknown, payload: { attempt: number }) =>
+        `connecting ${payload.attempt}/${maxReconnectAttempts}`,
+    )
     .on(connected, () => "connected")
-    .on(reconnect, () => "reconnecting")
-    .on(abort, () => "aborted");
+    .on(
+      reconnect,
+      (_: unknown, payload: { attempt: number }) =>
+        `connecting ${payload.attempt}/${maxReconnectAttempts}`,
+    )
+    .on(abort, () => `aborted after ${maxReconnectAttempts} tries`);
 
   connect.watch(
     (

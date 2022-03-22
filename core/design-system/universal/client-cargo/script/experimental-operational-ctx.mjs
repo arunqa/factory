@@ -6,8 +6,8 @@
 window.addEventListener("rfUniversalLayout.init", (event) => {
     if (event.detail) {
         const { layoutResult: clientLayout, prepareLayoutCtx } = event.detail;
-        const serverJsURL = clientLayout.assets.operationalCtx("/server.auto.js");
-        if (prepareLayoutCtx.diagnose) console.log("locating server.auto.js:", serverJsURL);
+        const serverJsURL = clientLayout.assets.operationalCtx("/server.auto.mjs");
+        if (prepareLayoutCtx.diagnose) console.log("locating server.auto.mjs:", serverJsURL);
         if (serverJsURL) {
             import(serverJsURL).then((module) => {
                 if (prepareLayoutCtx.diagnose) console.log("imported", serverJsURL);

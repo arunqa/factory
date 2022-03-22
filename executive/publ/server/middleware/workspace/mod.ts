@@ -1,8 +1,6 @@
 import { colors, events, path } from "../../../../../core/deps.ts";
 import { oak } from "../../deps.ts";
 import * as wfs from "../../../../../lib/fs/watch.ts";
-import * as ping from "../../../../../lib/service-bus/service/ping.ts";
-import * as fi from "../../../../../lib/service-bus/service/file-impact.ts";
 import * as ws from "../../../../../lib/workspace/mod.ts";
 
 import "./ua-editable.ts"; // for type-checking only ("UA" is for user agent TS -> JS compile)
@@ -47,12 +45,18 @@ export class WorkspaceTunnel<
     //     `[${this.#connections.length}] WorkspaceTunnelConnection ${conn.userAgentID}, ${ctx.oakCtx.request.url}`,
     //   );
     // });
-    this.on(fi.serverFileImpactPayloadIdentity, (fsAbsPathAndFileName, url) => {
+    this.on("serverFileImpact", (fsAbsPathAndFileNameImpacted, url) => {
       this.cleanConnections().forEach((c) =>
-        c.sseTarget.dispatchMessage(fi.serverFileImpact({
-          serverFsAbsPathAndFileName: fsAbsPathAndFileName,
-          relativeUserAgentLocation: url,
-        }))
+        c.sseTarget.dispatchEvent(
+          new oak.ServerSentEvent(
+            "server-resource-impact",
+            {
+              nature: "fs-resource-modified",
+              fsAbsPathAndFileNameImpacted,
+              url,
+            },
+          ),
+        )
       );
     });
   }
@@ -66,7 +70,7 @@ export class WorkspaceTunnel<
     return this.#connections;
   }
 
-  connect(ctx: ConnectionContext, pingOnConnect = true): Connection {
+  connect(ctx: ConnectionContext): Connection {
     const userAgentID = ctx.userAgentIdSupplier(ctx.oakCtx);
     this.cleanConnections();
     const foundConnIndex = this.#connections.findIndex((c) =>
@@ -83,9 +87,6 @@ export class WorkspaceTunnel<
       this.#connections.push(connection);
     }
     this.emit("sseConnected", connection, ctx);
-    if (pingOnConnect) {
-      connection.sseTarget.dispatchMessage(ping.pingPayload());
-    }
     return connection;
   }
 

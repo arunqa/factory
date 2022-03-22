@@ -1,6 +1,5 @@
 import { events } from "../../../../core/deps.ts";
 import { oak } from "../deps.ts";
-import * as ping from "../../../../lib/service-bus/service/ping.ts";
 
 export interface AssuranceSyntheticEventSrcTunnelConnection {
   readonly userAgentID: string;
@@ -53,7 +52,7 @@ export class AssuranceSyntheticEventSrcTunnel<
     return this.#connections;
   }
 
-  connect(ctx: ConnectionContext, pingOnConnect = true): Connection {
+  connect(ctx: ConnectionContext): Connection {
     const userAgentID = ctx.userAgentIdSupplier(ctx.oakCtx);
     this.cleanConnections();
     const foundConnIndex = this.#connections.findIndex((c) =>
@@ -70,9 +69,6 @@ export class AssuranceSyntheticEventSrcTunnel<
       this.#connections.push(connection);
     }
     this.emit("sseConnected", connection, ctx);
-    if (pingOnConnect) {
-      connection.sseTarget.dispatchMessage(ping.pingPayload());
-    }
     return connection;
   }
 
@@ -108,10 +104,8 @@ export class AssuranceSyntheticWebSocketTunnel<
     readonly factory: (ctx: ConnectionContext) => Connection,
   ) {
     super();
-    this.on(ping.pingPayloadIdentity, () => {
-      this.selectConnections().forEach((c) =>
-        c.webSocket.send(ping.pingWebSocketSendPayload())
-      );
+    this.on("ping", () => {
+      this.selectConnections().forEach((c) => c.webSocket.send("ping"));
     });
   }
 
