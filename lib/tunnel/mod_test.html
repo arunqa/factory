@@ -5,21 +5,47 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EventSource Tunnel Assurance</title>
+    <title>EventSource and WebSocket Tunnels Assurance</title>
     <script src="//cdn.rawgit.com/Alorel/console-log-html/master/console-log-html.min.js"></script>
 </head>
 
 <body>
-    This page will test tunnels. You should be running an ES-capable tunnel on whatever is running this HTML page.
-    <ol>
-        <li>It first runs an inaccurate (invalid) ES validation URL <span id="badEsValidateURL"
-                style="color: silver"></span></li>
-        <li>It then runs an inaccurate (invalid) ES URL <span id="badEsURL" style="color: silver"></span></li>
-        <li>It finally runs an accurate (valid) ES and validation URL combination <span id="accurateES"
-                style="color: silver"></span></li>
-    </ol>
-    If you see <code>connected</code> in the badge, after the test completes, then everything worked.
-    <div id="badge"></div>
+    This page will test EventSource and WebSocket tunnels. You should be running ES- and WS-capable servers on
+    whatever is running this HTML page.
+    The easiest way to test it is to use <code>executive/publ/server/middleware/assurance.ts</code>.
+    If you see <code>connected</code> in the badges, after the tests complete, then everything worked.
+
+    <table>
+        <tr>
+            <td>EventSource Tunnel</td>
+            <td>WebSocket Tunnel</td>
+        </tr>
+        <tr>
+            <td>
+                <div id="esTunnel-badge"></div>
+                <ol>
+                    <li>It first runs an inaccurate (invalid) EventSource validation URL <span id="badEsValidateURL"
+                            style="color: silver"></span></li>
+                    <li>It then runs an inaccurate (invalid) EventSource URL <span id="badEsURL"
+                            style="color: silver"></span></li>
+                    <li>It finally runs an accurate (valid) EventSource and validation URL combination <span
+                            id="accurateES" style="color: silver"></span></li>
+                </ol>
+            </td>
+            <td>
+                <div id="wsTunnel-badge"></div>
+                <ol>
+                    <li>It first runs an inaccurate (invalid) WebSocket validation URL <span id="badWsValidateURL"
+                            style="color: silver"></span></li>
+                    <li>It then runs an inaccurate (invalid) WebSocket URL <span id="badWsURL"
+                            style="color: silver"></span></li>
+                    <li>It finally runs an accurate (valid) WebSocket and validation URL combination <span
+                            id="accurateWS" style="color: silver"></span></li>
+                </ol>
+            </td>
+        </tr>
+    </table>
+
     <ul id="container_redirectConsole"></ul>
 
     <script type="module">
@@ -35,31 +61,64 @@
         document.getElementById("badEsValidateURL").innerText = JSON.stringify(badEsValidateURL);
         document.getElementById("badEsURL").innerText = JSON.stringify(badEsURL);
 
+        const wsSyntheticBaseURL = `${(window.location.protocol === "https:") ? "wss://" : "ws://"}${window.location.host}${syntheticBaseURL}`;
+        const accurateWS = { validateURL: `${syntheticBaseURL}/ws/ping`, wsURL: `${wsSyntheticBaseURL}/ws/tunnel` };
+        const badWsValidateURL = { validateURL: "/bad/ws/ping!", wsURL: `${wsSyntheticBaseURL}/ws/tunnel` };
+        const badWsURL = { validateURL: `${syntheticBaseURL}/ws/ping`, wsURL: "ws://bad/ws/tunnel" };
+
+        document.getElementById("accurateWS").innerText = JSON.stringify(accurateWS);
+        document.getElementById("badWsValidateURL").innerText = JSON.stringify(badWsValidateURL);
+        document.getElementById("badWsURL").innerText = JSON.stringify(badWsURL);
+
         ConsoleLogHTML.connect(document.getElementById("container_redirectConsole"));
 
-        const tunnel = mod.esTunnel({
+        const esTunnel = mod.esTunnel({
             constructEventSource: (esURL) => new EventSource(esURL),
             millisecsBetweenReconnectAttempts: 250,
             maxReconnectAttempts: 3
         });
-        tunnel.connect.watch((args) => console.log('connect', args));
-        tunnel.reconnect.watch((args) => console.log('reconnect', args));
-        tunnel.connected.watch((args) => console.log('connected -- YAY!', args));
-        tunnel.abort.watch((args) => {
+        esTunnel.connect.watch((args) => console.log('[ES] connect', args));
+        esTunnel.reconnect.watch((args) => console.log('[ES] reconnect', args));
+        esTunnel.connected.watch((args) => console.log('[ES] connected -- YAY!', args));
+        esTunnel.abort.watch((args) => {
             console.log('aborted', args);
             if (args.validateURL.startsWith("/bad")) {
-                console.log("***** Now testing bad ES URL");
-                tunnel.connect(badEsURL);
+                console.log("***** Now testing bad EventSource URL");
+                esTunnel.connect(badEsURL);
             } else {
-                console.log("***** Finally testing accurate (good) URL");
-                tunnel.connect(accurateES);
+                console.log("***** Finally testing accurate (good) EventSource URL");
+                esTunnel.connect(accurateES);
             }
         });
-        tunnel.$status.watch((status) => {
-            document.getElementById("badge").innerHTML = window.badgen({ status, label: "Tunnel", color: status == "connected" ? "green" : "red" });
+        esTunnel.$status.watch((status) => {
+            document.getElementById("esTunnel-badge").innerHTML = window.badgen({ status, label: "esTunnel", color: status == "connected" ? "green" : "red" });
         });
-        console.log("***** Testing bad validation URL first");
-        tunnel.connect(badEsValidateURL);
+        console.log("***** Testing bad EventSource validation URL first");
+        esTunnel.connect(badEsValidateURL);
+
+        const wsTunnel = mod.wsTunnel({
+            constructWebSocket: (wsURL) => new WebSocket(wsURL),
+            millisecsBetweenReconnectAttempts: 250,
+            maxReconnectAttempts: 3
+        });
+        wsTunnel.connect.watch((args) => console.log('[WS] connect', args));
+        wsTunnel.reconnect.watch((args) => console.log('[WS] reconnect', args));
+        wsTunnel.connected.watch((args) => console.log('[WS] connected -- YAY!', args));
+        wsTunnel.abort.watch((args) => {
+            console.log('aborted', args);
+            if (args.validateURL.startsWith("/bad")) {
+                console.log("***** Now testing bad WebSocket URL");
+                wsTunnel.connect(badWsURL);
+            } else {
+                console.log("***** Finally testing accurate (good) WebSocket URL");
+                wsTunnel.connect(accurateWS);
+            }
+        });
+        wsTunnel.$status.watch((status) => {
+            document.getElementById("wsTunnel-badge").innerHTML = window.badgen({ status, label: "wsTunnel", color: status == "connected" ? "green" : "red" });
+        });
+        console.log("***** Testing bad WebSocket validation URL first");
+        wsTunnel.connect(badWsValidateURL);
     </script>
 </body>
 

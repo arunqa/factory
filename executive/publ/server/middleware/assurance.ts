@@ -104,6 +104,16 @@ export class AssuranceSyntheticWebSocketTunnel<
     readonly factory: (ctx: ConnectionContext) => Connection,
   ) {
     super();
+    // this.on("wsHealthRequest", (ctx) => {
+    //   console.log(
+    //     `[${this.#connections.length}] AssuranceSyntheticWebSocketTunnel wsHealthRequest ${ctx.oakCtx.request.url}`,
+    //   );
+    // });
+    // this.on("wsConnected", (conn, ctx) => {
+    //   console.log(
+    //     `[${this.#connections.length}] AssuranceSyntheticWebSocketTunnel wsConnected ${conn}, ${ctx.oakCtx.request.url}`,
+    //   );
+    // });
     this.on("ping", () => {
       this.selectConnections().forEach((c) => c.webSocket.send("ping"));
     });
