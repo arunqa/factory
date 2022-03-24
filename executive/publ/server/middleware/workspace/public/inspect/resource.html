@@ -2,229 +2,110 @@
 <html lang="en">
 
 <head>
-    <meta charset="utf-8">
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-    <link href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="stylesheet preload" as="style"
-        href="https://cdnjs.cloudflare.com/ajax/libs/design-system/2.14.2/styles/salesforce-lightning-design-system.min.css"
-        integrity="sha512-v9eTZELqSZcRlIRltjIbpM55zkTQ9azkDAjI0IByyjHLWty1U2+CSPtnNxGpC3FFkpsKwAOfciCv4PWhW/pQGw=="
-        crossorigin="anonymous" />
-    <link rel="stylesheet" href="/lightning/style/lightning-customize.css">
-    <script src="/universal-cc/script/typical.js"></script>
-    <script src="/lightning/script/lightning.js"></script>
-    <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.js"></script>
-    <link rel="stylesheet"
-        href="https://raw.githubusercontent.com/sparkartgroup/Inspector-JSON/master/inspector-json.css">
+    <style>
+        @import url("https://fonts.googleapis.com/css?family=Open+Sans:400,400i,700");
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        details {
+            margin: 1rem;
+        }
+
+        summary {
+            font-weight: bold;
+        }
+    </style>
 </head>
 
 <body>
-    <div id="resourceIdentity"></div>
-    <ul class="slds-accordion">
-        <li class="slds-accordion__list-item">
-            <section class="slds-accordion__section slds-is-open">
-                <div class="slds-accordion__summary">
-                    <h2 class="slds-accordion__summary-heading">
-                        <button class="slds-button slds-button_reset slds-accordion__summary-action"
-                            aria-controls="referenceId-42" aria-expanded="true" title="Accordion summary">
-                            <svg class="slds-accordion__summary-action-icon slds-button__icon slds-button__icon_left"
-                                aria-hidden="true">
-                                <use xlink:href="/assets/icons/utility-sprite/svg/symbols.svg#switch"></use>
-                            </svg>
-                            <span class="slds-accordion__summary-content">Resource Route</span>
-                        </button>
-                    </h2>
-                </div>
-                <div class="slds-accordion__content" id="referenceId-42">
-                    <div id="route-node-properties-title">Properties</div>
-                    <div id="route-node-properties">
-                        Click on a route on the left to see the route's properties here.
-                    </div>
-                    <div id="route-node-properties-footer">
-                        <details open="true">
-                            <summary>as JSON</summary>
-                            <div id="route-node-properties-json">
+    <div id="resourceIdentity">Loading resource...</div>
 
-                            </div>
-                        </details>
-                    </div>
-                </div>
-            </section>
-        </li>
-        <li class="slds-accordion__list-item">
-            <section class="slds-accordion__section">
-                <div class="slds-accordion__summary">
-                    <h2 class="slds-accordion__summary-heading">
-                        <button class="slds-button slds-button_reset slds-accordion__summary-action"
-                            aria-controls="referenceId-43" aria-expanded="false" title="Accordion summary">
-                            <svg class="slds-accordion__summary-action-icon slds-button__icon slds-button__icon_left"
-                                aria-hidden="true">
-                                <use xlink:href="/assets/icons/utility-sprite/svg/symbols.svg#switch"></use>
-                            </svg>
-                            <span
-                                class="slds-accordion__summary-content"><code>publication.state.resourcesTree</code></span>
-                        </button>
-                    </h2>
-                </div>
-                <div class="slds-accordion__content" id="referenceId-43">
-                    <p>Resource Factory <code>publication.ts</code> captures all originated resource routes into
-                        <code>PublicationState</code>'s <code>resourcesTree</code> field of type <a
-                            href="/workspace/editor-redirect/factory/governance/route.ts"><code>rfGovn.RouteTree</code></a>.
-                    </p>
-                    <ul id="routes-tree" role="tree" class="slds-tree">
-                    </ul>
-                    <p style="padding-top: 10px;">What follows is a JSON representation of the entire tree. The
-                        <code>items</code> field in the
-                        <code>resourcesTree</code> is what is inspectable above.
-                    </p>
-                    <div id="routes-json"></div>
-                </div>
-            </section>
-        </li>
-        <li class="slds-accordion__list-item">
-            <section class="slds-accordion__section">
-                <div class="slds-accordion__summary">
-                    <h2 class="slds-accordion__summary-heading">
-                        <button class="slds-button slds-button_reset slds-accordion__summary-action"
-                            aria-controls="referenceId-44" aria-expanded="false" title="Accordion summary">
-                            <svg class="slds-accordion__summary-action-icon slds-button__icon slds-button__icon_left"
-                                aria-hidden="true">
-                                <use xlink:href="/assets/icons/utility-sprite/svg/symbols.svg#switch"></use>
-                            </svg>
-                            <span class="slds-accordion__summary-content">Accordion summary</span>
-                        </button>
-                    </h2>
-                </div>
-                <div hidden="" class="slds-accordion__content" id="referenceId-44">Accordion details - C</div>
-            </section>
-        </li>
-    </ul>
+    <details>
+        <summary id="route-unit-properties-title">Resource Route</summary>
+        <div id="route-unit-properties">Browseable JSON</div>
+    </details>
 
-    <!-- consider replacing renderjson.js with https://github.com/mohsen1/json-formatter-js for <a>/URL formatting -->
-    <script src="https://cdn.rawgit.com/caldwell/renderjson/master/renderjson.js"></script>
-    <script src="../inspector-json.js"></script>
-    <link rel="stylesheet" href="../inspector-json.css" />
+    <details>
+        <summary>Navigation Tree</summary>
+        <div id="navigation-tree">
+        </div>
+    </details>
+
+    <details>
+        <summary><code>publication.state.resourcesTree</code></summary>
+        <div id="publication.state.resourcesTree-json"></div>
+    </details>
+
     <script type="module">
-        import { reflect, getUrlQueryParameterByName, editableFileRefHTML } from "../deps.auto.js";
+        import JSONFormatter from "https://cdn.jsdelivr.net/npm/json-formatter-js@2.3.4/dist/json-formatter.esm.js";
+        import { editableFileRedirectURL } from "../deps.auto.js";
 
-        const activeResourceAbsPath = getUrlQueryParameterByName("resource");
-        document.getElementById("resourceIdentity").innerHTML = editableFileRefHTML(activeResourceAbsPath);
-
-        const suppressProps = ["children", "ancestors", "fileSysPathParts"];
-        const inspectReflected = (inspect, propsGridElem, propsJsonElem, propsTitleElem) => {
-            const inspector = new InspectorJSON({
-                element: propsGridElem,
-                json: inspect
-            });
+        const inspectObject = (inspect, propsJsonElem, propsTitleElem) => {
             if (propsJsonElem) {
                 propsJsonElem.innerHTML = "";
-                propsJsonElem.prepend(renderjson(inspect));
+                // see https://github.com/mohsen1/json-formatter-js#api
+                const formatter = new JSONFormatter(inspect);
+                propsJsonElem.appendChild(formatter.render());
             }
             if (propsTitleElem) {
+                const identity = inspect.fileSysPathParts?.base ?? inspect.qualifiedPath;
                 if (inspect.children.length > 0)
-                    propsTitleElem.innerHTML = `${inspect.qualifiedPath} "${inspect.label}" (${inspect.children.length} children)`;
+                    propsTitleElem.innerHTML = `${identity} "${inspect.label}" Route Unit (${inspect.children.length} children)`;
                 else
-                    propsTitleElem.innerHTML = `${inspect.qualifiedPath} "${inspect.label}"`;
-            }
-        }
-
-        const inspectReflected2 = (inspect, propsGridElem, propsJsonElem, propsTitleElem) => {
-            const reflected = reflect(inspect, undefined, {
-                enhanceObject: (o, ancestors) => {
-                    const fileSysPath = o.properties.find(p => p.key == "fileSysPath");
-                    if (fileSysPath) {
-                        fileSysPath.type = "fsPath";
-                    }
-                    return o;
-                },
-                objPropsFilter: (key, obj) => {
-                    if (suppressProps.find(k => k == key)) return false;
-                    return true;
-                }
-            });
-            const columnDefs = [
-                { field: "property" },
-                { field: "type" },
-                {
-                    field: "value",
-                    //cellRenderer: "valueCellRenderer",
-                }
-            ];
-            const rowData = [];
-            for (const p of reflected.properties.sort((a, b) => a.key == b.key ? 0 : (a.key > b.key ? 1 : -1))) {
-                rowData.push({ property: p.key, type: p.type, value: p.value });
-            }
-            const gridOptions = {
-                columnDefs: columnDefs,
-                rowData,
-                domLayout: 'autoHeight',
-                onGridReady: (event) => event.columnApi.autoSizeAllColumns(),
-                components: {
-                    // see https://www.ag-grid.com/javascript-grid/components/
-                    valueCellRenderer: (params) => params.value,
-                },
-            };
-            propsGridElem.innerHTML = "";
-            new agGrid.Grid(propsGridElem, gridOptions);
-            if (propsJsonElem) {
-                propsJsonElem.innerHTML = "";
-                propsJsonElem.prepend(renderjson(inspect));
-            }
-            if (propsTitleElem) {
-                if (inspect.children.length > 0)
-                    propsTitleElem.innerHTML = `${inspect.qualifiedPath} "${inspect.label}" (${inspect.children.length} children)`;
-                else
-                    propsTitleElem.innerHTML = `${inspect.qualifiedPath} "${inspect.label}"`;
+                    propsTitleElem.innerHTML = `${identity} "${inspect.label}" Route Unit`;
             }
         }
 
         document.addEventListener('DOMContentLoaded', function () {
-            fetch("/publication/inspect/routes.json").then(resp => resp.json()).then(routes => {
-                renderjson.set_icons('▶︎ ', '▼ ');
-                renderjson.set_show_to_level(1);
-                renderjson.set_replacer(undefined);
-                document.getElementById("routes-json").prepend(renderjson(routes));
+            // public/operational-context/server.auto.mjs sets window.parent.inspectClientLayout
+            // using executive/publ/server/middleware/workspace/public/inspect/index.html registerInspectionTarget
+            const clientLayout = window.parent.inspectClientLayout;
+            const activeResourceAbsPath = clientLayout.route?.terminal?.fileSysPath;
+            const resID = document.getElementById("resourceIdentity");
+            if (activeResourceAbsPath) {
+                const [redirectURL] = editableFileRedirectURL(activeResourceAbsPath);
+                resID.innerHTML = `<a href="${redirectURL}">Open <b><mark>${clientLayout.route?.terminal?.fileSysPathParts?.base}</mark></b> in Editor</a>`;
+            } else {
+                resID.innerHTML = `${clientLayout.route?.terminal?.qualifiedPath} is not editable`;
+            }
 
-                const routeNodeProps = document.getElementById("route-node-properties");
-                const routeNodePropsJSON = document.getElementById("route-node-properties-json");
-                const routeNodePropsTitle = document.getElementById("route-node-properties-title");
-                const handleNodes = (parentUL, items) => {
+            fetch("/publication/inspect/routes.json").then(resp => resp.json()).then(routes => {
+                // see https://github.com/mohsen1/json-formatter-js#api
+                const formatter = new JSONFormatter(routes);
+                document.getElementById("publication.state.resourcesTree-json").appendChild(formatter.render());
+
+                const routeNodeProps = document.getElementById("route-unit-properties");
+                const routeNodePropsTitle = document.getElementById("route-unit-properties-title");
+                const handleNodes = (treeContainer, items) => {
                     items.sort((a, b) => (a.label > b.label) ? 1 : -1).forEach(i => {
                         if (i.fileSysPath == activeResourceAbsPath)
-                            inspectReflected(i, routeNodeProps, routeNodePropsJSON, routeNodePropsTitle);
+                            inspectObject(i, routeNodeProps, routeNodePropsTitle);
 
                         const isParent = i.children && i.children.length ? true : false;
-                        const li = document.createElement("li");
-                        li.setAttribute("role", "treeitem");
-                        li.setAttribute("aria-level", i.level + 1);
-                        li.innerHTML = `<div class="slds-tree__item">
-                                <button onclick="lightningTreeItemClick(this)" class="slds-button slds-button_icon slds-m-right_x-small ${isParent ? '' : 'slds-hidden'}" aria-hidden="true" tabindex="-1" title="Expand ${i.label}">
-                                    <svg class="slds-button__icon slds-button__icon_small" aria-hidden="true">
-                                        <use xlink:href="/lightning/image/slds-icons/utility-sprite/svg/symbols.svg#chevronright"></use>
-                                    </svg>
-                                <span class="slds-assistive-text">Expand ${i.label}</span>
-                                </button>
-                                <span class="slds-has-flexi-truncate">
-                                <span class="slds-tree__item-label slds-truncate" title="${i.label}" onclick="lightningTreeItemClick(this)">${i.label}</span>
-                                </span>
-                            </div>`;
-                        if (i.children && i.children.length > 0) {
-                            const childUL = document.createElement("ul");
-                            childUL.setAttribute("role", "group");
-                            childUL.className = "nested";
-                            li.appendChild(childUL);
-                            handleNodes(childUL, i.children);
+                        if (isParent) {
+                            const details = document.createElement("details");
+                            treeContainer.appendChild(details);
+                            const summary = document.createElement("summary");
+                            summary.innerText = i.label;
+                            details.appendChild(summary);
+                            if (i.children && i.children.length > 0) {
+                                handleNodes(details, i.children);
+                            }
+                        } else {
+                            const text = document.createElement("div");
+                            text.innerText = i.label;
+                            text.style.paddingLeft = "35px"
+                            treeContainer.appendChild(text);
                         }
-                        parentUL.appendChild(li);
                     });
                 };
-                handleNodes(document.querySelector("#routes-tree"), routes.items);
+                handleNodes(document.querySelector("#navigation-tree"), routes.items);
             });
-
-            const lightningAssetsSupplier = lightningDSAssets((relURL) => `/lightning/image/slds-icons${relURL}`);
-            lightningActivatePage(lightningAssetsSupplier);
         });
     </script>
 </body>

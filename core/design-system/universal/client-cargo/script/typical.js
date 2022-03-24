@@ -275,7 +275,7 @@ function rfUniversalLayout(prepareLayoutCtx) {
     },
     navigation: {
       location: (unit) => {
-        const loc = unit.qualifiedPath === "/index" ? "/" : unit.location();
+        const loc = unit.qualifiedPath === "/index" ? "/" : unit.qualifiedPath;
         return loc.endsWith("/index")
           ? loc.endsWith("/") ? `${loc}..` : `${loc}/..`
           : (loc.endsWith("/") ? loc : `${loc}/`);

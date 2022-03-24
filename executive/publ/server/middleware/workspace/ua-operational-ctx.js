@@ -16,86 +16,18 @@
 // d namespace contains Typescript-bundled dependencies
 import * as d from "./deps.auto.js";
 
-// https://github.com/biati-digital/glightbox is used for embedded Console
-// TODO[essential]: don't use @master, use @3.2.x specific
-//                  using @master now because of this bug: https://github.com/biati-digital/glightbox/pull/319
-import 'https://cdn.jsdelivr.net/gh/mcstudios/glightbox@master/dist/js/glightbox.min.js';
-
-// TODO[essential]: currently this is very SLDS-specific but should really be generalized
-// and placed as a DesignSystem layout strategy so that it can be supported across DSs
-function toggleInspectorPanel(resourceID, inspectorPanelID) {
-    const inspectorPanelElem = document.getElementById(inspectorPanelID)
-    if (inspectorPanelElem) {
-        // we've already injected it so just hide/show
-        lightningToggleIsOpen(inspectorPanelElem)
-    } else {
-        // we haven't injected it yet so we need to mutate the DOM
-        const inspectorPanelHTML = `<div id="${inspectorPanelID}" class="slds-panel slds-size_large slds-panel_docked slds-panel_docked-right slds-panel_drawer slds-is-open" aria-hidden="false">
-            <div class="slds-panel__header">
-            <h2 class="slds-panel__header-title slds-text-heading_small slds-truncate" title="rfInspector">
-                <a href="/workspace/inspect/resource.html?resource=${resourceID}">rfInspector</a> (${d.editableFileRefHTML(resourceID, 25)})
-            </h2>
-            <div class="slds-panel__header-actions">
-                <button class="slds-button slds-button_icon slds-button_icon-small slds-panel__close" title="Collapse rfInspector" onclick="window.toggleResFactoryInspectorPanel('${resourceID}', '${inspectorPanelID}')">
-                <svg class="slds-button__icon" aria-hidden="true">
-                    <use xlink:href="/lightning/image/slds-icons/utility-sprite/svg/symbols.svg#close"></use>
-                </svg>
-                <span class="slds-assistive-text">Collapse rfInspector</span>
-                </button>
-            </div>
-            </div>
-            <div id="${inspectorPanelID}Body" class="slds-panel__body">
-                <iframe src="/workspace/inspect/resource.html?resource=${resourceID}" width="100%" height="${document.body.scrollHeight - 200}" frameBorder="0"></iframe>
-            </div>
-        </div>`;
-
-        // typically the body thinks it's "alone" on the page so we:
-        // 1. Create a new "body-container" element that will own the existing body and the new inspector
-        // 2. Move all existing body elements into a new "body-prime" element
-        // 3. Create the new inspector panel
-
-        const bodyInspectorContainer = document.createElement("div");
-        bodyInspectorContainer.style.position = "relative";
-        bodyInspectorContainer.style.display = "flex";
-        bodyInspectorContainer.flexDirection = "";
-
-        // move everything in the body into an inspector-adjacent node
-        const bodyPrime = document.createElement("div");
-        bodyPrime.classList.toggle('slds-col');
-        // slds-p-around_medium
-        while (document.body.childNodes.length > 0) {
-            bodyPrime.appendChild(document.body.childNodes[0]);
-        }
-        bodyInspectorContainer.appendChild(bodyPrime);
-
-        const inspectionPanel = document.createElement("div");
-        bodyInspectorContainer.appendChild(inspectionPanel);
-        inspectionPanel.outerHTML = inspectorPanelHTML;
-
-        document.body.appendChild(bodyInspectorContainer);
-    }
-    //inspectResource(inspectorPanelID);
-}
-
-// since we're in a module, we want this available publicly
-window.toggleResFactoryInspectorPanel = toggleInspectorPanel;
-
-// TODO[essential]: currently this is very SLDS-specific but should really be generalized
-// and placed as a DesignSystem layout strategy so that it can be supported across DSs
 function injectInspectionPanel(clientLayout, consoleNavContainerElem) {
-    const inspectorPanelID = 'rfInspectorPanel';
-
-    // TODO[essential] /lightning/image/slds-icons should not be harcoded, use operationalCtx variable
-    const inspectorActivateHTML = `<button id="${inspectorPanelID}Activate" class="slds-button slds-button_icon slds-is-selected slds-button_icon-border-filled slds-button_icon-border" title="Toggle panel" aria-expanded="true" aria-controls="example-unique-id-10" aria-pressed="true" onclick="window.toggleResFactoryInspectorPanel('${clientLayout.route?.terminal?.fileSysPath}', '${inspectorPanelID}')">
-        <svg class="slds-button__icon" aria-hidden="true">
-            <use xlink:href="/lightning/image/slds-icons/utility-sprite/svg/symbols.svg#toggle_panel_right"></use>
-        </svg>
-        <span class="slds-assistive-text">Provide description of action</span>
+    const isInFrame = window == window.top ? false : true;
+    const activePath = clientLayout.navigation.location(clientLayout.route?.terminal);
+    const inspectorActivateHTML = `
+    <button style="background-color: ${isInFrame ? '#B87333' : '#581845'}; border: none; color: white; padding: 5px 15px; text-align: center; text-decoration: none; display: inline-block;font-size: 12px; border-radius: 8px;">
+        ${isInFrame
+            ? `<a href="${activePath}" style="color:white" target="_top">Close Inspector</a>`
+            : `<a href="/workspace/inspect${activePath == '/' ? '/' : `/index.html${activePath}`}" style="color:white">Inspect</a>`}
     </button>`
 
-    const inspectorActivate = document.createElement("button");
-    consoleNavContainerElem.appendChild(inspectorActivate);
-    inspectorActivate.outerHTML = inspectorActivateHTML;
+    consoleNavContainerElem.innerHTML = inspectorActivateHTML;
+    consoleNavContainerElem.style.display = "block"; // in case it was hidden
 }
 
 function initExperimentalServerHooks(rfUniversalLayoutInitEvent) {
@@ -131,17 +63,6 @@ function initExperimentalServerHooks(rfUniversalLayoutInitEvent) {
 
             const consoleNavContainer = document.getElementById("rf-console-nav-container");
             if (consoleNavContainer) {
-                const link = document.createElement('link');
-                link.href = "https://cdn.jsdelivr.net/gh/mcstudios/glightbox@master/dist/css/glightbox.css";
-                link.rel = "stylesheet";
-                document.head.appendChild(link);
-
-                const gLightboxClassName = 'glightbox4';
-                consoleNavContainer.innerHTML = `<button id="consoleButton" class="slds-button slds-button_brand">
-                    <a href="/console/" class="${gLightboxClassName}" data-glightbox="width: ${window.innerWidth - 100}px; height: ${window.innerHeight - 100}px;">Console</a>
-                </button>`;
-                consoleNavContainer.style.display = "block"; // in case it was hidden to start
-                GLightbox({ selector: '.' + gLightboxClassName });
                 injectInspectionPanel(clientLayout, consoleNavContainer);
             }
 
@@ -158,6 +79,11 @@ function initExperimentalServerHooks(rfUniversalLayoutInitEvent) {
                 } else {
                     footerContentElem.innerHTML = `<p title="${src}" class="localhost-diags localhost-diags-warning">No layout information in <code>&lt;html data-rf-origin-design-system&gt;</code></p>`;
                 }
+            }
+
+            // in case we have a parent that cares about our layout
+            if (window.parent && window.parent.registerInspectionTarget) {
+                window.parent.registerInspectionTarget(clientLayout, serverHooks, window);
             }
         }
     };

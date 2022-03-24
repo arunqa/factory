@@ -240,14 +240,18 @@ export class WorkspaceMiddlewareSupplier {
       });
     });
 
+    const pathInfoRegEx = /(.+?\.html)(\/.*)/;
     router.get(
       `${this.htmlEndpointURL}/(.*)`,
       s.staticContentMiddleware(
         { staticAssetsHome: this.wsEndpointsContentHome },
         this.staticEE,
         this.wsEndpointsStaticIndex,
-        (requestUrlPath) =>
-          requestUrlPath.substring(this.htmlEndpointURL.length),
+        (requestUrlPath) => {
+          const path = requestUrlPath.substring(this.htmlEndpointURL.length);
+          const matchedPI = path.match(pathInfoRegEx);
+          return matchedPI ? [matchedPI[1], matchedPI[2]] : path;
+        },
       ),
     );
   }

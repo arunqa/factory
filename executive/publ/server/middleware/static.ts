@@ -63,16 +63,20 @@ export function staticContentMiddleware(
   content: { readonly staticAssetsHome: string },
   staticEE: StaticEventEmitter,
   staticIndex: string,
-  translatePath?: (path: string) => string,
+  translatePath?: (path: string) => string | [fsPath: string, pathInfo: string],
   beforeFirstServe?: (sccs: StaticContentContextSupplier) => Promise<void>,
   // deno-lint-ignore no-explicit-any
 ): oak.Middleware<any> {
   let servedCount = 0;
   return async (ctx) => {
     const resourcePathRequestedByUA = ctx.request.url.pathname;
-    const resolvedStaticPathOnServer = translatePath
+    const resolvedStaticPathAndPathInfoOnServer = translatePath
       ? translatePath(resourcePathRequestedByUA)
       : resourcePathRequestedByUA;
+    const resolvedStaticPathOnServer =
+      Array.isArray(resolvedStaticPathAndPathInfoOnServer)
+        ? resolvedStaticPathAndPathInfoOnServer[0]
+        : resolvedStaticPathAndPathInfoOnServer;
     const sccs: StaticContentContextSupplier = { oakCtx: ctx, servedCount };
     const staticAssetsHome = content.staticAssetsHome;
     try {

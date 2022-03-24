@@ -1,0 +1,48 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Frameset//EN" "http://www.w3.org/TR/html4/frameset.dtd">
+<html>
+
+<head>
+    <title>rfInspector</title>
+    <script>
+        function inspectPrime() {
+            // we can be called like "index.html" or with path_info like "index.html/path/to/load"
+            // if we get called without any path_info we load the root otherwise load /path/to/load
+            const pathInfoRegEx = /(.+?\.html)(\/.*)/;
+            const path = document.location.toString();
+            console.log(path);
+            const matchedPI = path.match(pathInfoRegEx);
+            console.dir(matchedPI);
+            window.frames["prime"].location = matchedPI ? matchedPI[2] : path;
+        }
+
+        var inspectClientLayout = undefined;
+        var inspectServerHooks = undefined;
+
+        // if we have an RF page that builds a clientLayout, it can optionally call this
+        // to register itself and then the inspector frame reloads itself
+        function registerInspectionTarget(clientLayout, serverHooks, childWindow) {
+            console.log("registerChildClientLayout")
+            inspectClientLayout = clientLayout;
+            inspectServerHooks = serverHooks;
+            if (childWindow.name == "prime") {
+                // when this window is loaded, it will use inspectClientLayout to fill itself
+                window.frames["inspector"].location = `/workspace/inspect/resource.html`;
+            }
+            console.dir(inspectClientLayout);
+            console.dir(inspectServerHooks);
+        }
+    </script>
+</head>
+
+<!-- Warning: framesets are depracated in HTML5 and may be removed from browsers at any time -->
+<!-- TODO[essential]: remove framesets and use iframes as soon as possible -->
+<frameset cols="80%,20%" onload="inspectPrime(this)">
+    <frame name="prime" />
+    <frame name="inspector" />
+    <noframes>
+        Uh oh, frameset not supported by your browser. It's either ancient or so modern than HTML5 depracation of
+        <code>frameset</code> is taken seriously.
+    </noframes>
+</frameset>
+
+</html>
