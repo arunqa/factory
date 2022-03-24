@@ -16,6 +16,8 @@
     <script src="/universal-cc/script/typical.js"></script>
     <script src="/lightning/script/lightning.js"></script>
     <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.js"></script>
+    <link rel="stylesheet"
+        href="https://raw.githubusercontent.com/sparkartgroup/Inspector-JSON/master/inspector-json.css">
 </head>
 
 <body>
@@ -102,6 +104,8 @@
 
     <!-- consider replacing renderjson.js with https://github.com/mohsen1/json-formatter-js for <a>/URL formatting -->
     <script src="https://cdn.rawgit.com/caldwell/renderjson/master/renderjson.js"></script>
+    <script src="../inspector-json.js"></script>
+    <link rel="stylesheet" href="../inspector-json.css" />
     <script type="module">
         import { reflect, getUrlQueryParameterByName, editableFileRefHTML } from "../deps.auto.js";
 
@@ -110,6 +114,23 @@
 
         const suppressProps = ["children", "ancestors", "fileSysPathParts"];
         const inspectReflected = (inspect, propsGridElem, propsJsonElem, propsTitleElem) => {
+            const inspector = new InspectorJSON({
+                element: propsGridElem,
+                json: inspect
+            });
+            if (propsJsonElem) {
+                propsJsonElem.innerHTML = "";
+                propsJsonElem.prepend(renderjson(inspect));
+            }
+            if (propsTitleElem) {
+                if (inspect.children.length > 0)
+                    propsTitleElem.innerHTML = `${inspect.qualifiedPath} "${inspect.label}" (${inspect.children.length} children)`;
+                else
+                    propsTitleElem.innerHTML = `${inspect.qualifiedPath} "${inspect.label}"`;
+            }
+        }
+
+        const inspectReflected2 = (inspect, propsGridElem, propsJsonElem, propsTitleElem) => {
             const reflected = reflect(inspect, undefined, {
                 enhanceObject: (o, ancestors) => {
                     const fileSysPath = o.properties.find(p => p.key == "fileSysPath");
