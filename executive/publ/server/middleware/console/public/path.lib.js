@@ -636,33 +636,33 @@ class Executive {
         const ping = pingService((baseURL) => baseURL);
         if (diagnostics.serviceBus.verbose) ping.observeReceivedPayload(this.#serviceBus, (payload) => reportServiceBusDiags("observed ping (RPC/WS/SSE)", payload));
 
-        const sfImpact = serverFileImpactService((baseURL) => baseURL);
-        this.#serviceBus.observeReceivedPayload((payload) => {
-            if (diagnostics.serviceBus.verbose) reportServiceBusDiags("observed file impact (RPC/WS/SSE)", payload);
-            location.reload();
-        }, sfImpact);
+        // const sfImpact = serverFileImpactService((baseURL) => baseURL);
+        // this.#serviceBus.observeReceivedPayload((payload) => {
+        //     if (diagnostics.serviceBus.verbose) reportServiceBusDiags("observed file impact (RPC/WS/SSE)", payload);
+        //     location.reload();
+        // }, sfImpact);
 
-        const uaOpenWindow = userAgentOpenWindowService((baseURL) => baseURL);
-        this.#serviceBus.observeReceivedPayload((payload) => {
-            if (diagnostics.serviceBus.verbose) reportServiceBusDiags("observed open window SSE (RPC/WS/SSE)", payload);
-            if (payload && "location" in payload) {
-                const uaOpenWindowStorageKey = uaOpenWindow.serviceIdentity;
-                const uaOpenWindowState = sessionStorage.getItem(uaOpenWindowStorageKey);
-                if (!uaOpenWindowState) {
-                    const windowInstance = window.open(payload.location, payload.target);
-                    sessionStorage.setItem(uaOpenWindowStorageKey, JSON.stringify(payload));
-                    windowInstance.focus();
-                    windowInstance.onunload = function () {
-                        // TODO: figure out why this isn't working -- every time window opens, it's being refreshed by something?
-                        // sessionStorage.removeItem(uaOpenWindowStorageKey);
-                    };
-                } else {
-                    diagnostics.universal.report(`sessionStorage ${uaOpenWindowStorageKey} exists, not opening`, payload);
-                }
-            } else {
-                console.error(`invalid payload for window.open, expected { location: string; target?: string}: ${evt.data}`);
-            }
-        }, uaOpenWindow);
+        // const uaOpenWindow = userAgentOpenWindowService((baseURL) => baseURL);
+        // this.#serviceBus.observeReceivedPayload((payload) => {
+        //     if (diagnostics.serviceBus.verbose) reportServiceBusDiags("observed open window SSE (RPC/WS/SSE)", payload);
+        //     if (payload && "location" in payload) {
+        //         const uaOpenWindowStorageKey = uaOpenWindow.serviceIdentity;
+        //         const uaOpenWindowState = sessionStorage.getItem(uaOpenWindowStorageKey);
+        //         if (!uaOpenWindowState) {
+        //             const windowInstance = window.open(payload.location, payload.target);
+        //             sessionStorage.setItem(uaOpenWindowStorageKey, JSON.stringify(payload));
+        //             windowInstance.focus();
+        //             windowInstance.onunload = function () {
+        //                 // TODO: figure out why this isn't working -- every time window opens, it's being refreshed by something?
+        //                 // sessionStorage.removeItem(uaOpenWindowStorageKey);
+        //             };
+        //         } else {
+        //             diagnostics.universal.report(`sessionStorage ${uaOpenWindowStorageKey} exists, not opening`, payload);
+        //         }
+        //     } else {
+        //         console.error(`invalid payload for window.open, expected { location: string; target?: string}: ${evt.data}`);
+        //     }
+        // }, uaOpenWindow);
     }
 
     #init(ctx) {

@@ -1,7 +1,9 @@
 import { colors, events, path } from "../../../../../core/deps.ts";
 import { oak } from "../../deps.ts";
+import * as rfGovn from "../../../../../governance/mod.ts";
 import * as wfs from "../../../../../lib/fs/watch.ts";
 import * as ws from "../../../../../lib/workspace/mod.ts";
+import * as s from "../static.ts";
 
 import "./ua-editable.ts"; // for type-checking only ("UA" is for user agent TS -> JS compile)
 
@@ -102,9 +104,20 @@ export interface WorkspaceMiddlewareSupplierOptions {
   readonly staticIndex: "index.html" | string;
 }
 
+interface InspectResourceSupplier {
+  readonly route: rfGovn.Route;
+}
+
 export class WorkspaceMiddlewareSupplier {
   readonly tunnel: WorkspaceTunnel;
   readonly htmlEndpointURL: string;
+  readonly wsEndpointsContentHome = path.join(
+    path.dirname(import.meta.url).substring(
+      "file://".length,
+    ),
+    "public",
+  );
+  readonly wsEndpointsStaticIndex: "index.html" | string;
 
   constructor(
     readonly config: {
@@ -120,12 +133,14 @@ export class WorkspaceMiddlewareSupplier {
     },
     readonly app: oak.Application,
     readonly router: oak.Router,
+    readonly staticEE: s.StaticEventEmitter,
     options?: Partial<WorkspaceMiddlewareSupplierOptions>,
   ) {
     // REMINDER: if you add any routes here, make them easily testable by adding
     // them to executive/publ/server/inspect.http
 
     this.htmlEndpointURL = options?.htmlEndpointURL ?? "/workspace";
+    this.wsEndpointsStaticIndex = "index.html";
     this.tunnel = options?.tunnel ??
       new WorkspaceTunnel(
         `${this.htmlEndpointURL}/sse/ping`,
@@ -224,6 +239,17 @@ export class WorkspaceMiddlewareSupplier {
         }
       });
     });
+
+    router.get(
+      `${this.htmlEndpointURL}/(.*)`,
+      s.staticContentMiddleware(
+        { staticAssetsHome: this.wsEndpointsContentHome },
+        this.staticEE,
+        this.wsEndpointsStaticIndex,
+        (requestUrlPath) =>
+          requestUrlPath.substring(this.htmlEndpointURL.length),
+      ),
+    );
   }
 
   *watchableFileSysPaths(): Generator<wfs.WatchableFileSysPath> {

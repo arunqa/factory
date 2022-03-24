@@ -192,4 +192,4 @@ Content-Type: application/json
 // * /workspace/editor-resolver/publication/**/* to get JSON for where a publication source file can be found
 // * /workspace/editor-redirect/publication/**/* to redirect to a publication source file (e.g. opens VSCode)
 // * /workspace/editor-resolver/abs/**/* to get JSON for where an arbitrary server (abs path) file can be found
-// * /workspace/editor-redirect/abs/**/* to redirect to and arbitrary server file can be found (e.g. opens VSCode)
+// * /workspace/editor-redirect/abs/**/* to redirect to an arbitrary server file can be found (e.g. opens VSCode)

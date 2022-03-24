@@ -220,6 +220,7 @@ export class PublicationServer {
   protected prepareWorkspace(
     app: oak.Application,
     router: oak.Router,
+    staticEE: s.StaticEventEmitter,
     options?: ws.WorkspaceMiddlewareSupplierOptions,
   ) {
     this.#workspace = new ws.WorkspaceMiddlewareSupplier(
@@ -232,6 +233,7 @@ export class PublicationServer {
       },
       app,
       router,
+      staticEE,
       options,
     );
   }
@@ -373,7 +375,7 @@ export class PublicationServer {
 
     this.preparePublicationMW(app, router, registerTsJsRoute);
     this.prepareConsole(app, router, this.staticEE);
-    this.prepareWorkspace(app, router);
+    this.prepareWorkspace(app, router, this.staticEE);
     this.prepareAssurance(app, router);
     this.prepareDatabaseProxy(app, router);
 

@@ -1,6 +1,22 @@
 "use strict";
 
 /**
+ * Create a dynamic SLDS assets supplier so that whatever need at runtime can be
+ * kept as portable as possible.
+ * @param {(relURL) => string} iconLocResolver given a relative icon URL, create absolute path to icon
+ * @returns
+ */
+function lightningDSAssets(iconLocResolver) {
+  return {
+    lightingIconURL: (identity) => {
+      const collection = typeof identity === "string" ? "utility" : identity.collection;
+      const name = typeof identity === "string" ? identity : identity.name;
+      return iconLocResolver(`/${collection}-sprite/svg/symbols.svg#${name}`);
+    }
+  }
+}
+
+/**
  * lightningDSLayout provides convenience functions which uses "origin" data stored in
  * <html> data attributes and layout context in <body> data attributes to
  * compute a variety of layout properties specific to the active page such as:
@@ -15,14 +31,9 @@ function lightningDSLayout(prepareLayoutCtx) {
   return rfUniversalLayout({
     ...prepareLayoutCtx,
     enhanceResult: (layoutResult) => {
-      layoutResult.assets.ldsIcons = (relURL) => { return `${layoutResult.assets.dsAssetsBaseAbsURL()}/image/slds-icons${relURL}`; }
-      layoutResult.lightingIconURL = (identity) => {
-        const collection = typeof identity === "string" ? "utility" : identity.collection;
-        const name = typeof identity === "string" ? identity : identity.name;
-        return layoutResult.assets.ldsIcons(
-          `/${collection}-sprite/svg/symbols.svg#${name}`,
-        );
-      }
+      layoutResult.assets.ldsIcons = (relURL) => `${layoutResult.assets.dsAssetsBaseAbsURL()}/image/slds-icons${relURL}`;
+      const lightningAssetsSupplier = lightningDSAssets(layoutResult.assets.ldsIcons);
+      layoutResult.lightingIconURL = lightningAssetsSupplier.lightingIconURL;
     },
     autoInitProvisionCtx: {
       afterInit: (clientLayout) => {
@@ -37,7 +48,7 @@ function lightningDSLayout(prepareLayoutCtx) {
   });
 }
 
-const assignlightningIconSvgUseBase = (svgUses, layout) => {
+const assignlightningIconSvgUseBase = (svgUses, lightningAssetsSupplier) => {
   const fixIconsRef = (use, refAttrName) => {
     const href = use.getAttribute(refAttrName);
     if (href) {
@@ -47,7 +58,7 @@ const assignlightningIconSvgUseBase = (svgUses, layout) => {
       if (matches) {
         use.setAttribute(
           refAttrName,
-          layout.lightingIconURL({
+          lightningAssetsSupplier.lightingIconURL({
             collection: matches[1],
             name: matches[2],
           }),
@@ -158,7 +169,6 @@ const activityTimelineActivate = (
   });
 };
 
-
 /**
  * [TreeGrid](https://www.lightningdesignsystem.com/components/tree-grid/)
  */
@@ -215,6 +225,35 @@ const lightningTreeGridsActivate = (
   });
 };
 
+/**
+ * [Trees](https://www.lightningdesignsystem.com/components/trees/)
+ */
+const lightningTreesButtons = () =>
+  document.querySelectorAll(
+    `.slds-tree > li > div > .slds-button`
+  );
+
+const lightningTreeItemClick = (item) => {
+  const li = item.closest("li");
+  const ae = li.getAttribute("aria-expanded");
+  li.setAttribute("aria-expanded", !ae || ae == "false" ? "true" : "false");
+};
+
+const lightningTreeButtonClick = (event) => {
+  lightningTreeItemClick(event.target);
+};
+
+const lightningTreesActivate = (
+  buttons = Array.from(lightningTreesButtons()),
+  click = true,
+) => {
+  buttons.forEach((btn) => {
+    console.log(btn);
+    btn.addEventListener("click", lightningTreeButtonClick, false);
+    if (click) btn.click();
+  });
+};
+
 const lightningElemDirectives = (directives) => {
   for (const directive of directives) {
     const selected = directive.select();
@@ -229,6 +268,7 @@ const lightningActivateAllPageItems = {
   activateTabs: true,
   activateActivityTimeline: true,
   activateTreeGrids: true,
+  activateTrees: true,
   activateIconSvgUse: true,
   activateDirectives: [{
     select: () => document.querySelectorAll(".md > table"),
@@ -256,20 +296,16 @@ const lightningActivateAllPageItems = {
  * cargo" part of build process may be supplied. The client cargo is
  * useful for carrying build-time properties, such as page routes, to the
  * runtime client.
- * @param cargo object that contains the "client cargo" from server build
- * @returns HTML
+ * @param lightningAssetsSupplier object that contains lightingIconURL method
+ * @returns nothing
  */
-// deno-lint-ignore no-unused-vars
 const lightningActivatePage = (
-  cargo,
+  lightningAssetsSupplier,
   options = lightningActivateAllPageItems,
 ) => {
-  if (typeof cargo?.activate === "function") {
-    cargo.activate(cargo);
-  }
-
   if (options.activateDropDownButtons) lightningDropdownButtonsActivate();
   if (options.activateTabs) lightningTabsActivate();
+  if (options.activateTrees) lightningTreesActivate();
   if (options.activateTreeGrids) lightningTreeGridsActivate();
   if (options.activateDirectives) lightningElemDirectives(options.activateDirectives);
   if (options.activateActivityTimeline) activityTimelineActivate();
@@ -278,10 +314,11 @@ const lightningActivatePage = (
   //   <svg class="slds-button__icon slds-button__icon_hint slds-button__icon_small" aria-hidden="true">
   //      <use href="/assets/icons/utility-sprite/svg/symbols.svg#chevrondown"></use>
   //   </svg>
+  // This allows us to copy/paste content from the SLDS documentation and automatically correct it at runtime
   if (options.activateIconSvgUse) {
     assignlightningIconSvgUseBase(
       document.querySelectorAll("svg > use"),
-      cargo,
+      lightningAssetsSupplier,
     );
   }
 
@@ -315,10 +352,5 @@ const lightningActivatePage = (
       //old IE
       setInterval(stickyFooter, 500);
     }
-  }
-
-  if (typeof cargo?.finalize === "function") {
-    // TODO: pass anything else constructed that cargo might find help
-    cargo.finalize(cargo);
   }
 };
