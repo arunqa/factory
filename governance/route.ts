@@ -1,5 +1,6 @@
 import * as r from "./resource.ts";
 import * as n from "./nature.ts";
+import * as m from "./module.ts";
 import * as e from "./extension.ts";
 import * as render from "./render.ts";
 import * as fm from "./frontmatter.ts";
@@ -119,12 +120,11 @@ export interface RouteOrigin {
   readonly label: string;
 }
 
-export interface ModuleRouteOrigin extends RouteOrigin {
-  readonly moduleMetaURL: string;
+export interface ModuleRouteOrigin extends RouteOrigin, m.LocationSupplier {
 }
 
 export interface RouteOriginSupplier {
-  readonly origin: RouteOrigin;
+  readonly origin: ModuleRouteOrigin;
 }
 
 export interface Route<Unit extends RouteNode = RouteNode>

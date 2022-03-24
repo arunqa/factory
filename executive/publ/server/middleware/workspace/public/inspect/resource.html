@@ -43,7 +43,7 @@
 
     <script type="module">
         import JSONFormatter from "https://cdn.jsdelivr.net/npm/json-formatter-js@2.3.4/dist/json-formatter.esm.js";
-        import { editableFileRedirectURL } from "../deps.auto.js";
+        import { editableFileRedirectURL, locationEditorRedirectURL } from "../deps.auto.js";
 
         const inspectObject = (inspect, propsJsonElem, propsTitleElem) => {
             if (propsJsonElem) {
@@ -70,8 +70,15 @@
             if (activeResourceAbsPath) {
                 const [redirectURL] = editableFileRedirectURL(activeResourceAbsPath);
                 resID.innerHTML = `<a href="${redirectURL}">Open <b><mark>${clientLayout.route?.terminal?.fileSysPathParts?.base}</mark></b> in Editor</a>`;
+            } else if (clientLayout.route?.origin) {
+                const { origin } = clientLayout.route;
+                const [href, loc] = locationEditorRedirectURL(origin);
+                let fileName = loc;
+                const lastSlash = loc ? loc.lastIndexOf('/') : -1;
+                if (lastSlash > 0) fileName = loc.substring(lastSlash + 1);
+                resID.innerHTML = `<a href="${href}">Open <b><mark>${fileName}</mark></b> in Editor</a>${origin.label ? ` (look for <code>${origin.label}</code>)` : ''} `;
             } else {
-                resID.innerHTML = `${clientLayout.route?.terminal?.qualifiedPath} is not editable`;
+                resID.innerHTML = `${clientLayout.route?.terminal?.qualifiedPath} is not editable (no clientLayout.route.terminal.fileSysPath or clientLayout.route.origin)`;
             }
 
             fetch("/publication/inspect/routes.json").then(resp => resp.json()).then(routes => {
@@ -81,11 +88,10 @@
 
                 const routeNodeProps = document.getElementById("route-unit-properties");
                 const routeNodePropsTitle = document.getElementById("route-unit-properties-title");
+                inspectObject(clientLayout.route, routeNodeProps, routeNodePropsTitle);
+
                 const handleNodes = (treeContainer, items) => {
                     items.sort((a, b) => (a.label > b.label) ? 1 : -1).forEach(i => {
-                        if (i.fileSysPath == activeResourceAbsPath)
-                            inspectObject(i, routeNodeProps, routeNodePropsTitle);
-
                         const isParent = i.children && i.children.length ? true : false;
                         if (isParent) {
                             const details = document.createElement("details");

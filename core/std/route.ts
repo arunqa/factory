@@ -92,19 +92,19 @@ export function isRouteSupplier(
 }
 
 export function routeModuleOrigin(
-  moduleMetaURL: string,
+  moduleImportMetaURL: string,
   label: string,
 ): govn.ModuleRouteOrigin {
   return {
     isRouteOrigin: true,
-    moduleMetaURL,
+    moduleImportMetaURL,
     label,
   };
 }
 
 export const isModuleRouteOrigin = safety.typeGuard<govn.ModuleRouteOrigin>(
   "isRouteOrigin",
-  "moduleMetaURL",
+  "moduleImportMetaURL",
   "label",
 );
 
@@ -326,7 +326,7 @@ export function defaultRouteWorkspaceEditorResolver(
 > {
   return (route, line) => {
     if (route.origin && isModuleRouteOrigin(route.origin)) {
-      const candidate = route.origin.moduleMetaURL;
+      const candidate = route.origin.moduleImportMetaURL;
       if (candidate.startsWith("file:")) {
         return wser(path.fromFileUrl(candidate), line);
       }

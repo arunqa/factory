@@ -9,9 +9,7 @@
             // if we get called without any path_info we load the root otherwise load /path/to/load
             const pathInfoRegEx = /(.+?\.html)(\/.*)/;
             const path = document.location.toString();
-            console.log(path);
             const matchedPI = path.match(pathInfoRegEx);
-            console.dir(matchedPI);
             window.frames["prime"].location = matchedPI ? matchedPI[2] : "/";
         }
 
@@ -21,15 +19,12 @@
         // if we have an RF page that builds a clientLayout, it can optionally call this
         // to register itself and then the inspector frame reloads itself
         function registerInspectionTarget(clientLayout, serverHooks, childWindow) {
-            console.log("registerChildClientLayout")
             inspectClientLayout = clientLayout;
             inspectServerHooks = serverHooks;
             if (childWindow.name == "prime") {
                 // when this window is loaded, it will use inspectClientLayout to fill itself
                 window.frames["inspector"].location = `/workspace/inspect/resource.html`;
             }
-            console.dir(inspectClientLayout);
-            console.dir(inspectServerHooks);
         }
     </script>
 </head>
