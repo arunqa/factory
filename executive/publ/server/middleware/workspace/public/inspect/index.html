@@ -12,7 +12,7 @@
             console.log(path);
             const matchedPI = path.match(pathInfoRegEx);
             console.dir(matchedPI);
-            window.frames["prime"].location = matchedPI ? matchedPI[2] : path;
+            window.frames["prime"].location = matchedPI ? matchedPI[2] : "/";
         }
 
         var inspectClientLayout = undefined;
