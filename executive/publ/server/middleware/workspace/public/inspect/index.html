@@ -3,7 +3,21 @@
 
 <head>
     <title>rfInspector</title>
+    <style>
+        body {
+            margin: 0
+        }
+    </style>
     <script>
+        function getUrlQueryParameterByName(name, url = window.location.href) {
+            name = name.replace(/[\[\]]/g, "\\$&");
+            const regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+                results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return "";
+            return decodeURIComponent(results[2].replace(/\+/g, " "));
+        }
+
         function inspectPrime() {
             // we can be called like "index.html" or with path_info like "index.html/path/to/load"
             // if we get called without any path_info we load the root otherwise load /path/to/load
@@ -38,18 +52,55 @@
                 }
             }
         }
+
+        function createframe(orientQueryParam = getUrlQueryParameterByName("orientation"), sizeQueryParam = getUrlQueryParameterByName("size")) {
+            const orientation = orientQueryParam ?? "east";
+            const size = Number.parseInt(sizeQueryParam ?? "25") || 25;
+            const container = document.body;
+            const frameSet = document.createElement('frameset');
+            let prime = document.createElement("frame");
+            prime.name = "prime";
+            let inspector = document.createElement("frame");
+            inspector.name = "inspector";
+            inspector.onload = inspectorActivate;
+            switch (orientation) {
+                case "north":
+                    frameSet.setAttribute("rows", `${size}%,*`);
+                    frameSet.appendChild(inspector);
+                    frameSet.appendChild(prime);
+                    break;
+                case "south":
+                    frameSet.setAttribute("rows", `*,${size}%`);
+                    frameSet.appendChild(prime);
+                    frameSet.appendChild(inspector);
+                    break;
+                case "west":
+                    frameSet.setAttribute("cols", `${size}%,*`);
+                    frameSet.appendChild(inspector);
+                    frameSet.appendChild(prime);
+                    break;
+                default:
+                    frameSet.setAttribute("cols", `*,${size}%`);
+                    frameSet.appendChild(prime);
+                    frameSet.appendChild(inspector);
+                    break;
+            }
+            container.appendChild(frameSet);
+            inspectPrime(frameSet);
+        }
+        window.addEventListener("load", () => createframe(), false);
     </script>
 </head>
 
 <!-- Warning: framesets are depracated in HTML5 and may be removed from browsers at any time -->
 <!-- TODO[essential]: remove framesets and use iframes as soon as possible -->
-<frameset cols="75%,25%" onload="inspectPrime(this)">
+<!-- <frameset cols="75%,25%" onload="inspectPrime(this)">
     <frame name="prime" />
     <frame name="inspector" onload="inspectorActivate(this)" />
     <noframes>
         Uh oh, frameset not supported by your browser. It's either ancient or so modern than HTML5 depracation of
         <code>frameset</code> is taken seriously.
     </noframes>
-</frameset>
+</frameset> -->
 
 </html>

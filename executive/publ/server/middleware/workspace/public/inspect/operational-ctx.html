@@ -5,19 +5,96 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="../path.css">
+    <link rel="stylesheet" href="../path.actuate.css">
 </head>
 
 <body>
+    <details>
+        <summary>Environment Variables</summary>
+
+        <p>These are all the environment variables known to the publication server (<code>pubctl.ts</code>)
+            including sensitive values without masking. <em>Be careful about copy/pasting this content</em>.
+            If you need a "sanitized" version of environment variables, there is a safer copy in
+            <a href="/operational-context/observability/health.json">Health</a> (see <code>health.json</code>'s
+            <code>build</code> component's
+            <code>links</code>).
+        </p>
+        <div id="envVars"></div>
+    </details>
+
+    <details>
+        <summary>Health</summary>
+
+        <p>
+            These are the health checks performed by (<code>pubctl.ts</code>) and stored in <a
+                href="/operational-context/observability/health.json">health.json</a>.
+        </p>
+
+        <details open>
+            <summary>Errors</summary>
+            <div id="unhealthy-json-errors"></div>
+        </details>
+
+        <details open>
+            <summary>Warnings</summary>
+            <div id="unhealthy-json-warnings"></div>
+        </details>
+
+        <details>
+            <summary>health.json</summary>
+            <div id="health-json"></div>
+        </details>
+
+    </details>
+
     <script type="module">
-        import * as path from "../path.mjs";
+        import * as path from "../path.actuate.mjs";
 
         // automatically inject navbars and other site-wide elements
         path.activateSite();
 
+        const envVarsInitFx = path.publicationDomain.createEffect(async () =>
+            (await fetch("/workspace/inspect/env-vars.json")).json()
+        );
+
+        const healthInitFx = path.publicationDomain.createEffect(async () =>
+            (await fetch("/operational-context/observability/health.json")).json()
+        );
+
         document.addEventListener('DOMContentLoaded', function () {
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
+
+            envVarsInitFx.done.watch(({ result: envVars }) => {
+                path.populateObjectJSON(envVars, document.querySelector('#envVars'), 1, {
+                    sortPropertiesBy: (a, b) => a > b
+                });
+            });
+            envVarsInitFx();
+
+            healthInitFx.done.watch(({ result: health }) => {
+                const errors = [];
+                const warnings = [];
+                Object.entries(health.checks).forEach(check => {
+                    const [serviceIdentity, components] = check;
+                    for (const c of components) {
+                        switch (c.status) {
+                            case "pass":
+                                break;
+                            case "warn":
+                                warnings.push({ service: serviceIdentity, ...c });
+                                break;
+                            case "fail":
+                                errors.push({ service: serviceIdentity, ...c });
+                                break
+                        }
+                    }
+                });
+                path.populateObjectJSON(errors, document.querySelector('#unhealthy-json-errors'), 2);
+                path.populateObjectJSON(warnings, document.querySelector('#unhealthy-json-warnings'), 2);
+                path.populateObjectJSON(health, document.querySelector('#health-json'), 2);
+            });
+            healthInitFx();
 
             // all listeners are ready so let's activate the page and trigger the watchers
             path.activatePage(path.inspectableClientLayout());

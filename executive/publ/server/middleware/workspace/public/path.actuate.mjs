@@ -80,13 +80,20 @@ export const activateSite = () => {
             a.className += " active";
         }
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const footer = document.createElement("footer");
+        footer.className = "hints";
+        footer.innerHTML = `You can move the inspector by using ?<code>orientation</code>=<code>north|south|east|west</code>&amp;<code>size=25</code> where 25 is the percentage of the screen.`;
+        document.body.appendChild(footer);
+    });
 }
 
-export const populateObjectJSON = (inspect, targetElem) => {
+export const populateObjectJSON = (inspect, targetElem, open, options) => {
     if (targetElem) {
         targetElem.innerHTML = "";
         // see https://github.com/mohsen1/json-formatter-js#api
-        const formatter = new JSONFormatter(inspect);
+        const formatter = new JSONFormatter(inspect, open, options);
         targetElem.appendChild(formatter.render());
     }
 }

@@ -23,7 +23,7 @@ function injectInspectionPanel(clientLayout, consoleNavContainerElem) {
     <button style="background-color: ${isInFrame ? '#B87333' : '#581845'}; border: none; color: white; padding: 5px 15px; text-align: center; text-decoration: none; display: inline-block;font-size: 12px; border-radius: 8px;">
         ${isInFrame
             ? `<a href="${activePath}" style="color:white" target="_top">Close Inspector</a>`
-            : `<a href="/workspace/inspect${activePath == '/' ? '/' : `/index.html${activePath}`}" style="color:white">Inspect</a>`}
+            : `<a href="/workspace/inspect${activePath == '/' ? '/' : `/index.html${activePath}`}?orientation=east&size=25" style="color:white">Inspect</a>`}
     </button>`
 
     consoleNavContainerElem.innerHTML = inspectorActivateHTML;
