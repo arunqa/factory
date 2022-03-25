@@ -3,6 +3,8 @@
 
 body {
     font-family: 'Open Sans', sans-serif;
+    /* because navbar sticks to the top of the page, give it a margin */
+    margin-top: 75px;
 }
 
 details {
@@ -17,7 +19,12 @@ summary {
 .navbar {
     width: 100%;
     background-color: #555;
-    overflow: auto;
+    overflow: hidden;
+    /* make it sticky at the top of the page */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
 }
 
 /* Navbar links */
@@ -116,4 +123,22 @@ summary {
 /* Gray */
 .default:hover {
     background: #ddd;
+}
+
+/* Use a thin (10px wide) scrollbar, which has a grey track/bar color and a dark-grey (#888) handle */
+
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }

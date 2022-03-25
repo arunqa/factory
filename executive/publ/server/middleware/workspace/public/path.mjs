@@ -2,7 +2,33 @@ import { createDomain } from "https://unpkg.com/effector@22.2.0/effector.mjs";
 import JSONFormatter from "https://cdn.jsdelivr.net/npm/json-formatter-js@2.3.4/dist/json-formatter.esm.js";
 
 import * as d from "./deps.auto.js";
-export * from "./deps.auto.js"; // make it available to pages
+export * from "./deps.auto.js"; // make symbols available to pages
+
+/**
+ * Activate all site-wide functionality such as navigation. We use as much
+ * modern HTML5, "vanilla" HTML, and as little JS as possible. When JS is needed
+ * use Effector for state management and async effect.
+ * UI guide: https://www.w3schools.com/howto/
+ */
+export const activateSite = () => {
+    const navBar = document.createElement("div");
+    navBar.className = "navbar";
+    navBar.innerHTML = `
+        <a href="#" id="edit-origin-src" class="highlight"><i class="fa-solid fa-file-code"></i> Edit</a>
+        <a href="routes.html"><i class="fa-solid fa-route"></i> Routes</a>
+        <a href="layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a>
+        <a href="operational-ctx.html"><i class="fa-solid fa-terminal"></i> Operational Context</a>`;
+    document.body.insertBefore(navBar, document.body.firstChild);
+    for (const a of navBar.children) {
+        if (a.href == window.location) {
+            a.className += " active";
+        }
+    }
+
+    // do anything that's content-specific after document loaded
+    // document.addEventListener('DOMContentLoaded', () => {
+    // });
+}
 
 export const projectDomain = createDomain("project");
 export const projectInitFx = projectDomain.createEffect(async () =>
@@ -14,12 +40,7 @@ export const $project = projectDomain.createStore(null).on(
     (_, project) => project,
 );
 
-export const activatePage = (clientLayout, resAnchor, navBarAnchors = document.querySelectorAll(".navbar a")) => {
-    for (const a of navBarAnchors) {
-        if (a.href == window.location) {
-            a.className += " active";
-        }
-    }
+export const activatePage = (clientLayout, resAnchor = document.getElementById("edit-origin-src")) => {
     if (resAnchor) {
         populateResourceEditElem(clientLayout, resAnchor);
     }

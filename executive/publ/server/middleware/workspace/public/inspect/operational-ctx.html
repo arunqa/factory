@@ -9,19 +9,15 @@
 </head>
 
 <body>
-    <div class="navbar">
-        <a href="#" id="edit-origin-src" class="highlight"><i class="fa-solid fa-file-code"></i> Edit</a>
-        <a href="routes.html"><i class="fa-solid fa-route"></i> Routes</a>
-        <a href="layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a>
-        <a href="environment.html"><i class="fa-solid fa-terminal"></i> Environment</a>
-    </div>
-
     <script type="module">
         import * as path from "../path.mjs";
 
+        // automatically inject navbars and other site-wide elements
+        path.activateSite();
+
         document.addEventListener('DOMContentLoaded', function () {
             const clientLayout = path.inspectClientLayout();
-            path.activatePage(clientLayout, document.getElementById("edit-origin-src"));
+            path.activatePage(clientLayout);
         });
     </script>
 </body>

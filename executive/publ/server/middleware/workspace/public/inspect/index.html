@@ -4,8 +4,6 @@
 <head>
     <title>rfInspector</title>
     <script>
-        const defaultInspectorURL = `/workspace/inspect/routes.html`;
-
         function inspectPrime() {
             // we can be called like "index.html" or with path_info like "index.html/path/to/load"
             // if we get called without any path_info we load the root otherwise load /path/to/load
@@ -15,17 +13,30 @@
             window.frames["prime"].location = matchedPI ? matchedPI[2] : "/";
         }
 
+        var inspectorActivateIndex = 0;
+
+        function inspectorActivate() {
+            inspectorActivateIndex++;
+        }
+
         var inspectClientLayout = undefined;
         var inspectServerHooks = undefined;
 
         // if we have an RF page that builds a clientLayout, it can optionally call this
         // to register itself and then the inspector frame reloads itself
         function registerInspectionTarget(clientLayout, serverHooks, childWindow) {
+            const inspector = window.frames["inspector"];
+            console.log(inspector, inspectorActivateIndex);
             inspectClientLayout = clientLayout;
             inspectServerHooks = serverHooks;
             if (childWindow.name == "prime") {
                 // when this window is loaded, it will use inspectClientLayout to fill itself
-                window.frames["inspector"].location = defaultInspectorURL;
+                if (inspectorActivateIndex <= 1) {
+                    inspector.location = `/workspace/inspect/routes.html`;
+                } else {
+                    // when the prime frame content changes, keep the current inspector view
+                    inspector.location.reload();
+                }
             }
         }
     </script>
@@ -35,7 +46,7 @@
 <!-- TODO[essential]: remove framesets and use iframes as soon as possible -->
 <frameset cols="75%,25%" onload="inspectPrime(this)">
     <frame name="prime" />
-    <frame name="inspector" />
+    <frame name="inspector" onload="inspectorActivate(this)" />
     <noframes>
         Uh oh, frameset not supported by your browser. It's either ancient or so modern than HTML5 depracation of
         <code>frameset</code> is taken seriously.
