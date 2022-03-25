@@ -19,18 +19,17 @@
             inspectorActivateIndex++;
         }
 
-        var inspectClientLayout = undefined;
+        var inspectableClientLayout = undefined;
         var inspectServerHooks = undefined;
 
         // if we have an RF page that builds a clientLayout, it can optionally call this
         // to register itself and then the inspector frame reloads itself
         function registerInspectionTarget(clientLayout, serverHooks, childWindow) {
             const inspector = window.frames["inspector"];
-            console.log(inspector, inspectorActivateIndex);
-            inspectClientLayout = clientLayout;
+            inspectableClientLayout = clientLayout;
             inspectServerHooks = serverHooks;
             if (childWindow.name == "prime") {
-                // when this window is loaded, it will use inspectClientLayout to fill itself
+                // when this window is loaded, it will use inspectableClientLayout to fill itself
                 if (inspectorActivateIndex <= 1) {
                     inspector.location = `/workspace/inspect/routes.html`;
                 } else {

@@ -3,6 +3,7 @@
 
 body {
     font-family: 'Open Sans', sans-serif;
+    font-size: 14px;
     /* because navbar sticks to the top of the page, give it a margin */
     margin-top: 75px;
 }

@@ -10,7 +10,13 @@
 
 <body>
     <details>
+        <summary>Publication</summary>
+        <div id="project-properties">Browseable JSON</div>
+    </details>
+
+    <details>
         <summary>Resource Route</summary>
+
         <details>
             <summary>Terminal Unit</summary>
             <div id="route-terminal-unit-properties">Browseable JSON</div>
@@ -39,15 +45,24 @@
         // automatically inject navbars and other site-wide elements
         path.activateSite();
 
-        document.addEventListener('DOMContentLoaded', function () {
-            const clientLayout = path.inspectClientLayout();
-            path.activatePage(clientLayout);
+        const routesInitFx = path.publicationDomain.createEffect(async () =>
+            (await fetch("/publication/inspect/routes.json")).json()
+        );
 
-            fetch("/publication/inspect/routes.json").then(resp => resp.json()).then(routes => {
-                path.populateObjectJSON(routes, document.getElementById("publication.state.resourcesTree-json"));
+        document.addEventListener('DOMContentLoaded', function () {
+            // setup events, stores, and effects listeners so that we can be
+            // as decoupled from business logic as possible
+
+            path.activatePage.watch(clientLayout => {
                 path.populateObjectJSON(clientLayout.route, document.getElementById("route-properties"));
                 path.populateObjectJSON(clientLayout.route.terminal, document.getElementById("route-terminal-unit-properties"));
+            });
 
+            routesInitFx.done.watch(({ result: routes }) => {
+                path.populateObjectJSON(routes, document.getElementById("publication.state.resourcesTree-json"));
+            });
+
+            routesInitFx.done.watch(({ result: routes }) => {
                 const handleNodes = (treeContainer, items) => {
                     items.sort((a, b) => (a.label > b.label) ? 1 : -1).forEach(i => {
                         const isParent = i.children && i.children.length ? true : false;
@@ -70,6 +85,11 @@
                 };
                 handleNodes(document.querySelector("#navigation-tree"), routes.items);
             });
+
+            routesInitFx();
+
+            // all listeners are ready so let's activate the page and trigger the watchers
+            path.activatePage(path.inspectableClientLayout());
         });
     </script>
 </body>

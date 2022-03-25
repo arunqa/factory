@@ -10,23 +10,27 @@
 </head>
 
 <body>
-    <main>
-        <article>
-            <ul>
-                <li>This page is rendered using <b><span id="layout-strategy"></span></b> layout located at
-                    <span id="layout-strategy-location"></span>.
-                </li>
-                <li>This publication uses the <b><span id="design-system-identity"></span></b> design system located at
-                    <span id="design-system-location"></span>.
-                </li>
-            </ul>
+    <details>
+        <summary>Publication</summary>
+        <div id="project-properties">Browseable JSON</div>
+    </details>
 
-            <details>
-                <summary>Design System Layouts ("renderers")</summary>
-                <div id="renderersGrid" class="ag-theme-alpine"></div>
-            </details>
-        </article>
-    </main>
+    <details>
+        <summary>Resource Layout ("renderer")</summary>
+        <ul>
+            <li>This page is rendered using <b><span id="layout-strategy"></span></b> layout located at
+                <span id="layout-strategy-location"></span>.
+            </li>
+            <li>This publication uses the <b><span id="design-system-identity"></span></b> design system located at
+                <span id="design-system-location"></span>.
+            </li>
+        </ul>
+    </details>
+
+    <details>
+        <summary>Design System Layouts ("renderers")</summary>
+        <div id="renderersGrid" class="ag-theme-alpine"></div>
+    </details>
 
     <script type="module">
         import * as path from "../path.mjs";
@@ -34,32 +38,41 @@
         // automatically inject navbars and other site-wide elements
         path.activateSite();
 
-        path.projectInitFx();
-        path.$project.watch(project => {
-            if (project) {
-                const ds = project["Design System"].designSystem;
-                document.getElementById("design-system-identity").innerHTML = ds?.identity;
-                document.getElementById("design-system-location").innerHTML = path.locationEditorHTML(ds.location, 5);
-            }
-        });
+        const dsLayoutsInitFx = path.publicationDomain.createEffect(async () =>
+            (await fetch("/publication/inspect/renderers.json")).json()
+        );
 
         document.addEventListener('DOMContentLoaded', function () {
-            const clientLayout = path.inspectClientLayout();
-            path.activatePage(clientLayout);
+            // setup events, stores, and effects listeners so that we can be
+            // as decoupled from business logic as possible
 
-            const originLayout = clientLayout.originCtx.designSystem.layout;
-            const { src, name, symbol } = (originLayout ?? {});
-            if (src) {
-                document.getElementById("layout-strategy").innerHTML = `${name} (${symbol})`;
-                document.getElementById("layout-strategy-location").innerHTML = path.editableFileRefHTML(src, 5);
-            } else {
-                document.getElementById("layout-strategy").innerHTML = `???`;
-                document.getElementById("layout-strategy-location").innerHTML = '???';
-            }
+            path.activatePage.watch(clientLayout => {
+                const originLayout = clientLayout.originCtx.designSystem.layout;
+                const { src, name, symbol } = (originLayout ?? {});
+                if (src) {
+                    document.getElementById("layout-strategy").innerHTML = `${name} (${symbol})`;
+                    document.getElementById("layout-strategy-location").innerHTML = path.editableFileRefHTML(src, 5);
+                } else {
+                    document.getElementById("layout-strategy").innerHTML = `???`;
+                    document.getElementById("layout-strategy-location").innerHTML = '???';
+                }
+            });
+
+            path.$project.watch(project => {
+                path.populateObjectJSON(project, document.getElementById("project-properties"));
+            });
+            path.$project.watch(project => {
+                if (project) {
+                    const ds = project["Design System"].designSystem;
+                    document.getElementById("design-system-identity").innerHTML = ds?.identity;
+                    document.getElementById("design-system-location").innerHTML = path.locationEditorHTML(ds.location, 5);
+                }
+            });
+            path.projectInitFx(); // fetch "/publication/inspect/project.json" and trigger path.$project.watch()
 
             const renderersGridElem = document.querySelector('#renderersGrid');
             if (renderersGridElem) {
-                fetch("/publication/inspect/renderers.json").then(resp => resp.json()).then(renderers => {
+                dsLayoutsInitFx.done.watch(({ result: renderers }) => {
                     const columnDefs = [
                         { field: "identity" },
                         {
@@ -80,6 +93,10 @@
                     new agGrid.Grid(renderersGridElem, gridOptions);
                 })
             }
+            dsLayoutsInitFx();
+
+            // all listeners are ready so let's activate the page and trigger the watchers
+            path.activatePage(path.inspectableClientLayout());
         });
     </script>
 </body>

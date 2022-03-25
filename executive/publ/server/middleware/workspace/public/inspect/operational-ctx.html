@@ -16,8 +16,11 @@
         path.activateSite();
 
         document.addEventListener('DOMContentLoaded', function () {
-            const clientLayout = path.inspectClientLayout();
-            path.activatePage(clientLayout);
+            // setup events, stores, and effects listeners so that we can be
+            // as decoupled from business logic as possible
+
+            // all listeners are ready so let's activate the page and trigger the watchers
+            path.activatePage(path.inspectableClientLayout());
         });
     </script>
 </body>
