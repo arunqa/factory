@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../path.css">
+</head>
+
+<body>
+    <div class="navbar">
+        <a href="#" id="edit-origin-src" class="highlight"><i class="fa-solid fa-file-code"></i> Edit</a>
+        <a href="routes.html"><i class="fa-solid fa-route"></i> Routes</a>
+        <a href="layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a>
+        <a href="environment.html"><i class="fa-solid fa-terminal"></i> Environment</a>
+    </div>
+
+    <script type="module">
+        import * as path from "../path.mjs";
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const clientLayout = path.inspectClientLayout();
+            path.activatePage(clientLayout, document.getElementById("edit-origin-src"));
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../path.css">
+    <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.js"></script>
+</head>
+
+<body>
+    <div class="navbar">
+        <a href="#" id="edit-origin-src" class="highlight"><i class="fa-solid fa-file-code"></i> Edit</a>
+        <a href="routes.html"><i class="fa-solid fa-route"></i> Routes</a>
+        <a href="layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a>
+        <a href="environment.html"><i class="fa-solid fa-terminal"></i> Environment</a>
+    </div>
+
+    <main>
+        <article>
+            <ul>
+                <li>This page is rendered using <b><span id="layout-strategy"></span></b> layout located at
+                    <span id="layout-strategy-location"></span>.
+                </li>
+                <li>This publication uses the <b><span id="design-system-identity"></span></b> design system located at
+                    <span id="design-system-location"></span>.
+                </li>
+            </ul>
+
+            <details>
+                <summary>Design System Layouts ("renderers")</summary>
+                <div id="renderersGrid" class="ag-theme-alpine"></div>
+            </details>
+        </article>
+    </main>
+
+    <script type="module">
+        import * as path from "../path.mjs";
+
+        path.projectInitFx();
+        path.$project.watch(project => {
+            if (project) {
+                const ds = project["Design System"].designSystem;
+                document.getElementById("design-system-identity").innerHTML = ds?.identity;
+                document.getElementById("design-system-location").innerHTML = path.locationEditorHTML(ds.location, 5);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const clientLayout = path.inspectClientLayout();
+            path.activatePage(clientLayout, document.getElementById("edit-origin-src"));
+
+            const originLayout = clientLayout.originCtx.designSystem.layout;
+            const { src, name, symbol } = (originLayout ?? {});
+            if (src) {
+                document.getElementById("layout-strategy").innerHTML = `${name} (${symbol})`;
+                document.getElementById("layout-strategy-location").innerHTML = path.editableFileRefHTML(src, 5);
+            } else {
+                document.getElementById("layout-strategy").innerHTML = `???`;
+                document.getElementById("layout-strategy-location").innerHTML = '???';
+            }
+
+            const renderersGridElem = document.querySelector('#renderersGrid');
+            if (renderersGridElem) {
+                fetch("/publication/inspect/renderers.json").then(resp => resp.json()).then(renderers => {
+                    const columnDefs = [
+                        { field: "identity" },
+                        {
+                            field: "location",
+                            cellRenderer: "locationCellRenderer",
+                        }
+                    ];
+                    const gridOptions = {
+                        columnDefs: columnDefs,
+                        rowData: renderers,
+                        domLayout: 'autoHeight',
+                        onGridReady: (event) => event.columnApi.autoSizeAllColumns(),
+                        components: {
+                            // see https://www.ag-grid.com/javascript-grid/components/
+                            locationCellRenderer: (params) => "location" in params.data ? path.locationEditorHTML(params.data.location, 5) : params.value,
+                        },
+                    };
+                    new agGrid.Grid(renderersGridElem, gridOptions);
+                })
+            }
+        });
+    </script>
+</body>
+
+</html>

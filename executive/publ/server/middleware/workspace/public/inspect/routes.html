@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../path.css">
+</head>
+
+<body>
+    <div class="navbar">
+        <a href="#" id="edit-origin-src" class="highlight"><i class="fa-solid fa-file-code"></i> Edit</a>
+        <a href="routes.html"><i class="fa-solid fa-route"></i> Routes</a>
+        <a href="layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a>
+        <a href="environment.html"><i class="fa-solid fa-terminal"></i> Environment</a>
+    </div>
+
+    <details>
+        <summary>Resource Route</summary>
+        <details>
+            <summary>Terminal Unit</summary>
+            <div id="route-terminal-unit-properties">Browseable JSON</div>
+        </details>
+
+        <details>
+            <summary>Route</summary>
+            <div id="route-properties">Browseable JSON</div>
+        </details>
+    </details>
+
+    <details>
+        <summary>Navigation Tree</summary>
+        <div id="navigation-tree">
+        </div>
+    </details>
+
+    <details>
+        <summary><code>publication.state.resourcesTree</code></summary>
+        <div id="publication.state.resourcesTree-json"></div>
+    </details>
+
+    <script type="module">
+        import * as path from "../path.mjs";
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const clientLayout = path.inspectClientLayout();
+            path.activatePage(clientLayout, document.getElementById("edit-origin-src"));
+
+            fetch("/publication/inspect/routes.json").then(resp => resp.json()).then(routes => {
+                path.populateObjectJSON(routes, document.getElementById("publication.state.resourcesTree-json"));
+                path.populateObjectJSON(clientLayout.route, document.getElementById("route-properties"));
+                path.populateObjectJSON(clientLayout.route.terminal, document.getElementById("route-terminal-unit-properties"));
+
+                const handleNodes = (treeContainer, items) => {
+                    items.sort((a, b) => (a.label > b.label) ? 1 : -1).forEach(i => {
+                        const isParent = i.children && i.children.length ? true : false;
+                        if (isParent) {
+                            const details = document.createElement("details");
+                            treeContainer.appendChild(details);
+                            const summary = document.createElement("summary");
+                            summary.innerText = i.label;
+                            details.appendChild(summary);
+                            if (i.children && i.children.length > 0) {
+                                handleNodes(details, i.children);
+                            }
+                        } else {
+                            const text = document.createElement("div");
+                            text.innerText = i.label;
+                            text.style.paddingLeft = "35px"
+                            treeContainer.appendChild(text);
+                        }
+                    });
+                };
+                handleNodes(document.querySelector("#navigation-tree"), routes.items);
+            });
+        });
+    </script>
+</body>
+
+</html>
