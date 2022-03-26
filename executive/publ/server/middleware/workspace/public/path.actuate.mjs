@@ -13,12 +13,108 @@ export const inspectableClientLayout = () => window.parent.inspectableClientLayo
 // prepare effects, events and stores that can be used for site management;
 // at a minimum, every page in the site should have this default Javascript:
 //   document.addEventListener('DOMContentLoaded', () => activatePage(inspectableClientLayout()));
+// assume that activatePage will be call after all content is loaded and that
+// the "inspectable clientLayout" is available.
 export const siteDomain = createDomain("project");
 export const activatePage = siteDomain.createEvent();
 
+export const pageFetchJsonFxCache = new Map();
+
+// Whenever a basic JSON fetch is required, use this so others can listen in
+// and react to effects in case they need it. Don't use custom fetches because
+// those cannot be easily observed by others. This is the central JSON-focused
+// "fetch service bus". The only required effect parameter is "fetchURL" but
+// other parameters such as "fetchID" or "fetchCtx" could be used as well.
+// You can pass in diagnose to add some diagnostics or pass in cache: false
+// if a caching is not desired (don't use cache: undefined, use cache: false).
+export const pageFetchJsonFx = siteDomain.createEffect(async (params) => {
+    const { fetchURL, diagnose = false, cache = pageFetchJsonFxCache } = params;
+    if (!fetchURL) throw new Error(`No fetchURL in pageFetchJsonFx(${JSON.stringify(params)})`);
+
+    if (cache && cache.has(fetchURL)) {
+        return cache.get(fetchURL);
+    }
+
+    const json = await (await fetch(params.fetchURL)).json();
+    if (diagnose) {
+        if (typeof json === "object") json.pageFetchJsonFxDiagnostics = {
+            ...params,
+            cache,
+            cacheState: Object.fromEntries(cache) // we want the state of the cache at this moment
+        };
+    }
+    if (cache) cache.set(fetchURL, json);
+    return json;
+});
+
+export const jsEvalFailureHTML = (evaluatedJS, error, location, context) => {
+    console.error(`Unable to evaluate ${evaluatedJS} in ${location}`, error, context);
+    return `Unable to evaluate <code><mark>${evaluatedJS}</mark></code>: <code><mark style="background-color:#FFF2F2">${error}</mark></code> in <code>${location}</code>`;
+}
+
+// find any fetchable JSON placeholders and fill them in
+activatePage.watch((clientLayout) => {
+    for (const elem of document.querySelectorAll(`[data-var]`)) {
+        const varElem = document.getElementById(elem.dataset.var);
+        if (varElem) {
+            elem.innerHTML = varElem.innerHTML;
+        } else {
+            elem.innerHTML = `<code>var</code> tag with ID <code><mark>${elem.dataset.var}</mark></code> not defined`;
+        }
+    }
+
+    for (const elem of document.querySelectorAll(`[data-populate-fetched-json-url]`)) {
+        // usage example:
+        //   <div data-populate-fetched-json-url="/publication/inspect/project.json"></div>
+        //   <div data-populate-fetched-json-url="/publication/inspect/project.json" data-populate-fetched-json-expr="result.something"></div>
+        const fetchURL = elem.dataset.populateFetchedJsonUrl;
+        pageFetchJsonFx.done.watch(({ params, result }) => {
+            if (params.fetchURL === fetchURL) {
+                const evalExpr = elem.dataset.populateFetchedJsonExpr;
+                if (evalExpr) {
+                    // if given an eval'able expression, get the expression value
+                    // in this context and populate that JSON instead of full JSON
+                    try {
+                        populateObjectJSON(eval(evalExpr), elem);
+                    } catch (error) {
+                        elem.innerHTML = jsEvalFailureHTML(evalExpr, error, 'activatePage.watch(data-populate-fetched-json-expr)', { clientLayout });
+                    }
+                } else {
+                    // Not given an eval'able expression, populate full JSON
+                    populateObjectJSON(result, elem);
+                }
+            }
+        });
+        pageFetchJsonFx.fail.watch(({ error, params }) => {
+            if (params.fetchURL === fetchURL) {
+                elem.innerHTML = `Unable to fetch <code>${fetchURL}</code>: <code>${JSON.stringify(error)}</code> in activatePage.watch(${JSON.stringify(params)})`;
+            }
+        });
+        pageFetchJsonFx({ fetchURL });
+    }
+
+    for (const elem of document.querySelectorAll(`[data-populate-activate-page-watch-json]`)) {
+        // usage examples:
+        //   <div data-populate-activate-page-watch-json="clientLayout.route"></div>
+        //   <div data-populate-activate-page-watch-json="clientLayout.route.terminal"></div>
+        const evalExpr = elem.dataset.populateActivatePageWatchJson;
+        try {
+            const result = eval(evalExpr);
+            if (result) {
+                populateObjectJSON(result, elem);
+            } else {
+                elem.innerHTML = `Evaluation of Unable to evaluate <code><mark>${evalExpr}</mark></code> produced undefined result`;
+            }
+        } catch (error) {
+            elem.innerHTML = jsEvalFailureHTML(evalExpr, error, 'activatePage.watch(data-populate-activate-page-watch-json)', { clientLayout });
+        }
+    }
+});
+
 /**
  * Given a Resource Factory route-like instance, derive parts that could be used
- * to prepare an anchor, button or link.
+ * to prepare an anchor, button or link that would lead to the editable resource
+ * in IDEs like VS Code.
  * @param {rfGovn.Route} route RF route-like instance
  * @returns {{ src: string, href: string, narrative: string}} parts that could be used in anchors
  */
