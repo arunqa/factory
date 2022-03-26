@@ -71,6 +71,7 @@ export const htmlDesignSystemOriginDataAttrs:
           e.escapeHtmlCustom(
             JSON.stringify({
               identity: layout.designSystem.identity,
+              location: layout.designSystem.location,
               layout: {
                 symbol,
                 name: r.isIdentifiableLayoutStrategy(ls)
