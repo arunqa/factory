@@ -21,37 +21,44 @@ import * as d from "./deps.auto.js";
 //                  using @master now because of this bug: https://github.com/biati-digital/glightbox/pull/319
 import 'https://cdn.jsdelivr.net/gh/mcstudios/glightbox@master/dist/js/glightbox.min.js';
 
-let lightboxStylesInjected = false;
-
-function injectLightbox() {
-    if (!lightboxStylesInjected) {
-        const link = document.createElement('link');
-        link.href = "https://cdn.jsdelivr.net/gh/mcstudios/glightbox@master/dist/css/glightbox.css";
-        link.rel = "stylesheet";
-        document.head.appendChild(link);
-        lightboxStylesInjected = true;
-    }
-
-    const gLightboxClassName = 'glightbox4';
-    consoleNavContainer.innerHTML = `<button id="consoleButton" class="slds-button slds-button_brand">
-        <a href="/workspace/" class="${gLightboxClassName}" data-glightbox="width: ${window.innerWidth - 100}px; height: ${window.innerHeight - 100}px;">Console</a>
-    </button>`;
-    consoleNavContainer.style.display = "block"; // in case it was hidden to start
-    GLightbox({ selector: '.' + gLightboxClassName });
+// these are window-scoped so that child frames (e.g. Lightbox) can access;
+// the same exact variable names are created by RF frameset explorer.
+function registerInspectionTarget(clientLayout, serverHooks) {
+    window.inspectableClientLayout = clientLayout;
+    window.inspectServerHooks = serverHooks;
 }
 
 function injectRfExplorer(clientLayout, consoleNavContainerElem) {
+    const link = document.createElement('link');
+    link.href = "https://cdn.jsdelivr.net/gh/mcstudios/glightbox@master/dist/css/glightbox.css";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
+
     const isInFrame = window == window.top ? false : true;
     const activePath = clientLayout.navigation.location(clientLayout.route?.terminal);
+    const gLightboxClassName = 'glightbox4';
     const inspectorActivateHTML = `
-    <button style="background-color: ${isInFrame ? '#B87333' : '#581845'}; border: none; color: white; padding: 5px 15px; text-align: center; text-decoration: none; display: inline-block;font-size: 12px; border-radius: 8px;">
+    <button class="slds-button">
         ${isInFrame
-            ? `<a href="${activePath}" style="color:white" target="_top">Close rfExplorer</a>`
-            : `<a href="/workspace${activePath == '/' ? '/' : `/index.html${activePath}`}?orientation=east&size=25" style="color:white">🔭 rfExplorer</a>`}
+            ? `<a href="${activePath}" target="_top">Close rfExplorer</a>`
+            : `<a href="/workspace${activePath == '/' ? '/' : `/index.html${activePath}`}?orientation=east&size=25">
+                    <svg class="slds-button__icon" aria-hidden="true">
+                        <use xlink:href="/lightning/image/slds-icons/utility-sprite/svg/symbols.svg#toggle_panel_right"></use>
+                    </svg> rfExplorer
+                </a>`}
+    </button>
+    <button class="slds-button">
+        <a href="/workspace/db/" class="${gLightboxClassName}" data-glightbox="width: ${window.innerWidth - 100}px; height: ${window.innerHeight - 100}px;">
+            <svg class="slds-button__icon" aria-hidden="true">
+                <use xlink:href="/lightning/image/slds-icons/utility-sprite/svg/symbols.svg#new_window"></use>
+            </svg>
+        </a>
     </button>`
 
     consoleNavContainerElem.innerHTML = inspectorActivateHTML;
     consoleNavContainerElem.style.display = "block"; // in case it was hidden
+
+    GLightbox({ selector: '.' + gLightboxClassName });
 }
 
 function initExperimentalServerHooks(rfUniversalLayoutInitEvent) {
@@ -105,7 +112,10 @@ function initExperimentalServerHooks(rfUniversalLayoutInitEvent) {
                 }
             }
 
-            // in case we have a parent that cares about our layout
+            // prepare globals if lightbox is used
+            registerInspectionTarget(clientLayout, serverHooks);
+
+            // in case we have a parent that cares about our layout (rfExplorer frameset needs this)
             if (window.parent && window.parent.registerInspectionTarget) {
                 window.parent.registerInspectionTarget(clientLayout, serverHooks, window);
             }

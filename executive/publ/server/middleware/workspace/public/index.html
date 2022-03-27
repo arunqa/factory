@@ -9,6 +9,9 @@
         }
     </style>
     <script>
+        // in case children or siblings need to check if we're the framed RF explorer
+        function isFramedExplorer() { return true; }
+
         function getUrlQueryParameterByName(name, url = window.location.href) {
             name = name.replace(/[\[\]]/g, "\\$&");
             const regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
@@ -33,6 +36,8 @@
             inspectorActivateIndex++;
         }
 
+        // these are window-scoped so that sibling frames can access
+        // the same exact variable names are created by non-frameset Explorer in executive/publ/server/middleware/workspace/ua-operational-ctx.js
         var inspectableClientLayout = undefined;
         var inspectServerHooks = undefined;
 
@@ -44,6 +49,7 @@
             inspectServerHooks = serverHooks;
             if (childWindow.name == "prime") {
                 // when this window is loaded, it will use inspectableClientLayout to fill itself
+                // (inspectPrime() is called after the frameset is generated in createFrame())
                 if (inspectorActivateIndex <= 1) {
                     inspector.location = `/workspace/inspect/routes.html`;
                 } else {

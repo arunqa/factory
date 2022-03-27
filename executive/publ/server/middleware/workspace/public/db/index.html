@@ -31,7 +31,7 @@
         // automatically inject navbars and other site-wide elements
         path.activateSite();
 
-        const dbQueryFx = path.publicationDomain.createEffect(async () =>
+        const dbQueryFx = path.siteDomain.createEffect(async () =>
             (await await fetch('/SQL/unsafe', {
                 method: "POST",
                 headers: {

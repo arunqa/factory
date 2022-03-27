@@ -9,6 +9,8 @@ export * from "./deps.auto.js"; // make symbols available to pages
 // public/operational-context/server.auto.mjs sets window.parent.inspectableClientLayout
 // using executive/publ/server/middleware/workspace/public/inspect/index.html registerInspectionTarget
 export const inspectableClientLayout = () => window.parent.inspectableClientLayout;
+export const isClientLayoutInspectable = () => window.parent.inspectableClientLayout ? true : false;
+export const isFramedExplorer = () => window.parent.isFramedExplorer && window.parent.isFramedExplorer() ? true : false;
 
 // prepare effects, events and stores that can be used for site management;
 // at a minimum, every page in the site should have this default Javascript:
@@ -150,16 +152,18 @@ export const activateFooter = () => {
     const footer = document.createElement("footer");
     footer.className = "page";
 
-    const selected = (which) => window.parent.location.search.indexOf(`orientation=${which}`) > 0 ? " selected" : "";
-    const orientationSelect = document.createElement("select");
-    orientationSelect.className = "orientation";
-    orientationSelect.innerHTML = `<option>🧭 Orientation</option>
-        <option value="?orientation=east&size=25"${selected('east')}>East</option>
-        <option value="?orientation=south&size=35"${selected('south')}>South</option>
-        <option value="?orientation=west&size=25"${selected('west')}>West</option>
-        <option value="?orientation=north&size=35"${selected('north')}>North</option>`;
-    orientationSelect.onchange = (event) => window.parent.location.search = event.target.value;
-    footer.appendChild(orientationSelect);
+    if (isFramedExplorer()) {
+        const selected = (which) => window.parent.location.search.indexOf(`orientation=${which}`) > 0 ? " selected" : "";
+        const orientationSelect = document.createElement("select");
+        orientationSelect.className = "orientation";
+        orientationSelect.innerHTML = `<option>🧭 Orientation</option>
+            <option value="?orientation=east&size=25"${selected('east')}>East</option>
+            <option value="?orientation=south&size=35"${selected('south')}>South</option>
+            <option value="?orientation=west&size=25"${selected('west')}>West</option>
+            <option value="?orientation=north&size=35"${selected('north')}>North</option>`;
+        orientationSelect.onchange = (event) => window.parent.location.search = event.target.value;
+        footer.appendChild(orientationSelect);
+    }
 
     const restartAnchor = document.createElement("a");
     restartAnchor.className = "info action-restart-publ-server";
@@ -190,13 +194,17 @@ export const activateSite = () => {
         <a href="${baseURL}/assurance/"><i class="fa-solid fa-microscope"></i> Unit Tests</a>`;
     document.body.insertBefore(navPrime, document.body.firstChild);
 
-    const eclTarget = editableClientLayoutTarget(
-        inspectableClientLayout(), (route) => ({
-            href: "#", narrative: `route not editable: ${JSON.stringify(route)}`
-        }));
     const editAnchor = navPrime.querySelector("a"); // the first anchor is the Edit button
-    editAnchor.href = eclTarget.href;
-    editAnchor.title = eclTarget.narrative;
+    if (isClientLayoutInspectable()) {
+        const eclTarget = editableClientLayoutTarget(
+            inspectableClientLayout(), (route) => ({
+                href: "#", narrative: `route not editable: ${JSON.stringify(route)}`
+            }));
+        editAnchor.href = eclTarget.href;
+        editAnchor.title = eclTarget.narrative;
+    } else {
+        editAnchor.style.display = "none";
+    }
 
     for (const a of navPrime.children) {
         if (a.href == window.location) {
@@ -218,16 +226,3 @@ export const populateObjectJSON = (inspect, targetElem, open, options) => {
     }
 }
 
-export const publicationDomain = createDomain("publication");
-
-// Usually effects, events, and stores should be kept in pages; here we define
-// Effector instances that could be reused across pages.
-
-export const projectInitFx = publicationDomain.createEffect(async () =>
-    (await fetch("/publication/inspect/project.json")).json()
-);
-
-export const $project = publicationDomain.createStore(null).on(
-    projectInitFx.doneData,
-    (_, project) => project,
-);

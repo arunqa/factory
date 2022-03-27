@@ -40,7 +40,7 @@
         // automatically inject navbars and other site-wide elements
         path.activateSite();
 
-        const dsLayoutsInitFx = path.publicationDomain.createEffect(async () =>
+        const dsLayoutsInitFx = path.siteDomain.createEffect(async () =>
             (await fetch("/publication/inspect/renderers.json")).json()
         );
 
