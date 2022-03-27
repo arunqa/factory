@@ -16,14 +16,38 @@
 // d namespace contains Typescript-bundled dependencies
 import * as d from "./deps.auto.js";
 
-function injectInspectionPanel(clientLayout, consoleNavContainerElem) {
+// https://github.com/biati-digital/glightbox is used for embedded Console
+// TODO[essential]: don't use @master, use @3.2.x specific
+//                  using @master now because of this bug: https://github.com/biati-digital/glightbox/pull/319
+import 'https://cdn.jsdelivr.net/gh/mcstudios/glightbox@master/dist/js/glightbox.min.js';
+
+let lightboxStylesInjected = false;
+
+function injectLightbox() {
+    if (!lightboxStylesInjected) {
+        const link = document.createElement('link');
+        link.href = "https://cdn.jsdelivr.net/gh/mcstudios/glightbox@master/dist/css/glightbox.css";
+        link.rel = "stylesheet";
+        document.head.appendChild(link);
+        lightboxStylesInjected = true;
+    }
+
+    const gLightboxClassName = 'glightbox4';
+    consoleNavContainer.innerHTML = `<button id="consoleButton" class="slds-button slds-button_brand">
+        <a href="/workspace/" class="${gLightboxClassName}" data-glightbox="width: ${window.innerWidth - 100}px; height: ${window.innerHeight - 100}px;">Console</a>
+    </button>`;
+    consoleNavContainer.style.display = "block"; // in case it was hidden to start
+    GLightbox({ selector: '.' + gLightboxClassName });
+}
+
+function injectRfExplorer(clientLayout, consoleNavContainerElem) {
     const isInFrame = window == window.top ? false : true;
     const activePath = clientLayout.navigation.location(clientLayout.route?.terminal);
     const inspectorActivateHTML = `
     <button style="background-color: ${isInFrame ? '#B87333' : '#581845'}; border: none; color: white; padding: 5px 15px; text-align: center; text-decoration: none; display: inline-block;font-size: 12px; border-radius: 8px;">
         ${isInFrame
-            ? `<a href="${activePath}" style="color:white" target="_top">Close Inspector</a>`
-            : `<a href="/workspace/inspect${activePath == '/' ? '/' : `/index.html${activePath}`}?orientation=east&size=25" style="color:white">Inspect</a>`}
+            ? `<a href="${activePath}" style="color:white" target="_top">Close rfExplorer</a>`
+            : `<a href="/workspace${activePath == '/' ? '/' : `/index.html${activePath}`}?orientation=east&size=25" style="color:white">🔭 rfExplorer</a>`}
     </button>`
 
     consoleNavContainerElem.innerHTML = inspectorActivateHTML;
@@ -63,7 +87,7 @@ function initExperimentalServerHooks(rfUniversalLayoutInitEvent) {
 
             const consoleNavContainer = document.getElementById("rf-console-nav-container");
             if (consoleNavContainer) {
-                injectInspectionPanel(clientLayout, consoleNavContainer);
+                injectRfExplorer(clientLayout, consoleNavContainer);
             }
 
             const footerContentElem = document.getElementById("rf-universal-footer-experimental-server-workspace");

@@ -27,19 +27,8 @@ export class PublicationMiddlewareSupplier {
     router.get(`${this.htmlEndpointURL}/inspect/project.json`, (ctx) => {
       const projectRootPath = publication.config.operationalCtx.projectRootPath;
       const resp = {
-        "Project Home": {
-          nature: "path-project",
-          path: projectRootPath("/", true),
-        },
-        "Environment": {
-          nature: "file-project",
-          file: projectRootPath("/.envrc", true),
-          isEditable: true,
-        },
-        "Design System": {
-          nature: "design-system",
-          designSystem: this.publication.ds.designSystem,
-        },
+        projectHome: projectRootPath("/", true),
+        envrc: projectRootPath("/.envrc", true),
       };
       ctx.response.body = JSON.stringify(resp);
     });
@@ -48,6 +37,10 @@ export class PublicationMiddlewareSupplier {
       `${this.htmlEndpointURL}/inspect/project`,
       modulePath("./user-agent/inspect-project.ts"),
     );
+
+    router.get(`${this.htmlEndpointURL}/inspect/design-system.json`, (ctx) => {
+      ctx.response.body = JSON.stringify(publication.ds.designSystem);
+    });
 
     router.get(`${this.htmlEndpointURL}/inspect/renderers.json`, (ctx) => {
       const renderers = [];

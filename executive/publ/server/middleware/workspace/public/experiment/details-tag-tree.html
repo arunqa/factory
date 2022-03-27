@@ -1,0 +1,161 @@
+<html>
+
+<head>
+    <style>
+        @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css");
+
+        /*
+            Only custom marker for summary/details
+            For cross browser compatible styling hide Firefox's marker by setting summary { display: block }
+            and Chrome and Safari's marker by setting ::-webkit-details-marker {display: none;}
+        */
+
+        summary {
+            display: block;
+            cursor: pointer;
+            outline: 0;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 1rem;
+        }
+
+        .tree-node {
+            display: block;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .tree-node.is-expandable::before {
+            border-left: 1px solid #EFEFEF;
+            content: "";
+            height: 100%;
+            left: 0.8rem;
+            position: absolute;
+            top: 2.4rem;
+            height: calc(100% - 2.4rem);
+        }
+
+        .tree-node .tree-node {
+            margin-left: 2.4rem;
+        }
+
+        .tree-node.is-expandable[open]>.tree-node-title::before {
+            font: var(--fa-font-solid);
+            transform: rotate(90deg);
+        }
+
+        .tree-node.is-expandable>.tree-node-title {
+            padding-left: 2.4rem;
+        }
+
+        .tree-node.is-expandable>.tree-node-title::before {
+            position: absolute;
+            will-change: transform;
+            transition: transform 300ms ease;
+            font: var(--fa-font-solid);
+            content: "\f054";
+            left: 0;
+            display: inline-block;
+            width: 1.6rem;
+            text-align: center;
+        }
+
+        .tree-node-title {
+            cursor: pointer;
+            display: block;
+            outline: 0;
+            font-size: 1.0rem;
+            line-height: 3.2rem;
+        }
+
+        .tree-node-title .icon {
+            display: inline;
+            padding-left: 1.6rem;
+            margin-right: 0.8rem;
+            color: #666;
+            font-size: 0.9rem;
+            position: relative;
+        }
+
+        .tree-node-title .icon::before {
+            top: 0;
+            position: absolute;
+            left: 0;
+            display: inline-block;
+            width: 1.6rem;
+            text-align: center;
+        }
+
+        .tree-node-title::-webkit-details-marker {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="tree-nav">
+        <a class="tree-node-title">
+            <i class="icon ion-scissors"></i>
+            THE INHERITANCE
+        </a>
+        <a class="tree-node-title">
+            <i class="icon ion-android-star"></i>
+            The Willful Princess and the Piebald Prince
+        </a>
+
+        <details class="tree-node is-expandable">
+            <summary class="tree-node-title">The Realm of the Elderlings</summary>
+            <details class="tree-node is-expandable">
+
+                <summary class="tree-node-title">The Six Duchies</summary>
+                <details class="tree-node is-expandable">
+                    <summary class="tree-node-title">The Farseer Trilogy</summary>
+                    <div class="tree-node">
+                        <a class="tree-node-title"><i class="fa-solid fa-group-arrows-rotate"></i> Assassin’s
+                            Apprentice</a>
+                        <a class="tree-node-title"><i class="fa-solid fa-group-arrows-rotate"></i> Royal Assasin</a>
+                        <a class="tree-node-title"><i class="fa-solid fa-group-arrows-rotate"></i> Assassin's
+                            Quest</a>
+                    </div>
+                </details>
+
+                <details class="tree-node is-expandable">
+                    <summary class="tree-node-title">The Tawny Man Trilogy</summary>
+                    <div class="tree-node">
+                        <a class="tree-node-title"><i class="fa-solid fa-group-arrows-rotate"></i> FOOL'S ERRAND</a>
+                        <a class="tree-node-title"><i class="fa-solid fa-group-arrows-rotate"></i> GOLDEN FOOL</a>
+                        <a class="tree-node-title"><i class="fa-solid fa-arrows-down-to-people"></i> FOOL'S FATE</a>
+                    </div>
+                </details>
+
+                <details class="tree-node is-expandable">
+                    <summary class="tree-node-title">The Fitz and the Fool Trilogy</i></summary>
+                    <div class="tree-node">
+                        <a class="tree-node-title"><i class="fa-solid fa-arrows-down-to-people"></i> FOOL'S
+                            ASSASSIN</a>
+                        <a class="tree-node-title"><i class="fa-solid fa-arrows-down-to-people"></i> FOOL'S QUEST</a>
+                        <a class="tree-node-title"><i class="fa-solid fa-arrows-down-to-people"></i> Assassin's Fate</a>
+                    </div>
+                </details>
+            </details>
+        </details>
+
+        <details class="tree-node is-expandable">
+            <summary class="tree-node-title">The Soldier Son trilogy</i></summary>
+            <div class="tree-</i>node">
+                <a class="tree-node-title"><i class="fa-solid fa-arrows-down-to-people"></i> SHAMAN'S CROSSING</a>
+                <a class="tree-node-title"><i class="fa-solid fa-arrows-down-to-people"></i> FOREST MAGE</a>
+            </div>
+        </details>
+
+    </nav>
+
+</body>
+
+</html>

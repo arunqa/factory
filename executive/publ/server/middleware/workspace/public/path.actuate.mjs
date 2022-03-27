@@ -146,6 +146,30 @@ export const editableClientLayoutTarget = (clientLayout = inspectableClientLayou
     return editableRouteAnchor(clientLayout.route, onNotEditable);
 }
 
+export const activateFooter = () => {
+    const footer = document.createElement("footer");
+    footer.className = "page";
+
+    const selected = (which) => window.parent.location.search.indexOf(`orientation=${which}`) > 0 ? " selected" : "";
+    const orientationSelect = document.createElement("select");
+    orientationSelect.className = "orientation";
+    orientationSelect.innerHTML = `<option>🧭 Orientation</option>
+        <option value="?orientation=east&size=25"${selected('east')}>East</option>
+        <option value="?orientation=south&size=35"${selected('south')}>South</option>
+        <option value="?orientation=west&size=25"${selected('west')}>West</option>
+        <option value="?orientation=north&size=35"${selected('north')}>North</option>`;
+    orientationSelect.onchange = (event) => window.parent.location.search = event.target.value;
+    footer.appendChild(orientationSelect);
+
+    const restartAnchor = document.createElement("a");
+    restartAnchor.className = "info action-restart-publ-server";
+    restartAnchor.onclick = () => fetch('/server/restart');
+    restartAnchor.innerHTML = "Restart pubctl.ts";
+    footer.appendChild(restartAnchor);
+
+    document.body.appendChild(footer);
+}
+
 /**
  * Activate all site-wide functionality such as navigation. We use as much
  * modern HTML5, "vanilla" HTML, and as little JS as possible. When JS is needed
@@ -154,34 +178,34 @@ export const editableClientLayoutTarget = (clientLayout = inspectableClientLayou
  */
 export const activateSite = () => {
     // TODO: consider using https://www.w3schools.com/howto/howto_html_include.asp
-    const navBar = document.createElement("div");
-    navBar.className = "navbar";
-    navBar.innerHTML = `
+    const baseURL = "/workspace";
+    const navPrime = document.createElement("nav");
+    navPrime.className = "prime";
+    navPrime.innerHTML = `
         <a href="#" class="highlight"><i class="fa-solid fa-file-code"></i> Edit</a>
-        <a href="routes.html"><i class="fa-solid fa-route"></i> Routes</a>
-        <a href="layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a>
-        <a href="operational-ctx.html"><i class="fa-solid fa-terminal"></i> Operational Context</a>`;
-    document.body.insertBefore(navBar, document.body.firstChild);
+        <a href="${baseURL}/inspect/routes.html"><i class="fa-solid fa-route"></i> Routes</a>
+        <a href="${baseURL}/inspect/layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a>
+        <a href="${baseURL}/db/index.html"><i class="fa-solid fa-database"></i> psDB</a>
+        <a href="${baseURL}/inspect/operational-ctx.html"><i class="fa-solid fa-terminal"></i> OpCtx</a>
+        <a href="${baseURL}/assurance/"><i class="fa-solid fa-microscope"></i> Unit Tests</a>`;
+    document.body.insertBefore(navPrime, document.body.firstChild);
 
     const eclTarget = editableClientLayoutTarget(
         inspectableClientLayout(), (route) => ({
             href: "#", narrative: `route not editable: ${JSON.stringify(route)}`
         }));
-    const editAnchor = navBar.querySelector("a"); // the first anchor is the Edit button
+    const editAnchor = navPrime.querySelector("a"); // the first anchor is the Edit button
     editAnchor.href = eclTarget.href;
     editAnchor.title = eclTarget.narrative;
 
-    for (const a of navBar.children) {
+    for (const a of navPrime.children) {
         if (a.href == window.location) {
             a.className += " active";
         }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        const footer = document.createElement("footer");
-        footer.className = "hints";
-        footer.innerHTML = `You can move the inspector by using ?<code>orientation</code>=<code>north|south|east|west</code>&amp;<code>size=25</code> where 25 is the percentage of the screen.`;
-        document.body.appendChild(footer);
+        activateFooter();
     });
 }
 

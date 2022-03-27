@@ -9,32 +9,35 @@
 </head>
 
 <body>
-    <details>
+    <details class="explore">
         <summary>Publication</summary>
         <div data-populate-fetched-json-url="/publication/inspect/project.json"></div>
     </details>
 
-    <details>
+    <details class="explore">
+        <summary>Client Layout</summary>
+        <div data-populate-activate-page-watch-json="clientLayout"></div>
+    </details>
+
+    <details class="explore" open>
         <summary>Resource Route</summary>
 
-        <details>
+        <details class="explore" open>
             <summary>Terminal Unit</summary>
-            <div data-populate-activate-page-watch-json="clientLayout.route"></div>
-        </details>
-
-        <details>
-            <summary>Route</summary>
             <div data-populate-activate-page-watch-json="clientLayout.route.terminal"></div>
         </details>
+
+        <details class="explore">
+            <summary>Route</summary>
+            <div data-populate-activate-page-watch-json="clientLayout.route"></div>
+        </details>
     </details>
 
-    <details>
+    <details id="navigation-tree" class="explore" open>
         <summary>Navigation Tree</summary>
-        <div id="navigation-tree">
-        </div>
     </details>
 
-    <details>
+    <details class="explore">
         <summary><code>publication.state.resourcesTree</code></summary>
         <div data-populate-fetched-json-url="/publication/inspect/routes.json"></div>
     </details>
@@ -57,6 +60,7 @@
                         const isParent = i.children && i.children.length ? true : false;
                         if (isParent) {
                             const details = document.createElement("details");
+                            details.classList.add("inspect", "parent", "nav-target");
                             treeContainer.appendChild(details);
                             const summary = document.createElement("summary");
                             summary.innerText = i.label;
@@ -66,8 +70,8 @@
                             }
                         } else {
                             const text = document.createElement("div");
+                            text.classList.add("inspect", "leaf", "nav-target");
                             text.innerText = i.label;
-                            text.style.paddingLeft = "35px"
                             treeContainer.appendChild(text);
                         }
                     });

@@ -10,12 +10,7 @@
 </head>
 
 <body>
-    <details>
-        <summary>Publication</summary>
-        <div data-populate-fetched-json-url="/publication/inspect/project.json"></div>
-    </details>
-
-    <details>
+    <details class="explore" open>
         <summary>Resource Layout ("renderer")</summary>
         <ul>
             <li>This page is rendered using
@@ -29,7 +24,12 @@
         </ul>
     </details>
 
-    <details>
+    <details class="explore" open>
+        <summary>Design System</summary>
+        <div data-populate-fetched-json-url="/publication/inspect/design-system.json"></div>
+    </details>
+
+    <details class="explore" open>
         <summary>Design System Layouts ("renderers")</summary>
         <div id="renderersGrid" class="ag-theme-alpine"></div>
     </details>

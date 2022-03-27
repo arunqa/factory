@@ -1,0 +1,68 @@
+<html>
+
+<head>
+    <script src="https://unpkg.com/uhtml"></script>
+    <script type="module">
+        // https://github.com/WebReflection/uhtml
+        // https://vogloblinsky.github.io/web-components-benchmark/
+        // https://webcomponents.dev/blog/all-the-ways-to-make-a-web-component/
+        const { render, html, svg } = uhtml;
+
+        // render(document.body, html`<h1>Hello 👋 µhtml</h1>`);
+
+        document.body.appendChild(
+            // as unkeyed one-off content, right away 🎉
+            html.node`<strong>any</strong> one-off content!<div/>`
+        );
+
+        // as automatically rendered wired content 🤯
+        todo(document.body.lastChild);
+        function todo(node, items = []) {
+            render(node, html`<ul>${items.map((what, i) => html`<li data-i=${i} onclick=${remove}> ${what} </li>`)}</ul><button onclick=${add}> add </button>`);
+            function add() {
+                items.push(prompt('do'));
+                todo(node, items);
+            }
+            function remove(e) {
+                items.splice(e.currentTarget.dataset.i, 1);
+                todo(node, items);
+            }
+        }
+
+        // all it takes to have components with lighterhtml
+        const Comp = name => html`<p>Hello ${name}!</p>`;
+
+        // for demo purpose, check in console keyed updates
+        // meaning you won't see a single change per second
+        // setInterval(
+        //     greetings,
+        //     1000,
+        //     [
+        //         'Arianna',
+        //         'Luca',
+        //         'Isa'
+        //     ]
+        // );
+
+        // function greetings(users) {
+        //     render(document.body.lastChild, html`${users.map(Comp)}`);
+        // }
+
+
+        // a one off, safe, runtime list 👍
+        const list = ['some', '<b>nasty</b>', 'list'];
+        document.body.appendChild(html.node`
+  <ul>${list.map(text => html.node`
+    <li>${text}</li>
+  `)}
+  </ul>
+`);
+
+    </script>
+</head>
+
+<body>
+    Hey there.
+</body>
+
+</html>

@@ -104,10 +104,6 @@ export interface WorkspaceMiddlewareSupplierOptions {
   readonly staticIndex: "index.html" | string;
 }
 
-interface InspectResourceSupplier {
-  readonly route: rfGovn.Route;
-}
-
 export class WorkspaceMiddlewareSupplier {
   readonly tunnel: WorkspaceTunnel;
   readonly htmlEndpointURL: string;
@@ -238,6 +234,29 @@ export class WorkspaceMiddlewareSupplier {
           ctx.response.body = `${req} (${mapped}) not editable.`;
         }
       });
+    });
+
+    // setup the following routes:
+    // * /workspace/proxy/factory/**/* to serve RF source code
+    [{
+      endpoint: `${this.htmlEndpointURL}/proxy/factory`,
+      home: () =>
+        path.resolve(
+          path.fromFileUrl(import.meta.url),
+          "../../../../../..",
+        ),
+    }].forEach((proxy) => {
+      router.get(
+        `${proxy.endpoint}/(.*)`,
+        s.staticContentMiddleware(
+          {
+            staticAssetsHome: proxy.home(),
+          },
+          this.staticEE,
+          this.wsEndpointsStaticIndex,
+          (requestUrlPath) => requestUrlPath.substring(proxy.endpoint.length),
+        ),
+      );
     });
 
     const pathInfoRegEx = /(.+?\.html)(\/.*)/;

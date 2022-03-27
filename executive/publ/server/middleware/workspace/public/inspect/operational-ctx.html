@@ -7,15 +7,25 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="../path.actuate.css">
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+    <script type="text/javascript"
+        src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+    <script type="text/javascript"
+        src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.min.js"></script>
+    <link rel="stylesheet" type="text/css"
+        href="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.css">
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pivottable/2.23.0/pivot.min.js"></script>
+
     <script>
         const healthJsonLabel = "health.json";
         const healthJsonURL = "/operational-context/observability/health.json";
+        const fsAnalyticsCsvURL = "/operational-context/observability/analytics-paths-extensions.csv";
         const healthJsonAnchor = `<a href="${healthJsonURL}">${healthJsonLabel}</a>`;
     </script>
 </head>
 
 <body>
-    <details>
+    <details class="explore">
         <summary>Environment Variables</summary>
 
         <p>These are all the environment variables known to the publication server (<code>pubctl.ts</code>)
@@ -28,7 +38,7 @@
         <div data-populate-fetched-json-url="/workspace/inspect/env-vars.json"></div>
     </details>
 
-    <details>
+    <details class="explore">
         <summary>Health</summary>
 
         <p>
@@ -36,21 +46,36 @@
             <script>document.write(healthJsonAnchor)</script>.
         </p>
 
-        <details open>
+        <details class="explore" open>
             <summary>Errors</summary>
             <div id="unhealthy-json-errors"></div>
         </details>
 
-        <details open>
+        <details class="explore" open>
             <summary>Warnings</summary>
             <div id="unhealthy-json-warnings"></div>
         </details>
 
-        <details>
+        <details class="explore">
             <summary>health.json</summary>
             <div id="health-json-all"></div>
         </details>
+    </details>
 
+    <details class="explore">
+        <summary>Asset Analytics</summary>
+
+        <ul>
+            <li><a href="/operational-context/observability/metrics.json">View <code>metrics.json</code></a></li>
+            <li><a href="/operational-context/observability/health.json">View <code>health.json</code></a></li>
+            <li><a href="/operational-context/observability/metrics.txt">View Exported OpenMetrics (in Prometheus
+                    Exposition Format)</a></li>
+        </ul>
+
+        <details>
+            <summary>File counts and total bytes by type</summary>
+            <div id="fsAnalyticsPivotUI" style="margin: 30px;"></div>
+        </details>
     </details>
 
     <script type="module">
@@ -87,6 +112,19 @@
                 path.populateObjectJSON(health, document.querySelector('#health-json-all'), 2);
             });
             path.pageFetchJsonFx({ fetchURL: healthJsonURL });
+
+            Papa.parse(fsAnalyticsCsvURL, {
+                download: true,
+                skipEmptyLines: true,
+                complete: function (parsed) {
+                    // "Date","Time","Files Path","File Extension in Path","Count of Files with Extension in Path","Total Bytes in all Files with Extension in Path","Build ID","Host"
+                    $("#fsAnalyticsPivotUI").pivotUI(parsed.data, {
+                        rows: ["Scope", "Files Path", "File Extension in Path", "Count of Files with Extension in Path", "Total Bytes in all Files with Extension in Path"],
+                        cols: ["Date"],
+                        rendererOptions: { table: { rowTotals: false, colTotals: false, } },
+                    });
+                }
+            });
 
             // all listeners are ready so let's activate the page and trigger the watchers
             path.activatePage(path.inspectableClientLayout());

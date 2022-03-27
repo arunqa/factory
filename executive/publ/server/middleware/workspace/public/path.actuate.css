@@ -1,23 +1,39 @@
 @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css");
-@import url("https://fonts.googleapis.com/css?family=Open+Sans:400,400i,700");
 
 body {
-    font-family: 'Open Sans', sans-serif;
-    font-size: 14px;
-    /* because navbar sticks to the top of the page, give it a margin */
-    margin-top: 75px;
+    /* be as close to the OS-specific "UI" font as possible */
+    font-family: -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell",
+        "Fira Sans", "Droid Sans", "Helvetica Neue",
+        sans-serif;
+    /* because primary navigation sticks to the top of the page, give it a margin */
+    margin-top: 50px;
 }
 
-details {
-    margin: 1rem;
+details>details {
+    padding-left: 20px;
 }
 
-summary {
-    font-weight: bold;
+details.explore {
+    margin-left: 1rem;
+    margin-top: 1rem;
 }
 
-/* Style the navigation bar */
-.navbar {
+details summary {
+    cursor: pointer;
+}
+
+details div.leaf.nav-target::before {
+    padding-left: 15px;
+    content: "📄";
+}
+
+details div.leaf.nav-target {
+    cursor: pointer;
+}
+
+/* Style the primary navigation bar */
+nav.prime {
     width: 100%;
     background-color: #555;
     overflow: auto;
@@ -30,27 +46,27 @@ summary {
 }
 
 /* Navbar links */
-.navbar a {
+nav.prime a {
     float: left;
     text-align: center;
     padding: 12px;
     color: white;
     text-decoration: none;
-    font-size: 12px;
+    font-size: 9pt;
 }
 
 /* Navbar links on mouse-over */
-.navbar a:hover {
+nav.prime a:hover {
     background-color: #000;
 }
 
-/* Current/active navbar link */
-.navbar .active {
+/* Current/active primary navigation link */
+nav.prime .active {
     background-color: #04AA6D;
 }
 
-/* "Special" navbar link (for highlighting in a menu) */
-.navbar .highlight {
+/* "Special" primary navigation link (for highlighting in a menu) */
+nav.prime .highlight {
     background-color: indigo;
     color: lightyellow;
     font-weight: bold;
@@ -119,9 +135,24 @@ summary {
     background: #ddd;
 }
 
-footer.hints {
-    color: silver;
-    font-size: 10px;
+footer.page {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-color: #EFEFEF;
+    text-align: center;
+}
+
+footer.page a.action-restart-publ-server {
+    margin-left: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+    background-color: #581845;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 9pt;
 }
 
 /* Use a thin (10px wide) scrollbar, which has a grey track/bar color and a dark-grey (#888) handle */

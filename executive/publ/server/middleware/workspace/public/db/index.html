@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../path.actuate.css">
+    <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.js"></script>
+</head>
+
+<body>
+    <details class="explore">
+        <summary>Content Databases</summary>
+        <div data-populate-fetched-json-url="/publication/inspect/databases/content.json"></div>
+    </details>
+
+    <details class="explore">
+        <summary>Publication Server Databases</summary>
+        <div data-populate-fetched-json-url="/publication/inspect/databases/server.json"></div>
+    </details>
+
+    <details class="explore">
+        <summary>Access Log</summary>
+        <div id="dbQueryResultGrid" class="ag-theme-balham"></div>
+    </details>
+
+    <script type="module">
+        import * as path from "../path.actuate.mjs";
+
+        // automatically inject navbars and other site-wide elements
+        path.activateSite();
+
+        const dbQueryFx = path.publicationDomain.createEffect(async () =>
+            (await await fetch('/SQL/unsafe', {
+                method: "POST",
+                headers: {
+                    'Content-type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    // these columns should be an identical match to the expectations in accessLogAgGridConfig.columnDefs
+                    SQL: `  SELECT created_at, asset_nature, status, location_href, filesys_target_path, filesys_target_symlink
+                              FROM publ_server_static_access_log
+                          ORDER BY created_at DESC
+                             LIMIT 100`,
+                    // rowNature can be "rows" for array of arrays, or "records" for array of objects with keys as column names
+                    rowNature: "records"
+                })
+            })).json()
+        );
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // setup events, stores, and effects listeners so that we can be
+            // as decoupled from business logic as possible
+
+            dbQueryFx.done.watch(({ result }) => {
+                const columnDefs = [
+                    { field: "created_at", headerName: 'Date', sortable: true },
+                    { field: "asset_nature", headerName: 'Nature', sortable: true },
+                    { field: "status", headerName: 'Status', sortable: true },
+                    { field: "location_href", headerName: 'Location', sortable: true },
+                    { field: "filesys_target_path", headerName: 'Target', sortable: true },
+                    { field: "filesys_target_symlink", headerName: 'Symlink', sortable: true },
+                ];
+                const gridOptions = {
+                    defaultColDef: { resizable: true },
+                    columnDefs: columnDefs,
+                    rowData: result.records,
+                    domLayout: 'autoHeight',
+                    onGridReady: (event) => event.columnApi.autoSizeAllColumns(),
+                    components: {
+                        // see https://www.ag-grid.com/javascript-grid/components/
+                        locationCellRenderer: (params) => "location" in params.data ? path.locationEditorHTML(params.data.location, 5) : params.value,
+                    },
+                };
+                new agGrid.Grid(document.querySelector('#dbQueryResultGrid'), gridOptions);
+                console.log("dbQueryFx", gridOptions, result);
+            });
+            dbQueryFx();
+
+            // all listeners are ready so let's activate the page and trigger the watchers
+            path.activatePage(path.inspectableClientLayout());
+        });
+    </script>
+</body>
+
+</html>

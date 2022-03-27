@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../path.actuate.css">
+</head>
+
+<body>
+    <details>
+        <summary><code>${RF_HOME}/lib/conf/mod_test.html</code></summary>
+        <iframe src="/workspace/proxy/factory/lib/conf/mod_test.html" width="100%" height="400px"></iframe>
+    </details>
+
+    <details>
+        <summary><code>${RF_HOME}/lib/presentation/net/mod_test.html</code></summary>
+        <iframe src="/workspace/proxy/factory/lib/presentation/net/mod_test.html" width="100%" height="250px"></iframe>
+    </details>
+
+    <details>
+        <summary><code>${RF_HOME}/lib/presentation/dom/markdown-it_test.html</code></summary>
+        <iframe src="/workspace/proxy/factory/lib/presentation/dom/markdown-it_test.html" width="100%"
+            height="650px"></iframe>
+    </details>
+
+    <details>
+        <summary><code>${RF_HOME}/lib/service-bus/assurance/service-bus_test.html</code></summary>
+        <iframe src="/workspace/proxy/factory/lib/service-bus/assurance/service-bus_test.html" width="100%"
+            height="650px"></iframe>
+    </details>
+
+    <script type="module">
+        import * as path from "../path.actuate.mjs";
+
+        // automatically inject navbars and other site-wide elements
+        path.activateSite();
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // all listeners are ready so let's activate the page and trigger the watchers
+            path.activatePage(path.inspectableClientLayout());
+        });
+    </script>
+</body>
+
+</html>
