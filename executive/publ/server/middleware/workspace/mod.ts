@@ -1,6 +1,5 @@
 import { colors, events, path } from "../../../../../core/deps.ts";
 import { oak } from "../../deps.ts";
-import * as rfGovn from "../../../../../governance/mod.ts";
 import * as wfs from "../../../../../lib/fs/watch.ts";
 import * as ws from "../../../../../lib/workspace/mod.ts";
 import * as s from "../static.ts";
