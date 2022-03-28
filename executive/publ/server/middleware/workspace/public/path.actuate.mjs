@@ -222,13 +222,14 @@ export const activateSite = () => {
     const baseURL = "/workspace";
     const navPrime = document.createElement("nav");
     navPrime.className = "prime";
+    // <!-- --> are there in between <a> tags to allow easier readability here but render with no spacing in DOM
     navPrime.innerHTML = `
-        <a href="#" class="highlight"><i class="fa-solid fa-file-code"></i> Edit</a>
-        <a href="${baseURL}/inspect/routes.html"><i class="fa-solid fa-route"></i> Routes</a>
-        <a href="${baseURL}/inspect/layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a>
-        <a href="${baseURL}/db/index.html"><i class="fa-solid fa-database"></i> psDB</a>
-        <a href="${baseURL}/inspect/operational-ctx.html"><i class="fa-solid fa-terminal"></i> OpCtx</a>
-        <a href="${baseURL}/assurance/"><i class="fa-solid fa-microscope"></i> Unit Tests</a>`;
+           <a href="#" class="highlight"><i class="fa-solid fa-file-code"></i> Edit</a><!--
+        --><a href="${baseURL}/inspect/routes.html"><i class="fa-solid fa-route"></i> Routes</a><!--
+        --><a href="${baseURL}/inspect/layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a><!--
+        --><a href="${baseURL}/db/index.html"><i class="fa-solid fa-database"></i> psDB</a><!--
+        --><a href="${baseURL}/inspect/operational-ctx.html"><i class="fa-solid fa-terminal"></i> OpCtx</a><!--
+        --><a href="${baseURL}/assurance/"><i class="fa-solid fa-microscope"></i> Unit Tests</a>`;
     document.body.insertBefore(navPrime, document.body.firstChild);
 
     const editAnchor = navPrime.querySelector("a"); // the first anchor is the Edit button

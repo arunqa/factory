@@ -62,20 +62,22 @@ details div.leaf.nav-target {
 
 /* Style the primary navigation bar */
 nav.prime {
-    width: 100%;
     background-color: #555;
-    overflow: auto;
+    /* allow display: inline-block for nav.prime a to keep all nav items on the same line */
     white-space: nowrap;
     /* make it sticky at the top of the page */
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
+    /* if nav.prime <a> elems grow beyond horizontal, add a scroll bar */
+    overflow-x: auto;
 }
 
 /* Navbar links */
 nav.prime a {
-    float: left;
+    /* since parent is set to white-space: nowrap, display: inline-block will keep all nav items on the same line */
+    display: inline-block;
     text-align: center;
     padding: 12px;
     color: white;
@@ -97,7 +99,7 @@ nav.prime .active {
 nav.prime .highlight {
     background-color: indigo;
     color: lightyellow;
-    font-weight: bold;
+    padding: 12px 18px 12px 18px;
 }
 
 /******************************************************************************
@@ -199,6 +201,7 @@ footer.page a {
  ******************************************************************************/
 
 ::-webkit-scrollbar {
+    height: 10px;
     width: 10px;
 }
 
