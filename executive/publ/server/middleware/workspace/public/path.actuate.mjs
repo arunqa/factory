@@ -187,7 +187,8 @@ export const activateFooter = () => {
     const restartAnchor = document.createElement("a");
     restartAnchor.className = "info action-restart-publ-server";
     restartAnchor.onclick = () => fetch('/server/restart');
-    restartAnchor.innerHTML = "♻️ Restart pubctl.ts";
+    restartAnchor.innerHTML = "↻ Restart";
+    restartAnchor.title = "Restart pubctl.ts server";
     footer.appendChild(restartAnchor);
 
     const todoAnchor = document.createElement("a");
@@ -195,6 +196,16 @@ export const activateFooter = () => {
     todoAnchor.href = '/workspace/docs/';
     todoAnchor.innerHTML = "TODOs";
     footer.appendChild(todoAnchor);
+
+    const editWsPageAnchor = document.createElement("a");
+    const wsPageLogicalFsPath = window.location.pathname.replace("/workspace", "/public");
+    const wsPageFactoryPath = `/factory/executive/publ/server/middleware/workspace${wsPageLogicalFsPath}`;
+    editWsPageAnchor.className = "info action-edit-workspace-src";
+    editWsPageAnchor.href = `/workspace/editor-redirect${wsPageFactoryPath}`;
+    console.log({ editWsPageAnchorHref: editWsPageAnchor.href })
+    editWsPageAnchor.innerHTML = "📝 Src";
+    editWsPageAnchor.title = `Edit ${wsPageFactoryPath}`;
+    footer.appendChild(editWsPageAnchor);
 
     document.body.appendChild(footer);
 }

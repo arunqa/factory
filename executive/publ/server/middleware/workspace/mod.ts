@@ -188,8 +188,10 @@ export class WorkspaceMiddlewareSupplier {
         ),
       srcFileMapper: (candidate: string) =>
         path.resolve(
+          // we are resFactory/factory/executive/publ/server/middleware/workspace/mod.ts;
+          // "../../../../../.." takes us up to resFactory/factory
           path.fromFileUrl(import.meta.url),
-          "../../..",
+          "../../../../../..",
           candidate,
         ),
     }, {
