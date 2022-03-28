@@ -34,30 +34,39 @@ function injectRfExplorer(clientLayout, consoleNavContainerElem) {
     link.rel = "stylesheet";
     document.head.appendChild(link);
 
-    const isInFrame = window == window.top ? false : true;
     const activePath = clientLayout.navigation.location(clientLayout.route?.terminal);
+    const workspaceCtxURL = `/workspace${activePath == '/' ? '/' : `/index.html${activePath}`}`;
     const gLightboxClassName = 'glightbox4';
     const inspectorActivateHTML = `
-    <button class="slds-button">
-        ${isInFrame
-            ? `<a href="${activePath}" target="_top">Close rfExplorer</a>`
-            : `<a href="/workspace${activePath == '/' ? '/' : `/index.html${activePath}`}?orientation=east&size=25">
-                    <svg class="slds-button__icon" aria-hidden="true">
-                        <use xlink:href="/lightning/image/slds-icons/utility-sprite/svg/symbols.svg#toggle_panel_right"></use>
-                    </svg> rfExplorer
-                </a>`}
-    </button>
-    <button class="slds-button">
-        <a href="/workspace/db/" class="${gLightboxClassName}" data-glightbox="width: ${window.innerWidth - 100}px; height: ${window.innerHeight - 100}px;">
-            <svg class="slds-button__icon" aria-hidden="true">
-                <use xlink:href="/lightning/image/slds-icons/utility-sprite/svg/symbols.svg#new_window"></use>
-            </svg>
-        </a>
-    </button>`
+        <style>
+        .rfExplorerStrategies { display: none; }
+        .rfExplorerActivate:hover + .rfExplorerStrategies {
+            display: inline;
+            cursor:pointer;
+        }
+        .rfExplorerStrategies:hover {
+            display: inline;
+            cursor:pointer;
+        }
+        .rfExplorerActivate:hover {
+            cursor:pointer;
+        }
+        .rfExplorerStrategies a { text-decoration: none; }
+        </style>
+        <div style="padding-top: 4px">
+            <span class="rfExplorerActivate">🔭 rfExplorer</span><span class="rfExplorerStrategies">
+                <a href="/workspace/db/" class="${gLightboxClassName}" data-glightbox="width: ${window.innerWidth - 100}px; height: ${window.innerHeight - 100}px;" title="Open rfExplorer lightbox">🗔</a>
+                <a href="${workspaceCtxURL}?orientation=east&size=25" target="_top" title="Open rfExplorer panel to the right (East)">▶️</a>
+                <a href="${workspaceCtxURL}?orientation=south&size=25" target="_top" title="Open rfExplorer panel below (South)">🔽</a>
+                <a href="${workspaceCtxURL}?orientation=west&size=25" target="_top" title="Open rfExplorer panel to the left (West)">◀️</a>
+                <a href="${workspaceCtxURL}?orientation=north&size=25" target="_top" title="Open rfExplorer panel above (North)">🔼</a>
+            </span>
+        </div>`;
 
     consoleNavContainerElem.innerHTML = inspectorActivateHTML;
     consoleNavContainerElem.style.display = "block"; // in case it was hidden
 
+    // "teach" GLightbox which anchor should initiate the explorer
     GLightbox({ selector: '.' + gLightboxClassName });
 }
 

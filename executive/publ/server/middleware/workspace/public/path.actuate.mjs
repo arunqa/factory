@@ -163,12 +163,22 @@ export const activateFooter = () => {
             <option value="?orientation=north&size=35"${selected('north')}>North</option>`;
         orientationSelect.onchange = (event) => window.parent.location.search = event.target.value;
         footer.appendChild(orientationSelect);
+
+        if (isClientLayoutInspectable()) {
+            const clientLayout = inspectableClientLayout();
+            const closeAnchor = document.createElement("a");
+            closeAnchor.className = "info action-close-explorer";
+            closeAnchor.href = clientLayout.navigation.location(clientLayout.route?.terminal);
+            closeAnchor.target = "_top";
+            closeAnchor.innerHTML = "❎ Close Explorer";
+            footer.appendChild(closeAnchor);
+        }
     }
 
     const restartAnchor = document.createElement("a");
     restartAnchor.className = "info action-restart-publ-server";
     restartAnchor.onclick = () => fetch('/server/restart');
-    restartAnchor.innerHTML = "Restart pubctl.ts";
+    restartAnchor.innerHTML = "♻️ Restart pubctl.ts";
     footer.appendChild(restartAnchor);
 
     document.body.appendChild(footer);
