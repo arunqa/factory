@@ -47,7 +47,7 @@ export const contextBarPartial: ldsGovn.LightningPartial = (layout) => {
       </div>`:''}
       </div>`:''}
       <div class="slds-float_left" style="vertical-align: middle">
-      <span id="rf-console-nav-container" style="display:none; position:relative; top: 7px;">
+      <span id="rf-explorer-activate-container" style="display:none; position:relative; top: 7px;">
         Seeing this message? Report as a RF Console bug.
       </span>
       </div>

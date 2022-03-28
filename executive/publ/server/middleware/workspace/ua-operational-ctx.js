@@ -18,7 +18,7 @@ import * as d from "./deps.auto.js";
 
 // these are window-scoped so that child frames (e.g. Lightbox) can access;
 // the same exact variable names are created by RF frameset explorer.
-function registerInspectionTarget(clientLayout, serverHooks) {
+function registerRfExplorerTarget(clientLayout, serverHooks) {
     window.inspectableClientLayout = clientLayout;
     window.inspectServerHooks = serverHooks;
 }
@@ -101,7 +101,7 @@ function initExperimentalServerHooks(rfUniversalLayoutInitEvent) {
             });
             wsTunnel.connect({ validateURL: `${publicUrlLocation}/workspace/sse/ping`, esURL: `${publicUrlLocation}/workspace/sse/tunnel` });
 
-            const consoleNavContainer = document.getElementById("rf-console-nav-container");
+            const consoleNavContainer = document.getElementById("rf-explorer-activate-container");
             if (consoleNavContainer) {
                 injectRfExplorer(clientLayout, consoleNavContainer);
             }
@@ -122,11 +122,11 @@ function initExperimentalServerHooks(rfUniversalLayoutInitEvent) {
             }
 
             // prepare globals if lightbox is used
-            registerInspectionTarget(clientLayout, serverHooks);
+            registerRfExplorerTarget(clientLayout, serverHooks);
 
             // in case we have a parent that cares about our layout (rfExplorer frameset needs this)
-            if (window.parent && window.parent.registerInspectionTarget) {
-                window.parent.registerInspectionTarget(clientLayout, serverHooks, window);
+            if (window.parent && window.parent.registerRfExplorerTarget) {
+                window.parent.registerRfExplorerTarget(clientLayout, serverHooks, window);
             }
         }
     };

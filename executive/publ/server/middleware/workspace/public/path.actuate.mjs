@@ -7,7 +7,7 @@ import * as d from "./deps.auto.js";
 export * from "./deps.auto.js"; // make symbols available to pages
 
 // public/operational-context/server.auto.mjs sets window.parent.inspectableClientLayout
-// using executive/publ/server/middleware/workspace/public/inspect/index.html registerInspectionTarget
+// using executive/publ/server/middleware/workspace/public/inspect/index.html registerRfExplorerTarget
 export const inspectableClientLayout = () => window.parent.inspectableClientLayout;
 export const isClientLayoutInspectable = () => window.parent.inspectableClientLayout ? true : false;
 export const isFramedExplorer = () => window.parent.isFramedExplorer && window.parent.isFramedExplorer() ? true : false;
