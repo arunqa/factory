@@ -8,7 +8,31 @@ body {
         sans-serif;
     /* because primary navigation sticks to the top of the page, give it a margin */
     margin-top: 50px;
+    /* because footer sticks to the top of the page, give it a margin */
+    margin-bottom: 50px;
 }
+
+/******************************************************************************
+ * User-agent side content transformation (e.g. Markdown); typical usage:
+ *   <pre data-transformable="markdown" class="md">
+ ******************************************************************************/
+
+/* if we need to transform data, hide it and then then the transformer will display it */
+pre[data-transformable="markdown"] {
+    display: none;
+}
+
+/* Prevent flash of unstyled content (FOUC) by checking if we have a markdown
+   class that doesn't have dataset.transformedFrom set to "markdown" yet, which
+   means rendering hasn't occurred. Once rendering occurs, data-content-from="markdown"
+   will be set properly and the display will be switched on. */
+.md:not([data-transformed-from="markdown"]) {
+    display: none;
+}
+
+/******************************************************************************
+ * Details (sections, explorers, inspectors and trees that auto hide/show)
+ ******************************************************************************/
 
 details>details {
     padding-left: 20px;
@@ -31,6 +55,10 @@ details div.leaf.nav-target::before {
 details div.leaf.nav-target {
     cursor: pointer;
 }
+
+/******************************************************************************
+ * Navigation
+ ******************************************************************************/
 
 /* Style the primary navigation bar */
 nav.prime {
@@ -71,6 +99,10 @@ nav.prime .highlight {
     color: lightyellow;
     font-weight: bold;
 }
+
+/******************************************************************************
+ * Typical buttons
+ ******************************************************************************/
 
 .btn {
     border: none;
@@ -135,6 +167,10 @@ nav.prime .highlight {
     background: #ddd;
 }
 
+/******************************************************************************
+ * Footer
+ ******************************************************************************/
+
 footer.page {
     position: fixed;
     left: 0;
@@ -156,7 +192,11 @@ footer.page a {
     text-decoration: none;
 }
 
-/* Use a thin (10px wide) scrollbar, which has a grey track/bar color and a dark-grey (#888) handle */
+/******************************************************************************
+ * Scrollbar
+ *   Use a thin (10px wide) scrollbar, which has a grey track/bar color and a
+ *   dark-grey (#888) handle.
+ ******************************************************************************/
 
 ::-webkit-scrollbar {
     width: 10px;

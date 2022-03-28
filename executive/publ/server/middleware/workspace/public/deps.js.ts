@@ -15,4 +15,5 @@
 
 export * from "../../../../../../lib/reflect/mod.ts";
 export * from "../../../../../../lib/text/human.ts";
+export * from "../../../../../../lib/presentation/dom/markdown-it.js";
 export * from "../ua-editable.ts";

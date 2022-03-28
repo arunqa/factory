@@ -49,6 +49,11 @@ export const pageFetchJsonFx = siteDomain.createEffect(async (params) => {
     return json;
 });
 
+export const transformContentFx = siteDomain.createEffect(async () => {
+    // find all <pre data-transformable="markdown"> and run Markdown-it transformation
+    await d.transformMarkdownElems();
+});
+
 export const jsEvalFailureHTML = (evaluatedJS, error, location, context) => {
     console.error(`Unable to evaluate ${evaluatedJS} in ${location}`, error, context);
     return `Unable to evaluate <code><mark>${evaluatedJS}</mark></code>: <code><mark style="background-color:#FFF2F2">${error}</mark></code> in <code>${location}</code>`;
@@ -153,15 +158,18 @@ export const activateFooter = () => {
     footer.className = "page";
 
     if (isFramedExplorer()) {
+        footer.appendChild(document.createTextNode("🧭"));
+
         const selected = (which) => window.parent.location.search.indexOf(`orientation=${which}`) > 0 ? " selected" : "";
         const orientationSelect = document.createElement("select");
         orientationSelect.className = "orientation";
-        orientationSelect.innerHTML = `<option>🧭 Orientation</option>
+        orientationSelect.innerHTML = `
             <option value="?orientation=east&size=25"${selected('east')}>East</option>
             <option value="?orientation=south&size=35"${selected('south')}>South</option>
             <option value="?orientation=west&size=25"${selected('west')}>West</option>
             <option value="?orientation=north&size=35"${selected('north')}>North</option>`;
         orientationSelect.onchange = (event) => window.parent.location.search = event.target.value;
+        orientationSelect.title = "Change rfExplorer Panel Orientation";
         footer.appendChild(orientationSelect);
 
         if (isClientLayoutInspectable()) {
@@ -170,7 +178,8 @@ export const activateFooter = () => {
             closeAnchor.className = "info action-close-explorer";
             closeAnchor.href = clientLayout.navigation.location(clientLayout.route?.terminal);
             closeAnchor.target = "_top";
-            closeAnchor.innerHTML = "❎ Close Explorer";
+            closeAnchor.innerHTML = "❎ Close";
+            closeAnchor.title = "Close rfExplorer Panel";
             footer.appendChild(closeAnchor);
         }
     }
@@ -180,6 +189,12 @@ export const activateFooter = () => {
     restartAnchor.onclick = () => fetch('/server/restart');
     restartAnchor.innerHTML = "♻️ Restart pubctl.ts";
     footer.appendChild(restartAnchor);
+
+    const todoAnchor = document.createElement("a");
+    todoAnchor.className = "info action-TODO";
+    todoAnchor.href = '/workspace/docs/';
+    todoAnchor.innerHTML = "TODOs";
+    footer.appendChild(todoAnchor);
 
     document.body.appendChild(footer);
 }
