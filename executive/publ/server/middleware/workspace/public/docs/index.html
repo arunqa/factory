@@ -13,8 +13,6 @@
     ## Essential
 
     * Switch from github.com/dyedgreen/deno-sqlite to https://github.com/denodrivers/sqlite3 for better performance
-    * Remove `/console` "hardcoding" from each file (have `path.actuate.js` register its "mount point" in each directory)
-    * Implement restart server handler using new user agent bus (UAB) infrastructure
     * Implement dynamic navigation using `path.ctx.js`. This might work like Deno's `mod.ts` does where
     we inventory the files in the current path. If it's regular enough, it could be auto-generated on
     each start of the server or through Taskfile.ts.
@@ -30,18 +28,18 @@
         export default pathCtx;
         ```
 
-    * Continuously run Lighthouse in Edge/Chrome DevTools to make sure performance is maintained.
+    * Continuously run Lighthouse in Edge/Chrome DevTools to make sure performance is maintained. This is not
+    necessarily for rfExplorer but because we're experimenting with HTML+JS(lightweight) to see if we can get
+    enough performance from client-side rendering (instead of only SSR).
 
     ## Next
 
-    * Migrate all legacy `control-panel` pages to rfConsole.
+    * Migrate `metrics.json` to SQLite.
+    * Migrate all legacy `control-panel` pages to rfExplorer.
     * Integrate Deno-specific [Packup](https://github.com/kt3k/packup) packager as Oak routes or use it
     as guidance.
-    * In `executive/publ/console/mod.ts` make `#isAccessLoggingEnabled` accessible through Console so
-    access logging can be controlled from the browser dynamically.
     * Create feature flags API endpoint so that unlimited Unleash-like FF's can be integrated
     * Implement [Oak eTag](https://github.com/oakserver/oak#etag-support) before going to production
-    * Implement [effector.dev](https://effector.dev/) for business logic (with XState for mor complex requirements)
 
     ## Components
 
@@ -54,9 +52,7 @@
 
     * See [Building data\-centric apps with a reactive relational database](https://riffle.systems/essays/prelude/) for interesting way to use SQLite.
 
-    ## From README.md
-
-    ### Framework
+    ## Framework
 
     - Consider replacing or augmenting `shah/ts-safety` with [garronej/tsafe](https://github.com/garronej/tsafe)
     because it has more capabilities for ensuring type safety. `tsafe` can be used
@@ -106,13 +102,13 @@
     page headers, automatic Page Link Handling, dynamic image manipulation and
     documentation.
 
-    ### Bunders and Builders
+    ## Bunders and Builders
 
     - Allow poly-build capability using [Parcel](https://parceljs.org/), [esbuild](https://esbuild.github.io/),
     [Rome](https://rome.tools/), and other bundlers and builders. This space is
     very active and we should not reinvent the wheel.
 
-    ### Context
+    ## Context
 
     - Add `Partial<govn.RenderContextSupplier<*Context>>` to HtmlLayout, JsonLayout,
     etc so that pages, partials, etc. can easily see which "environment" like
@@ -122,7 +118,7 @@
     - Allow contexts to be carried into ClientCargo so generated web assets can
         use `location.hostname` as a way of indicating devl/sandbox/prod contexts.
 
-    ### Models
+    ## Models
 
     - Use [Ajv JSON schema validator](https://ajv.js.org/) to validate models since
     need to be type-safe but fully extensible across resources.
@@ -130,7 +126,7 @@
     and models. Should frontmatter and models be the same or is there room for
     both? For example, frontmatter might be schema-free but models are type-safe?
 
-    ### Redirects
+    ## Redirects
 
     - Implement special link shortener and asset trackingredirects for web assets.
     This would allow `domain.com/x/ABC` type definitions to allow automatic
@@ -139,13 +135,13 @@
     resource tracking (see related [Nomia](https://github.com/scarf-sh/nomia/)
     project for universal resource namespaces).
 
-    ### Visualization
+    ## Visualization
 
     - [Livemark](https://github.com/frictionlessdata/livemark) is a static page
     generator that extends Markdown with interactive charts, tables, scripts, and
     more. Should be a good comparable for us to incorporate into Factory.
 
-    ### Database Functionality
+    ## Database Functionality
 
     - [Evidence](https://github.com/evidence-dev/evidence) enables analysts to
     deliver a polished business intelligence system using SQL and markdown. This
@@ -156,7 +152,7 @@
     out [metriql](https://metriql.com/) as a way to integrate Metrics across
     databases - as a PgDCP source/sink.
 
-    ### Unit tests using Resource Factory's documentation
+    ## Unit tests using Resource Factory's documentation
 
     - Implement URL fetch originator that can pull in Markdown files like README.md
     from any source. We can then demo how we can integrate, for example, the
@@ -168,7 +164,7 @@
     functionality should come from our own documentation. This means creating data
     in SQLite to mimic DB behavior.
 
-    ### Frontmatter
+    ## Frontmatter
 
     - [HUGE, a Hugo framework](https://www.thenewdynamic.com/article/introducing-huge-a-hugo-framework/)
     seems to have some good idea about how to use Frontmatter in Markdown to drive
@@ -185,19 +181,45 @@
     - Consider [Ajv JSON schema validator](https://ajv.js.org/) for validating
         frontmatter in JS instead of just TypeScript.
 
-    ### Images
+    ## Images
 
     - Check out [imgIX](https://docs.imgix.com/setup/serving-images) for either
     direct integration or guidance to build our own Deno Deploy-based serverless
     services for similar capabilities.
 
-    ### Originators
+    ## Originators
 
-    ### Refinery Middleware
+    ## Refinery Middleware
 
-    ### Type-safety
+    ## Type-safety
 
-    ### Lint
+    ## Content naming conventions
+
+    - `name.m1.m2.ts` is used for TypeScript-based content with `m1` and `m2` as
+    _modifiers_. Examples include:
+    - `name.rf.ts` signifies with `.rf.` _modifier_ that this TypeScript module
+        generates one or more _resources_ of _arbitrary nature_ (e.g. mixed HTML,
+        JSON, etc.).
+    - `name.html.ts` signifies with `.html` is that this module produces HTML.
+    - `name.json.ts` signifies with `.json` is that this module produces JSON.
+    - `name.ssrs.rf.ts` signifies that this is a Deno Deploy or similar server-
+        side rendering service (SSRS)
+
+    ## Software Supply Chain and Dependencies (SSCD)
+
+    - Always pin imports to semver versioned imports and references (_never_ use
+    unversioned imports)
+    - Put production dependencies in `deps.ts` and test dependencies in
+    `deps-test.ts`.
+
+    ## Maintenance
+
+    - Regularly run `repo-task update-deno-deps` at the top level of this library. That command runs a target in `Taskfile.ts` which helps update and maintain dependencies and perform other library-specific maintenance.
+
+    > repo-task update-deno-deps
+    > deno-test
+
+    ## Lint
 
     - When building clean after `deno-clear-caches`, getting
     `Warning Implicitly using latest version (v1.0) for https://deno.land/x/hierarkey/mod.ts`

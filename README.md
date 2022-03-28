@@ -98,31 +98,3 @@ We do not want to encourage the use of anything other than HTML, Web Components,
 JavaScript (with strong type-safety using Typescript or other governance tools).
 This means staying away from all templating tools and using plain Typescript and
 JavaScript is best. 
-
-### Content naming conventions
-
-- `name.m1.m2.ts` is used for TypeScript-based content with `m1` and `m2` as
-  _modifiers_. Examples include:
-  - `name.rf.ts` signifies with `.rf.` _modifier_ that this TypeScript module
-    generates one or more _resources_ of _arbitrary nature_ (e.g. mixed HTML,
-    JSON, etc.).
-  - `name.html.ts` signifies with `.html` is that this module produces HTML.
-  - `name.json.ts` signifies with `.json` is that this module produces JSON.
-  - `name.ssrs.rf.ts` signifies that this is a Deno Deploy or similar server-
-    side rendering service (SSRS)
-
-## Software Supply Chain and Dependencies (SSCD)
-
-- Always pin imports to semver versioned imports and references (_never_ use
-  unversioned imports)
-- Put production dependencies in `deps.ts` and test dependencies in
-  `deps-test.ts`.
-
-# Maintenance
-
-## Software Supply Chain
-
-- Regularly run `repo-task update-deno-deps` at the top level of this library. That command runs a target in `Taskfile.ts` which helps update and maintain dependencies and perform other library-specific maintenance.
-
-> repo-task update-deno-deps
-> deno-test
