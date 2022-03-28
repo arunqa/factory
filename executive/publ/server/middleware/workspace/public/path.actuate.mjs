@@ -198,7 +198,8 @@ export const activateFooter = () => {
     footer.appendChild(todoAnchor);
 
     const editWsPageAnchor = document.createElement("a");
-    const wsPageLogicalFsPath = window.location.pathname.replace("/workspace", "/public");
+    let wsPageLogicalFsPath = window.location.pathname.replace("/workspace", "/public");
+    if (wsPageLogicalFsPath.endsWith("/")) wsPageLogicalFsPath += "index.html";
     const wsPageFactoryPath = `/factory/executive/publ/server/middleware/workspace${wsPageLogicalFsPath}`;
     editWsPageAnchor.className = "info action-edit-workspace-src";
     editWsPageAnchor.href = `/workspace/editor-redirect${wsPageFactoryPath}`;
