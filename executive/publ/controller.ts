@@ -100,7 +100,7 @@ export class Executive<
         const result = super.server();
         ctl.events.on("cleanup", async ({ nature }) => {
           console.log(colors.gray(`[cleanup] ${nature}: Close tunnels`));
-          if (this.console) await this.console.tunnel.cleanup();
+          if (this.workspace) await this.workspace.tunnel.cleanup();
         });
         result.app.addEventListener("listen", (event) => {
           const iterationIndex = oc.iterationCount || -1;

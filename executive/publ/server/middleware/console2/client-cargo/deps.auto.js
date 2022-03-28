@@ -1579,6 +1579,13 @@ const humanPath = (original, maxLength = 50, formatBasename)=>{
 export { humanFriendlyBytes as humanFriendlyBytes };
 export { humanFriendlyPhrase as humanFriendlyPhrase };
 export { humanPath as humanPath };
+function getUrlQueryParameterByName(name, url = window.location.href) {
+    name = name.replace(/[\[\]]/g, "\\$&");
+    const regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"), results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return "";
+    return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
 const editableFileRedirectURL = (absPath)=>{
     let src = absPath;
     if (src.startsWith("file://")) {
@@ -1613,6 +1620,7 @@ const locationEditorHTML = (location, humanizeLength)=>{
     return humanizeLength ? humanPath(label, humanizeLength, (basename)=>`<a href="${href}" class="fw-bold" title="${location.moduleImportMetaURL}">${basename}</a>`
     ) : `<a href="${href}">${label}</a>`;
 };
+export { getUrlQueryParameterByName as getUrlQueryParameterByName };
 export { editableFileRedirectURL as editableFileRedirectURL };
 export { editableFileRefHTML as editableFileRefHTML };
 export { locationEditorRedirectURL as locationEditorRedirectURL };

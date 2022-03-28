@@ -6,8 +6,6 @@ import * as pmw from "./middleware/publication/mod.ts";
 import * as wfs from "../../../lib/fs/watch.ts";
 import * as bjs from "../../../lib/package/bundle-js.ts";
 import * as s from "./middleware/static.ts";
-import * as c from "./middleware/console/mod.ts";
-import * as c2 from "./middleware/console2/mod.ts";
 import * as ws from "./middleware/workspace/mod.ts";
 import * as assure from "./middleware/assurance.ts";
 import * as pDB from "../publication-db.ts";
@@ -105,7 +103,6 @@ export class PublicationServer {
     return ctx.request.url.toString();
   };
   readonly tsJsCache = new Map<string, bjs.CacheableTypescriptSource>();
-  #console?: c.ConsoleMiddlewareSupplier;
   #workspace?: ws.WorkspaceMiddlewareSupplier;
   #assurance?: assure.AssuranceMiddlewareSupplier;
   #pdbProxy?: pdbProxy.DatabaseProxyMiddlewareSupplier;
@@ -167,8 +164,8 @@ export class PublicationServer {
     });
   }
 
-  get console(): c.ConsoleMiddlewareSupplier | undefined {
-    return this.#console;
+  get workspace(): ws.WorkspaceMiddlewareSupplier | undefined {
+    return this.#workspace;
   }
 
   protected preparePublicationMW(
@@ -186,34 +183,6 @@ export class PublicationServer {
       this.serverStateDB,
       "/publication",
       registerTsJsRoute,
-    );
-  }
-
-  protected prepareConsole(
-    app: oak.Application,
-    router: oak.Router,
-    staticEE: s.StaticEventEmitter,
-    options?: c.ConsoleMiddlewareSupplierOptions,
-  ) {
-    this.#console = new c.ConsoleMiddlewareSupplier(
-      app,
-      router,
-      staticEE,
-      this.serverStateDB,
-      this.userAgentIdSupplier,
-      {
-        openWindowOnInit: { url: "/" },
-        ...options,
-      },
-    );
-
-    new c2.ConsoleMiddlewareSupplier(
-      this.publication,
-      app,
-      router,
-      staticEE,
-      this.serverStateDB,
-      this.userAgentIdSupplier,
     );
   }
 
@@ -374,23 +343,9 @@ export class PublicationServer {
     };
 
     this.preparePublicationMW(app, router, registerTsJsRoute);
-    this.prepareConsole(app, router, this.staticEE);
     this.prepareWorkspace(app, router, this.staticEE);
     this.prepareAssurance(app, router);
     this.prepareDatabaseProxy(app, router);
-
-    if (this.#console) {
-      app.use(async (ctx, next) => {
-        await next();
-        // set the base URL in the header so that rfExprServerConsoleBaseURL
-        // can be set via Javascript (this makes sub pages references easier)
-        ctx.response.headers.set(
-          "RF-Console-HTML-Base-URL",
-          this.#console!.htmlEndpointURL,
-        );
-      });
-    }
-
     this.prepareUserAgentScripts(router);
 
     app.addEventListener("error", (event) => {
@@ -468,9 +423,6 @@ export class PublicationServer {
   }
 
   protected *watchableFileSysPaths(): Generator<wfs.WatchableFileSysPath> {
-    if (this.#console) {
-      yield* this.#console.watchableFileSysPaths();
-    }
     if (this.#workspace) {
       yield* this.#workspace.watchableFileSysPaths();
     }

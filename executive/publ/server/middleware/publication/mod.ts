@@ -5,8 +5,6 @@ import * as pDB from "../../../publication-db.ts";
 import * as rflPath from "../../../../../lib/path/mod.ts";
 import "../../../../../lib/db/sql.ts"; // for window.globalSqlDbConns
 
-import "./user-agent/inspect-project.ts"; // for type-checking only (user agent is TS -> JS compiled)
-
 const modulePath = rflPath.pathRelativeToModuleCWD(import.meta.url);
 
 export class PublicationMiddlewareSupplier {
