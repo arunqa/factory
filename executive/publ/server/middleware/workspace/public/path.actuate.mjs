@@ -29,8 +29,11 @@ export const pageFetchJsonFxCache = new Map();
 // other parameters such as "fetchID" or "fetchCtx" could be used as well.
 // You can pass in diagnose to add some diagnostics or pass in cache: false
 // if a caching is not desired (don't use cache: undefined, use cache: false).
+// Since deps.js.ts contains "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js",
+// pageFetchJsonFx also supports JSON.decycle and JSON.retrocycle to allow complex
+// JSON values which might have circular values. By default retrocyle is TRUE.
 export const pageFetchJsonFx = siteDomain.createEffect(async (params) => {
-    const { fetchURL, diagnose = false, cache = pageFetchJsonFxCache } = params;
+    const { fetchURL, diagnose = false, cache = pageFetchJsonFxCache, retrocycle = true } = params;
     if (!fetchURL) throw new Error(`No fetchURL in pageFetchJsonFx(${JSON.stringify(params)})`);
 
     if (cache && cache.has(fetchURL)) {
@@ -38,11 +41,13 @@ export const pageFetchJsonFx = siteDomain.createEffect(async (params) => {
     }
 
     const json = await (await fetch(params.fetchURL)).json();
+    if (retrocycle) JSON.retrocycle(json);
     if (diagnose) {
         if (typeof json === "object") json.pageFetchJsonFxDiagnostics = {
             ...params,
             cache,
-            cacheState: Object.fromEntries(cache) // we want the state of the cache at this moment
+            cacheState: Object.fromEntries(cache), // we want the state of the cache at this moment
+            retrocycled: retrocycle,
         };
     }
     if (cache) cache.set(fetchURL, json);

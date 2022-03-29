@@ -459,7 +459,7 @@ export const isDiagnosticsOptionsSupplier = safety.typeGuard<
 
 export interface PublicationState {
   readonly observability?: rfStd.Observability;
-  readonly resourcesTree: rfGovn.RouteTree;
+  readonly routes: PublicationRoutes;
   readonly resourcesIndex: PublicationResourcesIndex<unknown>;
   readonly persistedIndex: PublicationPersistedIndex;
   readonly producerStats: PublicationProducersStatistics;
@@ -496,6 +496,7 @@ export class NavigationTree extends rfStd.TypicalRouteTree {
       readonly copyOf?: rfGovn.RouteTreeNode;
     },
   ): rfGovn.RouteTreeNode | undefined {
+    if (ocC.isOperationalCtxRoute(rs)) return undefined;
     const result = super.consumeRoute(rs, options);
     const copyOf = options?.copyOf;
     if (rfStd.isModelSupplier(copyOf)) {
@@ -640,6 +641,7 @@ export interface Publication<
   readonly state: PublicationState;
   // deno-lint-ignore no-explicit-any
   readonly ds: html.DesignSystemFactory<any, any, any, any>;
+  readonly routes: PublicationRoutes;
 }
 
 export abstract class TypicalPublication<
@@ -687,7 +689,7 @@ export abstract class TypicalPublication<
     const persistedIndex = new PublicationPersistedIndex();
     this.state = {
       observability: config.observability,
-      resourcesTree: routes.resourcesTree,
+      routes,
       resourcesIndex: new PublicationResourcesIndex(),
       producerStats: new PublicationProducersStatistics(),
       persistedIndex,

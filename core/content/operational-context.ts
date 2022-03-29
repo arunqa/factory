@@ -1,6 +1,17 @@
 import * as govn from "../../governance/mod.ts";
+import * as r from "../std/route.ts";
+import * as safety from "../../lib/safety/mod.ts";
 
-const operationalCtxRouteUnit: govn.RouteUnit = {
+export interface OperationalCtxRouteUnit {
+  readonly isOperationalCtxRouteUnit: true;
+}
+
+export const isOperationalCtxRouteUnit = safety.typeGuard<
+  OperationalCtxRouteUnit
+>("isOperationalCtxRouteUnit");
+
+const operationalCtxRouteUnit: govn.RouteUnit & OperationalCtxRouteUnit = {
+  isOperationalCtxRouteUnit: true,
   unit: "operational-context",
   label: "Operational Context",
 };
@@ -45,6 +56,13 @@ const diagnosticsObsRedirectRouteUnits: govn.RouteUnits = {
 
 export function operationalCtxRoute(rf: govn.RouteFactory): govn.Route {
   return rf.route(operationalCtxRouteUnit);
+}
+
+export function isOperationalCtxRoute(
+  rs: govn.RouteSupplier | govn.Route,
+): boolean {
+  const route = r.isRouteSupplier(rs) ? rs.route : rs;
+  return route.units.find((u) => isOperationalCtxRouteUnit(u)) ? true : false;
 }
 
 export function observabilityRoute(rf: govn.RouteFactory): govn.Route {

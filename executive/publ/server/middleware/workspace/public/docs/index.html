@@ -12,6 +12,7 @@
     <pre data-transformable="markdown" class="md">
     ## Essential
 
+    * Move all functionality from `core/design-system/lightning/layout/partial/diagnostics.ts` into rfExplorer (for performance and safety).
     * Switch from github.com/dyedgreen/deno-sqlite to https://github.com/denodrivers/sqlite3 for better performance
     * Implement dynamic navigation using `path.ctx.js`. This might work like Deno's `mod.ts` does where
     we inventory the files in the current path. If it's regular enough, it could be auto-generated on
@@ -36,6 +37,7 @@
 
     * Migrate `metrics.json` to SQLite.
     * Migrate all legacy `control-panel` pages to rfExplorer.
+    * Generate https://github.com/koskimas/kysely from SQLite schema for TS-based queries.
     * Integrate Deno-specific [Packup](https://github.com/kt3k/packup) packager as Oak routes or use it
     as guidance.
     * Create feature flags API endpoint so that unlimited Unleash-like FF's can be integrated

@@ -51,12 +51,15 @@ export class PublicationMiddlewareSupplier {
       ctx.response.body = JSON.stringify(renderers);
     });
 
-    router.get(`${this.htmlEndpointURL}/inspect/routes.json`, (ctx) => {
-      ctx.response.body = JSON.stringify(
-        this.publication.state.resourcesTree,
-        rJSON.routeTreeJsonReplacer,
-      );
-    });
+    router.get(
+      `${this.htmlEndpointURL}/inspect/routes.json`,
+      (ctx) => {
+        ctx.response.body = rJSON.typicalSerializedJSON(
+          this.publication.routes,
+          { decycle: true, transformMapsToObjects: true },
+        );
+      },
+    );
 
     router.get(
       `${this.htmlEndpointURL}/inspect/databases/content.json`,

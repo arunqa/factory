@@ -155,6 +155,7 @@ GET {{publicationInspectEndpoint}}/renderers.json
 Content-Type: application/json
 
 ###
+# this can be large so it might be slow to display in VSCode, should be fine in browser
 
 GET {{publicationInspectEndpoint}}/routes.json
 Content-Type: application/json

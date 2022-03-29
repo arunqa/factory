@@ -1,39 +1,35 @@
-import * as govn from "../../governance/mod.ts";
-import * as r from "../std/route.ts";
 import * as jr from "../render/json.ts";
+import "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js";
 
-// hide properties that could have circular references which will break JSON.stringify()
-export const routeTreeJsonReplacer = (key: string, value: unknown) => {
-  if (value instanceof Map) {
-    return {
-      dataType: "Map",
-      size: value.size,
-      keys: Array.from(value.keys()),
-    };
-  } else {
-    if (key == "terminal" && r.isRouteNode(value)) {
-      return value.qualifiedPath;
-    }
-    if (key == "parent") {
-      if (r.isRouteNode(value)) {
-        return value.qualifiedPath;
-      }
-      if (r.isRoute(value) && value.terminal) {
-        return value.terminal.qualifiedPath;
-      }
-    }
-    if (key == "redirect") {
-      if (r.isRedirectUrlSupplier(value)) return value.redirect;
-      if (r.isRedirectNodeSupplier(value)) return value.redirect.qualifiedPath;
-    }
-    if (key == "ancestors" && Array.isArray(value)) {
-      const ancestors = value as govn.RouteNode[];
-      return ancestors.map((a) => a.qualifiedPath);
-    }
-    return ["owner", "notifications", "route"].find((name) => name == key)
-      ? undefined // these can be circular, omit them
-      : value;
+declare global {
+  // https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js
+  interface JSON {
+    decycle: (o: unknown) => unknown;
+    retrocycle: (o: unknown) => unknown;
   }
+}
+
+export const mapToObjectJsonReplacer = (_key: string, value: unknown) => {
+  if (value instanceof Map) {
+    // deno-lint-ignore no-explicit-any
+    return Array.from(value).reduce((obj: any, [key, value]) => {
+      obj[key] = value;
+      return obj;
+    }, {});
+  } else {
+    return value;
+  }
+};
+
+export const typicalSerializedJSON = (value: unknown, options?: {
+  readonly decycle?: boolean;
+  readonly transformMapsToObjects: boolean;
+}) => {
+  const { decycle, transformMapsToObjects } = options ?? {};
+  return JSON.stringify(
+    decycle ? JSON.decycle(value) : value,
+    transformMapsToObjects ? mapToObjectJsonReplacer : undefined,
+  );
 };
 
 /**
@@ -61,10 +57,9 @@ export const jsonRoutesProducer: jr.StructuredDataTextProducer<unknown> =
     layout,
   ) => {
     return {
-      serializedData: JSON.stringify(
-        layout.routeTree,
-        routeTreeJsonReplacer,
-        "  ",
-      ),
+      serializedData: typicalSerializedJSON(layout.routeTree, {
+        decycle: true,
+        transformMapsToObjects: true,
+      }),
     };
   };

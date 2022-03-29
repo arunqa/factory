@@ -6,6 +6,9 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="../path.actuate.css">
+    <script>
+        const routesJsonFetchURL = "/publication/inspect/routes.json";
+    </script>
 </head>
 
 <body>
@@ -33,13 +36,17 @@
         </details>
     </details>
 
-    <details id="navigation-tree" class="explore" open>
-        <summary>Navigation Tree</summary>
+    <details id="ui-navigation-tree" class="explore" open>
+        <summary><code>publication.routes.navigationTree<b>.items</b></code></summary>
+    </details>
+
+    <details id="all-resources-tree" class="explore" open>
+        <summary><code>publication.routes.resourcesTree<b>.items</b></code></summary>
     </details>
 
     <details class="explore">
-        <summary><code>publication.state.resourcesTree</code></summary>
-        <div data-populate-fetched-json-url="/publication/inspect/routes.json"></div>
+        <summary><code>publication.routes</code></summary>
+        <script>document.write(`<div data-populate-fetched-json-url="${routesJsonFetchURL}"></div>`)</script>
     </details>
 
     <details class="explore" open>
@@ -113,7 +120,6 @@
 
     <script type="module">
         import * as path from "../path.actuate.mjs";
-        const routesJsonFetchURL = "/publication/inspect/routes.json";
 
         // automatically inject navbars and other site-wide elements
         path.activateSite();
@@ -124,28 +130,33 @@
 
             path.pageFetchJsonFx.done.watch(({ params, result: routes }) => {
                 if (params.fetchURL != routesJsonFetchURL) return;
-                const handleNodes = (treeContainer, items) => {
-                    items.sort((a, b) => (a.label > b.label) ? 1 : -1).forEach(i => {
-                        const isParent = i.children && i.children.length ? true : false;
-                        if (isParent) {
-                            const details = document.createElement("details");
-                            details.classList.add("inspect", "parent", "nav-target");
-                            treeContainer.appendChild(details);
-                            const summary = document.createElement("summary");
-                            summary.innerText = i.label;
-                            details.appendChild(summary);
-                            if (i.children && i.children.length > 0) {
-                                handleNodes(details, i.children);
+                const allResourcesElem = document.querySelector("#all-resources-tree");
+                if (!allResourcesElem.dataset.isPopulated) {
+                    allResourcesElem.dataset.isPopulated = "yes";
+                    const handleNodes = (treeContainer, items) => {
+                        items.sort((a, b) => (a.label > b.label) ? 1 : -1).forEach(i => {
+                            const isParent = i.children && i.children.length ? true : false;
+                            if (isParent) {
+                                const details = document.createElement("details");
+                                details.classList.add("inspect", "parent", "nav-target");
+                                treeContainer.appendChild(details);
+                                const summary = document.createElement("summary");
+                                summary.innerText = i.label;
+                                details.appendChild(summary);
+                                if (i.children && i.children.length > 0) {
+                                    handleNodes(details, i.children);
+                                }
+                            } else {
+                                const text = document.createElement("div");
+                                text.classList.add("inspect", "leaf", "nav-target");
+                                text.innerText = i.label;
+                                treeContainer.appendChild(text);
                             }
-                        } else {
-                            const text = document.createElement("div");
-                            text.classList.add("inspect", "leaf", "nav-target");
-                            text.innerText = i.label;
-                            treeContainer.appendChild(text);
-                        }
-                    });
-                };
-                handleNodes(document.querySelector("#navigation-tree"), routes.items);
+                        });
+                    };
+                    handleNodes(allResourcesElem, routes.resourcesTree.items);
+                    handleNodes(document.querySelector("#ui-navigation-tree"), routes.navigationTree.items);
+                }
             });
             path.pageFetchJsonFx({ fetchURL: routesJsonFetchURL });
 

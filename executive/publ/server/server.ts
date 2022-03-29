@@ -125,9 +125,10 @@ export class PublicationServer {
     this.fsEntryPublicationURL = options.fsEntryPublicationURL ??
       ((fsAbsPathAndFileName) => {
         if (
-          this.publication.state.resourcesTree instanceof rfStd.TypicalRouteTree
+          this.publication.routes.resourcesTree instanceof
+            rfStd.TypicalRouteTree
         ) {
-          const node = this.publication.state.resourcesTree.fileSysPaths.get(
+          const node = this.publication.routes.resourcesTree.fileSysPaths.get(
             fsAbsPathAndFileName,
           );
           if (node) {
@@ -383,7 +384,7 @@ export class PublicationServer {
       } catch (error) {
         await this.persistDiagnostics(
           ctx.request.url.pathname,
-          "oak-app-error-mw",
+          error.toString(),
           {
             oakAppCtx: ctx,
             nature: "oak-app-error-mw",

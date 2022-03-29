@@ -1,6 +1,8 @@
 import * as sqlite from "https://deno.land/x/sqlite@v3.3.0/mod.ts";
 import * as rsts from "./rdbms-schema-ts.ts";
 
+// TODO: generate https://github.com/koskimas/kysely for TS-based queries?
+
 export function sqliteDialect(): rsts.RdbmsDialect {
   const tsTypes: Record<string, rsts.RdbmsDataTypeMapEntry> = {
     "DATETIME": { tsType: "Date" },
