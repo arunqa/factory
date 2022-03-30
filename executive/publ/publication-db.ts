@@ -70,23 +70,6 @@ export class PublicationDatabase
     return result;
   }
 
-  // persistServerError(
-  //   err: Omit<pdbs.PublServerErrorLogInsertable, "publServerServiceId">,
-  // ): sqlite.QueryExecutionRowsSupplier | sqlite.QueryExecutionRecordsSupplier {
-  //   const result = this.rowsDML(
-  //     `INSERT INTO publ_server_error_log
-  //                  (publ_server_service_id, location_href, error_summary, error_elaboration)
-  //           VALUES (?, ?, ?, ?)`,
-  //     [
-  //       this.activeServerService?.publServerServiceId,
-  //       err.locationHref,
-  //       err.errorSummary,
-  //       err.errorElaboration,
-  //     ],
-  //   );
-  //   return result;
-  // }
-
   persistBuildEvent(
     pbe: Omit<pdbs.PublBuildEventInsertable, "publHostId">,
   ) {
