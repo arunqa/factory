@@ -6,25 +6,12 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="../path.actuate.css">
-    <script>
-        const routesJsonFetchURL = "/publication/inspect/routes.json";
-    </script>
-    <script type="server-side-src" data-fetch-json-url="/publication/pom/module/project.js">
-        // this code will be run on the server side and the return value be JSON
-        export default ({ publication }) => {
-            const projectRootPath = publication.config.operationalCtx.projectRootPath;
-            return {
-              projectHome: projectRootPath("/", true),
-              envrc: projectRootPath("/.envrc", true),
-            };
-        };
-    </script>
 </head>
 
 <body>
     <details class="explore">
         <summary>Publication</summary>
-        <div data-populate-fetched-json-url="/publication/pom/module/project.js"></div>
+        <div data-populate-fetched-json-url="/POM/module/project.js.json"></div>
     </details>
 
     <details class="explore">
@@ -56,7 +43,7 @@
 
     <details class="explore">
         <summary><code>publication.routes</code></summary>
-        <script>document.write(`<div data-populate-fetched-json-url="${routesJsonFetchURL}"></div>`)</script>
+        <div data-populate-fetched-json-url="/POM/module/publication-routes.js.json"></div>
     </details>
 
     <details class="explore" open>
@@ -138,37 +125,55 @@
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
 
-            path.pageFetchJsonFx.done.watch(({ params, result: routes }) => {
-                if (params.fetchURL != routesJsonFetchURL) return;
-                const allResourcesElem = document.querySelector("#all-resources-tree");
-                if (!allResourcesElem.dataset.isPopulated) {
-                    allResourcesElem.dataset.isPopulated = "yes";
-                    const handleNodes = (treeContainer, items) => {
-                        items.sort((a, b) => (a.label > b.label) ? 1 : -1).forEach(i => {
-                            const isParent = i.children && i.children.length ? true : false;
-                            if (isParent) {
-                                const details = document.createElement("details");
-                                details.classList.add("inspect", "parent", "nav-target");
-                                treeContainer.appendChild(details);
-                                const summary = document.createElement("summary");
-                                summary.innerText = i.label;
-                                details.appendChild(summary);
-                                if (i.children && i.children.length > 0) {
-                                    handleNodes(details, i.children);
-                                }
-                            } else {
-                                const text = document.createElement("div");
-                                text.classList.add("inspect", "leaf", "nav-target");
-                                text.innerText = i.label;
-                                treeContainer.appendChild(text);
-                            }
-                        });
-                    };
-                    handleNodes(allResourcesElem, routes.resourcesTree.items);
-                    handleNodes(document.querySelector("#ui-navigation-tree"), routes.navigationTree.items);
+            const navTreeItemsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
+                fetchURL: "/POM/module/routes/navigation-tree-items.js.json",
+                serverSideSrc: `export default ({ publication }) => publication.routes.navigationTree.items`,
+                ...params
+            })));
+
+            const allResourcesTreeItemsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
+                fetchURL: "/POM/module/routes/resources-tree-items.js.json",
+                serverSideSrc: `export default ({ publication }) => publication.routes.resourcesTree.items`,
+                ...params
+            })));
+
+            const populateTreeNodes = (treeContainer, items) => {
+                items.sort((a, b) => (a.label > b.label) ? 1 : -1).forEach(i => {
+                    const isParent = i.children && i.children.length ? true : false;
+                    if (isParent) {
+                        const details = document.createElement("details");
+                        details.classList.add("inspect", "parent", "nav-target");
+                        treeContainer.appendChild(details);
+                        const summary = document.createElement("summary");
+                        summary.innerText = i.label;
+                        details.appendChild(summary);
+                        if (i.children && i.children.length > 0) {
+                            populateTreeNodes(details, i.children);
+                        }
+                    } else {
+                        const text = document.createElement("div");
+                        text.classList.add("inspect", "leaf", "nav-target");
+                        text.innerText = i.label;
+                        treeContainer.appendChild(text);
+                    }
+                });
+            };
+
+            navTreeItemsFetchFx.done.watch(({ params, result: items }) => {
+                const elem = document.querySelector("#ui-navigation-tree");
+                if (!elem.dataset.isPopulated) {
+                    elem.dataset.isPopulated = "yes";
+                    populateTreeNodes(elem, items);
                 }
             });
-            path.pageFetchJsonFx({ fetchURL: routesJsonFetchURL });
+
+            allResourcesTreeItemsFetchFx.done.watch(({ params, result: items }) => {
+                const elem = document.querySelector("#all-resources-tree");
+                if (!elem.dataset.isPopulated) {
+                    elem.dataset.isPopulated = "yes";
+                    populateTreeNodes(elem, items);
+                }
+            });
 
             document.addEventListener("transformed-markdown", (event) => {
                 // The parent is assumed to be a <details> tag, which was was
@@ -180,6 +185,7 @@
             // all listeners are ready so let's activate the page and trigger the watchers
             path.activatePage(path.inspectableClientLayout());
             path.transformContentFx(); // transform markdown to HTML
+            path.projectFetchFx();
         });
     </script>
 </body>

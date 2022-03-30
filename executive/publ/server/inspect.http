@@ -113,26 +113,27 @@ Accept: application/json
 }
 
 # --------------------
-# /publication routes
+# /POM routes
 # --------------------
 
 ###
 
-@publicationEndpoint = {{serverURL}}/publication
-@publicationInspectEndpoint = {{publicationEndpoint}}/inspect
+@pomEndpoint = {{serverURL}}/POM
+@pomEvalEndpoint = {{pomEndpoint}}/eval
+@pomModuleEndpoint = {{pomEndpoint}}/module
 
 ###
-## in /pom/eval the "this" refers to PublicationMiddlewareSupplier
+# in /POM/eval the "this" refers to PublicationObjectModelMiddlewareSupplier instance
 
-GET {{publicationEndpoint}}/pom/eval/this.publication.state.resourcesIndex.resourcesIndex.length
+GET {{pomEvalEndpoint}}/this.POM.publication.state.resourcesIndex.resourcesIndex.length
 Content-Type: application/json
 Accept: application/json
 
 ###
-## in /pom/module we need to pass in either a typescript or javascript module;
+## in /POM/module we need to pass in either a typescript or javascript module;
 ## use *.js or *.ts as name, text/plain as content-type and POST the source
 
-POST {{publicationEndpoint}}/pom/module/any-name-you-want.js
+POST {{pomModuleEndpoint}}/any-name-you-want.js.json
 Content-Type: text/plain
 
 // any Javascript you want can be passed in POST body; you can return a string
@@ -147,62 +148,60 @@ export default ({ publication }) => {
 };
 
 ###
-# in /pom/module we need to pass in either a typescript or javascript module;
+
+POST {{pomModuleEndpoint}}/design-system.js.json
+Content-Type: text/plain
+
+// this code will be run on the server side and the return value be JSON;
+// everything after /POM/module (e.g. /design-system.js.json) is arbitrary
+// and for user-agent benefit
+export default ({ publication }) => publication.ds.designSystem;
+
+###
+
+POST {{pomModuleEndpoint}}/design-system-layouts.js.json
+Content-Type: text/plain
+
+// use Array.from() since layouts.values() is an iterator; arrays are valid JSON
+export default ({ publication }) => Array.from(publication.ds.designSystem.layoutStrategies.layouts.values());
+
+###
+
+POST {{pomModuleEndpoint}}/global-sql-db-conns.js.json
+Content-Type: text/plain
+
+// we convert to JSON ourselves since we have to do some special processing for
+// possible bigints
+export default ({ globalSqlDbConns }) => JSON.stringify(
+    globalSqlDbConns,
+    (key, value) => {
+        if (typeof value === "bigint") return value.toString();
+        if (value instanceof Map) {
+            return Object.fromEntries(value);
+        }
+        return value;
+    },
+);
+
+###
+
+POST {{pomModuleEndpoint}}/publication-db.js.json
+Content-Type: text/plain
+
+export default ({ publicationDB }) => ({ sqliteFileName: publicationDB ? publicationDB.dbStoreFsPath : `publicationDB not provided` });
+
+###
+# in /POM/module we need to pass in either a typescript or javascript module;
 # use *.js or *.ts as name, text/plain as content-type and POST the source
 # code that should be executed on the server
 
-POST {{publicationEndpoint}}/pom/module/any-name.ts
+POST {{pomModuleEndpoint}}/any-name.ts.json
 Content-Type: text/plain
 
 // any Typescript you want can be passed in POST body; you can return a string
 // which will be passed as-is to the browser or an object/JSON which will be
 // intelligently serialized
 export default ({ publication }: any, { pathInfo, payload }: any) => [publication.state.resourcesIndex.resourcesIndex.length, pathInfo, payload];
-
-###
-
-GET {{publicationInspectEndpoint}}/project.ts
-Content-Type: application/json
-Accept: application/json
-
-###
-
-GET {{publicationInspectEndpoint}}/project.min.ts
-Content-Type: application/json
-Accept: application/json
-
-###
-
-GET {{publicationInspectEndpoint}}/project.mjs
-Content-Type: application/json
-Accept: application/json
-
-###
-
-GET {{publicationInspectEndpoint}}/project.min.mjs
-Content-Type: application/json
-Accept: application/json
-
-###
-
-GET {{publicationInspectEndpoint}}/renderers.json
-Content-Type: application/json
-
-###
-# this can be large so it might be slow to display in VSCode, should be fine in browser
-
-GET {{publicationInspectEndpoint}}/routes.json
-Content-Type: application/json
-
-###
-
-GET {{publicationInspectEndpoint}}/databases/content.json
-Content-Type: application/json
-
-###
-
-GET {{publicationInspectEndpoint}}/databases/server.json
-Content-Type: application/json
 
 ###
 # ------------------

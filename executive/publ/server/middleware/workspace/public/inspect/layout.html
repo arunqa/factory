@@ -26,7 +26,7 @@
 
     <details class="explore" open>
         <summary>Design System</summary>
-        <div data-populate-fetched-json-url="/publication/inspect/design-system.json"></div>
+        <div data-populate-fetched-json-url="/POM/module/design-system.js.json"></div>
     </details>
 
     <details class="explore" open>
@@ -40,13 +40,32 @@
         // automatically inject navbars and other site-wide elements
         path.activateSite();
 
-        const dsLayoutsInitFx = path.siteDomain.createEffect(async () =>
-            (await fetch("/publication/inspect/renderers.json")).json()
-        );
-
         document.addEventListener('DOMContentLoaded', function () {
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
+
+            const designSystemFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
+                fetchURL: "/POM/module/design-system.js.json",
+                serverSideSrc: `
+                    // this code will be run on the server side and the return value be JSON;
+                    // everything after /POM/module (e.g. /design-system.js.json) is arbitrary
+                    // and for user-agent benefit
+                    export default ({ publication }) => publication.ds.designSystem;
+                `,
+                ...params
+            })));
+
+            const designSystemLayoutsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
+                fetchURL: "/POM/module/design-system-layouts.js.json",
+                serverSideSrc: `
+                    // this code will be run on the server side and the return value be JSON;
+                    // everything after /POM/module (e.g. /design-system.js.json) is arbitrary
+                    // and for user-agent benefit;
+                    // use Array.from() since layouts.values() is an iterator; arrays are valid JSON
+                    export default ({ publication }) => Array.from(publication.ds.designSystem.layoutStrategies.layouts.values());
+                `,
+                ...params
+            })));
 
             path.activatePage.watch(clientLayout => {
                 const { designSystem: ds } = clientLayout.originCtx;
@@ -67,7 +86,7 @@
 
             const renderersGridElem = document.querySelector('#renderersGrid');
             if (renderersGridElem) {
-                dsLayoutsInitFx.done.watch(({ result: renderers }) => {
+                designSystemLayoutsFetchFx.done.watch(({ params, result: renderers }) => {
                     const columnDefs = [
                         { field: "identity" },
                         {
@@ -88,9 +107,9 @@
                     new agGrid.Grid(renderersGridElem, gridOptions);
                 })
             }
-            dsLayoutsInitFx();
 
-            // all listeners are ready so let's activate the page and trigger the watchers
+            // all listeners are ready so let's activate the page and trigger the watchers;
+            // this will auto-launch all pageAutoEffect registrations
             path.activatePage(path.inspectableClientLayout());
         });
     </script>

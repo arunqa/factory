@@ -2,7 +2,6 @@ import { colors, events, path } from "../../../core/deps.ts";
 import { async, oak } from "./deps.ts";
 import * as rfStd from "../../../core/std/mod.ts";
 import * as p from "../publication.ts";
-import * as pmw from "./middleware/publication/mod.ts";
 import * as wfs from "../../../lib/fs/watch.ts";
 import * as bjs from "../../../lib/package/bundle-js.ts";
 import * as s from "./middleware/static.ts";
@@ -10,6 +9,8 @@ import * as ws from "./middleware/workspace/mod.ts";
 import * as assure from "./middleware/assurance.ts";
 import * as pDB from "../publication-db.ts";
 import * as pdbProxy from "./middleware/db-proxy.ts";
+import * as pom from "./middleware/pom.ts";
+import * as rJSON from "../../../core/content/routes.json.ts";
 
 export interface PublicationServerAccessContext
   extends p.PublicationOperationalContext {
@@ -83,6 +84,34 @@ export class PublicationServerLifecyleManager {
   }
 }
 
+export const registerTransformTypescriptToCacheableJsRoute = (
+  router: oak.Router,
+  endpointWithoutExtn: string,
+  tsSrcRootSpecifier: string,
+  tsJsCache: Map<string, bjs.CacheableTypescriptSource>,
+) => {
+  router.get(
+    // see https://github.com/pillarjs/path-to-regexp for RegExp rules
+    `${endpointWithoutExtn}(\.min\.mjs|\.mjs|\.min\.ts|\.ts)`,
+    async (ctx) => {
+      const cached = await bjs.transformTypescriptToCacheableJS(
+        tsJsCache,
+        {
+          tsSrcRootSpecifier,
+          tsEmitBundle: "module",
+        },
+        {
+          minify: ctx.request.url.pathname.indexOf(".min.") != -1,
+          cacheKey: ctx.request.url.pathname,
+        },
+      );
+      ctx.response.headers.set("Content-Type", "text/javascript");
+      ctx.response.body = cached?.javaScript ??
+        `// unable to transform ${tsSrcRootSpecifier} to Javascript`;
+    },
+  );
+};
+
 export class PublicationServer {
   readonly staticEE: s.StaticEventEmitter;
   readonly serverEE: PublicationServerEventEmitter;
@@ -106,7 +135,7 @@ export class PublicationServer {
   #workspace?: ws.WorkspaceMiddlewareSupplier;
   #assurance?: assure.AssuranceMiddlewareSupplier;
   #pdbProxy?: pdbProxy.DatabaseProxyMiddlewareSupplier;
-  #pmw?: pmw.PublicationMiddlewareSupplier;
+  #pom?: pom.PublicationObjectModelMiddlewareSupplier;
 
   constructor(
     readonly publication: p.Publication<p.PublicationOperationalContext>,
@@ -169,24 +198,6 @@ export class PublicationServer {
     return this.#workspace;
   }
 
-  protected preparePublicationMW(
-    app: oak.Application,
-    router: oak.Router,
-    registerTsJsRoute: (
-      endpointWithoutExtn: string,
-      tsSrcRootSpecifier: string,
-    ) => void,
-  ) {
-    this.#pmw = new pmw.PublicationMiddlewareSupplier(
-      app,
-      router,
-      this.publication,
-      this.serverStateDB,
-      "/publication",
-      registerTsJsRoute,
-    );
-  }
-
   protected prepareWorkspace(
     app: oak.Application,
     router: oak.Router,
@@ -238,6 +249,23 @@ export class PublicationServer {
         "/SQL/unsafe",
       );
     }
+  }
+
+  protected preparePublicationObjectModel(
+    app: oak.Application,
+    router: oak.Router,
+  ) {
+    this.#pom = new pom.PublicationObjectModelMiddlewareSupplier(
+      app,
+      router,
+      {
+        publication: this.publication,
+        serializedJSON: rJSON.typicalSerializedJSON,
+        publicationDB: this.serverStateDB,
+        globalSqlDbConns: window.globalSqlDbConns ?? new Map(),
+      },
+      "/POM",
+    );
   }
 
   protected prepareUserAgentScripts(router: oak.Router) {
@@ -317,33 +345,7 @@ export class PublicationServer {
       this.serverEE,
     );
 
-    const registerTsJsRoute = (
-      endpointWithoutExtn: string,
-      tsSrcRootSpecifier: string,
-    ) => {
-      router.get(
-        // see https://github.com/pillarjs/path-to-regexp for RegExp rules
-        `${endpointWithoutExtn}(\.min\.mjs|\.mjs|\.min\.ts|\.ts)`,
-        async (ctx) => {
-          const cached = await bjs.transformTypescriptToCacheableJS(
-            this.tsJsCache,
-            {
-              tsSrcRootSpecifier,
-              tsEmitBundle: "module",
-            },
-            {
-              minify: ctx.request.url.pathname.indexOf(".min.") != -1,
-              cacheKey: ctx.request.url.pathname,
-            },
-          );
-          ctx.response.headers.set("Content-Type", "text/javascript");
-          ctx.response.body = cached?.javaScript ??
-            `// unable to transform ${tsSrcRootSpecifier} to Javascript`;
-        },
-      );
-    };
-
-    this.preparePublicationMW(app, router, registerTsJsRoute);
+    this.preparePublicationObjectModel(app, router);
     this.prepareWorkspace(app, router, this.staticEE);
     this.prepareAssurance(app, router);
     this.prepareDatabaseProxy(app, router);

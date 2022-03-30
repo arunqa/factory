@@ -20,34 +20,35 @@ export const isFramedExplorer = () => window.parent.isFramedExplorer && window.p
 export const siteDomain = createDomain("project");
 export const activatePage = siteDomain.createEvent();
 
-export const pageFetchJsonFxCache = new Map();
+export const pageAutoEffects = [];
 
-// Whenever a basic JSON fetch is required, use this so others can listen in
-// and react to effects in case they need it. Don't use custom fetches because
-// those cannot be easily observed by others. This is the central JSON-focused
-// "fetch service bus". The only required effect parameter is "fetchURL" but
-// other parameters such as "fetchID" or "fetchCtx" could be used as well.
-// You can pass in diagnose to add some diagnostics or pass in cache: false
-// if a caching is not desired (don't use cache: undefined, use cache: false).
-// Since deps.js.ts contains "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js",
-// pageFetchJsonFx also supports JSON.decycle and JSON.retrocycle to allow complex
-// JSON values which might have circular values. By default retrocyle is TRUE.
-export const pageFetchJsonFx = siteDomain.createEffect(async (params) => {
-    const { fetchURL, diagnose = false, cache = pageFetchJsonFxCache, retrocycle = true, serverSideSrc } = params;
-    if (!fetchURL) throw new Error(`No fetchURL in pageFetchJsonFx(${JSON.stringify(params)})`);
+export const pageAutoEffect = (effect, params) => {
+    pageAutoEffects.push({ effect, params });
+    return effect;
+}
+
+export const fetchJsonCache = new Map();
+
+export const fetchJson = async (params) => {
+    const { fetchURL, serverSideSrc, diagnose = false, cache = fetchJsonCache, retrocycle = true } = params;
+    if (!fetchURL) throw new Error(`No fetchURL in fetchJson(${JSON.stringify(params)})`);
 
     if (cache && cache.has(fetchURL)) {
         return cache.get(fetchURL);
     }
 
     let json;
-    if (fetchURL.endsWith(".js") || fetchURL.endsWith(".ts")) {
-        const jsOrTsServerSideSrc = serverSideSrc?.();
+    if (fetchURL.endsWith(".js.json") || fetchURL.endsWith(".ts.json")) {
+        const jsOrTsServerSideSrc = typeof serverSideSrc === "function" ? serverSideSrc() : serverSideSrc;
         if (jsOrTsServerSideSrc && jsOrTsServerSideSrc.trim().length > 0) {
-            json = await (await fetch(fetchURL, { method: "POST", body: jsOrTsServerSideSrc, headers: { "Content-Type": "text/plain" } })).json();
+            json = await (await fetch(fetchURL, {
+                method: "POST",
+                body: jsOrTsServerSideSrc,
+                headers: { "Content-Type": "text/plain" }
+            })).json();
         } else {
             return {
-                error: `fetch "${fetchURL}" of source code requested without supplying serverSideSrc function which returns either TS or JS source code (got "${jsOrTsServerSideSrc}")`,
+                error: `fetchJson "${fetchURL}" of source code requested without supplying serverSideSrc function which returns either TS or JS source code (got "${jsOrTsServerSideSrc}")`,
             };
         }
     } else {
@@ -64,7 +65,19 @@ export const pageFetchJsonFx = siteDomain.createEffect(async (params) => {
     }
     if (cache) cache.set(fetchURL, json);
     return json;
-});
+}
+
+// Whenever a basic JSON fetch is required, use this so others can listen in
+// and react to effects in case they need it. Don't use custom fetches because
+// those cannot be easily observed by others. This is the central JSON-focused
+// "fetch service bus". The only required effect parameter is "fetchURL" but
+// other parameters such as "fetchID" or "fetchCtx" could be used as well.
+// You can pass in diagnose to add some diagnostics or pass in cache: false
+// if a caching is not desired (don't use cache: undefined, use cache: false).
+// Since deps.js.ts contains "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js",
+// pageFetchJsonFx also supports JSON.decycle and JSON.retrocycle to allow complex
+// JSON values which might have circular values. By default retrocyle is TRUE.
+export const pageFetchJsonFx = siteDomain.createEffect(async (params) => await fetchJson(params));
 
 export const transformContentFx = siteDomain.createEffect(async () => {
     // find all <pre data-transformable="markdown"> and run Markdown-it transformation
@@ -78,31 +91,15 @@ export const jsEvalFailureHTML = (evaluatedJS, error, location, context) => {
 
 // find any fetchable JSON placeholders and fill them in
 activatePage.watch((clientLayout) => {
-    for (const elem of document.querySelectorAll(`[data-var]`)) {
-        const varElem = document.getElementById(elem.dataset.var);
-        if (varElem) {
-            elem.innerHTML = varElem.innerHTML;
-        } else {
-            elem.innerHTML = `<code>var</code> tag with ID <code><mark>${elem.dataset.var}</mark></code> not defined`;
-        }
-    }
-
-    // first find all the server-side scripts we want to execute and grab their results now;
-    // anyone already listening for those scripts will get the JSON and others can call the same
-    // URL and retrieve results from cache
-    for (const script of document.querySelectorAll('script[type="server-side-src"]')) {
-        const fetchURL = script.dataset.fetchJsonUrl;
-        if (fetchURL) {
-            pageFetchJsonFx({ fetchURL, serverSideSrc: () => script.innerText });
-        } else {
-            console.error(`script[type="server-side-src"] must supply script.dataset.fetchJsonUrl`);
-        }
+    for (const autoEffect of pageAutoEffects) {
+        const { effect, params } = autoEffect;
+        effect(params);
     }
 
     for (const elem of document.querySelectorAll(`[data-populate-fetched-json-url]`)) {
         // usage example:
-        //   <div data-populate-fetched-json-url="/publication/inspect/design-system.json"></div>
-        //   <div data-populate-fetched-json-url="/publication/inspect/design-system.json" data-populate-fetched-json-expr="result.something"></div>
+        //   <div data-populate-fetched-json-url="/workspace/inspect/env-vars.json"></div>
+        //   <div data-populate-fetched-json-url="/workspace/inspect/env-vars.json" data-populate-fetched-json-expr="result.something"></div>
         const fetchURL = elem.dataset.populateFetchedJsonUrl;
         pageFetchJsonFx.done.watch(({ params, result }) => {
             if (params.fetchURL === fetchURL) {
@@ -291,4 +288,18 @@ export const populateObjectJSON = (inspect, targetElem, open, options) => {
         targetElem.appendChild(formatter.render());
     }
 }
+
+export const projectFetchFx = siteDomain.createEffect(async (params) => await pageFetchJsonFx({
+    fetchURL: "/POM/module/project.js.json",
+    serverSideSrc: `
+        // this code will be run on the server side and the return value be decycled JSON
+        export default ({ publication }) => {
+            const projectRootPath = publication.config.operationalCtx.projectRootPath;
+            return {
+                projectHome: projectRootPath("/", true),
+                envrc: projectRootPath("/.envrc", true),
+            };
+        };`,
+    ...params
+}));
 
