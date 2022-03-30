@@ -72,7 +72,7 @@ export class CachedExtensions implements govn.ExtensionsManager {
   }
 
   identity(provenance: string): CachedExtensionIdentity {
-    // TODO: check for "file://" and normalize it, etc.
+    // TODO: check for "file://" and normalize it, etc. be sure to support data URLs too
     return provenance;
   }
 
@@ -132,6 +132,29 @@ export class CachedExtensions implements govn.ExtensionsManager {
       }
     }
     return importedModule;
+  }
+
+  async importDynamicScript(
+    source: {
+      readonly typescript?: () => string;
+      readonly javascript?: () => string;
+    },
+  ): Promise<[extn?: govn.ExtensionModule, dataURL?: string]> {
+    // see https://deno.com/blog/v1.7#support-for-importing-data-urls
+
+    if (source.typescript) {
+      // deno-fmt-ignore
+      const dataURL = `data:application/typescript;base64,${btoa(source.typescript())}`;
+      return [await this.importModule(dataURL), dataURL];
+    }
+
+    if (source.javascript) {
+      // deno-fmt-ignore
+      const dataURL = `data:application/javascript;base64,${btoa(source.javascript())}`;
+      return [await this.importModule(dataURL), dataURL];
+    }
+
+    return [undefined, undefined];
   }
 
   async extend(...consumers: govn.ExtensionConsumer[]): Promise<void> {
