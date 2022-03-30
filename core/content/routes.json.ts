@@ -23,7 +23,7 @@ export const mapToObjectJsonReplacer = (_key: string, value: unknown) => {
 
 export const typicalSerializedJSON = (value: unknown, options?: {
   readonly decycle?: boolean;
-  readonly transformMapsToObjects: boolean;
+  readonly transformMapsToObjects?: boolean;
 }) => {
   const { decycle, transformMapsToObjects } = options ?? {};
   return JSON.stringify(
