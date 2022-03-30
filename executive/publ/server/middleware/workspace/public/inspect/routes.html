@@ -9,12 +9,22 @@
     <script>
         const routesJsonFetchURL = "/publication/inspect/routes.json";
     </script>
+    <script type="server-side-src" data-fetch-json-url="/publication/pom/module/project.js">
+        // this code will be run on the server side and the return value be JSON
+        export default ({ publication }) => {
+            const projectRootPath = publication.config.operationalCtx.projectRootPath;
+            return {
+              projectHome: projectRootPath("/", true),
+              envrc: projectRootPath("/.envrc", true),
+            };
+        };
+    </script>
 </head>
 
 <body>
     <details class="explore">
         <summary>Publication</summary>
-        <div data-populate-fetched-json-url="/publication/inspect/project.json"></div>
+        <div data-populate-fetched-json-url="/publication/pom/module/project.js"></div>
     </details>
 
     <details class="explore">

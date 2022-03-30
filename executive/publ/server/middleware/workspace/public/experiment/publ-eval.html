@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../path.actuate.css">
+    <script type="server-side-src" data-fetch-json-url="/publication/pom/module/project.js">
+        // this code will be run on the server side and the return value be JSON
+        export default ({ publication }) => {
+            const projectRootPath = publication.config.operationalCtx.projectRootPath;
+            return {
+              projectHome: projectRootPath("/", true),
+              envrc: projectRootPath("/.envrc", true),
+            };
+        };
+    </script>
+</head>
+
+<body>
+    <details class="explore" open>
+        <summary>Publication</summary>
+        <div data-populate-fetched-json-url="/publication/pom/module/project.js"></div>
+    </details>
+
+    <script type="module">
+        import * as path from "../path.actuate.mjs";
+
+        // automatically inject navbars and other site-wide elements
+        path.activateSite();
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // setup events, stores, and effects listeners so that we can be
+            // as decoupled from business logic as possible
+
+            // all listeners are ready so let's activate the page and trigger the watchers
+            path.activatePage(path.inspectableClientLayout());
+        });
+    </script>
+</body>
+
+</html>

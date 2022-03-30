@@ -33,14 +33,26 @@ export const pageFetchJsonFxCache = new Map();
 // pageFetchJsonFx also supports JSON.decycle and JSON.retrocycle to allow complex
 // JSON values which might have circular values. By default retrocyle is TRUE.
 export const pageFetchJsonFx = siteDomain.createEffect(async (params) => {
-    const { fetchURL, diagnose = false, cache = pageFetchJsonFxCache, retrocycle = true } = params;
+    const { fetchURL, diagnose = false, cache = pageFetchJsonFxCache, retrocycle = true, serverSideSrc } = params;
     if (!fetchURL) throw new Error(`No fetchURL in pageFetchJsonFx(${JSON.stringify(params)})`);
 
     if (cache && cache.has(fetchURL)) {
         return cache.get(fetchURL);
     }
 
-    const json = await (await fetch(params.fetchURL)).json();
+    let json;
+    if (fetchURL.endsWith(".js") || fetchURL.endsWith(".ts")) {
+        const jsOrTsServerSideSrc = serverSideSrc?.();
+        if (jsOrTsServerSideSrc && jsOrTsServerSideSrc.trim().length > 0) {
+            json = await (await fetch(fetchURL, { method: "POST", body: jsOrTsServerSideSrc, headers: { "Content-Type": "text/plain" } })).json();
+        } else {
+            return {
+                error: `fetch "${fetchURL}" of source code requested without supplying serverSideSrc function which returns either TS or JS source code (got "${jsOrTsServerSideSrc}")`,
+            };
+        }
+    } else {
+        json = await (await fetch(fetchURL)).json();
+    }
     if (retrocycle) JSON.retrocycle(json);
     if (diagnose) {
         if (typeof json === "object") json.pageFetchJsonFxDiagnostics = {
@@ -75,10 +87,22 @@ activatePage.watch((clientLayout) => {
         }
     }
 
+    // first find all the server-side scripts we want to execute and grab their results now;
+    // anyone already listening for those scripts will get the JSON and others can call the same
+    // URL and retrieve results from cache
+    for (const script of document.querySelectorAll('script[type="server-side-src"]')) {
+        const fetchURL = script.dataset.fetchJsonUrl;
+        if (fetchURL) {
+            pageFetchJsonFx({ fetchURL, serverSideSrc: () => script.innerText });
+        } else {
+            console.error(`script[type="server-side-src"] must supply script.dataset.fetchJsonUrl`);
+        }
+    }
+
     for (const elem of document.querySelectorAll(`[data-populate-fetched-json-url]`)) {
         // usage example:
-        //   <div data-populate-fetched-json-url="/publication/inspect/project.json"></div>
-        //   <div data-populate-fetched-json-url="/publication/inspect/project.json" data-populate-fetched-json-expr="result.something"></div>
+        //   <div data-populate-fetched-json-url="/publication/inspect/design-system.json"></div>
+        //   <div data-populate-fetched-json-url="/publication/inspect/design-system.json" data-populate-fetched-json-expr="result.something"></div>
         const fetchURL = elem.dataset.populateFetchedJsonUrl;
         pageFetchJsonFx.done.watch(({ params, result }) => {
             if (params.fetchURL === fetchURL) {
@@ -99,7 +123,7 @@ activatePage.watch((clientLayout) => {
         });
         pageFetchJsonFx.fail.watch(({ error, params }) => {
             if (params.fetchURL === fetchURL) {
-                elem.innerHTML = `Unable to fetch <code>${fetchURL}</code>: <code>${JSON.stringify(error)}</code> in activatePage.watch(${JSON.stringify(params)})`;
+                elem.innerHTML = `Unable to fetch <code>${fetchURL}</code>: <code>${error}</code> in activatePage.watch(${JSON.stringify(params)})`;
             }
         });
         pageFetchJsonFx({ fetchURL });
@@ -208,7 +232,6 @@ export const activateFooter = () => {
     const wsPageFactoryPath = `/factory/executive/publ/server/middleware/workspace${wsPageLogicalFsPath}`;
     editWsPageAnchor.className = "info action-edit-workspace-src";
     editWsPageAnchor.href = `/workspace/editor-redirect${wsPageFactoryPath}`;
-    console.log({ editWsPageAnchorHref: editWsPageAnchor.href })
     editWsPageAnchor.innerHTML = "📝 Src";
     editWsPageAnchor.title = `Edit ${wsPageFactoryPath}`;
     footer.appendChild(editWsPageAnchor);

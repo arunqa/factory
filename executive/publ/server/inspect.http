@@ -122,32 +122,66 @@ Accept: application/json
 @publicationInspectEndpoint = {{publicationEndpoint}}/inspect
 
 ###
+## in /pom/eval the "this" refers to PublicationMiddlewareSupplier
+
+GET {{publicationEndpoint}}/pom/eval/this.publication.state.resourcesIndex.resourcesIndex.length
+Content-Type: application/json
+Accept: application/json
+
+###
+## in /pom/module we need to pass in either a typescript or javascript module;
+## use *.js or *.ts as name, text/plain as content-type and POST the source
+
+POST {{publicationEndpoint}}/pom/module/any-name-you-want.js
+Content-Type: text/plain
+
+// any Javascript you want can be passed in POST body; you can return a string
+// which will be passed as-is to the browser or an object/JSON which will be
+// intelligently serialized
+export default ({ publication }) => {
+    const projectRootPath = publication.config.operationalCtx.projectRootPath;
+    return {
+      projectHome: projectRootPath("/", true),
+      envrc: projectRootPath("/.envrc", true),
+    };
+};
+
+###
+# in /pom/module we need to pass in either a typescript or javascript module;
+# use *.js or *.ts as name, text/plain as content-type and POST the source
+# code that should be executed on the server
+
+POST {{publicationEndpoint}}/pom/module/any-name.ts
+Content-Type: text/plain
+
+// any Typescript you want can be passed in POST body; you can return a string
+// which will be passed as-is to the browser or an object/JSON which will be
+// intelligently serialized
+export default ({ publication }: any, { pathInfo, payload }: any) => [publication.state.resourcesIndex.resourcesIndex.length, pathInfo, payload];
+
+###
 
 GET {{publicationInspectEndpoint}}/project.ts
-Content-Type: text/javascript
-Accept: text/javascript
+Content-Type: application/json
+Accept: application/json
+
 ###
 
 GET {{publicationInspectEndpoint}}/project.min.ts
-Content-Type: text/javascript
-Accept: text/javascript
+Content-Type: application/json
+Accept: application/json
 
 ###
 
 GET {{publicationInspectEndpoint}}/project.mjs
-Content-Type: text/javascript
-Accept: text/javascript
+Content-Type: application/json
+Accept: application/json
 
 ###
 
 GET {{publicationInspectEndpoint}}/project.min.mjs
-Content-Type: text/javascript
-Accept: text/javascript
-
-###
-
-GET {{publicationInspectEndpoint}}/project.json
 Content-Type: application/json
+Accept: application/json
 
 ###
 
