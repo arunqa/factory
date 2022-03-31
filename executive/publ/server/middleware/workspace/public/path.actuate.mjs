@@ -1,6 +1,34 @@
 import { createDomain } from "https://unpkg.com/effector@22.2.0/effector.mjs";
 import JSONFormatter from "https://cdn.jsdelivr.net/npm/json-formatter-js@2.3.4/dist/json-formatter.esm.js";
 
+// User agent (client side) hydration is managed by Effector events, stores,
+// and effects. Learn from Svelte components which extracts state from components
+// into a hoisted scope and sort all expressions into Effector "business logic".
+// Unless we're talking about simple, truly local, state stored in components,
+// perform all state management outside of components as Effect "business logic"
+// and allow components to observe those events and stores ("watched hydration").
+//
+// A good example of watched hydration is pageFetchJsonFx, which acts as a server-
+// fetch "service bus" Effector effect. All functions that need server side JSON
+// should use the pageFetchJsonFx directly or wrap pageFetchJsonFx into a custom
+// effect. Then, any page content that needs hydration can use either a wrapped,
+// or "composed", or direct call to pageFetchJsonFx. This means that all server
+// fetches for arbitrary JSON can be observed and reacted upon by each component
+// without needing any special hydration at the component level.
+//
+// Observability should be Effector-independent, too. This means that each effect
+// such as pageFetchJsonFx should implement normal DOM-based events whenever
+// possible so that *.addEventListener can be used for listening to hydration
+// messages.
+//
+// Philosopy:
+// * Don't re-invent or re-imagine HTML, even if it's extra code just use HTML.
+// * Allow progressive rendering to stream content users as soon as it's ready.
+//   Client side JavaScript bundles should be eliminated or async defered. Data
+//   requests should never prevent rendering (load them after first paint). HTML,
+//   assets, and images must be loaded as soon as possible with asynchronous
+//   data loading in as it completes.
+
 // We directly import Javascript but we need to "bundle" Typescript.
 // deps.auto.js is auto-bundled from any Typescript we consider a dependency.
 import * as d from "./deps.auto.js";
@@ -20,50 +48,135 @@ export const isFramedExplorer = () => window.parent.isFramedExplorer && window.p
 export const siteDomain = createDomain("project");
 export const activatePage = siteDomain.createEvent();
 
-export const pageAutoEffects = [];
+/**
+ * pageAutoEffects are "registered" Effector effects that will be auto-executed
+ * by the activatePage event (mainly for convenience and literate programming
+ * documentation).
+ */
+const pageAutoEffects = [];
 
 export const pageAutoEffect = (effect, params) => {
-    pageAutoEffects.push({ effect, params });
+    pageAutoEffects.push({ effect, params, isApplied: false });
     return effect;
 }
 
-export const fetchJsonCache = new Map();
+export const fetchJsonCache = new Map(); // Map<string, {json: unknown; accessCount: number; expired?: (cacheEntry) => boolean}>
+export const fetchJsonEventName = "fetchJson";
+export const isServerSideSrcFetchJsonFx = (fetchURL) => fetchURL.endsWith(".js.json") || fetchURL.endsWith(".ts.json") ? true : false;
 
+let fetchJsonIdentity = 0;
+
+/**
+ * fetchJson is our specialized user agent (UA or client-side) hydration bus.
+ * Whenever any JSON fetch is required by the page, use this so elements can
+ * listen in and react to effects in case they need it. Don't use custom fetches
+ * because those cannot be easily observed by others. This is the central JSON-
+ * focused UA "hydration service bus" (HSB).
+ *
+ * This function makes calls to servers and returns JSON but also, by default
+ * (can be disabled), dispatch a DOM event when fetch completes (so that
+ * components can observe the events for their own needs). JSON values are cached
+ * by default (can be disabled) and the cache access also generate events which
+ * access indexes so that observers know if it's an actual fetch vs. cache hit.
+ * Caches can also be (optionally) expirable using a custom function.
+ *
+ * Since deps.js.ts contains "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js",
+ * pageFetchJsonFx also supports JSON.decycle and JSON.retrocycle to allow complex
+ * JSON values which might have circular values. By default retrocyle is TRUE.
+ * @param {*} params
+ * @returns fetched (or cached) JSON
+ */
 export const fetchJson = async (params) => {
-    const { fetchURL, serverSideSrc, diagnose = false, cache = fetchJsonCache, retrocycle = true } = params;
+    const defaultFetchID = ++fetchJsonIdentity;
+    const {
+        fetchURL, // always required
+        serverSideSrc, // required if fetchURL ends with ".js.json" or ".ts.json"
+        identity = defaultFetchID,
+        cache = fetchJsonCache, retrocycle = true, // options, with defaults
+        constructCacheEntry = (jsonValue, _fetchJsonCtx) => ({ jsonValue, accessCount: 0 }), // don't store fetchJsonCtx as-is, it's ephemeral
+        // onFetched, onAccess, and onCacheAccess have signataure (json, fetchJsonCtx) => void
+        // onAccess is always called on success, while onFetched is only called if true fetch, onCacheAccess only if cached access
+        onFetched = undefined, onAccess = undefined, onCacheAccess = undefined, onInvalidFetch = undefined, onFetchError = undefined,
+        // pass false (NOT undefined) to disable event because the spread will default it
+        constructCustomEvent = (jsonValue, fetchJsonCtx) => new CustomEvent(fetchJsonEventName, { detail: { jsonValue, fetchJsonCtx } }),
+        // pass false (NOT undefined) to disable event because the spread will default it
+        dispatchEvent = (jsonValue, fetchJsonCtx) => {
+            const event = typeof constructCustomEvent === "function" ? constructCustomEvent(jsonValue, fetchJsonCtx) : undefined;
+            if (event) window.dispatchEvent(event);
+        },
+        diagnose = false // optional diagnostics
+    } = params;
     if (!fetchURL) throw new Error(`No fetchURL in fetchJson(${JSON.stringify(params)})`);
+    const defaultContext = { identity, params, retrocycle, cache };
 
-    if (cache && cache.has(fetchURL)) {
-        return cache.get(fetchURL);
-    }
-
-    let json;
-    if (fetchURL.endsWith(".js.json") || fetchURL.endsWith(".ts.json")) {
-        const jsOrTsServerSideSrc = typeof serverSideSrc === "function" ? serverSideSrc() : serverSideSrc;
-        if (jsOrTsServerSideSrc && jsOrTsServerSideSrc.trim().length > 0) {
-            json = await (await fetch(fetchURL, {
-                method: "POST",
-                body: jsOrTsServerSideSrc,
-                headers: { "Content-Type": "text/plain" }
-            })).json();
-        } else {
-            return {
-                error: `fetchJson "${fetchURL}" of source code requested without supplying serverSideSrc function which returns either TS or JS source code (got "${jsOrTsServerSideSrc}")`,
-            };
+    const report = (jsonValue, fetchJsonCtx) => {
+        if (typeof onAccess == "function") onAccess(jsonValue, fetchJsonCtx);
+        if (typeof onCacheAccess == "function" && cacheEntry) onCacheAccess(jsonValue, fetchJsonCtx);
+        if (typeof dispatchEvent === "function") {
+            dispatchEvent(jsonValue, fetchJsonCtx);
         }
+    }
+
+    const diagnostics = (fetchJsonCtx) => ({
+        ...fetchJsonCtx,
+        cacheState: Object.fromEntries(cache), // we want the state of the cache at this moment
+    })
+
+    let expiredCacheEntry = undefined;
+    if (cache && cache.has(fetchURL)) {
+        const cacheEntry = cache.get(fetchURL);
+        if (typeof cacheEntry.expired !== "function" || !cacheEntry.expired(cacheEntry)) {
+            cacheEntry.accessCount = cacheEntry.accessCount + 1;
+            const json = cacheEntry.json;
+            report(json, { ...defaultContext, cacheEntry });
+            return json;
+        }
+        expiredCacheEntry = cacheEntry;
+    }
+
+    let fetchInit;
+    let resp;
+    let fetchError;
+    try {
+        if (isServerSideSrcFetchJsonFx(fetchURL)) {
+            const jsOrTsServerSideSrc = typeof serverSideSrc === "function" ? serverSideSrc() : serverSideSrc;
+            if (jsOrTsServerSideSrc && jsOrTsServerSideSrc.trim().length > 0) {
+                fetchInit = {
+                    method: "POST",
+                    body: jsOrTsServerSideSrc,
+                    headers: { "Content-Type": "text/plain" }
+                };
+                resp = await fetch(fetchURL, fetchInit);
+            } else {
+                fetchError = new Error(`fetchJson "${fetchURL}" of source code requested without supplying serverSideSrc function which returns either TS or JS source code (got "${jsOrTsServerSideSrc}")`);
+            }
+        } else {
+            resp = await fetch(fetchURL);
+        }
+    } catch (error) {
+        fetchError = error;
+    }
+
+    const fetchJsonCtx = { ...defaultContext, fetchInit, resp, fetchError, expiredCacheEntry };
+    let json = undefined;
+    let constructedCacheEntry = undefined;
+    if (fetchError) {
+        json = onFetchError?.(fetchJsonCtx) ?? diagnostics(fetchJsonCtx);
+    } else if (!resp.ok) {
+        json = onInvalidFetch?.(fetchJsonCtx) ?? diagnostics(fetchJsonCtx);
     } else {
-        json = await (await fetch(fetchURL)).json();
+        json = await resp.json();
+        if (retrocycle) json = JSON.retrocycle(json);
+        if (typeof onFetched == "function") onFetched(json, fetchJsonCtx);
+        if (cache && typeof constructCacheEntry === "function") {
+            constructedCacheEntry = constructCacheEntry(json, fetchJsonCtx)
+            cache.set(fetchURL, constructedCacheEntry);
+        }
     }
-    if (retrocycle) JSON.retrocycle(json);
     if (diagnose) {
-        if (typeof json === "object") json.pageFetchJsonFxDiagnostics = {
-            ...params,
-            cache,
-            cacheState: Object.fromEntries(cache), // we want the state of the cache at this moment
-            retrocycled: retrocycle,
-        };
+        if (typeof json === "object") json.jsonFetchDiagnostics = diagnostics(fetchJsonCtx);
     }
-    if (cache) cache.set(fetchURL, json);
+    report(json, fetchJsonCtx);
     return json;
 }
 
@@ -79,6 +192,10 @@ export const fetchJson = async (params) => {
 // JSON values which might have circular values. By default retrocyle is TRUE.
 export const pageFetchJsonFx = siteDomain.createEffect(async (params) => await fetchJson(params));
 
+pageFetchJsonFx.fail.watch(({ error, params }) => {
+    console.error('pageFetchJsonFx error', { error, params });
+})
+
 export const transformContentFx = siteDomain.createEffect(async () => {
     // find all <pre data-transformable="markdown"> and run Markdown-it transformation
     await d.transformMarkdownElems();
@@ -91,39 +208,45 @@ export const jsEvalFailureHTML = (evaluatedJS, error, location, context) => {
 
 // find any fetchable JSON placeholders and fill them in
 activatePage.watch((clientLayout) => {
-    for (const autoEffect of pageAutoEffects) {
-        const { effect, params } = autoEffect;
-        effect(params);
-    }
-
+    // prepare event listeners for fetched URLs (client-side hydration);
+    // all page-auto-effects and fetchJson calls will generate events.
     for (const elem of document.querySelectorAll(`[data-populate-fetched-json-url]`)) {
         // usage example:
         //   <div data-populate-fetched-json-url="/workspace/inspect/env-vars.json"></div>
         //   <div data-populate-fetched-json-url="/workspace/inspect/env-vars.json" data-populate-fetched-json-expr="result.something"></div>
         const fetchURL = elem.dataset.populateFetchedJsonUrl;
-        pageFetchJsonFx.done.watch(({ params, result }) => {
-            if (params.fetchURL === fetchURL) {
-                const evalExpr = elem.dataset.populateFetchedJsonExpr;
-                if (evalExpr) {
-                    // if given an eval'able expression, get the expression value
-                    // in this context and populate that JSON instead of full JSON
-                    try {
-                        populateObjectJSON(eval(evalExpr), elem);
-                    } catch (error) {
-                        elem.innerHTML = jsEvalFailureHTML(evalExpr, error, 'activatePage.watch(data-populate-fetched-json-expr)', { clientLayout });
+        window.addEventListener(fetchJsonEventName, (event) => {
+            const { jsonValue: result, fetchJsonCtx } = (event.detail ? event.detail : {});
+            if (fetchJsonCtx.params.fetchURL) {
+                if (fetchJsonCtx.params.fetchURL === fetchURL) {
+                    const evalExpr = elem.dataset.populateFetchedJsonExpr;
+                    if (evalExpr) {
+                        // if given an eval'able expression, get the expression value
+                        // in this context and populate that JSON instead of full JSON
+                        try {
+                            populateObjectJSON(eval(evalExpr), elem);
+                        } catch (error) {
+                            elem.innerHTML = jsEvalFailureHTML(evalExpr, error, 'activatePage.watch(data-populate-fetched-json-expr)', { clientLayout });
+                        }
+                    } else {
+                        // Not given an eval'able expression, populate full JSON
+                        populateObjectJSON(result, elem);
                     }
-                } else {
-                    // Not given an eval'able expression, populate full JSON
-                    populateObjectJSON(result, elem);
                 }
+            } else {
+                console.error(`activatePage.watch() => window.addEventListener(${fetchJsonEventName}) has no fetchURL`, event);
             }
         });
-        pageFetchJsonFx.fail.watch(({ error, params }) => {
-            if (params.fetchURL === fetchURL) {
-                elem.innerHTML = `Unable to fetch <code>${fetchURL}</code>: <code>${error}</code> in activatePage.watch(${JSON.stringify(params)})`;
-            }
-        });
-        pageFetchJsonFx({ fetchURL });
+        // serverSideSrc JSON fetches will be registered separately, with their code supplied
+        // in pageFetchJsonFx wrappers that are usually registered using pageAutoEffect().
+        if (!isServerSideSrcFetchJsonFx(fetchURL)) {
+            // go ahead and initiate the fetch now, which will call the listener when done
+            // we use pageFetchJsonFx({ fetchURL }) instead of jsonFetch() directly so that
+            // anyone who added a watch to pageFetchJsonFx() will also notified.
+            // there's no harm calling pageFetchJsonFx multiple times (caching allows JSON
+            // fetches to be idempotent)
+            pageFetchJsonFx({ fetchURL });
+        }
     }
 
     for (const elem of document.querySelectorAll(`[data-populate-activate-page-watch-json]`)) {
@@ -141,6 +264,12 @@ activatePage.watch((clientLayout) => {
         } catch (error) {
             elem.innerHTML = jsEvalFailureHTML(evalExpr, error, 'activatePage.watch(data-populate-activate-page-watch-json)', { clientLayout });
         }
+    }
+
+    for (const autoEffect of pageAutoEffects) {
+        const { effect, params } = autoEffect;
+        effect(params);
+        autoEffect.isApplied = true;
     }
 });
 
