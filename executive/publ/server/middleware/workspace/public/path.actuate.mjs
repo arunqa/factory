@@ -66,6 +66,28 @@ export function fetchFxInitServerSideSrc(fetchURL, serverSideSrc) {
     }
 }
 
+/**
+ * fetchFxInitSQL prepares sb.fetchFx params with requestInit and
+ * fetchURL for fetching SQL execution
+ * @param {string} SQL the SQL text to send to the server
+ * @param {string} rowNature "rows" for array of arrays, or "records" for array of objects with keys as column names
+ * @param {string} fetchURL the endpoint to call, defaults to "/SQL/unsafe"
+ * @returns partial sb.fetchFx params which for spreading with other params
+ */
+export function fetchFxInitSQL(SQL, rowNature = "records", fetchURL = "/SQL/unsafe") {
+    return {
+        fetchURL,
+        requestInit: () => ({
+            method: "POST",
+            headers: {
+                'Content-type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ SQL, rowNature })
+        })
+    }
+}
+
 // prepare effects, events and stores that can be used for site management;
 // at a minimum, every page in the site should have this default Javascript:
 //   document.addEventListener('DOMContentLoaded', () => activatePage(inspectableClientLayout()));

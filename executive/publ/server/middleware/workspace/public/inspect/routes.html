@@ -125,6 +125,9 @@
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
 
+            // needed for <div data-populate-fetched-json-url="/POM/module/project.js.json">
+            path.pageAutoEffect(path.projectFetchFx);
+
             const navTreeItemsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
                 ...path.fetchFxInitServerSideSrc(
                     "/POM/module/routes/navigation-tree-items.js.json",
@@ -184,10 +187,10 @@
                 event.detail.mdHtmlElem.parentElement.open = false;
             });
 
-            // all listeners are ready so let's activate the page and trigger the watchers
+            // all listeners are ready so let's activate the page and trigger the watchers;
+            // (this will run all the path.pageAutoEffect() registrations)
             path.activatePage(path.inspectableClientLayout());
             path.transformContentFx(); // transform markdown to HTML
-            path.projectFetchFx();
         });
     </script>
 </body>

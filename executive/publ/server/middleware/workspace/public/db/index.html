@@ -31,28 +31,18 @@
         // automatically inject navbars and other site-wide elements
         path.activateSite();
 
-        const dbQueryFx = path.siteDomain.createEffect(async () =>
-            (await await fetch('/SQL/unsafe', {
-                method: "POST",
-                headers: {
-                    'Content-type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    // these columns should be an identical match to the expectations in accessLogAgGridConfig.columnDefs
-                    SQL: `  SELECT created_at, asset_nature, status, location_href, filesys_target_path, filesys_target_symlink
-                              FROM publ_server_static_access_log
-                          ORDER BY created_at DESC
-                             LIMIT 100`,
-                    // rowNature can be "rows" for array of arrays, or "records" for array of objects with keys as column names
-                    rowNature: "records"
-                })
-            })).json()
-        );
-
         document.addEventListener('DOMContentLoaded', function () {
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
+
+            const dbQueryFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
+                ...path.fetchFxInitSQL(`
+                        SELECT created_at, asset_nature, status, location_href, filesys_target_path, filesys_target_symlink
+                        FROM publ_server_static_access_log
+                    ORDER BY created_at DESC
+                        LIMIT 100`),
+                ...params,
+            })));
 
             path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
                 ...path.fetchFxInitServerSideSrc("/POM/module/global-sql-db-conns.js.json", `
@@ -102,11 +92,10 @@
                     },
                 };
                 new agGrid.Grid(document.querySelector('#dbQueryResultGrid'), gridOptions);
-                console.log("dbQueryFx", gridOptions, result);
             });
-            dbQueryFx();
 
-            // all listeners are ready so let's activate the page and trigger the watchers
+            // all listeners are ready so let's activate the page and trigger the watchers;
+            // (this will run all the path.pageAutoEffect() registrations)
             path.activatePage(path.inspectableClientLayout());
         });
     </script>
