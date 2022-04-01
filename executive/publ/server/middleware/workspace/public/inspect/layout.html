@@ -45,25 +45,23 @@
             // as decoupled from business logic as possible
 
             const designSystemFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                fetchURL: "/POM/module/design-system.js.json",
-                serverSideSrc: `
+                ...path.fetchFxInitServerSideSrc("/POM/module/design-system.js.json", `
                     // this code will be run on the server side and the return value be JSON;
                     // everything after /POM/module (e.g. /design-system.js.json) is arbitrary
                     // and for user-agent benefit
                     export default ({ publication }) => publication.ds.designSystem;
-                `,
+                `),
                 ...params
             })));
 
             const designSystemLayoutsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                fetchURL: "/POM/module/design-system-layouts.js.json",
-                serverSideSrc: `
+                ...path.fetchFxInitServerSideSrc("/POM/module/design-system-layouts.js.json", `
                     // this code will be run on the server side and the return value be JSON;
                     // everything after /POM/module (e.g. /design-system.js.json) is arbitrary
                     // and for user-agent benefit;
                     // use Array.from() since layouts.values() is an iterator; arrays are valid JSON
                     export default ({ publication }) => Array.from(publication.ds.designSystem.layoutStrategies.layouts.values());
-                `,
+                `),
                 ...params
             })));
 

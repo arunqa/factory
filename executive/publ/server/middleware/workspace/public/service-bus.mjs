@@ -1,9 +1,6 @@
 export const fetchFxCache = new Map(); // Map<string, {fetchedValue: unknown; accessCount: number; expired?: (cacheEntry) => boolean}>
 export const fetchFxSuccessEventName = "fetchFx";
 export const fetchFxFailEventName = "fetchFxFail";
-export const isServerSideSrcFetchFx = ({ fetchURL }) => fetchURL.endsWith(".js.json") || fetchURL.endsWith(".ts.json") ? true : false;
-
-let fetchFxIdentity = 0;
 
 export const fetchRespJsonValue = async (resp, _fetchFxCtx) => await resp.json();
 export const fetchRespTextValue = async (resp, _fetchFxCtx) => await resp.text();
@@ -17,6 +14,8 @@ export const fetchRespTextValue = async (resp, _fetchFxCtx) => await resp.text()
  * @returns the JSON value, forcefully retrocycled
  */
 export const fetchRespRetrocycledJsonValue = async (resp, _fetchFxCtx) => JSON.retrocycle(await resp.json());
+
+let fetchFxIdentity = 0;
 
 /**
  * fetchFx is our specialized user agent (UA or client-side) hydration bus.
@@ -40,8 +39,8 @@ export const fetchFx = async (params, extraCtx) => {
     const defaultFetchID = ++fetchFxIdentity;
     const {
         fetchURL, // always required
-        serverSideSrc, // required if fetchURL ends with ".js.*" or ".ts.*"
         identity = defaultFetchID,
+        requestInit = undefined, // if defined, provide (params, fetchFxCtx) => RequestInit function or RequestInit object
         fetchValue = fetchRespJsonValue, // could be replaced with HTML, CSV, or other value
         cache = fetchFxCache, // options, with defaults
         // onFetched, onAccess, and onCacheAccess have signataure (json, fetchFxCtx) => void
@@ -126,27 +125,20 @@ export const fetchFx = async (params, extraCtx) => {
         expiredCacheEntries = expiredCacheEntries ? [...expiredCacheEntries, cacheEntry] : cacheEntry;
     }
 
+    // initialize the fetch with either a function or object or undefined if no special methods/body
     let fetchInit;
     let resp;
     let fetchError;
     try {
-        if (isServerSideSrcFetchFx(params, defaultContext)) {
-            const jsOrTsServerSideSrc = typeof serverSideSrc === "function" ? serverSideSrc() : serverSideSrc;
-            if (jsOrTsServerSideSrc && jsOrTsServerSideSrc.trim().length > 0) {
-                fetchInit = {
-                    method: "POST",
-                    body: jsOrTsServerSideSrc,
-                    headers: { "Content-Type": "text/plain" }
-                };
-                resp = await fetch(fetchURL, fetchInit);
-            } else {
-                fetchError = new Error(`fetchFx "${fetchURL}" of source code requested without supplying serverSideSrc function which returns either TS or JS source code (got "${jsOrTsServerSideSrc}")`);
-            }
-        } else {
-            resp = await fetch(fetchURL);
-        }
+        fetchInit = requestInit
+            ? (typeof requestInit === "function"
+                ? requestInit(params)
+                : requestInit)
+            : undefined;
+        resp = await fetch(fetchURL, fetchInit);
     } catch (error) {
         fetchError = error;
+        if (diagnose) console.error(error);
     }
 
     const fetchFxCtx = { ...defaultContext, fetchInit, resp, fetchError, isCacheEntryExpired, expiredCacheEntries };

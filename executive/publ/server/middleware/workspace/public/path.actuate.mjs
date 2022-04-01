@@ -41,6 +41,31 @@ export const inspectableClientLayout = () => window.parent.inspectableClientLayo
 export const isClientLayoutInspectable = () => window.parent.inspectableClientLayout ? true : false;
 export const isFramedExplorer = () => window.parent.isFramedExplorer && window.parent.isFramedExplorer() ? true : false;
 
+// if a fetchURL looks like "x/y/test.ts.json" or "test.js.json" it's
+// considered a server-side source (serverSideSrc) fetch URL, which runs JS/TS
+// code on the server and returns JSON response as evaluated on the server.
+export const isServerSideSrcFetchURL = (fetchURL) => fetchURL.match(/\.(js|ts)\.json$/);
+
+/**
+ * fetchFxInitServerSideSrc prepares sb.fetchFx params with requestInit and
+ * fetchURL for fetching server-side source (serverSideSrc) JSON value.
+ * @param {*} fetchURL the endpoint to call
+ * @param {*} serverSideSrc text of JS or TS source code to send to the server
+ * @returns partial sb.fetchFx params which for spreading with other params
+ */
+export function fetchFxInitServerSideSrc(fetchURL, serverSideSrc) {
+    return {
+        fetchURL,
+        requestInit: (_fetchFxParams) => {
+            return {
+                method: "POST",
+                body: serverSideSrc,
+                headers: { "Content-Type": "text/plain" }
+            };
+        }
+    }
+}
+
 // prepare effects, events and stores that can be used for site management;
 // at a minimum, every page in the site should have this default Javascript:
 //   document.addEventListener('DOMContentLoaded', () => activatePage(inspectableClientLayout()));
@@ -120,14 +145,10 @@ activatePage.watch((clientLayout) => {
                 console.error(`activatePage.watch() => window.addEventListener(${sb.fetchFxSuccessEventName}) has no fetchURL`, event);
             }
         });
-        // serverSideSrc JSON fetches will be registered separately, with their code supplied
-        // in pageFetchJsonFx wrappers that are usually registered using pageAutoEffect().
-        if (!sb.isServerSideSrcFetchFx({ fetchURL })) {
-            // go ahead and initiate the fetch now, which will call the listener when done
-            // we use pageFetchJsonFx({ fetchURL }) instead of jsonFetch() directly so that
-            // anyone who added a watch to pageFetchJsonFx() will also notified.
-            // there's no harm calling pageFetchJsonFx multiple times (caching allows JSON
-            // fetches to be idempotent)
+        if (!isServerSideSrcFetchURL(fetchURL)) {
+            // if a fetch is not server side source code, execute it now;
+            // due to caching, pageFetchJsonFx (which uses sb.fetchFx) is
+            // idempotent and can be safely called multiple times.
             pageFetchJsonFx({ fetchURL });
         }
     }
@@ -149,6 +170,7 @@ activatePage.watch((clientLayout) => {
         }
     }
 
+    // apply all auto-effects and see if they resolve any dependencies
     for (const autoEffect of pageAutoEffects) {
         const { effect, params } = autoEffect;
         effect(params);
@@ -302,8 +324,7 @@ export const populateObjectJSON = (inspect, targetElem, open, options) => {
 }
 
 export const projectFetchFx = siteDomain.createEffect(async (params) => await pageFetchJsonFx({
-    fetchURL: "/POM/module/project.js.json",
-    serverSideSrc: `
+    ...fetchFxInitServerSideSrc("/POM/module/project.js.json", `
         // this code will be run on the server side and the return value be decycled JSON
         export default ({ publication }) => {
             const projectRootPath = publication.config.operationalCtx.projectRootPath;
@@ -311,7 +332,7 @@ export const projectFetchFx = siteDomain.createEffect(async (params) => await pa
                 projectHome: projectRootPath("/", true),
                 envrc: projectRootPath("/.envrc", true),
             };
-        };`,
+        };`),
     ...params
 }));
 

@@ -55,8 +55,7 @@
             // as decoupled from business logic as possible
 
             path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                fetchURL: "/POM/module/global-sql-db-conns.js.json",
-                serverSideSrc: `
+                ...path.fetchFxInitServerSideSrc("/POM/module/global-sql-db-conns.js.json", `
                 // we convert to JSON ourselves since we have to do some special processing for
                 // possible bigints
                 export default ({ globalSqlDbConns }) => JSON.stringify(
@@ -68,17 +67,17 @@
                         }
                         return value;
                     },
-                );`,
+                );`),
                 ...params
             })));
 
             path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                fetchURL: "/POM/module/publication-db.js.json",
-                serverSideSrc: `
+                ...path.fetchFxInitServerSideSrc("/POM/module/publication-db.js.json", `
                     // this code will be run on the server side and the return value be JSON;
                     // everything after /POM/module (e.g. /design-system.js.json) is arbitrary
                     // and for user-agent benefit;
-                    export default ({ publicationDB }) => ({ sqliteFileName: publicationDB ? publicationDB.dbStoreFsPath : "publicationDB not provided" });`,
+                    export default ({ publicationDB }) => ({ sqliteFileName: publicationDB ? publicationDB.dbStoreFsPath : "publicationDB not provided" });`
+                ),
                 ...params
             })));
 

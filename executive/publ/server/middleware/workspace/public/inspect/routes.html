@@ -126,14 +126,16 @@
             // as decoupled from business logic as possible
 
             const navTreeItemsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                fetchURL: "/POM/module/routes/navigation-tree-items.js.json",
-                serverSideSrc: `export default ({ publication }) => publication.routes.navigationTree.items`,
+                ...path.fetchFxInitServerSideSrc(
+                    "/POM/module/routes/navigation-tree-items.js.json",
+                    `export default ({ publication }) => publication.routes.navigationTree.items`),
                 ...params
             })));
 
             const allResourcesTreeItemsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                fetchURL: "/POM/module/routes/resources-tree-items.js.json",
-                serverSideSrc: `export default ({ publication }) => publication.routes.resourcesTree.items`,
+                ...path.fetchFxInitServerSideSrc(
+                    "/POM/module/routes/resources-tree-items.js.json",
+                    `export default ({ publication }) => publication.routes.resourcesTree.items`),
                 ...params
             })));
 
