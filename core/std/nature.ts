@@ -75,6 +75,20 @@ export const json5MediaTypeNature: govn.MediaTypeNature<
   },
 };
 
+export const sqlMediaTypeNature: govn.MediaTypeNature<govn.TextResource> = {
+  mediaType: "application/sql",
+  guard: (o: unknown): o is govn.TextResource => {
+    if (
+      isNatureSupplier(o) && isMediaTypeNature(o.nature) &&
+      o.nature.mediaType === sqlMediaTypeNature.mediaType &&
+      (c.isTextSupplier(o) && c.isTextSyncSupplier(o))
+    ) {
+      return true;
+    }
+    return false;
+  },
+};
+
 export const yamlMediaTypeNature: govn.MediaTypeNature<
   govn.StructuredDataResource
 > = {
@@ -231,6 +245,57 @@ export const htmlContentNature:
       if (c.isHtmlSupplier(resource)) {
         await p.persistFlexibleFileCustom(
           resource.html,
+          namingStrategy(
+            resource as unknown as govn.RouteSupplier<govn.RouteNode>,
+            rootPath,
+          ),
+          { ensureDirSync: fs.ensureDirSync, functionArgs, eventsEmitter },
+        );
+      }
+    },
+  };
+
+export const sqlContentNature:
+  & govn.MediaTypeNature<govn.TextResource>
+  & govn.TextSuppliersFactory
+  & govn.FileSysPersistenceSupplier<govn.TextResource> = {
+    mediaType: sqlMediaTypeNature.mediaType,
+    guard: sqlMediaTypeNature.guard,
+    prepareText,
+    persistFileSysRefinery: (
+      rootPath,
+      namingStrategy,
+      eventsEmitter,
+      ...functionArgs
+    ) => {
+      return async (resource) => {
+        if (c.isTextSupplier(resource)) {
+          await p.persistFlexibleFileCustom(
+            resource,
+            namingStrategy(
+              resource as unknown as govn.RouteSupplier<govn.RouteNode>,
+              rootPath,
+            ),
+            {
+              ensureDirSync: fs.ensureDirSync,
+              functionArgs,
+              eventsEmitter,
+            },
+          );
+        }
+        return resource;
+      };
+    },
+    persistFileSys: async (
+      resource,
+      rootPath,
+      namingStrategy,
+      eventsEmitter,
+      ...functionArgs
+    ) => {
+      if (c.isTextSupplier(resource)) {
+        await p.persistFlexibleFileCustom(
+          resource,
           namingStrategy(
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,
             rootPath,
