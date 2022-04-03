@@ -16,7 +16,10 @@ export function sqliteDialect(): rsts.RdbmsDialect {
   return {
     identity: "sqlite",
     sqlDataTypeToTsType: (sqlDataType: string) => {
-      const typeName = sqlDataType.toUpperCase();
+      // SQLite supports "untyped" (variant with affinity)
+      const typeName = (sqlDataType && sqlDataType.length > 0)
+        ? sqlDataType.toUpperCase()
+        : "VARIANT";
       if (!(typeName in tsTypes)) {
         const custom = {
           tsType: `Unknown${rsts.snakeToPascalCase(typeName)}`,
