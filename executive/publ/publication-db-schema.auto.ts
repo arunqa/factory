@@ -13,10 +13,10 @@ export type UnknownJSON = string;
 
 export interface mutable_publ_host {
   publ_host_id: number; // primary key
-  created_at?: Date; // default value: CURRENT_TIMESTAMP
   host: string;
   host_identity?: UnknownJSON;
   mutation_count?: number;
+  created_at?: Date; // default value: CURRENT_TIMESTAMP
 }
 
 export const PublHostTableName = "publ_host";
@@ -43,24 +43,24 @@ export const transformPublHost = {
   tableName: "publ_host",
   fromTable: (t: publ_host): PublHost => ({
     publHostId: t.publ_host_id,
-    createdAt: t.created_at,
     host: t.host,
     hostIdentity: t.host_identity,
     mutationCount: t.mutation_count,
+    createdAt: t.created_at,
   }),
   toTable: (o: PublHost): publ_host => ({
     publ_host_id: o.publHostId,
-    created_at: o.createdAt,
     host: o.host,
     host_identity: o.hostIdentity,
     mutation_count: o.mutationCount,
+    created_at: o.createdAt,
   }),
   insertable: (o: PublHostInsertable): publ_host_insertable => {
     const insertable: mutable_publ_host_insertable = {
-      created_at: o.createdAt,
       host: o.host,
       host_identity: o.hostIdentity,
       mutation_count: o.mutationCount,
+      created_at: o.createdAt,
     };
     if (typeof insertable.created_at === "undefined") {
       delete insertable.created_at; // allow RDBMS to supply the defaultValue CURRENT_TIMESTAMP
@@ -71,7 +71,6 @@ export const transformPublHost = {
 
 export interface mutable_publ_build_event {
   publ_build_event_id: number; // primary key
-  created_at?: Date; // default value: CURRENT_TIMESTAMP
   publ_host_id: number;
   iteration_index: number;
   build_initiated_at: Date;
@@ -80,6 +79,7 @@ export interface mutable_publ_build_event {
   resources_originated_count: number;
   resources_persisted_count: number;
   resources_memoized_count?: number;
+  created_at?: Date; // default value: CURRENT_TIMESTAMP
 }
 
 export const PublBuildEventTableName = "publ_build_event";
@@ -106,7 +106,6 @@ export const transformPublBuildEvent = {
   tableName: "publ_build_event",
   fromTable: (t: publ_build_event): PublBuildEvent => ({
     publBuildEventId: t.publ_build_event_id,
-    createdAt: t.created_at,
     publHostId: t.publ_host_id,
     iterationIndex: t.iteration_index,
     buildInitiatedAt: t.build_initiated_at,
@@ -115,10 +114,10 @@ export const transformPublBuildEvent = {
     resourcesOriginatedCount: t.resources_originated_count,
     resourcesPersistedCount: t.resources_persisted_count,
     resourcesMemoizedCount: t.resources_memoized_count,
+    createdAt: t.created_at,
   }),
   toTable: (o: PublBuildEvent): publ_build_event => ({
     publ_build_event_id: o.publBuildEventId,
-    created_at: o.createdAt,
     publ_host_id: o.publHostId,
     iteration_index: o.iterationIndex,
     build_initiated_at: o.buildInitiatedAt,
@@ -127,10 +126,10 @@ export const transformPublBuildEvent = {
     resources_originated_count: o.resourcesOriginatedCount,
     resources_persisted_count: o.resourcesPersistedCount,
     resources_memoized_count: o.resourcesMemoizedCount,
+    created_at: o.createdAt,
   }),
   insertable: (o: PublBuildEventInsertable): publ_build_event_insertable => {
     const insertable: mutable_publ_build_event_insertable = {
-      created_at: o.createdAt,
       publ_host_id: o.publHostId,
       iteration_index: o.iterationIndex,
       build_initiated_at: o.buildInitiatedAt,
@@ -139,6 +138,7 @@ export const transformPublBuildEvent = {
       resources_originated_count: o.resourcesOriginatedCount,
       resources_persisted_count: o.resourcesPersistedCount,
       resources_memoized_count: o.resourcesMemoizedCount,
+      created_at: o.createdAt,
     };
     if (typeof insertable.created_at === "undefined") {
       delete insertable.created_at; // allow RDBMS to supply the defaultValue CURRENT_TIMESTAMP
@@ -149,12 +149,12 @@ export const transformPublBuildEvent = {
 
 export interface mutable_publ_server_service {
   publ_server_service_id: number; // primary key
-  created_at?: Date; // default value: CURRENT_TIMESTAMP
   service_started_at?: Date;
   listen_host: string;
   listen_port: number;
   publish_url: string;
   publ_build_event_id: number;
+  created_at?: Date; // default value: CURRENT_TIMESTAMP
 }
 
 export const PublServerServiceTableName = "publ_server_service";
@@ -183,32 +183,32 @@ export const transformPublServerService = {
   tableName: "publ_server_service",
   fromTable: (t: publ_server_service): PublServerService => ({
     publServerServiceId: t.publ_server_service_id,
-    createdAt: t.created_at,
     serviceStartedAt: t.service_started_at,
     listenHost: t.listen_host,
     listenPort: t.listen_port,
     publishUrl: t.publish_url,
     publBuildEventId: t.publ_build_event_id,
+    createdAt: t.created_at,
   }),
   toTable: (o: PublServerService): publ_server_service => ({
     publ_server_service_id: o.publServerServiceId,
-    created_at: o.createdAt,
     service_started_at: o.serviceStartedAt,
     listen_host: o.listenHost,
     listen_port: o.listenPort,
     publish_url: o.publishUrl,
     publ_build_event_id: o.publBuildEventId,
+    created_at: o.createdAt,
   }),
   insertable: (
     o: PublServerServiceInsertable,
   ): publ_server_service_insertable => {
     const insertable: mutable_publ_server_service_insertable = {
-      created_at: o.createdAt,
       service_started_at: o.serviceStartedAt,
       listen_host: o.listenHost,
       listen_port: o.listenPort,
       publish_url: o.publishUrl,
       publ_build_event_id: o.publBuildEventId,
+      created_at: o.createdAt,
     };
     if (typeof insertable.created_at === "undefined") {
       delete insertable.created_at; // allow RDBMS to supply the defaultValue CURRENT_TIMESTAMP
@@ -219,13 +219,13 @@ export const transformPublServerService = {
 
 export interface mutable_publ_server_static_access_log {
   publ_server_static_access_log_id: number; // primary key
-  created_at?: Date; // default value: CURRENT_TIMESTAMP
   status: number;
   asset_nature: string;
   location_href: string;
   filesys_target_path: string;
   filesys_target_symlink?: string;
   publ_server_service_id: number;
+  created_at?: Date; // default value: CURRENT_TIMESTAMP
 }
 
 export const PublServerStaticAccessLogTableName =
@@ -268,35 +268,35 @@ export const transformPublServerStaticAccessLog = {
   tableName: "publ_server_static_access_log",
   fromTable: (t: publ_server_static_access_log): PublServerStaticAccessLog => ({
     publServerStaticAccessLogId: t.publ_server_static_access_log_id,
-    createdAt: t.created_at,
     status: t.status,
     assetNature: t.asset_nature,
     locationHref: t.location_href,
     filesysTargetPath: t.filesys_target_path,
     filesysTargetSymlink: t.filesys_target_symlink,
     publServerServiceId: t.publ_server_service_id,
+    createdAt: t.created_at,
   }),
   toTable: (o: PublServerStaticAccessLog): publ_server_static_access_log => ({
     publ_server_static_access_log_id: o.publServerStaticAccessLogId,
-    created_at: o.createdAt,
     status: o.status,
     asset_nature: o.assetNature,
     location_href: o.locationHref,
     filesys_target_path: o.filesysTargetPath,
     filesys_target_symlink: o.filesysTargetSymlink,
     publ_server_service_id: o.publServerServiceId,
+    created_at: o.createdAt,
   }),
   insertable: (
     o: PublServerStaticAccessLogInsertable,
   ): publ_server_static_access_log_insertable => {
     const insertable: mutable_publ_server_static_access_log_insertable = {
-      created_at: o.createdAt,
       status: o.status,
       asset_nature: o.assetNature,
       location_href: o.locationHref,
       filesys_target_path: o.filesysTargetPath,
       filesys_target_symlink: o.filesysTargetSymlink,
       publ_server_service_id: o.publServerServiceId,
+      created_at: o.createdAt,
     };
     if (typeof insertable.created_at === "undefined") {
       delete insertable.created_at; // allow RDBMS to supply the defaultValue CURRENT_TIMESTAMP
@@ -307,11 +307,11 @@ export const transformPublServerStaticAccessLog = {
 
 export interface mutable_publ_server_error_log {
   publ_server_error_log_id: number; // primary key
-  created_at?: Date; // default value: CURRENT_TIMESTAMP
   location_href: string;
   error_summary: string;
   error_elaboration?: UnknownJSON;
   publ_server_service_id: number;
+  created_at?: Date; // default value: CURRENT_TIMESTAMP
 }
 
 export const PublServerErrorLogTableName = "publ_server_error_log";
@@ -343,29 +343,29 @@ export const transformPublServerErrorLog = {
   tableName: "publ_server_error_log",
   fromTable: (t: publ_server_error_log): PublServerErrorLog => ({
     publServerErrorLogId: t.publ_server_error_log_id,
-    createdAt: t.created_at,
     locationHref: t.location_href,
     errorSummary: t.error_summary,
     errorElaboration: t.error_elaboration,
     publServerServiceId: t.publ_server_service_id,
+    createdAt: t.created_at,
   }),
   toTable: (o: PublServerErrorLog): publ_server_error_log => ({
     publ_server_error_log_id: o.publServerErrorLogId,
-    created_at: o.createdAt,
     location_href: o.locationHref,
     error_summary: o.errorSummary,
     error_elaboration: o.errorElaboration,
     publ_server_service_id: o.publServerServiceId,
+    created_at: o.createdAt,
   }),
   insertable: (
     o: PublServerErrorLogInsertable,
   ): publ_server_error_log_insertable => {
     const insertable: mutable_publ_server_error_log_insertable = {
-      created_at: o.createdAt,
       location_href: o.locationHref,
       error_summary: o.errorSummary,
       error_elaboration: o.errorElaboration,
       publ_server_service_id: o.publServerServiceId,
+      created_at: o.createdAt,
     };
     if (typeof insertable.created_at === "undefined") {
       delete insertable.created_at; // allow RDBMS to supply the defaultValue CURRENT_TIMESTAMP
