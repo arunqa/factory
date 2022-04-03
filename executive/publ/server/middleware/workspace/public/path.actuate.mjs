@@ -66,15 +66,42 @@ export function fetchFxInitServerSideSrc(fetchURL, serverSideSrc) {
     }
 }
 
+let fetchFxInitSqlIndex = 0;
+export const fetchSqlFxSuccessEventName = "fetchSqlFxSuccess";
+
 /**
  * fetchFxInitSQL prepares sb.fetchFx params with requestInit and
  * fetchURL for fetching SQL execution
  * @param {string} SQL the SQL text to send to the server
  * @param {string} rowNature "rows" for array of arrays, or "records" for array of objects with keys as column names
- * @param {string} fetchURL the endpoint to call, defaults to "/SQL/unsafe"
+ * @param {string} fetchURL the endpoint to call, defaults to "/SQL"
  * @returns partial sb.fetchFx params which for spreading with other params
  */
-export function fetchFxInitSQL(SQL, rowNature = "records", fetchURL = "/SQL/unsafe") {
+export function fetchFxInitSQL(SQL, fetchFxSqlID = ++fetchFxInitSqlIndex, rowNature = "records", fetchURL = "/SQL") {
+    return {
+        fetchFxSqlID,
+        fetchURL,
+        requestInit: () => ({
+            method: "POST",
+            headers: {
+                'Content-type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ SQL, rowNature })
+        }),
+        fetchFxSuccessEventName: fetchSqlFxSuccessEventName
+    }
+}
+
+/**
+ * fetchFxInitPublSqlDQL prepares sb.fetchFx params with requestInit and
+ * fetchURL for fetching SQL execution
+ * @param {string} SQL the SQL text to send to the server
+ * @param {string} rowNature "rows" for array of arrays, or "records" for array of objects with keys as column names
+ * @param {string} fetchURL the endpoint to call, defaults to "/SQL/publ/DQL"
+ * @returns partial sb.fetchFx params which for spreading with other params
+ */
+export function fetchFxInitPublSqlDQL(SQL, rowNature = "records", fetchURL = "/SQL/publ/DQL") {
     return {
         fetchURL,
         requestInit: () => ({
@@ -108,8 +135,15 @@ export const pageAutoEffect = (effect, params) => {
     return effect;
 }
 
+export const pageAutoFetchSqlEffect = (fetchFxSqlID, SQL) => {
+    return pageAutoEffect(siteDomain.createEffect(async (params) => await pageFetchJsonFx({
+        ...fetchFxInitSQL(SQL, fetchFxSqlID),
+        ...params,
+    })));
+}
+
 window.addEventListener(sb.fetchFxFailEventName, (event) => {
-    console.error(fetchFxFailEventName, { event });
+    console.error(sb.fetchFxFailEventName, { event });
 });
 
 // Whenever a basic JSON fetch is required, use this so others can listen in
@@ -138,6 +172,21 @@ export const jsEvalFailureHTML = (evaluatedJS, error, location, context) => {
 
 // find any fetchable JSON placeholders and fill them in
 activatePage.watch((clientLayout) => {
+    const populateJSON = (elem, result, evalExpr, scope) => {
+        if (evalExpr) {
+            // if given an eval'able expression, get the expression value
+            // in this context and populate that JSON instead of full JSON
+            try {
+                populateObjectJSON(eval(evalExpr), elem);
+            } catch (error) {
+                elem.innerHTML = jsEvalFailureHTML(evalExpr, error, 'activatePage.watch.populateJSON(${scope})', { clientLayout });
+            }
+        } else {
+            // Not given an eval'able expression, populate full JSON
+            populateObjectJSON(result, elem);
+        }
+    }
+
     // prepare event listeners for fetched URLs (client-side hydration);
     // all page-auto-effects and sb.fetchFx calls will generate events.
     for (const elem of document.querySelectorAll(`[data-populate-fetched-json-url]`)) {
@@ -149,19 +198,7 @@ activatePage.watch((clientLayout) => {
             const { fetchedValue: result, fetchFxCtx } = (event.detail ? event.detail : {});
             if (fetchFxCtx.params.fetchURL) {
                 if (fetchFxCtx.params.fetchURL === fetchURL) {
-                    const evalExpr = elem.dataset.populateFetchedJsonExpr;
-                    if (evalExpr) {
-                        // if given an eval'able expression, get the expression value
-                        // in this context and populate that JSON instead of full JSON
-                        try {
-                            populateObjectJSON(eval(evalExpr), elem);
-                        } catch (error) {
-                            elem.innerHTML = jsEvalFailureHTML(evalExpr, error, 'activatePage.watch(data-populate-fetched-json-expr)', { clientLayout });
-                        }
-                    } else {
-                        // Not given an eval'able expression, populate full JSON
-                        populateObjectJSON(result, elem);
-                    }
+                    populateJSON(elem, result, elem.dataset.populateFetchedJsonExpr, "data-populate-fetched-json-url");
                 }
             } else {
                 console.error(`activatePage.watch() => window.addEventListener(${sb.fetchFxSuccessEventName}) has no fetchURL`, event);
@@ -175,6 +212,45 @@ activatePage.watch((clientLayout) => {
         }
     }
 
+    // assumes that the identifiable SQL effect is defined separately
+    for (const elem of document.querySelectorAll(`[data-populate-fetched-SQL-ID]`)) {
+        // usage example:
+        //   <div data-populate-fetched-SQL-ID="my_sql_id"></div>
+        //   <div data-populate-fetched-SQL-ID="my_sql_id" data-populate-fetched-json-expr="result.something"></div>
+        const fetchFxSqlID = elem.dataset.populateFetchedSqlId;
+        window.addEventListener(fetchSqlFxSuccessEventName, (event) => {
+            const { fetchedValue: result, fetchFxCtx } = (event.detail ? event.detail : {});
+            if (fetchFxCtx.params.fetchFxSqlID) {
+                if (fetchFxCtx.params.fetchFxSqlID == fetchFxSqlID) {
+                    populateJSON(elem, result, elem.dataset.populateFetchedJsonExpr, "data-populate-fetched-SQL-ID");
+                }
+            } else {
+                console.error(`activatePage.watch() => window.addEventListener(${fetchSqlFxSuccessEventName}) has no fetchFxSqlID`, event);
+            }
+        });
+    }
+
+    // assumes that the SQL is embedded as an attribute
+    for (const elem of document.querySelectorAll(`[data-populate-fetched-SQL]`)) {
+        // usage example:
+        //   <div data-populate-fetched-SQL="SELECT * FROM something"></div>
+        //   <div data-populate-fetched-SQL="SELECT * FROM something" data-populate-fetched-json-expr="result.something"></div>
+        const fetchFxSql = elem.dataset.populateFetchedSql;
+        const fetchFxSqlID = fetchFxSql; // identity is same as SQL
+        window.addEventListener(fetchSqlFxSuccessEventName, (event) => {
+            const { fetchedValue: result, fetchFxCtx } = (event.detail ? event.detail : {});
+            if (fetchFxCtx.params.fetchFxSqlID) {
+                if (fetchFxCtx.params.fetchFxSqlID == fetchFxSqlID) {
+                    populateJSON(elem, result, elem.dataset.populateFetchedJsonExpr, "data-populate-fetched-SQL");
+                }
+            } else {
+                console.error(`activatePage.watch() => window.addEventListener(${fetchSqlFxSuccessEventName}) has no fetchFxSqlID`, event);
+            }
+        });
+        // schedule the fetch now, it will be executed down below
+        pageAutoFetchSqlEffect(fetchFxSqlID, fetchFxSql);
+    }
+
     for (const elem of document.querySelectorAll(`[data-populate-activate-page-watch-json]`)) {
         // usage examples:
         //   <div data-populate-activate-page-watch-json="clientLayout.route"></div>
@@ -185,7 +261,7 @@ activatePage.watch((clientLayout) => {
             if (result) {
                 populateObjectJSON(result, elem);
             } else {
-                elem.innerHTML = `Evaluation of Unable to evaluate <code><mark>${evalExpr}</mark></code> produced undefined result`;
+                elem.innerHTML = `Unable to evaluate <code><mark>${evalExpr}</mark></code>: produced undefined result`;
             }
         } catch (error) {
             elem.innerHTML = jsEvalFailureHTML(evalExpr, error, 'activatePage.watch(data-populate-activate-page-watch-json)', { clientLayout });
@@ -344,17 +420,3 @@ export const populateObjectJSON = (inspect, targetElem, open, options) => {
         targetElem.appendChild(formatter.render());
     }
 }
-
-export const projectFetchFx = siteDomain.createEffect(async (params) => await pageFetchJsonFx({
-    ...fetchFxInitServerSideSrc("/POM/module/project.js.json", `
-        // this code will be run on the server side and the return value be decycled JSON
-        export default ({ publication }) => {
-            const projectRootPath = publication.config.operationalCtx.projectRootPath;
-            return {
-                projectHome: projectRootPath("/", true),
-                envrc: projectRootPath("/.envrc", true),
-            };
-        };`),
-    ...params
-}));
-

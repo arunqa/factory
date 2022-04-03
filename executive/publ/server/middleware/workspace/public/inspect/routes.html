@@ -11,7 +11,7 @@
 <body>
     <details class="explore">
         <summary>Publication</summary>
-        <div data-populate-fetched-json-url="/POM/module/project.js.json"></div>
+        <div data-populate-fetched-SQL-ID="project.json" data-populate-fetched-json-expr="result[0]"></div>
     </details>
 
     <details class="explore">
@@ -125,8 +125,12 @@
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
 
-            // needed for <div data-populate-fetched-json-url="/POM/module/project.js.json">
-            path.pageAutoEffect(path.projectFetchFx);
+            // needed for <div data-populate-fetched-SQL-ID="project.json">
+            path.pageAutoFetchSqlEffect("project.json", `
+                SELECT operationalCtx->projectRootPath("/", true) as projectHome,
+                       operationalCtx->projectRootPath("/.envrc", true) as ".envrc"
+                  FROM config.prime
+            `);
 
             const navTreeItemsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
                 ...path.fetchFxInitServerSideSrc(

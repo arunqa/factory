@@ -35,7 +35,10 @@
             <code><script>document.write(healthJsonLabel)</script></code>'s <code>build</code> component's
             <code>links</code>).
         </p>
-        <div data-populate-fetched-json-url="/workspace/inspect/env-vars.json"></div>
+        <!-- execute the SQL using fetchSqlFx and then take each row.var_name row.var_value and convert it to a single JSON key/value pairs object -->
+        <div data-populate-fetched-SQL="SELECT * FROM config.environment order by var_name"
+            data-populate-fetched-json-expr="result.reduce((acc, r) => { acc[r.var_name] = r.var_value; return acc; }, {})">
+        </div>
     </details>
 
     <details class="explore">

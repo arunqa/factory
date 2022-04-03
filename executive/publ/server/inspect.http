@@ -46,14 +46,14 @@ GET {{serverURL}}/error
 ###
 
 # ----------------------------------------------------------------------------
-# /SQL/unsafe publication-db routes which can run arbitrary SQL DQL (select)
+# /SQL/publ/DQL publication-db routes which can run arbitrary SQL DQL (select)
 # statements onpubctl.sqlite.db and return results as either rows or records.
 # ----------------------------------------------------------------------------
-@sqlUnsafeURL = {{serverURL}}/SQL/unsafe
+@sqlPublDqlURL = {{serverURL}}/SQL/publ/DQL
 
 # list all columns defined in the database
 
-POST {{sqlUnsafeURL}}
+POST {{sqlPublDqlURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -63,7 +63,7 @@ Accept: application/json
 }
 
 ###
-POST {{sqlUnsafeURL}}
+POST {{sqlPublDqlURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -73,7 +73,7 @@ Accept: application/json
 }
 
 ###
-POST {{sqlUnsafeURL}}
+POST {{sqlPublDqlURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -83,7 +83,7 @@ Accept: application/json
 }
 
 ###
-POST {{sqlUnsafeURL}}
+POST {{sqlPublDqlURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -93,7 +93,7 @@ Accept: application/json
 }
 
 ###
-POST {{sqlUnsafeURL}}
+POST {{sqlPublDqlURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -103,12 +103,156 @@ Accept: application/json
 }
 
 ###
-POST {{sqlUnsafeURL}}
+POST {{sqlPublDqlURL}}
 Content-Type: application/json
 Accept: application/json
 
 {
   "SQL": "SELECT * from publ_server_error_log LIMIT 50",
+  "rowNature": "records"
+}
+
+###
+
+@sqlPrimeURL = {{serverURL}}/SQL
+
+POST {{sqlPrimeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "SHOW DATABASES",
+  "rowNature": "records"
+}
+
+###
+
+POST {{sqlPrimeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "select * from prepare_db_tx_log where error is not null",
+  "rowNature": "records"
+}
+
+###
+
+POST {{sqlPrimeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "SHOW TABLES from config",
+  "rowNature": "records"
+}
+
+###
+
+POST {{sqlPrimeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "SHOW COLUMNS from prime from config",
+  "rowNature": "records"
+}
+###
+
+POST {{sqlPrimeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "select operationalCtx->projectRootPath('/.envrc', true) as test_path from config.prime",
+  "rowNature": "records"
+}
+
+###
+
+POST {{sqlPrimeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "select * from config.environment",
+  "rowNature": "records"
+}
+
+###
+
+POST {{sqlPrimeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "SHOW TABLES from pubctl",
+  "rowNature": "records"
+}
+
+###
+
+POST {{sqlPrimeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "select * from pubctl.publ_host",
+  "rowNature": "records"
+}
+
+###
+
+POST {{sqlPrimeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "SHOW TABLES from observability",
+  "rowNature": "records"
+}
+
+###
+
+POST {{sqlPrimeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "select * from observability.health",
+  "rowNature": "records"
+}
+
+###
+
+POST {{sqlPrimeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "SHOW COLUMNS from universal_metric from observability",
+  "rowNature": "records"
+}
+
+###
+
+POST {{sqlPrimeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "SHOW INDEX from universal_metric from observability",
+  "rowNature": "records"
+}
+
+###
+
+POST {{sqlPrimeURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "SELECT * from observability.universal_metric",
   "rowNature": "records"
 }
 

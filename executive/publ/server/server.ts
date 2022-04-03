@@ -8,7 +8,7 @@ import * as s from "./middleware/static.ts";
 import * as ws from "./middleware/workspace/mod.ts";
 import * as assure from "./middleware/assurance.ts";
 import * as pDB from "../publication-db.ts";
-import * as pdbProxy from "./middleware/db-proxy.ts";
+import * as sqlP from "./middleware/sql-proxy.ts";
 import * as pom from "./middleware/pom.ts";
 import * as rJSON from "../../../core/content/routes.json.ts";
 
@@ -134,7 +134,7 @@ export class PublicationServer {
   readonly tsJsCache = new Map<string, bjs.CacheableTypescriptSource>();
   #workspace?: ws.WorkspaceMiddlewareSupplier;
   #assurance?: assure.AssuranceMiddlewareSupplier;
-  #pdbProxy?: pdbProxy.DatabaseProxyMiddlewareSupplier;
+  #sqlProxy?: sqlP.SqlProxyMiddlewareSupplier;
   #pom?: pom.PublicationObjectModelMiddlewareSupplier;
 
   constructor(
@@ -242,11 +242,12 @@ export class PublicationServer {
     router: oak.Router,
   ) {
     if (this.serverStateDB) {
-      this.#pdbProxy = new pdbProxy.DatabaseProxyMiddlewareSupplier(
+      this.#sqlProxy = new sqlP.SqlProxyMiddlewareSupplier(
         app,
         router,
+        this.publication,
         this.serverStateDB,
-        "/SQL/unsafe",
+        "/SQL",
       );
     }
   }
