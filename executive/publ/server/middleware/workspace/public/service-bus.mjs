@@ -37,6 +37,8 @@ let fetchFxIdentity = 0;
  */
 export const fetchFx = async (params, extraCtx) => {
     const defaultFetchID = ++fetchFxIdentity;
+    const successEventName = params.fetchFxSuccessEventName ?? fetchFxSuccessEventName;
+    const failEventName = params.fetchFxFailEventName ?? fetchFxFailEventName;
     const {
         fetchURL, // always required
         identity = defaultFetchID,
@@ -47,9 +49,9 @@ export const fetchFx = async (params, extraCtx) => {
         // onAccess is always called on success, while onFetched is only called if true fetch, onCacheAccess only if cached access
         onFetched = undefined, onAccess = undefined, onInvalidFetch = undefined, onFetchError = undefined,
         // pass false (NOT undefined) to disable event because the spread will default it
-        constructSuccessEvent = (fetchedValue, fetchFxCtx) => new CustomEvent(fetchFxSuccessEventName, { detail: { fetchedValue, fetchFxCtx } }),
+        constructSuccessEvent = (fetchedValue, fetchFxCtx) => new CustomEvent(successEventName, { detail: { fetchedValue, fetchFxCtx } }),
         // pass false (NOT undefined) to disable event because the spread will default it
-        constructFailEvent = (fetchFxCtx, fetchedValue) => new CustomEvent(fetchFxFailEventName, { detail: { fetchFxCtx, fetchedValue } }),
+        constructFailEvent = (fetchFxCtx, fetchedValue) => new CustomEvent(failEventName, { detail: { fetchFxCtx, fetchedValue } }),
         // pass false (NOT undefined) to disable event because the spread will default it
         dispatchSuccessEvent = (fetchedValue, fetchFxCtx) => {
             const event = typeof constructSuccessEvent === "function" ? constructSuccessEvent(fetchedValue, fetchFxCtx) : undefined;
