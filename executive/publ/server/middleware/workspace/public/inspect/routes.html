@@ -9,9 +9,16 @@
 </head>
 
 <body>
-    <details class="explore">
+    <!-- setting open because onSqlResult script will fail otherwise -->
+    <details class="explore" open>
         <summary>Publication</summary>
-        <div data-populate-fetched-SQL-ID="project.json" data-populate-fetched-json-expr="result[0]"></div>
+        <div>
+            <script type="SQL" onSqlResult="populateObjectJSON(result[0], self)">
+                SELECT operationalCtx->projectRootPath("/", true) as projectHome,
+                       operationalCtx->projectRootPath("/.envrc", true) as ".envrc"
+                  FROM config.prime
+            </script>
+        </div>
     </details>
 
     <details class="explore">
@@ -124,13 +131,6 @@
         document.addEventListener('DOMContentLoaded', function () {
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
-
-            // needed for <div data-populate-fetched-SQL-ID="project.json">
-            path.pageAutoFetchSqlEffect("project.json", `
-                SELECT operationalCtx->projectRootPath("/", true) as projectHome,
-                       operationalCtx->projectRootPath("/.envrc", true) as ".envrc"
-                  FROM config.prime
-            `);
 
             const navTreeItemsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
                 ...path.fetchFxInitServerSideSrc(

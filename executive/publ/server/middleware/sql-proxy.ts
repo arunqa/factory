@@ -1,12 +1,10 @@
-import { alaSQL, oak } from "../deps.ts";
+import { oak } from "../deps.ts";
 import * as safety from "../../../../lib/safety/mod.ts";
 import * as pDB from "../../publication-db.ts";
 import * as p from "../../publication.ts";
 import * as m from "../../../../lib/metrics/mod.ts";
-import * as sqlite from "../../../../lib/db/sqlite-db.ts";
-
-// deno-lint-ignore no-explicit-any
-export type AlaSqlDatabase = any;
+import * as sqlG from "../../../../lib/sql/governance.ts";
+import * as alaSQL from "../../../../lib/alasql/mod.ts";
 
 export const firstWordRegEx = /^\s*([a-zA-Z0-9]+)/;
 
@@ -54,9 +52,7 @@ export function isDatabaseProxySqlSelectService(
  * store access logs, errors, and other diagnostic information for the server.
  */
 export class SqlProxyMiddlewareSupplier {
-  #alaSqlVirtualDB: AlaSqlDatabase;
-  #alaSqlDbPrepared = false;
-  #alaSqlPrepLog: Record<string, unknown>[] = [];
+  readonly asp: alaSQL.AlaSqlProxy;
 
   constructor(
     readonly app: oak.Application,
@@ -67,6 +63,36 @@ export class SqlProxyMiddlewareSupplier {
   ) {
     // REMINDER: if you add any routes here, make them easily testable by adding
     // them to executive/publ/server/inspect.http
+
+    this.asp = new alaSQL.AlaSqlProxy({
+      events: (asp) => {
+        const ee = new sqlG.SqlEventEmitter();
+        ee.on("constructStorage", async () => {
+          await this.prepareObservabilityDB();
+          await this.prepareConfigDB();
+          await this.prepareResourcesDB();
+          asp.importSqliteDB(this.database, () => {
+            asp.alaSqlEngine("DROP DATABASE IF EXISTS pubctl");
+            return new asp.alaSqlEngine.Database("pubctl");
+          });
+          asp.createJsFlexibleTable(
+            "dbms_reflection_prepare_db_tx_log",
+            asp.defnTxLog,
+          );
+          // add a denormalized table in case users want to see it that way
+          asp.createJsFlexibleTable(
+            "dbms_reflection_inventory",
+            asp.inventoryTable(),
+          );
+          // add the object model in case user's want to see it that way
+          asp.createJsFlexibleTable(
+            "dbmsInventory",
+            asp.engines(),
+          );
+        });
+        return ee;
+      },
+    });
 
     router.post(`${this.htmlEndpointURL}/publ/DQL`, async (ctx) => {
       const body = ctx.request.body();
@@ -83,262 +109,69 @@ export class SqlProxyMiddlewareSupplier {
     });
 
     router.post(
-      this.htmlEndpointURL,
+      `${this.htmlEndpointURL}/asp`,
       async (ctx) => {
         const body = ctx.request.body();
-        const payload = await body.value;
-        if (isSqlSupplier(payload)) {
-          try {
-            if (!this.#alaSqlDbPrepared) {
-              // since preparing the databases might take time, only do this
-              // if the endpoint is used the first time
-              await this.prepareVirtualDB();
+        let json: unknown;
+        let form: URLSearchParams;
+        switch (body.type) {
+          case "json":
+            json = await body.value;
+            if (isSqlSupplier(json)) {
+              await this.handleSqlPayload(ctx, json);
             }
+            break;
 
-            ctx.response.body = JSON.stringify(
-              this.#alaSqlVirtualDB.exec(payload.SQL),
-            );
-          } catch (error) {
-            ctx.response.body = JSON.stringify({
-              error: error.toString(),
-              payload,
-              databases: new alaSQL.default("SHOW DATABASES"),
-              prepLog: this.#alaSqlPrepLog,
-            });
-          }
+          case "form":
+            form = await body.value;
+            form.get("SQL");
+            await this.handleSqlPayload(ctx, form);
+            break;
+
+          default:
+            ctx.response.body = JSON.stringify(body);
         }
       },
     );
   }
 
-  async prepareVirtualDB() {
-    if (this.#alaSqlDbPrepared) return;
-
-    this.#alaSqlVirtualDB = new alaSQL.default.Database("prime");
-    await this.prepareObservabilityDB();
-    await this.prepareConfigDB();
-    await this.prepareResourcesDB();
-    this.importSqliteDB(this.database, () => {
-      alaSQL.default("DROP DATABASE IF EXISTS pubctl");
-      return new alaSQL.default.Database("pubctl");
-    });
-    // store the logs as a table, you can use this to find errors:
-    // => select * from prepare_db_tx_log where error is not null
-    this.createJsFlexibleTable("prepare_db_tx_log", this.#alaSqlPrepLog);
-    this.#alaSqlDbPrepared = true;
-  }
-
-  jsDDL(
-    tableName: string,
-    columnDefns: Iterable<string>,
-  ): string {
-    return `CREATE TABLE ${tableName} (\n ${
-      // use [colName] so that reserved SQL keywords can be used as column name
-      Array.from(columnDefns).map((colName) => `[${colName}]`).join(",\n ")
-    })`;
-  }
-
-  // deno-lint-ignore ban-types
-  jsObjectDDL<TableRow extends object = object>(
-    tableName: string,
-    inspectable: TableRow,
-    options?: {
-      valueSqlTypeMap?: (value: unknown) => string | undefined;
-      prepareTxLogEntry?: (
-        suggested: Record<string, unknown>,
-        inspected: TableRow | Record<string, unknown>,
-      ) => Record<string, unknown>;
-    },
-  ): { DDL?: string; txLogEntry: Record<string, unknown> } {
-    const { valueSqlTypeMap, prepareTxLogEntry } = options ?? {};
-
-    const columnDefns = [];
-    for (const entry of Object.entries(inspectable)) {
-      const [name, value] = entry;
-      columnDefns.push(
-        valueSqlTypeMap ? `${name} ${valueSqlTypeMap(value)}` : name,
-      );
-    }
-    const DDL = this.jsDDL(tableName, columnDefns);
-    // inspected may be large so we don't add it to the log by default
-    const txLogEntry: Record<string, unknown> = { DDL, tableName, columnDefns };
-    return {
-      DDL,
-      txLogEntry: prepareTxLogEntry
-        ? prepareTxLogEntry(txLogEntry, inspectable)
-        : txLogEntry,
-    };
-  }
-
-  // deno-lint-ignore ban-types
-  createJsObjectSingleRowTable<TableRow extends object = object>(
-    tableName: string,
-    tableRow: TableRow,
-    database = this.#alaSqlVirtualDB,
-    options?: {
-      valueSqlTypeMap?: (value: unknown) => string | undefined;
-      prepareTxLogEntry?: (
-        suggested: Record<string, unknown>,
-        inspected: TableRow | Record<string, unknown>,
-      ) => Record<string, unknown>;
-    },
-  ) {
-    const defn = this.jsObjectDDL(tableName, tableRow, options);
-    if (defn.DDL) {
-      try {
-        database.exec(defn.DDL);
-        database.tables[tableName].data = [tableRow];
-        this.#alaSqlPrepLog.push(defn.txLogEntry);
-      } catch (error) {
-        this.#alaSqlPrepLog.push({
-          origin: "createJsObjectSingleRowTable",
-          error: error.toString(),
-          ...defn.txLogEntry,
-        });
+  async handleSqlPayload(ctx: oak.Context, ss: SqlSupplier | URLSearchParams) {
+    try {
+      if (!this.asp.initialized) {
+        // since preparing the databases might take time, only do this
+        // if the endpoint is used the first time
+        await this.asp.init();
       }
-      return defn;
-    }
-  }
 
-  // deno-lint-ignore ban-types
-  createJsObjectsTable<TableRow extends object = object>(
-    tableName: string,
-    tableRows?: Array<TableRow>,
-    database = this.#alaSqlVirtualDB,
-    options?: {
-      structureSupplier?: (rows?: Array<TableRow>) => TableRow | undefined;
-      valueSqlTypeMap?: (value: unknown) => string | undefined;
-      prepareTxLogEntry?: (
-        suggested: Record<string, unknown>,
-      ) => Record<string, unknown>;
-    },
-  ) {
-    // every row is the same structure, so inspect just the first to detect structure
-    // deno-lint-ignore ban-types
-    const inspectFirstRow = (rows?: object[]) => {
-      return rows ? (rows.length > 0 ? rows[0] : undefined) : undefined;
-    };
-
-    const { structureSupplier = inspectFirstRow, prepareTxLogEntry } =
-      options ?? {};
-    const inspectable = structureSupplier(tableRows);
-    const tableRowsCount = tableRows ? tableRows.length : undefined;
-    const origin = "createJsObjectsTable";
-    if (inspectable) {
-      const defn = this.jsObjectDDL(tableName, inspectable, {
-        prepareTxLogEntry: (suggested) => {
-          const result = { ...suggested, tableRowsCount };
-          return prepareTxLogEntry ? prepareTxLogEntry(result) : result;
-        },
-        valueSqlTypeMap: options?.valueSqlTypeMap,
+      if (isSqlSupplier(ss)) {
+        ctx.response.body = JSON.stringify(
+          this.asp.alaSqlEngine.exec(ss.SQL),
+        );
+      } else {
+        const SQL = ss.get("SQL");
+        ctx.response.body = JSON.stringify(
+          this.asp.alaSqlEngine.exec(SQL),
+        );
+      }
+    } catch (error) {
+      ctx.response.body = JSON.stringify({
+        error: error.toString(),
+        ss,
+        databases: this.asp.alaSqlEngine.exec("SHOW DATABASES"),
+        defnTxLog: this.asp.defnTxLog,
       });
-      if (defn.DDL) {
-        try {
-          database.exec(defn.DDL);
-          if (tableRows) database.tables[tableName].data = tableRows;
-          this.#alaSqlPrepLog.push(defn.txLogEntry);
-        } catch (error) {
-          this.#alaSqlPrepLog.push({
-            origin,
-            error: error.toString(),
-            ...defn.txLogEntry,
-          });
-        }
-        return defn;
-      }
-    } else {
-      const txLogEntry = {
-        origin,
-        error: `no inspectable object supplied, ${tableName} not created`,
-        tableName,
-        tableRowsCount,
-      };
-      this.#alaSqlPrepLog.push(
-        prepareTxLogEntry ? prepareTxLogEntry(txLogEntry) : txLogEntry,
-      );
-    }
-  }
-
-  createJsFlexibleTable(
-    tableName: string,
-    // deno-lint-ignore ban-types
-    tableRows?: Array<object>,
-    database = this.#alaSqlVirtualDB,
-  ) {
-    const tableRowsCount = tableRows ? tableRows.length : undefined;
-    const origin = "createJsFlexibleTable";
-    if (tableRows) {
-      // each row might have different columns so find the set of all columns
-      // across all rows and create a "flexible table"
-      const columnDefns = new Map<string, { foundInRows: number }>();
-      for (const row of tableRows) {
-        for (const entry of Object.entries(row)) {
-          const [name] = entry;
-          const found = columnDefns.get(name);
-          if (found) found.foundInRows++;
-          else columnDefns.set(name, { foundInRows: 1 });
-        }
-      }
-      const DDL = this.jsDDL(tableName, columnDefns.keys());
-      const txLogEntry = {
-        DDL,
-        tableName,
-        tableRowsCount,
-        columnDefns: Object.fromEntries(columnDefns),
-      };
-      try {
-        database.exec(DDL);
-        if (tableRows) database.tables[tableName].data = tableRows;
-        this.#alaSqlPrepLog.push(txLogEntry);
-      } catch (error) {
-        this.#alaSqlPrepLog.push({
-          origin,
-          error: error.toString(),
-          ...txLogEntry,
-        });
-      }
-    } else {
-      this.#alaSqlPrepLog.push({
-        origin,
-        error: `no tableRows supplied, ${tableName} not created`,
-        tableName,
-        tableRowsCount,
-      });
-    }
-  }
-
-  importSqliteDB(
-    sqliteDb: sqlite.Database,
-    alaSqlDbSupplier: (sqliteDb: sqlite.Database) => AlaSqlDatabase,
-  ) {
-    const alaSqlDB = alaSqlDbSupplier(sqliteDb);
-    const tables = sqliteDb.dbStore.query<[tableName: string]>(
-      "SELECT name from sqlite_master where type = 'table' and name != 'sqlite_sequence'",
-    );
-    for (const table of tables) {
-      const [tableName] = table;
-      const rows = sqliteDb.recordsDQL(`SELECT * FROM ${tableName}`);
-      if (rows) {
-        this.createJsObjectsTable(tableName, rows.records, alaSqlDB, {
-          prepareTxLogEntry: (suggested) => ({
-            ...suggested,
-            origin: "importSqliteDB",
-            originSqlLiteDbStoreFsPath: sqliteDb.dbStoreFsPath,
-          }),
-        });
-      }
     }
   }
 
   // deno-lint-ignore require-await
   async prepareConfigDB() {
-    const configDB = new alaSQL.default.Database("config");
-    this.createJsObjectSingleRowTable(
+    const configDB = new this.asp.alaSqlEngine.Database("config");
+    this.asp.createJsObjectSingleRowTable(
       "prime",
       this.publication.config,
       configDB,
     );
-    this.createJsObjectsTable(
+    this.asp.createJsObjectsTable(
       "environment",
       Array.from(Object.entries(Deno.env.toObject())).map((envEntry) => ({
         var_name: envEntry[0],
@@ -350,19 +183,19 @@ export class SqlProxyMiddlewareSupplier {
 
   // deno-lint-ignore require-await
   async prepareResourcesDB() {
-    const pomDB = new alaSQL.default.Database("pom");
-    this.createJsObjectSingleRowTable(
+    const pomDB = new this.asp.alaSqlEngine.Database("pom");
+    this.asp.createJsObjectSingleRowTable(
       "prime",
       this.publication,
       pomDB,
     );
-    this.createJsFlexibleTable(
+    this.asp.createJsFlexibleTable(
       "resource",
       // deno-lint-ignore ban-types
       this.publication.state.resourcesIndex.resourcesIndex as object[],
       pomDB,
     );
-    this.createJsObjectsTable(
+    this.asp.createJsObjectsTable(
       "resource_persisted",
       Array.from(this.publication.state.persistedIndex.persistedDestFiles).map(
         (entry) => ({ destFileName: entry[0], ...entry[1] }),
@@ -372,7 +205,9 @@ export class SqlProxyMiddlewareSupplier {
   }
 
   async prepareObservabilityDB() {
-    const observabilityDB = new alaSQL.default.Database("observability");
+    const observabilityDB = new this.asp.alaSqlEngine.Database(
+      "observability",
+    );
     const healthChecks = await this.publication.config.observability
       ?.serviceHealthComponentsChecks();
     if (healthChecks) {
@@ -383,28 +218,32 @@ export class SqlProxyMiddlewareSupplier {
           records.push({ category, ...check });
         }
       }
-      this.createJsObjectsTable("health_check", records, observabilityDB);
+      this.asp.createJsObjectsTable(
+        "health_check",
+        records,
+        observabilityDB,
+      );
     }
 
     const pomUniversalMetrics = m.tabularMetrics(
       this.publication.config.metrics.instances,
     );
-    this.createJsObjectsTable(
+    this.asp.createJsObjectsTable(
       "universal_metric",
       pomUniversalMetrics.metrics,
       observabilityDB,
     );
-    this.createJsObjectsTable(
+    this.asp.createJsObjectsTable(
       "universal_metric_instance",
       pomUniversalMetrics.metricInstances,
       observabilityDB,
     );
-    this.createJsObjectsTable(
+    this.asp.createJsObjectsTable(
       "universal_metric_label",
       pomUniversalMetrics.metricLabels,
       observabilityDB,
     );
-    this.createJsObjectsTable(
+    this.asp.createJsObjectsTable(
       "universal_metric_instance_label",
       pomUniversalMetrics.metricInstanceLabels,
       observabilityDB,

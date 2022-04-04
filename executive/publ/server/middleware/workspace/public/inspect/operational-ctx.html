@@ -25,19 +25,32 @@
 </head>
 
 <body>
-    <details class="explore">
+    <!-- setting open because onSqlResult script will fail otherwise -->
+    <details class="explore" open>
         <summary>Environment Variables</summary>
 
         <p>These are all the environment variables known to the publication server (<code>pubctl.ts</code>)
-            including sensitive values without masking. <em>Be careful about copy/pasting this content</em>.
+            <mark>including sensitive values without masking</mark>.
+            <em>Be careful about copy/pasting this content</em>.
             If you need a "sanitized" version of environment variables, there is a safer copy in
             <script>document.write(healthJsonAnchor)</script> (see
             <code><script>document.write(healthJsonLabel)</script></code>'s <code>build</code> component's
             <code>links</code>).
         </p>
-        <!-- execute the SQL using fetchSqlFx and then take each row.var_name row.var_value and convert it to a single JSON key/value pairs object -->
-        <div data-populate-fetched-SQL="SELECT * FROM config.environment order by var_name"
-            data-populate-fetched-json-expr="result.reduce((acc, r) => { acc[r.var_name] = r.var_value; return acc; }, {})">
+        <div>
+            <script type="SQL">
+                SELECT * FROM config.environment order by var_name
+            </script>
+            <!-- onSqlResult is eval'd in path.actuate.mjs context after SQL above ands results are available;
+                 `result` is the SQL result (JSON fetched from the server)
+                 `self` is the <div> element
+                 use <script type="onSqlResult" diagnose> to get diagnostics -->
+            <script type="onSqlResult">
+                // the SQL will be an object array and we want a single object
+                populateObjectJSON(result.reduce((acc, r) => { acc[r.var_name] = r.var_value; return acc; }, {}), self);
+                // hide the details now that we've filled our content; TODO: figure out why this is required
+                self.closest("details").open = false;
+            </script>
         </div>
     </details>
 

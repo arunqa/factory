@@ -10,6 +10,25 @@
 </head>
 
 <body>
+    <form action="#" onSubmit="console.log(window.dbQueryFormSubmitFx()); return false;">
+        <textarea id="SQL" name="w3review" rows="5" cols="55" style="width: 100%; max-width: 100%;"
+            placeholder="SHOW TABLES FROM config">SELECT RECORDSET * FROM config.environment order by var_name</textarea>
+        <input type="submit" value="Submit">
+    </form>
+
+    <div id="SQL-result"></div>
+
+    <!-- setting open because onSqlResult script will fail otherwise -->
+    <details class="explore" open>
+        <summary>Information Model Databases (IMDs)</summary>
+        <div SQL="SHOW DATABASES">
+            <script type="onSqlResult">
+                // the SQL `result` instance will be an object array and we want a single array of strings
+                populateObjectJSON(result.reduce((acc, r) => { acc.push(r.databaseid); return acc; }, []).sort(), self);
+            </script>
+        </div>
+    </details>
+
     <details class="explore">
         <summary>Content Databases</summary>
         <div data-populate-fetched-json-url="/POM/module/global-sql-db-conns.js.json"></div>
@@ -34,6 +53,15 @@
         document.addEventListener('DOMContentLoaded', function () {
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
+
+            window.dbQueryFormSubmitFx = path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
+                ...path.fetchFxInitAlaSqlProxyDQL(document.getElementById("SQL").value, "form"),
+                ...params,
+                cache: false
+            }));
+            window.dbQueryFormSubmitFx.done.watch(({ result }) => {
+                path.populateObjectJSON(result, document.getElementById("SQL-result"));
+            })
 
             const dbQueryFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
                 ...path.fetchFxInitPublSqlDQL(`

@@ -94,7 +94,7 @@ export const fetchFx = async (params, extraCtx) => {
 
     const diagnostics = (fetchFxCtx) => ({
         ...fetchFxCtx,
-        cacheState: Object.fromEntries(cache), // we want the state of the cache at this moment
+        cacheState: cache ? Object.fromEntries(cache) : false, // we want the state of the cache at this moment
     })
 
     let expiredCacheEntries = undefined;

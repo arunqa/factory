@@ -114,9 +114,9 @@ Accept: application/json
 
 ###
 
-@sqlPrimeURL = {{serverURL}}/SQL
+@alaSqlProxyURL = {{serverURL}}/SQL/asp
 
-POST {{sqlPrimeURL}}
+POST {{alaSqlProxyURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -127,18 +127,65 @@ Accept: application/json
 
 ###
 
-POST {{sqlPrimeURL}}
+POST {{alaSqlProxyURL}}
 Content-Type: application/json
 Accept: application/json
 
 {
-  "SQL": "select * from prepare_db_tx_log where error is not null",
+  "SQL": "SHOW COLUMNS from dbms_reflection_inventory from prime",
   "rowNature": "records"
 }
 
 ###
 
-POST {{sqlPrimeURL}}
+POST {{alaSqlProxyURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "select * from prime.dbms_reflection_inventory",
+  "rowNature": "records"
+}
+
+###
+
+POST {{alaSqlProxyURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "SHOW COLUMNS from dbmsInventory from prime",
+  "rowNature": "records"
+}
+
+###
+
+# TODO: figure out how to access engine->databases(filter)->tables(filter), etc.
+# not sure about how to use @{databases} syntax, ended up flattening
+
+POST {{alaSqlProxyURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "select [databases] from prime.dbmsInventory",
+  "rowNature": "records"
+}
+
+###
+
+POST {{alaSqlProxyURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "select * from prime.dbms_reflection_prepare_db_tx_log where error is not null",
+  "rowNature": "records"
+}
+
+###
+
+POST {{alaSqlProxyURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -149,7 +196,7 @@ Accept: application/json
 
 ###
 
-POST {{sqlPrimeURL}}
+POST {{alaSqlProxyURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -159,7 +206,7 @@ Accept: application/json
 }
 ###
 
-POST {{sqlPrimeURL}}
+POST {{alaSqlProxyURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -170,7 +217,7 @@ Accept: application/json
 
 ###
 
-POST {{sqlPrimeURL}}
+POST {{alaSqlProxyURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -181,7 +228,7 @@ Accept: application/json
 
 ###
 
-POST {{sqlPrimeURL}}
+POST {{alaSqlProxyURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -192,7 +239,7 @@ Accept: application/json
 
 ###
 
-POST {{sqlPrimeURL}}
+POST {{alaSqlProxyURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -203,7 +250,7 @@ Accept: application/json
 
 ###
 
-POST {{sqlPrimeURL}}
+POST {{alaSqlProxyURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -214,18 +261,18 @@ Accept: application/json
 
 ###
 
-POST {{sqlPrimeURL}}
+POST {{alaSqlProxyURL}}
 Content-Type: application/json
 Accept: application/json
 
 {
-  "SQL": "select * from observability.health",
+  "SQL": "select * from observability.health_check",
   "rowNature": "records"
 }
 
 ###
 
-POST {{sqlPrimeURL}}
+POST {{alaSqlProxyURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -236,7 +283,7 @@ Accept: application/json
 
 ###
 
-POST {{sqlPrimeURL}}
+POST {{alaSqlProxyURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -247,7 +294,7 @@ Accept: application/json
 
 ###
 
-POST {{sqlPrimeURL}}
+POST {{alaSqlProxyURL}}
 Content-Type: application/json
 Accept: application/json
 
@@ -255,6 +302,18 @@ Accept: application/json
   "SQL": "SELECT * from observability.universal_metric",
   "rowNature": "records"
 }
+
+###
+
+POST {{alaSqlProxyURL}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "SQL": "SELECT created_at, asset_nature, status, location_href, filesys_target_path, filesys_target_symlink FROM pubctl.publ_server_static_access_log ORDER BY created_at DESC LIMIT 100",
+  "rowNature": "records"
+}
+
 
 # --------------------
 # /POM routes

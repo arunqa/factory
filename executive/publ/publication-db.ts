@@ -1,12 +1,13 @@
 import { path } from "../../core/deps.ts";
-import * as sqlite from "../../lib/db/sqlite-db.ts";
+import * as sql from "../../lib/sql/mod.ts";
+import * as sqlite from "../../lib/sqlite/mod.ts";
 import * as s from "./server/middleware/static.ts";
 import * as pdbs from "./publication-db-schema.auto.ts";
 
 const moduleHome = path.dirname(path.fromFileUrl(import.meta.url));
 
 export class PublicationDatabase
-  extends sqlite.Database<sqlite.DatabaseEventEmitter> {
+  extends sqlite.SqliteDatabase<sql.SqlEventEmitter> {
   activeHost?: pdbs.PublHost;
   activeBuildEvent?: pdbs.PublBuildEvent;
   activeServerService?: pdbs.PublServerService;
@@ -53,7 +54,9 @@ export class PublicationDatabase
 
   persistStaticServed(
     sat: s.StaticServedTarget,
-  ): sqlite.QueryExecutionRowsSupplier | sqlite.QueryExecutionRecordsSupplier {
+  ):
+    | sql.QueryExecutionRowsSupplier
+    | sql.QueryExecutionRecordsSupplier {
     const result = this.rowsDML(
       `INSERT INTO publ_server_static_access_log
                    (publ_server_service_id, status, asset_nature, location_href, filesys_target_path, filesys_target_symlink)

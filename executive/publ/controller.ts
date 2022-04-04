@@ -3,7 +3,7 @@ import * as rfGovn from "../../governance/mod.ts";
 import * as human from "../../lib/text/human.ts";
 import * as whs from "../../lib/text/whitespace.ts";
 import * as bjs from "../../lib/package/bundle-js.ts";
-import * as sqlite from "../../lib/db/sqlite-db.ts";
+import * as sql from "../../lib/sql/mod.ts";
 import * as server from "./server/server.ts";
 import * as publ from "./publication.ts";
 import * as psDB from "./publication-db.ts";
@@ -292,7 +292,7 @@ export function typicalPublicationCtlSupplier<
     const serverStateDB = new psDB.PublicationDatabase({
       storageFileName: () => storageFileName,
       autoCloseOnUnload: true,
-      events: () => new sqlite.DatabaseEventEmitter(),
+      events: () => new sql.SqlEventEmitter(),
     });
 
     serverStateDB.dbee.on("openedDatabase", () => {
