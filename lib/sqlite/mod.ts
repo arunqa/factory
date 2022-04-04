@@ -1,87 +1,28 @@
-import { events } from "./deps.ts";
-import { sqlite } from "./sqlite-deps.ts";
-import * as ssts from "../../lib/db/sqlite-schema-ts.ts";
+import { sqlite } from "./deps.ts";
+import * as ssts from "./schema-ts.ts";
+import * as govn from "../sql/governance.ts";
 
 // nomenclature and conventions should follow PgDCP whenever possible
 
-export interface DatabaseInit<DBEE extends DatabaseEventEmitter> {
+export interface SqliteInstanceInit<DBEE extends govn.SqlEventEmitter> {
   readonly storageFileName: () => string;
-  readonly events: (db: Database<DBEE>) => DBEE;
+  readonly events: (db: SqliteDatabase<DBEE>) => DBEE;
   readonly autoCloseOnUnload?: boolean;
 }
 
-export interface QueryExecutionRowsSupplier<
-  R extends sqlite.Row = sqlite.Row,
-> {
-  readonly rows: Array<R>;
-  readonly SQL: string;
-  readonly params?: sqlite.QueryParameterSet;
-}
-
-export interface QueryExecutionRecordsSupplier<
-  O extends sqlite.RowObject = sqlite.RowObject,
-> {
-  readonly records: Array<O>;
-  readonly SQL: string;
-  readonly params?: sqlite.QueryParameterSet;
-}
-
-export interface QueryExecutionRecordSupplier<
-  O extends sqlite.RowObject = sqlite.RowObject,
-> extends QueryExecutionRecordsSupplier<O> {
-  readonly record: O;
-}
-
-export interface QueryRowsExecutor {
-  <R extends sqlite.Row = sqlite.Row>(
-    SQL: string,
-    params?: sqlite.QueryParameterSet,
-  ): QueryExecutionRowsSupplier<R>;
-}
-
-export interface QueryRecordsExecutor {
-  <O extends sqlite.RowObject = sqlite.RowObject>(
-    SQL: string,
-    params?: sqlite.QueryParameterSet,
-  ): QueryExecutionRecordsSupplier<O>;
-}
-
-export interface ConnectionContext {
-  readonly dbee: DatabaseEventEmitter;
-  readonly rowsDQL: QueryRowsExecutor;
-  readonly recordsDQL: QueryRecordsExecutor;
-  readonly rowsDML: QueryRowsExecutor;
-  readonly rowsDDL: QueryRowsExecutor;
-}
-
-export interface SqliteConnectionContext extends ConnectionContext {
+export interface SqliteInstanceContext
+  extends
+    govn.SqlInstanceContext,
+    govn.SqlDefineConnContext,
+    govn.SqlReadConnContext,
+    govn.SqlWriteConnContext {
   readonly dbStore: sqlite.DB;
   readonly dbStoreFsPath: string;
 }
 
-export class DatabaseEventEmitter extends events.EventEmitter<{
-  openingDatabase(cc: ConnectionContext): void;
-  openedDatabase(cc: ConnectionContext): void;
-  closingDatabase(cc: ConnectionContext): void;
-  closedDatabase(cc: ConnectionContext): void;
-
-  constructStorage(cc: ConnectionContext): void;
-  constructIdempotent(cc: ConnectionContext): void;
-  populateSeedData(cc: ConnectionContext): void;
-
-  executedDDL(result: QueryExecutionRowsSupplier): void;
-  executedDML(result: QueryExecutionRowsSupplier): void;
-  executedDQL(
-    result:
-      | QueryExecutionRowsSupplier
-      | QueryExecutionRecordSupplier
-      | QueryExecutionRecordsSupplier,
-  ): void;
-}> {
-}
-
-export class Database<DBEE extends DatabaseEventEmitter = DatabaseEventEmitter>
-  implements ConnectionContext {
+export class SqliteDatabase<
+  DBEE extends govn.SqlEventEmitter = govn.SqlEventEmitter,
+> implements SqliteInstanceContext {
   readonly isConnectionContext = true;
   readonly dbStoreFsPath: string;
   readonly dbStore: sqlite.DB;
@@ -90,7 +31,7 @@ export class Database<DBEE extends DatabaseEventEmitter = DatabaseEventEmitter>
     activeHost?: { hostID: number };
   } = {};
 
-  constructor(init: DatabaseInit<DBEE>) {
+  constructor(init: SqliteInstanceInit<DBEE>) {
     this.dbStoreFsPath = init.storageFileName();
     this.dbStore = new sqlite.DB(this.dbStoreFsPath, { mode: "create" });
     this.dbee = init.events(this);
@@ -118,29 +59,29 @@ export class Database<DBEE extends DatabaseEventEmitter = DatabaseEventEmitter>
     this.dbee.emitSync("openedDatabase", this);
   }
 
-  rowsDDL<Row extends sqlite.Row>(
+  rowsDDL<Row extends govn.SqlRow>(
     SQL: string,
-    params?: sqlite.QueryParameterSet | undefined,
-  ): QueryExecutionRowsSupplier<Row> {
+    params?: govn.SqlQueryParameterSet | undefined,
+  ): govn.QueryExecutionRowsSupplier<Row> {
     const rows = this.dbStore.query<Row>(SQL, params);
-    const result: QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
+    const result: govn.QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
     this.dbee.emit("executedDDL", result);
     return result;
   }
 
-  rowsDML<Row extends sqlite.Row>(
+  rowsDML<Row extends govn.SqlRow>(
     SQL: string,
-    params?: sqlite.QueryParameterSet | undefined,
-  ): QueryExecutionRowsSupplier<Row> {
+    params?: govn.SqlQueryParameterSet | undefined,
+  ): govn.QueryExecutionRowsSupplier<Row> {
     const rows = this.dbStore.query<Row>(SQL, params);
-    const result: QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
+    const result: govn.QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
     this.dbee.emit("executedDML", result);
     return result;
   }
 
   insertedRecord<
-    Insert extends Record<string, sqlite.QueryParameter>,
-    Return extends sqlite.RowObject,
+    Insert extends Record<string, govn.SqlQueryParameter>,
+    Return extends govn.SqlRecord,
   >(
     insert: Insert,
     tableName: string,
@@ -157,10 +98,10 @@ export class Database<DBEE extends DatabaseEventEmitter = DatabaseEventEmitter>
         suggestedSQL: (
           names: string[],
           insert: Insert,
-        ) => [string, sqlite.QueryParameterSet?],
+        ) => [string, govn.SqlQueryParameterSet?],
         insert: Insert,
         names: string[],
-      ) => [string, sqlite.QueryParameterSet?];
+      ) => [string, govn.SqlQueryParameterSet?];
       readonly transformInserted?: (record: Record<string, unknown>) => Return;
       readonly onNotInserted?: (
         insert: Insert,
@@ -198,8 +139,8 @@ export class Database<DBEE extends DatabaseEventEmitter = DatabaseEventEmitter>
 
     const afterInsertDQL: (
       names: string[],
-      values: sqlite.QueryParameterSet,
-    ) => [string, sqlite.QueryParameterSet?] = () => {
+      values: govn.SqlQueryParameterSet,
+    ) => [string, govn.SqlQueryParameterSet?] = () => {
       return [`SELECT * from ${tableName} where rowid = last_insert_rowid()`];
     };
     const afterInsertArgs = (options?.afterInsertSQL)
@@ -218,22 +159,22 @@ export class Database<DBEE extends DatabaseEventEmitter = DatabaseEventEmitter>
     });
   }
 
-  rowsDQL<Row extends sqlite.Row>(
+  rowsDQL<Row extends govn.SqlRow>(
     SQL: string,
-    params?: sqlite.QueryParameterSet | undefined,
-  ): QueryExecutionRowsSupplier<Row> {
+    params?: govn.SqlQueryParameterSet | undefined,
+  ): govn.QueryExecutionRowsSupplier<Row> {
     const rows = this.dbStore.query<Row>(SQL, params);
-    const result: QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
+    const result: govn.QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
     this.dbee.emit("executedDQL", result);
     return result;
   }
 
-  recordsDQL<Object extends sqlite.RowObject>(
+  recordsDQL<Object extends govn.SqlRecord>(
     SQL: string,
-    params?: sqlite.QueryParameterSet | undefined,
-  ): QueryExecutionRecordsSupplier<Object> {
+    params?: govn.SqlQueryParameterSet | undefined,
+  ): govn.QueryExecutionRecordsSupplier<Object> {
     const records = this.dbStore.queryEntries<Object>(SQL, params);
-    const result: QueryExecutionRecordsSupplier<Object> = {
+    const result: govn.QueryExecutionRecordsSupplier<Object> = {
       records,
       SQL,
       params,
@@ -242,15 +183,17 @@ export class Database<DBEE extends DatabaseEventEmitter = DatabaseEventEmitter>
     return result;
   }
 
-  firstRecordDQL<Object extends sqlite.RowObject>(
+  firstRecordDQL<Object extends govn.SqlRecord>(
     SQL: string,
-    params?: sqlite.QueryParameterSet | undefined,
+    params?: govn.SqlQueryParameterSet | undefined,
     options?: {
       readonly enhance?: (record: Record<string, unknown>) => Object;
       readonly onNotFound?: () => Object | undefined;
+      readonly autoLimitSQL?: (SQL: string) => string;
     },
   ): Object | undefined {
-    const selected = this.recordsDQL<Object>(SQL, params);
+    const { autoLimitSQL = (() => `${SQL} LIMIT 1`) } = options ?? {};
+    const selected = this.recordsDQL<Object>(autoLimitSQL(SQL), params);
     if (selected.records.length > 0) {
       const record = selected.records[0];
       if (options?.enhance) return options.enhance(record);

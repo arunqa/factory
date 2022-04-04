@@ -1,5 +1,5 @@
-import * as sqlite from "https://deno.land/x/sqlite@v3.3.0/mod.ts";
-import * as rsts from "./rdbms-schema-ts.ts";
+import { sqlite } from "./deps.ts";
+import * as rsts from "../sql/rdbms-schema-ts.ts";
 
 // TODO: generate https://github.com/koskimas/kysely for TS-based queries?
 
