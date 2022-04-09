@@ -1,12 +1,13 @@
 import { events } from "./deps.ts";
 import * as terser from "https://cdn.jsdelivr.net/gh/lumeland/terser-deno@v5.9.0/deno/mod.js";
 import * as fsi from "../fs/inspect.ts";
+import * as graph from "../module/graph.ts";
 
 export interface CacheableTypescriptSource {
   readonly ts: TypescriptSupplier;
   readonly tsSrcFileStat: Deno.FileInfo;
   readonly javaScript: string;
-  isNewerThanCached: (fi: Deno.FileInfo) => boolean;
+  isNewerThanCached: (fi: Deno.FileInfo) => Promise<boolean>;
 }
 
 export type TsSrcFileJsCache = Map<string, CacheableTypescriptSource>;
@@ -22,7 +23,8 @@ export async function transformTypescriptToCacheableJS(
   const cacheKey = options?.cacheKey ?? ts.tsSrcRootSpecifier;
   const tsSrcFileStat = await Deno.lstat(ts.tsSrcRootSpecifier);
   let cached = tsJsCache.get(cacheKey);
-  if (!cached || cached.isNewerThanCached(tsSrcFileStat)) {
+  console.log({ cached, cacheKey });
+  if (!cached || await cached.isNewerThanCached(tsSrcFileStat)) {
     await transformTypescriptToJS(ts, {
       onBundledToJS: async (event) => {
         const javaScript = options?.minify
@@ -32,10 +34,36 @@ export async function transformTypescriptToCacheableJS(
           ts,
           tsSrcFileStat,
           javaScript,
-          isNewerThanCached: (fi: Deno.FileInfo) => {
-            if (tsSrcFileStat.mtime && fi.mtime) {
-              return fi.mtime.valueOf() > tsSrcFileStat.mtime.valueOf();
+          isNewerThanCached: async (fi: Deno.FileInfo) => {
+            const fiMtimeValue = fi.mtime?.valueOf();
+            console.log({ ts, fi });
+            if (tsSrcFileStat.mtime && fiMtimeValue) {
+              if (fiMtimeValue > tsSrcFileStat.mtime.valueOf()) {
+                return true;
+              }
             }
+
+            if (fiMtimeValue) {
+              const deps = await graph.moduleGraphs.localDependenciesFileInfos(
+                ts.tsSrcRootSpecifier,
+                false,
+                // deno-lint-ignore require-await
+                async (error) => {
+                  console.error(error);
+                  return undefined;
+                },
+              );
+              if (deps && deps.length > 0) {
+                for (const dep of deps) {
+                  if (dep.localFileInfo?.mtime) {
+                    if (fiMtimeValue > dep.localFileInfo?.mtime.valueOf()) {
+                      return true;
+                    }
+                  }
+                }
+              }
+            }
+
             // if we don't have mtime we'll cache forever
             return false;
           },
@@ -247,7 +275,7 @@ export function jsPotentialTsTwin(jsTarget: JsTarget): JsTargetTsTwin {
       try {
         return await Deno.lstat(tsSrcRootSpecifier);
       } catch (error) {
-        // if the *.js doesn't exist we want to build it
+        // if the *.ts doesn't exist it has no twin
         if (error instanceof Deno.errors.NotFound) {
           return false;
         }
@@ -297,18 +325,47 @@ export async function bundleJsFromTsTwinIfNewer(
         }];
       }
 
-      if (srcStat.mtime && destStat.mtime) {
-        if (srcStat.mtime.getTime() < destStat.mtime.getTime()) {
-          return ["dest-is-newer-than-src", {
-            src,
-            srcStat,
-            dest: twin.jsAbsPath,
-            destStat,
-            twin,
-          }];
+      const destMTime = destStat.mtime?.getTime();
+      if (!destMTime) {
+        // unable to determine mtime so just always build
+        return true;
+      }
+
+      if (srcStat.mtime) {
+        if (srcStat.mtime.getTime() > destMTime) {
+          // the source file is newer than dest, so emit bundle
+          return true;
         }
       }
-      return true;
+
+      const deps = await graph.moduleGraphs.localDependenciesFileInfos(
+        src,
+        false,
+        // deno-lint-ignore require-await
+        async (error) => {
+          console.error(error);
+          return undefined;
+        },
+      );
+      if (deps && deps.length > 0) {
+        for (const dep of deps) {
+          const depMTime = dep.localFileInfo?.mtime?.getTime();
+          if (depMTime && depMTime > destMTime) {
+            // a dependent file is newer than the destination, so emit bundle
+            return true;
+          }
+        }
+      }
+
+      // if we get to here, it means dest is newer than source and deps
+      return ["dest-is-newer-than-src", {
+        src,
+        srcStat,
+        deps,
+        dest: twin.jsAbsPath,
+        destStat,
+        twin,
+      }];
     },
     onBundledToJS: async (event) => {
       await Deno.writeTextFile(
