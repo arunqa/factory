@@ -26,7 +26,7 @@
 
     <details class="explore" open>
         <summary>Design System</summary>
-        <div data-populate-fetched-json-url="/POM/module/design-system.js.json"></div>
+        <div data-populate-fetched-json-url="/unsafe-server-runtime-proxy/module/design-system.js.json"></div>
     </details>
 
     <details class="explore" open>
@@ -45,9 +45,9 @@
             // as decoupled from business logic as possible
 
             const designSystemFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                ...path.fetchFxInitServerSideSrc("/POM/module/design-system.js.json", `
+                ...path.fetchFxInitServerSideSrc("/unsafe-server-runtime-proxy/module/design-system.js.json", `
                     // this code will be run on the server side and the return value be JSON;
-                    // everything after /POM/module (e.g. /design-system.js.json) is arbitrary
+                    // everything after /unsafe-server-runtime-proxy/module (e.g. /design-system.js.json) is arbitrary
                     // and for user-agent benefit
                     export default ({ publication }) => publication.ds.designSystem;
                 `),
@@ -55,9 +55,9 @@
             })));
 
             const designSystemLayoutsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                ...path.fetchFxInitServerSideSrc("/POM/module/design-system-layouts.js.json", `
+                ...path.fetchFxInitServerSideSrc("/unsafe-server-runtime-proxy/module/design-system-layouts.js.json", `
                     // this code will be run on the server side and the return value be JSON;
-                    // everything after /POM/module (e.g. /design-system.js.json) is arbitrary
+                    // everything after /unsafe-server-runtime-proxy/module (e.g. /design-system.js.json) is arbitrary
                     // and for user-agent benefit;
                     // use Array.from() since layouts.values() is an iterator; arrays are valid JSON
                     export default ({ publication }) => Array.from(publication.ds.designSystem.layoutStrategies.layouts.values());

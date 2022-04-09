@@ -59,7 +59,7 @@ Accept: application/json
 
 {
   "SQL": "SELECT sqlite_master.name as table_name, table_info.* FROM sqlite_master JOIN pragma_table_info(sqlite_master.name) as table_info",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -69,7 +69,7 @@ Accept: application/json
 
 {
   "SQL": "select * from publ_host",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -79,7 +79,7 @@ Accept: application/json
 
 {
   "SQL": "select * from publ_build_event",
-  "rowNature": "rows"
+  "resultNature": "rows"
 }
 
 ###
@@ -89,7 +89,7 @@ Accept: application/json
 
 {
   "SQL": "select * from publ_server_service",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -99,7 +99,7 @@ Accept: application/json
 
 {
   "SQL": "SELECT created_at, asset_nature, status, location_href, filesys_target_path, filesys_target_symlink FROM publ_server_static_access_log ORDER BY created_at DESC LIMIT 100",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -109,7 +109,7 @@ Accept: application/json
 
 {
   "SQL": "SELECT * from publ_server_error_log LIMIT 50",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -122,7 +122,7 @@ Accept: application/json
 
 {
   "SQL": "SHOW DATABASES",
-  "rowNature": "records"
+  "resultNature": "model"
 }
 
 ###
@@ -133,7 +133,7 @@ Accept: application/json
 
 {
   "SQL": "SHOW COLUMNS from dbms_reflection_inventory from prime",
-  "rowNature": "records"
+  "resultNature": "models"
 }
 
 ###
@@ -143,8 +143,8 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "SQL": "select * from prime.dbms_reflection_inventory",
-  "rowNature": "records"
+  "SQL": "select value * from prime.dbms_reflection_inventory",
+  "resultNature": "no-decoration"
 }
 
 ###
@@ -155,7 +155,7 @@ Accept: application/json
 
 {
   "SQL": "SHOW COLUMNS from dbmsInventory from prime",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -168,8 +168,8 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "SQL": "select [databases] from prime.dbmsInventory",
-  "rowNature": "records"
+  "SQL": "select value [databases] from prime.dbmsInventory",
+  "resultNature": "records"
 }
 
 ###
@@ -180,7 +180,7 @@ Accept: application/json
 
 {
   "SQL": "select * from prime.dbms_reflection_prepare_db_tx_log where error is not null",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -191,7 +191,7 @@ Accept: application/json
 
 {
   "SQL": "SHOW TABLES from config",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -202,7 +202,7 @@ Accept: application/json
 
 {
   "SQL": "SHOW COLUMNS from prime from config",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 ###
 
@@ -212,7 +212,7 @@ Accept: application/json
 
 {
   "SQL": "select operationalCtx->projectRootPath('/.envrc', true) as test_path from config.prime",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -223,7 +223,7 @@ Accept: application/json
 
 {
   "SQL": "select * from config.environment",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -234,7 +234,7 @@ Accept: application/json
 
 {
   "SQL": "SHOW TABLES from pubctl",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -245,7 +245,7 @@ Accept: application/json
 
 {
   "SQL": "select * from pubctl.publ_host",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -256,7 +256,7 @@ Accept: application/json
 
 {
   "SQL": "SHOW TABLES from observability",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -267,7 +267,7 @@ Accept: application/json
 
 {
   "SQL": "select * from observability.health_check",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -278,7 +278,7 @@ Accept: application/json
 
 {
   "SQL": "SHOW COLUMNS from universal_metric from observability",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -289,7 +289,7 @@ Accept: application/json
 
 {
   "SQL": "SHOW INDEX from universal_metric from observability",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -300,7 +300,7 @@ Accept: application/json
 
 {
   "SQL": "SELECT * from observability.universal_metric",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 ###
@@ -311,32 +311,31 @@ Accept: application/json
 
 {
   "SQL": "SELECT created_at, asset_nature, status, location_href, filesys_target_path, filesys_target_symlink FROM pubctl.publ_server_static_access_log ORDER BY created_at DESC LIMIT 100",
-  "rowNature": "records"
+  "resultNature": "records"
 }
 
 
-# --------------------
-# /POM routes
-# --------------------
+# -----------------------------------
+# /unsafe-server-runtime-proxy routes
+# -----------------------------------
 
 ###
 
-@pomEndpoint = {{serverURL}}/POM
-@pomEvalEndpoint = {{pomEndpoint}}/eval
-@pomModuleEndpoint = {{pomEndpoint}}/module
+@serverRuntimeJsTsProxyEndpoint = {{serverURL}}/unsafe-server-runtime-proxy
+@srJsTsEvalEndpoint = {{serverRuntimeJsTsProxyEndpoint}}/eval
+@srJsTsModuleEndpoint = {{serverRuntimeJsTsProxyEndpoint}}/module
 
 ###
-# in /POM/eval the "this" refers to PublicationObjectModelMiddlewareSupplier instance
+# in /server-runtime-proxy/eval the "this" refers to ServerRuntimeJsTsProxyMiddlewareSupplier instance
+# and this.exposureCtx will be arbitrary (based on whatever the server wants to expose)
 
-GET {{pomEvalEndpoint}}/this.POM.publication.state.resourcesIndex.resourcesIndex.length
-Content-Type: application/json
-Accept: application/json
+GET {{srJsTsEvalEndpoint}}/this.exposureCtx.publication.state.resourcesIndex.resourcesIndex.length
 
 ###
-## in /POM/module we need to pass in either a typescript or javascript module;
-## use *.js or *.ts as name, text/plain as content-type and POST the source
+## in /unsafe-server-runtime-proxy/module we need to pass in either a typescript or javascript module;
+## use *.js or *.ts as the extension (path or name can be anything), text/plain as content-type and POST the source
 
-POST {{pomModuleEndpoint}}/any-name-you-want.js.json
+POST {{srJsTsModuleEndpoint}}/project.js.json
 Content-Type: text/plain
 
 // any Javascript you want can be passed in POST body; you can return a string
@@ -352,17 +351,17 @@ export default ({ publication }) => {
 
 ###
 
-POST {{pomModuleEndpoint}}/design-system.js.json
+POST {{srJsTsModuleEndpoint}}/design-system.js.json
 Content-Type: text/plain
 
 // this code will be run on the server side and the return value be JSON;
-// everything after /POM/module (e.g. /design-system.js.json) is arbitrary
-// and for user-agent benefit
+// everything after /unsafe-server-runtime-proxy/module (e.g. /design-system.js.json)
+// is arbitrary and for user-agent benefit
 export default ({ publication }) => publication.ds.designSystem;
 
 ###
 
-POST {{pomModuleEndpoint}}/design-system-layouts.js.json
+POST {{srJsTsModuleEndpoint}}/design-system-layouts.js.json
 Content-Type: text/plain
 
 // use Array.from() since layouts.values() is an iterator; arrays are valid JSON
@@ -370,7 +369,7 @@ export default ({ publication }) => Array.from(publication.ds.designSystem.layou
 
 ###
 
-POST {{pomModuleEndpoint}}/global-sql-db-conns.js.json
+POST {{srJsTsModuleEndpoint}}/global-sql-db-conns.js.json
 Content-Type: text/plain
 
 // we convert to JSON ourselves since we have to do some special processing for
@@ -388,17 +387,17 @@ export default ({ globalSqlDbConns }) => JSON.stringify(
 
 ###
 
-POST {{pomModuleEndpoint}}/publication-db.js.json
+POST {{srJsTsModuleEndpoint}}/publication-db.js.json
 Content-Type: text/plain
 
 export default ({ publicationDB }) => ({ sqliteFileName: publicationDB ? publicationDB.dbStoreFsPath : `publicationDB not provided` });
 
 ###
-# in /POM/module we need to pass in either a typescript or javascript module;
-# use *.js or *.ts as name, text/plain as content-type and POST the source
-# code that should be executed on the server
+# in /unsafe-server-runtime-proxy/module we need to pass in either a typescript
+# or javascript module; use *.js or *.ts as name, text/plain as content-type and
+# POST the source code that should be executed on the server
 
-POST {{pomModuleEndpoint}}/any-name.ts.json
+POST {{srJsTsModuleEndpoint}}/any-name.ts.json
 Content-Type: text/plain
 
 // any Typescript you want can be passed in POST body; you can return a string

@@ -73,11 +73,11 @@ export const fetchSqlFxSuccessEventName = "fetchSqlFxSuccess";
  * fetchFxInitSQL prepares sb.fetchFx params with requestInit and
  * fetchURL for fetching SQL execution results from any server-side endpoint.
  * @param {string} SQL the SQL text to send to the server
- * @param {string} rowNature "rows" for array of arrays, or "records" for array of objects with keys as column names
+ * @param {string} resultNature "rows" for array of arrays, or "records" for array of objects with keys as column names
  * @param {string} fetchURL the endpoint to call, defaults to "/SQL"
  * @returns partial sb.fetchFx params which for spreading with other params
  */
-export function fetchFxInitSQL(SQL, fetchFxSqlID, rowNature = "records", fetchURL = "/SQL") {
+export function fetchFxInitSQL(SQL, fetchFxSqlID, resultNature = "records", fetchURL = "/SQL") {
     fetchFxInitSqlIndex++;
     return {
         fetchFxSqlID: fetchFxSqlID && fetchFxSqlID.toString().trim().length > 0
@@ -90,7 +90,7 @@ export function fetchFxInitSQL(SQL, fetchFxSqlID, rowNature = "records", fetchUR
                 'Content-type': 'application/json',
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ SQL, rowNature })
+            body: JSON.stringify({ SQL, resultNature })
         }),
         fetchFxSuccessEventName: fetchSqlFxSuccessEventName
     }
@@ -100,22 +100,22 @@ export function fetchFxInitSQL(SQL, fetchFxSqlID, rowNature = "records", fetchUR
  * fetchFxInitPublSqlDQL prepares sb.fetchFx params with requestInit and
  * fetchURL for fetching SQL execution results from server-side SQLite instance.
  * @param {string} SQL the SQL text to send to the server
- * @param {string} rowNature "rows" for array of arrays, or "records" for array of objects with keys as column names
+ * @param {string} resultNature "rows" for array of arrays, or "records" for array of objects with keys as column names
  * @returns partial sb.fetchFx params which for spreading with other params
  */
-export function fetchFxInitPublSqlDQL(SQL, fetchFxSqlID, rowNature) {
-    return fetchFxInitSQL(SQL, fetchFxSqlID, rowNature, "/SQL/publ/DQL");
+export function fetchFxInitPublSqlDQL(SQL, fetchFxSqlID, resultNature) {
+    return fetchFxInitSQL(SQL, fetchFxSqlID, resultNature, "/SQL/publ/DQL");
 }
 
 /**
  * fetchFxInitAlaSqlProxyDQL prepares sb.fetchFx params with requestInit and
  * fetchURL for fetching SQL execution results from server-side AlaSqlProxy instance.
  * @param {string} SQL the SQL text to send to the server
- * @param {string} rowNature "rows" for array of arrays, or "records" for array of objects with keys as column names
+ * @param {string} resultNature "rows" for array of arrays, or "records" for array of objects with keys as column names
  * @returns partial sb.fetchFx params which for spreading with other params
  */
-export function fetchFxInitAlaSqlProxyDQL(SQL, fetchFxSqlID, rowNature) {
-    return fetchFxInitSQL(SQL, fetchFxSqlID, rowNature, "/SQL/asp");
+export function fetchFxInitAlaSqlProxyDQL(SQL, fetchFxSqlID, resultNature) {
+    return fetchFxInitSQL(SQL, fetchFxSqlID, resultNature, "/SQL/asp");
 }
 
 // prepare effects, events and stores that can be used for site management;
@@ -124,6 +124,7 @@ export function fetchFxInitAlaSqlProxyDQL(SQL, fetchFxSqlID, rowNature) {
 // assume that activatePage will be call after all content is loaded and that
 // the "inspectable clientLayout" is available.
 export const siteDomain = createDomain("project");
+export const pageDomain = createDomain("page");
 export const activatePage = siteDomain.createEvent();
 
 // content effect (CFX) block (CFXB) events; CFXB events are guaranteed to be
@@ -223,45 +224,6 @@ activatePage.watch((clientLayout) => {
             // idempotent and can be safely called multiple times.
             pageFetchJsonFx({ fetchURL });
         }
-    }
-
-    // assumes that the identifiable SQL effect is defined separately
-    for (const elem of document.querySelectorAll(`[data-populate-fetched-SQL-ID]`)) {
-        // usage example:
-        //   <div data-populate-fetched-SQL-ID="my_sql_id"></div>
-        //   <div data-populate-fetched-SQL-ID="my_sql_id" data-populate-fetched-json-expr="result.something"></div>
-        const fetchFxSqlID = elem.dataset.populateFetchedSqlId;
-        window.addEventListener(fetchSqlFxSuccessEventName, (event) => {
-            const { fetchedValue: result, fetchFxCtx } = (event.detail ? event.detail : {});
-            if (fetchFxCtx.params.fetchFxSqlID) {
-                if (fetchFxCtx.params.fetchFxSqlID == fetchFxSqlID) {
-                    populateJSON(elem, result, elem.dataset.populateFetchedJsonExpr, "data-populate-fetched-SQL-ID");
-                }
-            } else {
-                console.error(`activatePage.watch() => window.addEventListener(${fetchSqlFxSuccessEventName}) has no fetchFxSqlID`, event);
-            }
-        });
-    }
-
-    // assumes that the SQL is embedded as an attribute
-    for (const elem of document.querySelectorAll(`[data-populate-fetched-SQL]`)) {
-        // usage example:
-        //   <div data-populate-fetched-SQL="SELECT * FROM something"></div>
-        //   <div data-populate-fetched-SQL="SELECT * FROM something" data-populate-fetched-json-expr="result.something"></div>
-        const fetchFxSql = elem.dataset.populateFetchedSql;
-        const fetchFxSqlID = fetchFxSql; // identity is same as SQL
-        window.addEventListener(fetchSqlFxSuccessEventName, (event) => {
-            const { fetchedValue: result, fetchFxCtx } = (event.detail ? event.detail : {});
-            if (fetchFxCtx.params.fetchFxSqlID) {
-                if (fetchFxCtx.params.fetchFxSqlID == fetchFxSqlID) {
-                    populateJSON(elem, result, elem.dataset.populateFetchedJsonExpr, "data-populate-fetched-SQL");
-                }
-            } else {
-                console.error(`activatePage.watch() => window.addEventListener(${fetchSqlFxSuccessEventName}) has no fetchFxSqlID`, event);
-            }
-        });
-        // schedule the fetch now, it will be executed down below
-        pageAutoFetchSqlEffect(fetchFxSqlID, fetchFxSql);
     }
 
     for (const elem of document.querySelectorAll(`[data-populate-activate-page-watch-json]`)) {
@@ -480,10 +442,10 @@ export const activateSite = () => {
     // <!-- --> are there in between <a> tags to allow easier readability here but render with no spacing in DOM
     navPrime.innerHTML = `
            <a href="#" class="highlight"><i class="fa-solid fa-file-code"></i> Edit</a><!--
+        --><a href="${baseURL}/server-runtime-sql/index.html"><i class="fa-solid fa-database"></i> Inspect</a><!--
+        --><a href="${baseURL}/server-runtime-script/index.html"><i class="fa-brands fa-js-square"></i> Evaluate</a><!--
         --><a href="${baseURL}/inspect/routes.html"><i class="fa-solid fa-route"></i> Routes</a><!--
         --><a href="${baseURL}/inspect/layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a><!--
-        --><a href="${baseURL}/db/index.html"><i class="fa-solid fa-database"></i> psDB</a><!--
-        --><a href="${baseURL}/inspect/operational-ctx.html"><i class="fa-solid fa-terminal"></i> OpCtx</a><!--
         --><a href="${baseURL}/assurance/"><i class="fa-solid fa-microscope"></i> Unit Tests</a>`;
     document.body.insertBefore(navPrime, document.body.firstChild);
 
@@ -510,11 +472,29 @@ export const activateSite = () => {
     });
 }
 
+export const objectJsonHtmlElem = (inspect, open, options) => {
+    // see https://github.com/mohsen1/json-formatter-js#api
+    const formatter = new JSONFormatter(inspect, open, options);
+    return formatter.render();
+}
+
 export const populateObjectJSON = (inspect, targetElem, open, options) => {
     if (targetElem) {
         targetElem.innerHTML = "";
         // see https://github.com/mohsen1/json-formatter-js#api
         const formatter = new JSONFormatter(inspect, open, options);
         targetElem.appendChild(formatter.render());
+    }
+}
+
+export const populateSelectElem = (selectElem, optionsSupplier) => {
+    selectElem.length = 1;
+    selectElem.selectedIndex = 0;
+    for (const item of optionsSupplier()) {
+        const nOption = document.createElement('option');
+        const nData = document.createTextNode(item.text ?? item.value);
+        nOption.setAttribute('value', item.value ?? item.text);
+        nOption.appendChild(nData);
+        selectElem.appendChild(nOption);
     }
 }

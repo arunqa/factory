@@ -208,6 +208,23 @@ const humanPath = (original, maxLength = 50, formatBasename)=>{
 export { humanFriendlyBytes as humanFriendlyBytes };
 export { humanFriendlyPhrase as humanFriendlyPhrase };
 export { humanPath as humanPath };
+function minWhitespaceIndent(text) {
+    const match = text.match(/^[ \t]*(?=\S)/gm);
+    return match ? match.reduce((r, a)=>Math.min(r, a.length)
+    , Infinity) : 0;
+}
+function unindentWhitespace(text, removeInitialNewLine = true) {
+    const indent = minWhitespaceIndent(text);
+    const regex = new RegExp(`^[ \\t]{${indent}}`, "gm");
+    const result = text.replace(regex, "");
+    return removeInitialNewLine ? result.replace(/^\n/, "") : result;
+}
+function singleLineTrim(text) {
+    return text.replace(/(\r\n|\n|\r)/gm, "").replace(/\s+(?=(?:[^\'"]*[\'"][^\'"]*[\'"])*[^\'"]*$)/g, " ").trim();
+}
+export { minWhitespaceIndent as minWhitespaceIndent };
+export { unindentWhitespace as unindentWhitespace };
+export { singleLineTrim as singleLineTrim };
 function markdownItTransformer() {
     return {
         dependencies: undefined,

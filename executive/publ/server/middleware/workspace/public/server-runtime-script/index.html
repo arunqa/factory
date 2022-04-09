@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="http://codemirror.net/lib/codemirror.css">
+    <link rel="stylesheet" href="http://codemirror.net/addon/hint/show-hint.css">
+    <link rel="stylesheet" href="../path.actuate.css">
+    <script src="http://codemirror.net/lib/codemirror.js"></script>
+    <script src="http://codemirror.net/addon/edit/matchbrackets.js"></script>
+    <script src="http://codemirror.net/mode/javascript/javascript.js"></script>
+    <script src="http://codemirror.net/addon/hint/show-hint.js"></script>
+    <script src="http://codemirror.net/addon/hint/javascript-hint.js"></script>
+    <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.js"></script>
+    <style>
+        /* see https://codemirror.net/demo/resize.html */
+        .CodeMirror {
+            border: 1px solid #eee;
+            height: auto;
+        }
+
+        /* see https://stackoverflow.com/questions/51863331/copy-and-select-the-text-from-ag-grid */
+        /* enable basic browser text selection in grid cells */
+        div.ag-root .ag-cell-focus {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <details id="scriptsInventory" style="padding-bottom: 25px;" open>
+            <summary>
+                Scripts Library
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                📝 <a id="editScriptsInventorySource" style="color: #889988">Edit</a>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" id="autoExecute" value="autoExecute" checked>
+                <label for="autoExecute"> Auto Execute</label>
+            </summary>
+        </details>
+    </div>
+    <div>
+        <textarea rows="3" cols="50" name="scriptEditor" id="scriptEditor"></textarea>
+    </div>
+
+    <div style="padding-top: 15px; padding-bottom: 25px;">
+        <button class="btn-success" href="#"
+            onclick="execServerRuntimeScriptFx({ srScript: srScriptFromFromEditor()})">Execute</button>
+        <input type="checkbox" id="diagnose" value="diagnose">
+        <label for="diagnose"> with Diagnostics</label>
+    </div>
+
+    <div id="diagnostics"></div>
+    <div id="script-eval-results-json"></div>
+    <div id="script-eval-results-grid" class="ag-theme-balham"></div>
+
+    <script type="module">
+        import * as path from "../path.actuate.mjs";
+        import * as deps from "./deps.auto.js";
+
+        // automatically inject navbars and other site-wide elements
+        path.activateSite();
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // setup events, stores, and effects listeners so that we can be
+            // as decoupled from business logic as possible
+
+            // use window.* to prepare instances needed by DOM elements and use
+            // const or let for anything not used by the DOM.
+
+            const scriptsInventory = deps.typicalScriptsInventory();
+            const scriptSource = scriptsInventory.origin.moduleImportMetaURL.replace("file://", "");
+
+            const editScriptsInventorySourceElem = document.getElementById("editScriptsInventorySource");
+            editScriptsInventorySourceElem.href = `/workspace/editor-redirect/abs${scriptSource}`;
+            editScriptsInventorySourceElem.title = `Open /workspace/editor-redirect${scriptSource} in IDE`;
+
+            const diagnosticsCheckboxElem = document.getElementById("diagnose");
+            const diagnosticsElem = document.getElementById("diagnostics");
+            const scriptsInventoryElem = document.getElementById("scriptsInventory");
+            const autoExecSeverRuntimeScriptElem = document.getElementById("autoExecute");
+
+            const populateServerRuntimeScript = path.pageDomain.createEvent();
+
+            // see: https://codemirror.net/doc/manual.html#config
+            // check .CodeMirror CSS classes for other config settings like height
+            const scriptCodeEditorElem = document.getElementById('scriptEditor');
+            const scriptCodeEditor = CodeMirror.fromTextArea(scriptCodeEditorElem, {
+                mode: "text/javascript",
+                lineNumbers: true,
+                indentWithTabs: true,
+                smartIndent: true,
+                matchBrackets: true,
+                autofocus: true,
+                upperCaseKeywords: true,
+                extraKeys: { "Ctrl-Space": "autocomplete" },
+                hint: CodeMirror.hint.javascript,
+            });
+            const scriptCodeEditorValue = (replaceText, replaceWith) => {
+                if (replaceText) {
+                    if (typeof replaceText !== "string" && replaceText instanceof RegExp) {
+                        replaceText = scriptCodeEditor.getValue().replace(replaceText, replaceWith);
+                    }
+                    scriptCodeEditor.setValue(replaceText);
+                }
+                return scriptCodeEditor.getValue();
+            }
+
+            for (const library of scriptsInventory.libraries) {
+                const libraryElem = document.createElement("details");
+                const libraryHeaderElem = document.createElement("summary");
+                libraryHeaderElem.innerHTML = library.label;
+                const libraryListElem = document.createElement("ul");
+                for (const srScript of library.scripts) {
+                    const li = document.createElement("li");
+                    const a = document.createElement("a");
+                    a.href = `#${srScript.qualifiedName}`;
+                    a.onclick = () => {
+                        populateServerRuntimeScript({ srScript });
+                        return false;
+                    };
+                    a.innerHTML = srScript.label;
+                    li.appendChild(a);
+                    libraryListElem.appendChild(li);
+                }
+                libraryElem.appendChild(libraryHeaderElem);
+                libraryElem.appendChild(libraryListElem);
+                scriptsInventoryElem.appendChild(libraryElem);
+            }
+            populateServerRuntimeScript.watch(({ srScript }) => {
+                scriptCodeEditorValue(path.unindentWhitespace(srScript.jsModule));
+                if (autoExecSeverRuntimeScriptElem.checked && window.execServerRuntimeScriptFx) {
+                    window.execServerRuntimeScriptFx({ srScript });
+                }
+            });
+
+            window.srScriptFromFromEditor = () => ({
+                name: 'editor.js.json',
+                qualifiedName: 'editor.js.json',
+                jsModule: scriptCodeEditorValue()
+            });
+            window.execServerRuntimeScriptFx = path.siteDomain.createEffect(async (params) => {
+                if (params.srScript) {
+                    // srScript must be provided in params
+                    const args = {
+                        ...path.fetchFxInitServerSideSrc(`/unsafe-server-runtime-proxy/module/${params.srScript.name}`, params.srScript.jsModule),
+                        ...params,
+                        cache: false
+                    };
+                    return await path.pageFetchJsonFx(args);
+
+                } else {
+                    console.error(`srScript missing in params to window.execServerRuntimeScriptFx(params)`);
+                }
+            });
+            execServerRuntimeScriptFx.done.watch(({ params, result }) => {
+                const isErrorResult = typeof result === "object" && "error" in result ? true : false;
+                if (diagnosticsCheckboxElem.checked || isErrorResult) {
+                    path.populateObjectJSON({ params }, diagnosticsElem);
+                } else {
+                    diagnosticsElem.innerHTML = "";
+                }
+
+                const destJSON = document.querySelector('#script-eval-results-json');
+                const destGrid = document.querySelector('#script-eval-results-grid');
+                destJSON.innerHTML = '';
+                destGrid.innerHTML = '';
+
+                if (isErrorResult) {
+                    path.populateObjectJSON(result, destJSON, 2);
+                }
+
+                const presentation = result?.presentation ?? params?.srScript?.presentation ?? {
+                    // the result is an array of objects, default it to records otherwise JSON
+                    nature: Array.isArray(result) && result.length > 0 && typeof result[0] === "object"
+                        ? "table-records"
+                        : "JSON-explorer",
+                };
+
+                if (presentation.nature == "JSON-explorer" || isErrorResult) {
+                    path.populateObjectJSON(result, destJSON, 2);
+                } else {
+                    const jsonExplorableCellRenderer = (columnName) => {
+                        return (params) => {
+                            const columnData = params.data[columnName];
+                            if (columnData == null) return "🚫";
+                            if (typeof columnData !== "object") return columnData;
+                            const jsonDiv = path.objectJsonHtmlElem(columnData);
+                            jsonDiv.setAttribute("style", "line-height: normal; overflow-y: auto; !important");
+                            return jsonDiv;
+                        }
+                    };
+                    let columnDefs = [];
+                    let rowData = [];
+                    switch (presentation.nature) {
+                        case "table-object-properties":
+                            columnDefs.push({ field: "property", sortable: true });
+                            columnDefs.push({ field: "value", cellRenderer: jsonExplorableCellRenderer("value") });
+                            for (const propEntry of Object.entries(result)) {
+                                const [property, value] = propEntry;
+                                rowData.push({ property, value });
+                            }
+                            break;
+                        case "table-records":
+                            columnDefs = Object.keys(result[0]).map(key => ({ field: key }));
+                            rowData = result;
+                            break;
+                        case "table-aggrid-defn":
+                            columnDefs = result.columnDefs;
+                            rowData = result.rowData;
+                            break;
+                        default:
+                            destGrid.innerHTML = `Unknown presentation nature <code>${presentation.nature}</code>`;
+                            path.populateObjectJSON(result, destJSON, 2);
+                            return;
+                    }
+                    const gridOptions = {
+                        defaultColDef: { resizable: true },
+                        columnDefs,
+                        rowData,
+                        getRowHeight: (params) => {
+                            for (const value of Object.values(params.data)) {
+                                // if we're showing an object we will be using path.objectJsonHtmlElem()
+                                if (value && typeof value === "object") {
+                                    const keys = Object.keys(value);
+                                    return (keys.length * 20) + 25;
+                                }
+                            }
+                            return 25;
+                        },
+                        domLayout: 'autoHeight',
+                        onGridReady: (event) => event.columnApi.autoSizeAllColumns(),
+                        components: {
+                            // see https://www.ag-grid.com/javascript-grid/components/
+                            workspaceEditorRedirectCellRenderer: (params) => {
+                                const [src, label] = [params.data["editorRedirectSrc"], params.data["editorRedirectLabel"]];
+                                return `<a href="/workspace/editor-redirect/abs${src}" title="Open ${src} in IDE">${label}</a>`;
+                            },
+                        },
+                    };
+                    new agGrid.Grid(destGrid, gridOptions);
+                }
+            });
+
+            // all listeners are ready so let's activate the page and trigger the watchers;
+            // (this will run all the path.pageAutoEffect() registrations)
+            path.activatePage(path.inspectableClientLayout());
+            populateServerRuntimeScript({ srScript: scriptsInventory.defaultScript });
+        });
+    </script>
+</body>
+
+</html>

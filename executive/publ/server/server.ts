@@ -8,8 +8,8 @@ import * as s from "./middleware/static.ts";
 import * as ws from "./middleware/workspace/mod.ts";
 import * as assure from "./middleware/assurance.ts";
 import * as pDB from "../publication-db.ts";
-import * as sqlP from "./middleware/sql-proxy.ts";
-import * as pom from "./middleware/pom.ts";
+import * as sqlP from "./middleware/server-runtime-sql-proxy.ts";
+import * as srJsTsProxy from "./middleware/server-runtime-script-proxy.ts";
 import * as rJSON from "../../../core/content/routes.json.ts";
 
 export interface PublicationServerAccessContext
@@ -133,9 +133,6 @@ export class PublicationServer {
   };
   readonly tsJsCache = new Map<string, bjs.CacheableTypescriptSource>();
   #workspace?: ws.WorkspaceMiddlewareSupplier;
-  #assurance?: assure.AssuranceMiddlewareSupplier;
-  #sqlProxy?: sqlP.SqlProxyMiddlewareSupplier;
-  #pom?: pom.PublicationObjectModelMiddlewareSupplier;
 
   constructor(
     readonly publication: p.Publication<p.PublicationOperationalContext>,
@@ -224,7 +221,7 @@ export class PublicationServer {
     router: oak.Router,
     options?: assure.AssuranceMiddlewareSupplier,
   ) {
-    this.#assurance = new assure.AssuranceMiddlewareSupplier(
+    new assure.AssuranceMiddlewareSupplier(
       {
         contentRootPath: this.publication.config.contentRootPath,
         fsEntryPublicationURL: this.fsEntryPublicationURL,
@@ -237,35 +234,37 @@ export class PublicationServer {
     );
   }
 
-  protected prepareDatabaseProxy(
+  protected prepareRuntimeSqlProxy(
     app: oak.Application,
     router: oak.Router,
   ) {
-    if (this.serverStateDB) {
-      this.#sqlProxy = new sqlP.SqlProxyMiddlewareSupplier(
-        app,
-        router,
-        this.publication,
-        this.serverStateDB,
-        "/SQL",
-      );
-    }
+    new sqlP.ServerRuntimeSqlProxyMiddlewareSupplier(
+      app,
+      router,
+      this.publication,
+      this.serverStateDB,
+      "/SQL",
+    );
   }
 
-  protected preparePublicationObjectModel(
+  protected prepareRuntimeJsTsProxy(
     app: oak.Application,
     router: oak.Router,
   ) {
-    this.#pom = new pom.PublicationObjectModelMiddlewareSupplier(
+    new srJsTsProxy
+      .ServerRuntimeJsTsProxyMiddlewareSupplier(
       app,
       router,
       {
-        publication: this.publication,
         serializedJSON: rJSON.typicalSerializedJSON,
+      },
+      {
+        isRuntimeExposureContext: true,
+        publication: this.publication,
         publicationDB: this.serverStateDB,
         globalSqlDbConns: window.globalSqlDbConns ?? new Map(),
       },
-      "/POM",
+      "/unsafe-server-runtime-proxy",
     );
   }
 
@@ -346,10 +345,10 @@ export class PublicationServer {
       this.serverEE,
     );
 
-    this.preparePublicationObjectModel(app, router);
+    this.prepareRuntimeJsTsProxy(app, router);
     this.prepareWorkspace(app, router, this.staticEE);
     this.prepareAssurance(app, router);
-    this.prepareDatabaseProxy(app, router);
+    this.prepareRuntimeSqlProxy(app, router);
     this.prepareUserAgentScripts(router);
 
     app.addEventListener("error", (event) => {

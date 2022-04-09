@@ -50,76 +50,7 @@
 
     <details class="explore">
         <summary><code>publication.routes</code></summary>
-        <div data-populate-fetched-json-url="/POM/module/publication-routes.js.json"></div>
-    </details>
-
-    <details class="explore" open>
-        <summary>TODO</summary>
-        <pre data-transformable="markdown" class="md">
-            ### Route and file system path-specific configuration
-
-            - See [The Ultimate Guide to Hugo Sections](https://cloudcannon.com/blog/the-ultimate-guide-to-hugo-sections/)
-            to eliminate `_index.md` and replace with `path.ts` or `path.js.ts` or similar.
-            - Use [astring](https://www.skypack.dev/view/astring) JavaScript code generator
-            by building ESTree-compliant ASTs for JavaScript-based routes and other
-            artifacts. For example, we can create a `routes.js` which would be similar to
-            `routes.json` except in JavaScript instead of JSON. By including JavaScript
-            instead of JSON we can have easier use within HTML files and be able to catch
-            reference errors when structures change.
-            - Similar to functionality in NEFS Sparx which generated type-safe code for
-                custom sites.
-            - Also, we could consider generating TypeScript by adding some typing on top
-                of the generated JS. Similar to how
-                [GSD](https://github.com/gov-suite/governed-structured-data) operates; or,
-                we could just use GSD out of the box?
-            - Implement `.Resource Factory.ts` type-safe _profiles_ which will include all
-            extensions and supply configurations such as `layout` and other rules. Instead
-            of forcing all rules in a common configuration, allow `.Resource Factory.ts`
-            at any route to override any configuration value by merging properties with
-            ancestors. This will be referred to as the Resource Factory _Route Profile_ or
-            _Resource Profile_.
-
-            ### Routes and Trees
-
-            - Introduce namespaces into routes so they can indicate where they fit into
-            multiple systems (e.g. more than one statically generate site or multiple
-            projects that can be built without each others' knowledge).
-            - [Nomia](https://github.com/scarf-sh/nomia/) is an interesting project for
-                universal resource namespaces and might be worth integrating.
-            - Incorporate https://deno.land/x/urlcat for type-safe URLs in Routes
-            - Implement route computation using
-            [path-to-regexp.compile()](https://github.com/pillarjs/path-to-regexp/blob/master/src/index.ts#L252)
-            - Check out https://web.dev/urlpattern/ for additional ideas
-            - Check out https://www.skypack.dev/view/regexparam which is much smaller
-                could potentially be incorporated directly without becoming a source
-                dependency.
-            - Read Astro's
-            [File\-based routing, inspired by
-            Next\.js](https://astro.build/blog/astro-019#file-based-routing-inspired-by-nextjs)
-            article to understand how routing is defined by Next.js SvelteKit to allow
-            similar patterns to be passed into originators and resource constructors.
-            - Consider generating UUIDv4 identities for each resource's body content so that
-            body content can be "fingerprinted" for caching and testing for changes
-            without using a revision control system. This will allow resources to be
-            portable across publications.
-            - Consider generating UUIDv4 identities for each route tree node so that the
-            same route from any partial sites will generate the same ID. This will allow
-            routes to know when they have been "moved".
-            - Implement aliasing so that parsed routes can indicate that they "belong" to a
-            different parent than their physical location. These are almost like parent
-            aliases.
-            - Consider allowing setting `parents` so that the same resource could insert
-                itself into multiple parents. Instead of being an alias, the same resource
-                could be in two routes.
-            - This capability might allow better partial routes which would allow a child
-                to insert itself to a parent route, if it existed, and ignore if it did not
-                exist.
-            - Allow directories to become routes without necessarily tying it to a resource
-            - Should directories themselves become originators (resource factories)?
-            - Implement [related content](https://gohugo.io/content-management/related/)
-            similar to the way Hugo and other SSGs work. In our case, we can allow dynamic
-            relationships with Frontmatter (untyped) or Models (type-safe).
-        </pre>
+        <div data-populate-fetched-json-url="/unsafe-server-runtime-proxy/module/publication-routes.js.json"></div>
     </details>
 
     <script type="module">
@@ -134,14 +65,14 @@
 
             const navTreeItemsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
                 ...path.fetchFxInitServerSideSrc(
-                    "/POM/module/routes/navigation-tree-items.js.json",
+                    "/unsafe-server-runtime-proxy/module/routes/navigation-tree-items.js.json",
                     `export default ({ publication }) => publication.routes.navigationTree.items`),
                 ...params
             })));
 
             const allResourcesTreeItemsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
                 ...path.fetchFxInitServerSideSrc(
-                    "/POM/module/routes/resources-tree-items.js.json",
+                    "/unsafe-server-runtime-proxy/module/routes/resources-tree-items.js.json",
                     `export default ({ publication }) => publication.routes.resourcesTree.items`),
                 ...params
             })));

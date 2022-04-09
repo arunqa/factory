@@ -54,7 +54,7 @@ function injectRfExplorer(clientLayout, consoleNavContainerElem) {
             </style>
             <div style="padding-top: 4px">
                 <span class="rfExplorerActivate">🔭 rfExplorer</span><span class="rfExplorerStrategies">
-                    <a href="/workspace/db/" class="${gLightboxClassName}" data-glightbox="width: ${window.innerWidth - 100}px; height: ${window.innerHeight - 100}px;" title="Open rfExplorer lightbox">🗔</a>
+                    <a href="/workspace/server-runtime-sql/index.html" class="${gLightboxClassName}" data-glightbox="width: ${window.innerWidth - 100}px; height: ${window.innerHeight - 100}px;" title="Open rfExplorer lightbox">🗔</a>
                     <a href="${workspaceCtxURL}?orientation=east&size=25" target="_top" title="Open rfExplorer panel to the right (East)">▶️</a>
                     <a href="${workspaceCtxURL}?orientation=south&size=25" target="_top" title="Open rfExplorer panel below (South)">🔽</a>
                     <a href="${workspaceCtxURL}?orientation=west&size=25" target="_top" title="Open rfExplorer panel to the left (West)">◀️</a>

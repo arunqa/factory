@@ -13,9 +13,4 @@
  *           if it doesn't exist just create a empty file named deps.auto.js
  */
 
-export * from "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js";
-export * from "../../../../../../lib/reflect/mod.ts";
-export * from "../../../../../../lib/text/human.ts";
-export * from "../../../../../../lib/text/whitespace.ts";
-export * from "../../../../../../lib/presentation/dom/markdown-it.js";
-export * from "../ua-editable.ts";
+export * from "../../inventory/server-runtime-scripts.ts";

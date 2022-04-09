@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="http://codemirror.net/lib/codemirror.css">
+    <link rel="stylesheet" href="http://codemirror.net/addon/hint/show-hint.css">
+    <link rel="stylesheet" href="../path.actuate.css">
+    <script src="http://codemirror.net/lib/codemirror.js"></script>
+    <script src="http://codemirror.net/addon/edit/matchbrackets.js"></script>
+    <script src="http://codemirror.net/mode/sql/sql.js"></script>
+    <script src="http://codemirror.net/addon/hint/show-hint.js"></script>
+    <script src="http://codemirror.net/addon/hint/sql-hint.js"></script>
+    <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.js"></script>
+    <style>
+        /* see https://codemirror.net/demo/resize.html */
+        .CodeMirror {
+            border: 1px solid #eee;
+            height: auto;
+        }
+
+        /* see https://stackoverflow.com/questions/51863331/copy-and-select-the-text-from-ag-grid */
+        /* enable basic browser text selection in grid cells */
+        div.ag-root .ag-cell-focus {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <details id="sqlStmtInventory" style="padding-bottom: 25px;" open>
+            <summary>
+                SQL Statements Library
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                📝 <a id="editSqlStmtInventorySource" style="color: #889988">Edit</a>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" id="autoExecute" value="autoExecute" checked>
+                <label for="autoExecute"> Auto Execute</label>
+            </summary>
+        </details>
+    </div>
+    <div>
+        <select id='database' onchange="selectDatabase({databaseID: this.value})">
+            <option selected>Database</option>
+        </select>
+        <select id='table'
+            onchange="selectTable({databaseID: document.getElementById('database').value, tableID: this.value});">
+            <option selected>Table</option>
+        </select>
+        <select id='column'>
+            <option selected>Column</option>
+        </select>
+    </div>
+    <div>
+        <textarea rows="3" cols="50" name="SQL" id="SQL"></textarea>
+    </div>
+
+    <div style="padding-top: 15px; padding-bottom: 25px;">
+        <button class="btn-success" href="#"
+            onclick="dbQueryFormSubmitFx({sqlStmt: sqlStmtFromFromEditor()});">Execute</button>
+        <input type="checkbox" id="diagnose" value="diagnose">
+        <label for="diagnose"> with Diagnostics</label>
+    </div>
+
+    <div id="diagnostics"></div>
+
+    <div id="SQL-result-aggrid" class="ag-theme-balham"></div>
+
+    <script type="module">
+        import * as path from "../path.actuate.mjs";
+        import * as deps from "./deps.auto.js";
+
+        // automatically inject navbars and other site-wide elements
+        path.activateSite();
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // setup events, stores, and effects listeners so that we can be
+            // as decoupled from business logic as possible
+
+            const sqlStmtsInventory = deps.typicalSqlStmtsInventory();
+            const sqlStmtInventorySource = sqlStmtsInventory.origin.moduleImportMetaURL.replace("file://", "");
+
+            const editSqlStmtInventorySourceElem = document.getElementById("editSqlStmtInventorySource");
+            editSqlStmtInventorySourceElem.href = `/workspace/editor-redirect${sqlStmtInventorySource}`;
+            editSqlStmtInventorySourceElem.title = `Open /workspace/editor-redirect${sqlStmtInventorySource} in IDE`;
+
+            const dbSelectElem = document.getElementById("database");
+            const tableSelectElem = document.getElementById("table");
+            const columnSelectElem = document.getElementById("column");
+            const diagnosticsCheckboxElem = document.getElementById("diagnose");
+            const diagnosticsElem = document.getElementById("diagnostics");
+            const sqlStmtInventoryElem = document.getElementById("sqlStmtInventory");
+            const autoExecSqlStmtInventoryElem = document.getElementById("autoExecute");
+
+            // use window.* to prepare instances needed by DOM elements and use
+            // const or let for anything not used by the DOM.
+            window.selectDatabase = path.pageDomain.createEvent();
+            window.selectTable = path.pageDomain.createEvent();
+
+            const populateSqlStatement = path.pageDomain.createEvent();
+
+            const $dbmsInventory = path.pageDomain.createStore([]);
+            const $selectedDatabase = path.pageDomain.createStore(0);
+            const $selectedTable = path.pageDomain.createStore(0);
+
+            const sqlCodeEditorAutoCompleteHints = {
+                tables: {
+                    choose_a_db_first: { choose_a_db_first: null },
+                }
+            };
+
+            // see: https://codemirror.net/doc/manual.html#config
+            // check .CodeMirror CSS classes for other config settings like height
+            const sqlCodeEditorElem = document.getElementById('SQL');
+            const sqlCodeEditor = CodeMirror.fromTextArea(sqlCodeEditorElem, {
+                mode: "text/x-sql",
+                lineNumbers: true,
+                indentWithTabs: true,
+                smartIndent: true,
+                matchBrackets: true,
+                autofocus: true,
+                upperCaseKeywords: true,
+                extraKeys: { "Ctrl-Space": "autocomplete" },
+                hint: CodeMirror.hint.sql,
+                hintOptions: sqlCodeEditorAutoCompleteHints
+            });
+            const sqlCodeEditorValue = (replaceText, replaceWith) => {
+                if (replaceText) {
+                    if (typeof replaceText !== "string" && replaceText instanceof RegExp) {
+                        replaceText = sqlCodeEditor.getValue().replace(replaceText, replaceWith);
+                    }
+                    sqlCodeEditor.setValue(replaceText);
+                }
+                return sqlCodeEditor.getValue();
+            }
+
+            for (const library of sqlStmtsInventory.libraries) {
+                const libraryElem = document.createElement("details");
+                const libraryHeaderElem = document.createElement("summary");
+                libraryHeaderElem.innerHTML = library.label;
+                const libraryListElem = document.createElement("ul");
+                for (const sqlStmt of library.sqlStmts) {
+                    const li = document.createElement("li");
+                    const a = document.createElement("a");
+                    a.href = `#${sqlStmt.identity}`;
+                    a.onclick = () => {
+                        populateSqlStatement({ sqlStmt });
+                        return false;
+                    };
+                    a.innerHTML = sqlStmt.label;
+                    li.appendChild(a);
+                    libraryListElem.appendChild(li);
+                }
+                libraryElem.appendChild(libraryHeaderElem);
+                libraryElem.appendChild(libraryListElem);
+                sqlStmtInventoryElem.appendChild(libraryElem);
+            }
+            populateSqlStatement.watch(({ sqlStmt }) => {
+                sqlCodeEditorValue(path.unindentWhitespace(sqlStmt.SQL));
+                window.selectDatabase({ databaseID: sqlStmt.database.identity });
+                if (autoExecSqlStmtInventoryElem.checked && window.dbQueryFormSubmitFx) {
+                    window.dbQueryFormSubmitFx({ sqlStmt });
+                }
+            });
+
+            // this is read from the server after content loading
+            const dbmsInventoryQuery = `select value [databases] from prime.dbmsInventory`;
+            $dbmsInventory.watch((databases) => {
+                path.populateSelectElem(dbSelectElem,
+                    () => databases
+                        .filter(row => row.tables.length > 0)
+                        .map(row => ({ text: `${row.identity} (${row.tables.length})`, value: row.identity }))
+                );
+
+                if (dbSelectElem?.options?.length > 1) {
+                    // pick the first database by default
+                    window.selectDatabase({ databaseID: dbSelectElem.options[1].value });
+                }
+                populateSqlStatement({ sqlStmt: sqlStmtsInventory.defaultSqlStmt });
+            });
+
+            const dbQueryDbmsInventoryFx = path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
+                ...path.fetchFxInitAlaSqlProxyDQL(dbmsInventoryQuery, "dbmsInventoryQuery", "records"),
+                ...params,
+                cache: false
+            }));
+            $dbmsInventory.on(dbQueryDbmsInventoryFx.doneData, (_, databases) => databases);
+            dbQueryDbmsInventoryFx();
+
+            $selectedDatabase.on(window.selectDatabase, (_, dbState) => {
+                const db = $dbmsInventory.getState().find(db => db.identity == dbState.databaseID);
+                dbSelectElem.selectedIndex = dbSelectElem.querySelector(`option[value="${dbState.databaseID}"]`)?.index ?? 0;
+                return { ...dbState, db };
+            });
+            $selectedDatabase.watch(({ db }) => {
+                if (db) {
+                    path.populateSelectElem(tableSelectElem,
+                        () => db.tables
+                            .filter(table => table.columns.length > 0)
+                            .map(table => ({ value: table.identity }))
+                    );
+                    const tableHints = {};
+                    for (const table of db.tables) {
+                        const columns = [];
+                        for (const col of table.columns) {
+                            columns.push(col.identity);
+                        }
+                        tableHints[table.identity] = columns;
+                    }
+                    sqlCodeEditorAutoCompleteHints.tables = tableHints;
+                    sqlCodeEditorValue(/^use .*;$/im, `USE DATABASE ${db.identity};`);
+                }
+            });
+
+            $selectedTable.on(window.selectTable, (_, dbTableState) => {
+                const db = $dbmsInventory.getState().find(db => db.identity == dbTableState.databaseID);
+                let table = undefined;
+                if (db) {
+                    table = db.tables.find(table => table.identity == dbTableState.tableID);
+                    tableSelectElem.selectedIndex = tableSelectElem.querySelector(`option[value="${dbTableState.tableID}"]`)?.index ?? 0;
+                }
+                return { ...dbTableState, db, table };
+            });
+            $selectedTable.watch(({ table }) => {
+                if (table) {
+                    path.populateSelectElem(columnSelectElem, () => table.columns.map(col => ({ value: col.identity })));
+                }
+            });
+
+            window.sqlStmtFromFromEditor = () => ({
+                database: { identity: dbSelectElem.value },
+                name: 'editor.sql',
+                qualifiedName: 'editor.sql',
+                SQL: sqlCodeEditorValue()
+            });
+            window.dbQueryFormSubmitFx = path.siteDomain.createEffect(async (params) => {
+                if (params.sqlStmt) {
+                    // sqlStmt must be provided in params
+                    const args = {
+                        ...path.fetchFxInitAlaSqlProxyDQL(params.sqlStmt.SQL, "form", "model"),
+                        ...params,
+                        cache: false
+                    };
+                    return await path.pageFetchJsonFx(args);
+                } else {
+                    console.error(`sqlStmt missing in params to window.dbQueryFormSubmitFx(params)`);
+                }
+            });
+            dbQueryFormSubmitFx.done.watch(({ params, result }) => {
+                if (diagnosticsCheckboxElem.checked || result.nature.indexOf("error") >= 0) {
+                    path.populateObjectJSON({ params, result }, diagnosticsElem, 2);
+                } else {
+                    diagnosticsElem.innerHTML = "";
+                }
+
+                const dest = document.querySelector('#SQL-result-aggrid');
+                dest.innerHTML = '';
+                if (result.nature?.indexOf("error") >= 0) return;
+
+                const columnDefs = result.valueModels.map((vm) => ({
+                    field: vm.suppliedName, sortable: true,
+                    headerName: vm.humanFriendlyName, headerTooltip: `${vm.suppliedName} (${vm.valueType})`,
+                    cellRenderer: (params) => {
+                        const columnData = params.data[vm.suppliedName];
+                        if (columnData == null) return "🚫";
+                        if (typeof columnData !== "object") return columnData;
+                        const jsonDiv = path.objectJsonHtmlElem(columnData);
+                        jsonDiv.setAttribute("style", "line-height: normal; overflow-y: auto; !important");
+                        return jsonDiv;
+                    },
+                }));
+                const gridOptions = {
+                    defaultColDef: { resizable: true },
+                    columnDefs,
+                    rowData: result.data,
+                    getRowHeight: (params) => {
+                        for (const value of Object.values(params.data)) {
+                            // if we're showing an object we will be using path.objectJsonHtmlElem()
+                            if (value && typeof value === "object") {
+                                const keys = Object.keys(value);
+                                return (keys.length * 15) + 25;
+                            }
+                        }
+                        return 25;
+                    },
+                    domLayout: 'autoHeight',
+                    onGridReady: (event) => event.columnApi.autoSizeAllColumns(),
+                    components: {
+                        // see https://www.ag-grid.com/javascript-grid/components/
+                        locationCellRenderer: (params) => "location" in params.data ? path.locationEditorHTML(params.data.location, 5) : params.value,
+                    },
+                };
+                new agGrid.Grid(dest, gridOptions);
+            });
+
+            // all listeners are ready so let's activate the page and trigger the watchers;
+            // (this will run all the path.pageAutoEffect() registrations)
+            path.activatePage(path.inspectableClientLayout());
+        });
+    </script>
+</body>
+
+</html>
