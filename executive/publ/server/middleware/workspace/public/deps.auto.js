@@ -6,7 +6,7 @@ if (typeof JSON.decycle !== "function") {
     JSON.decycle = function decycle(object, replacer) {
         "use strict";
         var objects = new WeakMap();
-        return (function derez(value, path) {
+        return function derez(value, path) {
             var old_path;
             var nu;
             if (replacer !== undefined) {
@@ -34,7 +34,7 @@ if (typeof JSON.decycle !== "function") {
                 return nu;
             }
             return value;
-        })(object, "$");
+        }(object, "$");
     };
 }
 if (typeof JSON.retrocycle !== "function") {
