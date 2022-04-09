@@ -1,5 +1,4 @@
 export * from "./content.ts";
-export * from "./extension.ts";
 export * from "./directive.ts";
 export * from "./frontmatter.ts";
 export * from "./fsm.ts";

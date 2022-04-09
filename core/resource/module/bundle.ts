@@ -6,12 +6,13 @@ import * as route from "../../../core/std/route.ts";
 import * as nature from "../../../core/std/nature.ts";
 import * as p from "../../../core/std/persist.ts";
 import * as safety from "../../../lib/safety/mod.ts";
+import * as extn from "../../../lib/module/mod.ts";
 
 export interface FileSysResourceBundleConstructor<State> {
   (
     we: fsrf.FileSysGlobWalkEntry<BundleResource>,
     options: route.FileSysRouteOptions,
-    imported: govn.ExtensionModule,
+    imported: extn.ExtensionModule,
     state: State,
   ): Promise<BundleResource>;
 }

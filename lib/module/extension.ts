@@ -1,4 +1,4 @@
-import * as govn from "../../governance/mod.ts";
+import * as govn from "./governance.ts";
 
 // deno-lint-ignore no-explicit-any
 export const deepClone = (value: any): any | never => {

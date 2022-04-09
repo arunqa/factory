@@ -14,6 +14,7 @@ import * as persist from "../../../core/std/persist.ts";
 import * as rtree from "../../../core/std/route-tree.ts";
 import * as notif from "../../../lib/notification/mod.ts";
 import * as k from "../../../lib/knowledge/mod.ts";
+import * as extn from "../../../lib/module/mod.ts";
 
 export const indexUnitName = "index";
 
@@ -92,7 +93,7 @@ export function isFlexibleMutatedDesignSystemArgumentsSupplier(
 
 export function designSystemTemplate(
   identity: string,
-  location: govn.LocationSupplier,
+  location: extn.LocationSupplier,
 ) {
   return html.htmlLayoutTemplate<
     html.HelperFunctionOrString<html.HtmlLayout>,
@@ -434,7 +435,7 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
   readonly prettyUrlIndexUnitName = "index";
   constructor(
     readonly identity: govn.RenderStrategyIdentity,
-    readonly location: govn.LocationSupplier,
+    readonly location: extn.LocationSupplier,
     readonly layoutStrategies: DesignSystemLayouts<Layout>,
     readonly dsAssetsBaseURL: string,
     readonly universalAssetsBaseURL: string,

@@ -1,6 +1,6 @@
 import * as fm from "./frontmatter.ts";
 import * as m from "./model.ts";
-import { LocationSupplier } from "./module.ts";
+import { LocationSupplier } from "../lib/module/mod.ts";
 
 export interface MutableRenderMetricsSupplier {
   renderMeasure: PerformanceMeasure;

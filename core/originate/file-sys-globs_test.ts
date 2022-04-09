@@ -2,7 +2,7 @@ import { fs, path } from "../deps.ts";
 import { testingAsserts as ta } from "../deps-test.ts";
 import * as govn from "../../governance/mod.ts";
 import * as obs from "../../core/std/observability.ts";
-import * as e from "../../core/std/extension.ts";
+import * as e from "../../lib/module/mod.ts";
 import * as r from "../../core/std/route.ts";
 import * as g from "../../lib/git/mod.ts";
 import * as mod from "./file-sys-globs.ts";

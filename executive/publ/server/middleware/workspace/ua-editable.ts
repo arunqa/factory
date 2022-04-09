@@ -1,5 +1,5 @@
 import { humanPath } from "../../../../../lib/text/human.ts";
-import { LocationSupplier } from "../../../../../governance/module.ts";
+import { LocationSupplier } from "../../../../../lib/module/mod.ts";
 
 export function getUrlQueryParameterByName(
   name: string,

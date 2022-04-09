@@ -2,12 +2,13 @@ import * as govn from "../../../governance/mod.ts";
 import * as nature from "../../../core/std/nature.ts";
 import * as fsrf from "../../originate/file-sys-globs.ts";
 import * as route from "../../../core/std/route.ts";
+import * as extn from "../../../lib/module/mod.ts";
 
 export interface FileSysJsonResourceConstructor {
   (
     we: fsrf.FileSysGlobWalkEntry<govn.StructuredDataInstanceSupplier>,
     options: route.FileSysRouteOptions,
-    imported: govn.ExtensionModule,
+    imported: extn.ExtensionModule,
   ): Promise<govn.StructuredDataInstanceSupplier>;
 }
 
@@ -15,7 +16,7 @@ export interface FileSysJsonResourcesConstructor {
   (
     we: fsrf.FileSysGlobWalkEntry<govn.StructuredDataInstanceSupplier>,
     options: route.FileSysRouteOptions,
-    imported: govn.ExtensionModule,
+    imported: extn.ExtensionModule,
   ): Promise<
     & govn.StructuredDataInstanceSupplier
     & govn.ChildResourcesFactoriesSupplier<govn.StructuredDataInstanceSupplier>

@@ -1,5 +1,6 @@
 import * as govn from "../../../../governance/mod.ts";
 import * as mdDS from "../../../render/markdown/mod.ts";
+import * as extn from "../../../../lib/module/mod.ts";
 
 export interface ProxiedContentIIDirectiveAttrs {
   readonly module?: string;
@@ -14,12 +15,12 @@ export class ProxiedContentInfuseInterpolateDirective
   static readonly IDENTITY = "pcii";
   readonly identity = ProxiedContentInfuseInterpolateDirective.IDENTITY;
 
-  constructor(readonly extnManager: govn.ExtensionsManager) {
+  constructor(readonly extnManager: extn.ExtensionsManager) {
   }
 
   text(
     symbol: string,
-    extn: govn.ExtensionModule,
+    extn: extn.ExtensionModule,
     directive: mdDS.MarkdownContentInlineDirective<
       ProxiedContentIIDirectiveAttrs
     >,

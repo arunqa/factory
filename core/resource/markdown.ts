@@ -7,6 +7,7 @@ import * as fm from "../../core/std/frontmatter.ts";
 import * as route from "../../core/std/route.ts";
 import * as nature from "../../core/std/nature.ts";
 import * as fsrf from "../originate/file-sys-globs.ts";
+import * as extn from "../../lib/module/mod.ts";
 
 export interface MarkdownModel extends govn.ContentModel {
   readonly isMarkdownModel: true;
@@ -148,7 +149,7 @@ export function staticMarkdownFileSysResourceFactory(
 export const constructMarkdownModuleResourceSync: (
   we: fsrf.FileSysGlobWalkEntry<MarkdownResource>,
   content: string,
-  frontmatter: govn.UntypedExports,
+  frontmatter: extn.UntypedExports,
   options: route.FileSysRouteOptions,
 ) => MarkdownResource = (origination, content, frontmatter) => {
   const nature = markdownContentNature;

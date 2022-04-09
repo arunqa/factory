@@ -5,6 +5,7 @@ import * as fsr from "../../lib/fs/fs-route.ts";
 import * as govn from "../../governance/mod.ts";
 import * as g from "../../lib/git/mod.ts";
 import * as r from "../std/route.ts";
+import * as extn from "../../lib/module/mod.ts";
 
 export type FileSysPathText = string;
 export type FileSysFileNameOnly = string;
@@ -112,7 +113,7 @@ export class FileSysGlobsOriginator<Resource>
   readonly oee?: govn.ObservabilityEventsEmitter;
   constructor(
     readonly topLevelLfsPaths: FileSysPaths<Resource>[],
-    readonly extensionsManager: govn.ExtensionsManager,
+    readonly extensionsManager: extn.ExtensionsManager,
     options?: FileSysGlobsOriginatorOptions<Resource>,
   ) {
     if (options?.eventEmitter) {

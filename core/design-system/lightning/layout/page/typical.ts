@@ -1,12 +1,12 @@
-import * as govn from "../../../../../governance/mod.ts";
 import * as html from "../../../../render/html/mod.ts";
 import * as c from "../../../../../core/std/content.ts";
 import * as ldsGovn from "../../governance.ts";
 import * as p from "../partial/mod.ts";
+import * as extn from "../../../../../lib/module/mod.ts";
 
 export function lightningTemplate(
   identity: string,
-  location: govn.LocationSupplier,
+  location: extn.LocationSupplier,
 ): ldsGovn.LightningTemplate {
   return html.htmlLayoutTemplate<
     html.HelperFunctionOrString<ldsGovn.LightningLayout>,

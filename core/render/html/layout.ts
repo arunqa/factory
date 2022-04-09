@@ -5,6 +5,7 @@ import * as contrib from "../contributions.ts";
 import * as r from "../../../core/std/render.ts";
 import * as obs from "../../../core/std/observability.ts";
 import * as e from "../../../lib/text/escape.ts";
+import * as extn from "../../../lib/module/mod.ts";
 
 // hide properties that could have circular references which will break JSON.stringify()
 export const jsonStringifyRouteReplacer = (key: string, value: unknown) =>
@@ -131,7 +132,7 @@ export function htmlLayoutContributions(): hGovn.HtmlLayoutContributions {
 
 export function htmlLayoutTemplate<T, Layout extends hGovn.HtmlLayout>(
   identity: string,
-  location: govn.LocationSupplier,
+  location: extn.LocationSupplier,
 ): hGovn.TemplateLiteralHtmlLayout<T, Layout> {
   return (literals, ...suppliedExprs) => {
     const interpolate: (layout: Layout, body?: string) => string = (

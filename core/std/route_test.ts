@@ -2,7 +2,7 @@ import { log, path } from "../deps.ts";
 import { testingAsserts as ta } from "../deps-test.ts";
 import * as govn from "../../governance/mod.ts";
 import * as mod from "./route.ts";
-import { CachedExtensions } from "./extension.ts";
+import { CachedExtensions } from "../../lib/module/mod.ts";
 import * as fsr from "../../lib/fs/fs-route.ts";
 
 const testPath = path.relative(

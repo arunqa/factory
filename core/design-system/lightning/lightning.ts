@@ -8,6 +8,7 @@ import * as ldsGovn from "./governance.ts";
 import * as l from "./layout/mod.ts";
 import * as ldsDirec from "./directive/mod.ts";
 import * as route from "../../../core/std/route.ts";
+import * as extn from "../../../lib/module/mod.ts";
 
 export class LightingDesignSystemLayouts<
   Layout extends ldsGovn.LightningLayout,
@@ -66,7 +67,7 @@ export class LightingDesignSystem<Layout extends ldsGovn.LightningLayout>
     ...direc.allCustomElements,
   ];
   constructor(
-    readonly extnManager: govn.ExtensionsManager,
+    readonly extnManager: extn.ExtensionsManager,
     readonly universalAssetsBaseURL: string,
     readonly emptyContentModelLayoutSS:
       & govn.LayoutStrategySupplier<Layout, govn.HtmlSupplier>

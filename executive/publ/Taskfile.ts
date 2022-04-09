@@ -1,5 +1,5 @@
 import * as t from "../../lib/task/core.ts";
-import * as ssts from "../../lib/db/sqlite-schema-ts.ts";
+import * as ssts from "../../lib/sqlite/schema-ts.ts";
 
 export class Tasks extends t.EventEmitter<{
   help(): void;

@@ -2,7 +2,7 @@ import { toml, yaml } from "../deps.ts";
 import * as safety from "../../lib/safety/mod.ts";
 import * as govn from "../../governance/mod.ts";
 import * as c from "./content.ts";
-import * as e from "./extension.ts";
+import * as e from "../../lib/module/mod.ts";
 
 export const isFrontmatterSupplier = safety.typeGuard<
   govn.FrontmatterSupplier<govn.UntypedFrontmatter>

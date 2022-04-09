@@ -13,6 +13,7 @@ import * as c from "../../../core/std/content.ts";
 import * as m from "../../../core/std/model.ts";
 import * as fm from "../../../core/std/frontmatter.ts";
 import * as md from "../../resource/markdown.ts";
+import * as extn from "../../../lib/module/mod.ts";
 
 /**
  * markdownRenderEnv is available after Markdown rendering and includes
@@ -136,7 +137,7 @@ export function autoCorrectPrettyUrlImagesRule(defaultRender: any) {
 export class TypicalMarkdownLayout implements MarkdownLayoutStrategy {
   // deno-lint-ignore no-explicit-any
   readonly mdiRenderer: any;
-  readonly location: govn.LocationSupplier = {
+  readonly location: extn.LocationSupplier = {
     moduleImportMetaURL: import.meta.url,
   };
 
@@ -374,7 +375,7 @@ export class MarkdownLayouts
 export class MarkdownRenderStrategy
   implements govn.RenderStrategy<md.MarkdownResource, govn.HtmlSupplier> {
   readonly identity = "markdown";
-  readonly location: govn.LocationSupplier = {
+  readonly location: extn.LocationSupplier = {
     moduleImportMetaURL: import.meta.url,
   };
 

@@ -3,6 +3,7 @@ import * as govn from "../../../governance/mod.ts";
 import * as nature from "../../../core/std/nature.ts";
 import * as fsrf from "../../originate/file-sys-globs.ts";
 import * as route from "../../../core/std/route.ts";
+import * as extn from "../../../lib/module/mod.ts";
 
 export interface IssueHtmlResource
   extends
@@ -20,7 +21,7 @@ export interface FileSysResourceModuleConstructor<State> {
   (
     we: fsrf.FileSysGlobWalkEntry<govn.ModuleResource>,
     options: route.FileSysRouteOptions,
-    imported: govn.ExtensionModule,
+    imported: extn.ExtensionModule,
     state: State,
   ): Promise<govn.ModuleResource>;
 }

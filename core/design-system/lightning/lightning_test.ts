@@ -1,7 +1,7 @@
 import { testingAsserts as ta } from "../../deps-test.ts";
 import * as govn from "../../../governance/mod.ts";
 import * as content from "../../../core/std/content.ts";
-import * as extn from "../../../core/std/extension.ts";
+import * as extn from "../../../lib/module/mod.ts";
 import * as modGovn from "./governance.ts";
 import * as rt from "../../../core/std/route.ts";
 import * as rtree from "../../../core/std/route-tree.ts";

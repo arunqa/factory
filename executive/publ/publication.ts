@@ -17,6 +17,7 @@ import * as notif from "../../lib/notification/mod.ts";
 import * as ws from "../../lib/workspace/mod.ts";
 import * as gi from "../../lib/structure/govn-index.ts";
 import * as m from "../../lib/metrics/mod.ts";
+import * as extn from "../../lib/module/mod.ts";
 
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
@@ -282,7 +283,7 @@ export interface Preferences<
   readonly assetsMetricsWalkers?: (
     config: Configuration<OperationalContext>,
   ) => fsT.FileSysAssetWalker[];
-  readonly extensionsManager: rfGovn.ExtensionsManager;
+  readonly extensionsManager: extn.ExtensionsManager;
   readonly termsManager?: k.TermsManager;
   readonly memoizeProducers?: boolean;
 }
@@ -300,7 +301,7 @@ export class Configuration<
   readonly git?: git.GitExecutive;
   readonly fsRouteFactory: rfStd.FileSysRouteFactory;
   readonly routeLocationResolver?: rfStd.RouteLocationResolver;
-  readonly extensionsManager: rfGovn.ExtensionsManager;
+  readonly extensionsManager: extn.ExtensionsManager;
   readonly termsManager?: k.TermsManager;
   readonly observabilityRoute: rfGovn.Route;
   readonly diagnosticsRoute: rfGovn.Route;

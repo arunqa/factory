@@ -1,8 +1,4 @@
-import * as extn from "./extension.ts";
-
-export interface LocationSupplier {
-  readonly moduleImportMetaURL: string;
-}
+import * as extn from "../lib/module/mod.ts";
 
 export interface ModuleResource {
   readonly imported: extn.ExtensionModule;

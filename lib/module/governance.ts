@@ -1,3 +1,7 @@
+export interface LocationSupplier {
+  readonly moduleImportMetaURL: string;
+}
+
 export interface ExtensionExportsFilter {
   (key: string, value: unknown): boolean;
 }

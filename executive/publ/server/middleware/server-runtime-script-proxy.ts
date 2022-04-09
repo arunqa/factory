@@ -1,5 +1,5 @@
 import { oak } from "../deps.ts";
-import * as extn from "../../../../core/std/extension.ts";
+import * as extn from "../../../../lib/module/mod.ts";
 
 export interface RuntimeExpositionSerializationSupplier {
   readonly serializedJSON: (value: unknown, options?: {

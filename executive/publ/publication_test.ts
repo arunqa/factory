@@ -8,7 +8,7 @@ import * as git from "../../lib/git/mod.ts";
 import * as k from "../../lib/knowledge/mod.ts";
 import * as ds from "../../core/render/html/mod.ts";
 import * as lds from "../../core/design-system/lightning/mod.ts";
-import * as extn from "../../core/std/extension.ts";
+import * as extn from "../../lib/module/mod.ts";
 
 // const testPath = path.relative(
 //   Deno.cwd(),
