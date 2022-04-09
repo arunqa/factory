@@ -43,6 +43,23 @@ function typicalScriptsInventory() {
         defaultScript,
         libraries: [
             {
+                name: "runtime",
+                label: "Server Runtime",
+                scripts: [
+                    {
+                        name: "memory.js.json",
+                        label: "Show server runtime (Deno) memory statistics",
+                        jsModule: `
+          export default () => ({
+              denoMemoryUsage: Deno.memoryUsage()
+          });`,
+                        qualifiedName: qualifiedNamePlaceholder,
+                        presentation: tableObjectProps
+                    }, 
+                ],
+                qualifiedName: qualifiedNamePlaceholder
+            },
+            {
                 name: "config",
                 label: "Config",
                 scripts: [
