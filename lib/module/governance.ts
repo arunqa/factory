@@ -46,3 +46,42 @@ export interface ExtensionsManager {
     watcher: Deno.FsWatcher,
   ) => Promise<void>;
 }
+
+export interface MutatableLocalFileInfoSupplier {
+  localFileInfo?: Deno.FileInfo;
+  localFileInfoError?: Error;
+}
+
+// should match output from deno info [url] --json
+export interface ModuleStatus {
+  readonly kind: string; // TODO: type this to "esm" | "X" | "Y", etc.
+  readonly local: string;
+  readonly size: number;
+  readonly mediaType: string;
+  readonly specifier: string;
+}
+
+// should match output from deno info [url] --json
+export interface ModuleGraph {
+  readonly roots: string[];
+  readonly modules: ModuleStatus[];
+}
+
+export interface ModuleGraphs {
+  readonly moduleGraph: (
+    rootSpecifier: string,
+    onError?: (error: Error) => Promise<ModuleGraph | undefined>,
+  ) => Promise<ModuleGraph | undefined>;
+  readonly localDependencies: (
+    rootSpecifier: string,
+    includeRootSpecifier?: boolean,
+    onError?: (moduleGraphError: Error) => Promise<ModuleStatus[] | undefined>,
+  ) => Promise<ModuleStatus[] | undefined>;
+  readonly localDependenciesFileInfos: (
+    rootSpecifier: string,
+    includeRootSpecifier?: boolean,
+    onError?: (moduleGraphError: Error) => Promise<ModuleStatus[] | undefined>,
+  ) => Promise<
+    (ModuleStatus & Readonly<MutatableLocalFileInfoSupplier>)[] | undefined
+  >;
+}
