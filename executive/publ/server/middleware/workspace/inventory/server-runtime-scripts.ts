@@ -13,7 +13,7 @@ export function typicalScriptsInventory(): govn.ServerRuntimeScriptInventory {
   const _tableMatrix: govn.ScriptResultPresentationStrategy = {
     nature: "table-matrix",
   };
-  const tableRecords: govn.ScriptResultTableRecordsPresentation = {
+  const _tableRecords: govn.ScriptResultTableRecordsPresentation = {
     nature: "table-records",
   };
   const tableObjectProps: govn.ScriptResultTableObjectPropsPresentation = {
@@ -49,6 +49,22 @@ export function typicalScriptsInventory(): govn.ServerRuntimeScriptInventory {
     },
     defaultScript,
     libraries: [{
+      name: "runtime",
+      label: "Server Runtime",
+      scripts: [
+        {
+          name: "memory.js.json",
+          label: "Show server runtime (Deno) memory statistics",
+          jsModule: `
+          export default () => ({
+              denoMemoryUsage: Deno.memoryUsage()
+          });`,
+          qualifiedName: qualifiedNamePlaceholder,
+          presentation: tableObjectProps,
+        },
+      ],
+      qualifiedName: qualifiedNamePlaceholder,
+    }, {
       name: "config",
       label: "Config",
       scripts: [
