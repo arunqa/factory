@@ -3,6 +3,44 @@ import * as tmpl from "../text/interpolated-template.ts";
 
 // nomenclature and conventions should follow PgDCP whenever possible
 
+export type QueryResultNature =
+  | "scalar" // first column from single row result
+  | "object" // Object (single row result)
+  | "row" // array of scalars (single row result)
+  | "records" // array of objects (multiple rows result)
+  | "matrix" // array of array of scalars (multiple rows result)
+  | "alaSQL-recordset" // https://github.com/AlaSQL/alasql/wiki/Recordset
+  | "error-exception"; // an exception was trapped and being reported
+
+export type QueryResultValueNature =
+  | "string"
+  | "number"
+  | "bigint"
+  | "boolean"
+  | "symbol"
+  | "undefined"
+  | "object"
+  | "function";
+
+export interface QueryResultValueModel {
+  readonly exemplarValue: unknown;
+  readonly suppliedName?: string;
+  readonly humanFriendlyName: string;
+  readonly valueType: string;
+}
+
+export interface QueryResultModel {
+  readonly nature: QueryResultNature;
+  readonly data: unknown;
+  readonly valueModels: QueryResultValueModel[];
+}
+
+export interface QueryResultsModel {
+  readonly nature: "multi-statements-result-models";
+  readonly resultModels: QueryResultModel[];
+  readonly statementsAST: unknown;
+}
+
 /**
  * The default type for returned rows.
  */
@@ -177,13 +215,17 @@ export type DbmsTableColumn = DbmsTableUntypedColumn | DbmsTableTypedColumn;
 
 export interface DbmsTable {
   readonly identity: DbmsEngineDbTableIdentity;
-  readonly columns: (
+  readonly columns: Iterable<DbmsTableColumn>;
+  readonly filteredColumns: (
     filter?: (c: DbmsTableColumn) => boolean,
   ) => Iterable<DbmsTableColumn>;
 }
 
 export interface DbmsTablesSupplier {
-  readonly tables: (filter?: (t: DbmsTable) => boolean) => Iterable<DbmsTable>;
+  readonly tables: Iterable<DbmsTable>;
+  readonly filteredTables: (
+    filter?: (t: DbmsTable) => boolean,
+  ) => Iterable<DbmsTable>;
 }
 
 export interface DbmsEngineSchemalessDatabase extends DbmsTablesSupplier {
@@ -194,7 +236,8 @@ export interface DbmsEngineSchemalessDatabase extends DbmsTablesSupplier {
 export interface DbmsEngineSchemaDatabase {
   readonly isSchemaDatabase: true;
   readonly identity: DbmsEngineDatabaseIdentity;
-  readonly schemas: (
+  readonly schemas: Iterable<DbmsEngineDatabaseSchema>;
+  readonly filteredSchemas: (
     filter?: (s: DbmsEngineDatabaseSchema) => boolean,
   ) => Iterable<DbmsEngineDatabaseSchema>;
 }
@@ -209,7 +252,7 @@ export type DbmsEngineDatabase =
 
 export interface DbmsEngine {
   readonly identity: DbmsEngineIdentity;
-  readonly databases: () => Iterable<DbmsEngineDatabase>;
+  readonly databases: Iterable<DbmsEngineDatabase>;
 }
 
 export type SqlStatementIdentity = string;

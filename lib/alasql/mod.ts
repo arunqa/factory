@@ -49,10 +49,10 @@ export class AlaSqlProxy<
   inventoryTable() {
     const rows: { db_name: string; table_name: string; column_name: string }[] =
       [];
-    for (const db of this.databases()) {
+    for (const db of this.filteredDatabases()) {
       if (!db.isSchemaDatabase) {
-        for (const table of db.tables()) {
-          for (const column of table.columns()) {
+        for (const table of db.tables) {
+          for (const column of table.columns) {
             rows.push({
               db_name: db.identity,
               table_name: table.identity,
@@ -65,17 +65,19 @@ export class AlaSqlProxy<
     return rows;
   }
 
-  databases(filter?: (e: govn.DbmsEngineDatabase) => boolean) {
+  filteredDatabases(filter?: (e: govn.DbmsEngineDatabase) => boolean) {
     const databases: govn.DbmsEngineDatabase[] = [];
     for (const dbRow of this.alaSqlEngine.exec("SHOW DATABASES")) {
       const databaseID = dbRow.databaseid;
-      const tables = (filter?: (t: govn.DbmsTable) => boolean) => {
+      const filteredTables = (filter?: (t: govn.DbmsTable) => boolean) => {
         const tables: govn.DbmsTable[] = [];
         for (
           const tRow of this.alaSqlEngine.exec(`SHOW TABLES from ${databaseID}`)
         ) {
           const tableID = tRow.tableid;
-          const columns = (filter?: (t: govn.DbmsTableColumn) => boolean) => {
+          const filteredColumns = (
+            filter?: (t: govn.DbmsTableColumn) => boolean,
+          ) => {
             const columns: govn.DbmsTableColumn[] = [];
             for (
               const cRow of this.alaSqlEngine.exec(
@@ -96,7 +98,8 @@ export class AlaSqlProxy<
           };
           const table: govn.DbmsTable = {
             identity: tableID,
-            columns,
+            filteredColumns,
+            columns: filteredColumns(),
           };
           if (!filter || filter(tRow)) {
             tables.push(table);
@@ -107,7 +110,8 @@ export class AlaSqlProxy<
       const db: govn.DbmsEngineSchemalessDatabase = {
         isSchemaDatabase: false,
         identity: databaseID,
-        tables,
+        filteredTables,
+        tables: filteredTables(),
       };
       if (!filter || filter(db)) {
         databases.push(db);
@@ -116,13 +120,19 @@ export class AlaSqlProxy<
     return databases;
   }
 
+  get databases() {
+    return this.filteredDatabases();
+  }
+
   engines() {
-    const databases = (filter?: (db: govn.DbmsEngineDatabase) => boolean) => {
-      return this.databases(filter);
+    const filteredDatabases = (
+      filter?: (db: govn.DbmsEngineDatabase) => boolean,
+    ) => {
+      return this.filteredDatabases(filter);
     };
     return [{
       identity: this.identity,
-      databases,
+      databases: filteredDatabases(),
     }];
   }
 
@@ -269,7 +279,7 @@ export class AlaSqlProxy<
     if (inspectable) {
       const defn = this.jsObjectDDL(tableName, inspectable, {
         prepareTxLogEntry: (suggested) => {
-          const result = { ...suggested, tableRowsCount };
+          const result = { ...suggested, tableRowsCount, origin };
           return prepareTxLogEntry ? prepareTxLogEntry(result) : result;
         },
         valueSqlTypeMap: options?.valueSqlTypeMap,
@@ -301,14 +311,14 @@ export class AlaSqlProxy<
     }
   }
 
-  createJsFlexibleTable(
+  createJsFlexibleTableFromUntypedObjectArray(
     tableName: string,
     // deno-lint-ignore ban-types
     tableRows?: Array<object>,
     database = this.alaSqlPrimeDB,
   ) {
     const tableRowsCount = tableRows ? tableRows.length : undefined;
-    const origin = "createJsFlexibleTable";
+    const origin = "createJsFlexibleTableFromUntypedObjectArray";
     if (tableRows) {
       // each row might have different columns so find the set of all columns
       // across all rows and create a "flexible table"
@@ -324,17 +334,17 @@ export class AlaSqlProxy<
       const DDL = this.jsDDL(tableName, columnDefns.keys());
       const txLogEntry = {
         DDL,
+        origin,
         tableName,
         tableRowsCount,
         columnDefns: Object.fromEntries(columnDefns),
       };
       try {
         database.exec(DDL);
-        if (tableRows) database.tables[tableName].data = tableRows;
+        database.tables[tableName].data = tableRows;
         this.defnTxLog.push(txLogEntry);
       } catch (error) {
         this.defnTxLog.push({
-          origin,
           error: error.toString(),
           ...txLogEntry,
         });
@@ -345,6 +355,53 @@ export class AlaSqlProxy<
         error: `no tableRows supplied, ${tableName} not created`,
         tableName,
         tableRowsCount,
+      });
+    }
+  }
+
+  createJsFlexibleTableFromUntypedArray(
+    tableName: string,
+    rawData: unknown[][],
+    columnNames: string[],
+    database = this.alaSqlPrimeDB,
+  ) {
+    const tableRowsCount = rawData ? rawData.length : undefined;
+    const origin = "createJsFlexibleTableFromUntypedArray";
+    if (rawData) {
+      const DDL = this.jsDDL(tableName, columnNames);
+      const txLogEntry = {
+        DDL,
+        tableName,
+        tableRowsCount,
+        columnNames,
+        origin,
+      };
+      const tableRows: Record<string, unknown>[] = [];
+      for (const raw of rawData) {
+        const row: Record<string, unknown> = {};
+        for (let c = 0; c < raw.length; c++) {
+          row[columnNames[c]] = raw[c];
+        }
+        tableRows.push(row);
+      }
+      try {
+        database.exec(DDL);
+        // tableRows is a matrix and alaSQL expects .data as array of objects
+        database.tables[tableName].data = tableRows;
+        this.defnTxLog.push(txLogEntry);
+      } catch (error) {
+        this.defnTxLog.push({
+          error: error.toString(),
+          ...txLogEntry,
+        });
+      }
+    } else {
+      this.defnTxLog.push({
+        origin,
+        error: `no tableRows supplied, ${tableName} not created`,
+        tableName,
+        tableRowsCount,
+        columnNames,
       });
     }
   }
