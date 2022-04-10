@@ -474,7 +474,7 @@ export const activateSite = () => {
         document.addEventListener('visibilitychange', function logData() {
             if (document.visibilityState === 'hidden') {
                 //TODO: [ ] add /server/beacon to record telemetry in database
-                navigator.sendBeacon('/server/beacon', analyticsData);
+                navigator.sendBeacon('/server/beacon', "TODO");
             }
         });
     });
