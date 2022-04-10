@@ -61,6 +61,9 @@
     </div>
     <div>
         <textarea rows="3" cols="50" name="SQL" id="SQL"></textarea>
+        <div style="font-size:small; color: silver" watch="$selectedDatabase">Use <code>ctrl+space</code> to
+            autocomplete ${watch.db?.tables?.length ?? 0} tables and their
+            columns in <code style="color:#889988">${watch.db?.identity}</code> database. </div>
     </div>
 
     <div style="padding-top: 15px; padding-bottom: 25px;">
@@ -324,6 +327,37 @@
                     },
                 };
                 new agGrid.Grid(dest, gridOptions);
+            });
+
+            // create our "DOM hooks"
+            path.activatePage.watch((clientLayout) => {
+                const jsEvalFailureHTML = ({ evaluatedJS, error, location = "activatePage.watch", context }) => {
+                    console.error(`Unable to evaluate ${evaluatedJS} in ${location}`, error, context);
+                    return `Unable to evaluate <code><mark>${evaluatedJS}</mark></code>: <code><mark style="background-color:#FFF2F2">${error}</mark></code> in <code>${location}</code>`;
+                }
+
+                // any element which has a watch attribute is considered a content effect
+                for (const watchedElem of document.querySelectorAll(`[watch]`)) {
+                    const targetSupplierJS = watchedElem.getAttribute("watch");
+                    try {
+                        const target = eval(targetSupplierJS);
+                        if (target && typeof target.watch === "function") {
+                            // stash the original text because we need to reevaluate each time
+                            target.templateText = watchedElem.innerHTML;
+                            target.watch((watch) => {
+                                const evaluatedJS = `\`${target.templateText}\``;
+                                try {
+                                    // the template can use ${watch.*} to access parameters
+                                    watchedElem.innerHTML = eval(evaluatedJS);
+                                } catch (error) {
+                                    watchedElem.innerHTML = jsEvalFailureHTML({ evaluatedJS, error, location: targetSupplierJS, context: { watchedElem } });
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        watchedElem.innerHTML = jsEvalFailureHTML({ evaluatedJS: targetSupplierJS, error, context: { watchedElem } });
+                    }
+                }
             });
 
             // all listeners are ready so let's activate the page and trigger the watchers;
