@@ -12,6 +12,10 @@
     <pre data-transformable="markdown" class="md">
     ## Essential
 
+    * Move most (if not all) `.envrc` configuration into `*.ts` files using SQLite store
+    (on each start of `pubctl.ts` import records `*.ts` to SQLite). This will allow us to
+    be platform-neutral and remove data entry errors in `.envrc`. Treat what's in `.envrc`
+    as "seed data" to SQLite not environment data necessarily.
     * Move all functionality from `core/design-system/lightning/layout/partial/diagnostics.ts` into rfExplorer (for performance and safety).
     * Switch from github.com/dyedgreen/deno-sqlite to https://github.com/denodrivers/sqlite3 for better performance
     * Implement dynamic navigation using `path.ctx.js`. This might work like Deno's `mod.ts` does where
@@ -35,6 +39,8 @@
 
     ## Next
 
+    * Add `publ_server_access_log` table along side `publ_server_static_access_log` to see if we're seeing `404`s, etc.
+    * Learn from https://github.com/koskimas/kysely#deno about how to make our SQLite integration friendlier.
     * Integrate [docsql](https://github.com/peterbe/docsql) functionality into rfExplorer.
     * Migrate `metrics.json` to SQLite.
     * Migrate all legacy `control-panel` pages to rfExplorer.
