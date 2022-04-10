@@ -61,9 +61,13 @@
     </div>
     <div>
         <textarea rows="3" cols="50" name="SQL" id="SQL"></textarea>
-        <div style="font-size:small; color: silver" watch="$selectedDatabase">Use <code>ctrl+space</code> to
-            autocomplete ${watch.db?.tables?.length ?? 0} tables and their
-            columns in <code style="color:#889988">${watch.db?.identity}</code> database. </div>
+        <!-- see path.prepareDomEffectsActivation for interpolate-fx attr -->
+        <div interpolate-fx="{ target, db }"
+            interpolate-hook="({ target }) => $selectedDatabase.watch(target.interpolateFx)"
+            style="font-size:small; color: silver">
+            Use <code>ctrl+space</code> to autocomplete ${db?.tables?.length ?? 0} tables and their
+            columns in <code style="color:#889988">${db?.identity}</code> database.
+        </div>
     </div>
 
     <div style="padding-top: 15px; padding-bottom: 25px;">
@@ -82,11 +86,17 @@
         import * as deps from "./deps.auto.js";
 
         // automatically inject navbars and other site-wide elements
-        path.activateSite();
+        path.activateSite({
+            // provide evalJS so eval's are peformed in this page's context
+            domEffects: { isEnabled: true, evalJS: (js) => window.domEffectsEvalJS(js) }
+        });
 
         document.addEventListener('DOMContentLoaded', function () {
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
+
+            // assume all domEffects' eval()'s are done in this visiblity context
+            window.domEffectsEvalJS = (js) => eval(js);
 
             const sqlStmtsInventory = deps.typicalSqlStmtsInventory();
             const sqlStmtInventorySource = sqlStmtsInventory.origin.moduleImportMetaURL.replace("file://", "");
@@ -327,37 +337,6 @@
                     },
                 };
                 new agGrid.Grid(dest, gridOptions);
-            });
-
-            // create our "DOM hooks"
-            path.activatePage.watch((clientLayout) => {
-                const jsEvalFailureHTML = ({ evaluatedJS, error, location = "activatePage.watch", context }) => {
-                    console.error(`Unable to evaluate ${evaluatedJS} in ${location}`, error, context);
-                    return `Unable to evaluate <code><mark>${evaluatedJS}</mark></code>: <code><mark style="background-color:#FFF2F2">${error}</mark></code> in <code>${location}</code>`;
-                }
-
-                // any element which has a watch attribute is considered a content effect
-                for (const watchedElem of document.querySelectorAll(`[watch]`)) {
-                    const targetSupplierJS = watchedElem.getAttribute("watch");
-                    try {
-                        const target = eval(targetSupplierJS);
-                        if (target && typeof target.watch === "function") {
-                            // stash the original text because we need to reevaluate each time
-                            target.templateText = watchedElem.innerHTML;
-                            target.watch((watch) => {
-                                const evaluatedJS = `\`${target.templateText}\``;
-                                try {
-                                    // the template can use ${watch.*} to access parameters
-                                    watchedElem.innerHTML = eval(evaluatedJS);
-                                } catch (error) {
-                                    watchedElem.innerHTML = jsEvalFailureHTML({ evaluatedJS, error, location: targetSupplierJS, context: { watchedElem } });
-                                }
-                            });
-                        }
-                    } catch (error) {
-                        watchedElem.innerHTML = jsEvalFailureHTML({ evaluatedJS: targetSupplierJS, error, context: { watchedElem } });
-                    }
-                }
             });
 
             // all listeners are ready so let's activate the page and trigger the watchers;

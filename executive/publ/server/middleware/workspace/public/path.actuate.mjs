@@ -184,6 +184,90 @@ export const jsEvalFailureHTML = (evaluatedJS, error, location, context) => {
     return `Unable to evaluate <code><mark>${evaluatedJS}</mark></code>: <code><mark style="background-color:#FFF2F2">${error}</mark></code> in <code>${location}</code>`;
 }
 
+export function prepareDomEffectsActivation(domEffectsInit = {}) {
+    if (!domEffectsInit.isEnabled) return;
+
+    const jsEvalFailureHTML = ({ evaluatedJS, error, location = "activatePage.watch", context }) => {
+        console.error(`Unable to evaluate ${evaluatedJS} in ${location}`, error, context);
+        return `Unable to evaluate <code><mark>${evaluatedJS}</mark></code>: <code><mark style="background-color:#FFF2F2">${error}</mark></code> in <code>${location}</code>`;
+    }
+
+    // * `interpolate-fx` creates an Effector Effect that will modify HTML when called;
+    // example:
+    //
+    //   <div interpolate-fx="{ one, two }" interpolate-hook="({ target }) => $store.watch(target.interpolateFx)"
+    //      this is innerHTML, 2 + 2 ${2 + 2}
+    //   </div>
+    //
+    //   * `interpolate-fx` attr value is the Effect's params context; once defined, the
+    //     the <div> element will have a div.interpolateFx as an element property.
+    //     parameters one, two, etc. are dependent on the hook-js and how it will be called.
+    //   * `interpolate-hook-js` attr attaches hooks like watching a store, reacting to events, etc.
+    //     if no `interpolate-hook-js` is provided the interpolate-fx is assumed to be executed
+    //     somewhere else.
+    //
+    // generates an effect which, when executed would run this function:
+    //   (fxParams) => {
+    //       const { target, db } = fxParams; // from <DIV interpolate-fx="{ target, db }">
+    //       try {
+    //           fxParams.target.innerHTML = `this is innerHTML, 2 + 2 ${2 + 2}`;
+    //       } catch(error) {
+    //           jsEvalFailureHTML({
+    //               evaluatedJS: fxParams.target.interpolationTemplate, error,
+    //               location: fxParams.jsEvalFailureLocation, context: params
+    //           });
+    //       }
+    //   }
+
+    const { evalJS = eval, interpolateFxAttrName = "interpolate-fx", interpolateHookAttrName = "interpolate-hook" } = domEffectsInit;
+    activatePage.watch(() => {
+        for (const interpElem of document.querySelectorAll(`[${interpolateFxAttrName}]`)) {
+            const fxDestructureArgs = interpElem.getAttribute(interpolateFxAttrName);
+            interpElem.interpolationTemplate = interpElem.innerHTML;
+            let evaluatedJS = `
+                (fxParams) => {
+                    const ${fxDestructureArgs && fxDestructureArgs.trim().length > 0 ? `${fxDestructureArgs} = fxParams; // from <${interpElem.tagName} ${interpolateFxAttrName}="${fxDestructureArgs}">` : ''}
+                    try {
+                        fxParams.target.innerHTML = \`${interpElem.interpolationTemplate}\`;
+                    } catch(error) {
+                        jsEvalFailureHTML({
+                            evaluatedJS: fxParams.target.interpolationTemplate, error,
+                            location: fxParams.jsEvalFailureLocation, context: params
+                        });
+                    }
+                }`;
+            try {
+                // if evalJS is supplied by caller, evaluate the JS in that context otherwise
+                // it will be evaluated in this script's context
+                interpElem.interpolateInnerHtml = evalJS(evaluatedJS);
+                interpElem.interpolateFx = pageDomain.createEffect();
+                interpElem.interpolateFx.watch((params) => interpElem.interpolateInnerHtml({
+                    ...params,
+                    target: interpElem,
+                    jsEvalFailureLocation: evaluatedJS,
+                }));
+
+                // now that the effect is setup, see if the element wants to hook anything
+                if (interpolateHookAttrName) {
+                    // we reuse evaluatedJS name so that if exception occurs, we use the new code
+                    // evaluatedJS should be JS code which returns a function accepting a single
+                    // object which will have a 'target' property, like:
+                    //    ({ target }) => $store.watch(target.interpolateFx)
+                    evaluatedJS = interpElem.getAttribute(interpolateHookAttrName);
+                    interpElem.interpolateHook = evalJS(evaluatedJS);
+                    interpElem.interpolateHook({ target: interpElem, jsEvalFailureLocation: evaluatedJS });
+                }
+            } catch (error) {
+                interpElem.innerHTML = jsEvalFailureHTML({
+                    evaluatedJS, error,
+                    location: `prepareDomEffectsActivation[${interpolateFxAttrName}]`,
+                    context: { interpElem, domEffectsInit }
+                });
+            }
+        }
+    });
+}
+
 // find any fetchable JSON placeholders and fill them in
 activatePage.watch((clientLayout) => {
     const populateJSON = (elem, result, evalExpr, scope) => {
@@ -434,7 +518,14 @@ export const activateFooter = () => {
  * use Effector for state management and async effect.
  * UI guide: https://www.w3schools.com/howto/
  */
-export const activateSite = () => {
+export const activateSite = (init = {}) => {
+    const {
+        domEffects = {
+            isEnabled: true,
+            // evalJS: (js) => unknown    -- when calls to eval() are required
+        },
+    } = init;
+
     // TODO: consider using https://www.w3schools.com/howto/howto_html_include.asp
     const baseURL = "/workspace";
     const navPrime = document.createElement("nav");
@@ -477,6 +568,7 @@ export const activateSite = () => {
                 navigator.sendBeacon('/server/beacon', "TODO");
             }
         });
+        if (domEffects) prepareDomEffectsActivation(domEffects);
     });
 }
 
