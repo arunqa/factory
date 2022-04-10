@@ -55,10 +55,7 @@ export function typicalScriptsInventory(): govn.ServerRuntimeScriptInventory {
         {
           name: "memory.js.json",
           label: "Show server runtime (Deno) memory statistics",
-          jsModule: `
-          export default () => ({
-              denoMemoryUsage: Deno.memoryUsage()
-          });`,
+          jsModule: `export default () => Deno.memoryUsage();`,
           qualifiedName: qualifiedNamePlaceholder,
           presentation: tableObjectProps,
         },
