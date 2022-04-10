@@ -406,6 +406,19 @@ export class AlaSqlProxy<
     }
   }
 
+  /**
+   * "Statically" import an entire SQLite database into AlaSQL. It's static
+   * because once imported, it's "disconnected" from SQLite. Assuming `asp`
+   * is an AlaSqlProxy instance, use it like this:
+   *
+   * asp.importSqliteDB(sqliteDbInstance, () => {
+   *   asp.alaSqlEngine("DROP DATABASE IF EXISTS pubctl");
+   *   return new asp.alaSqlEngine.Database("pubctl");
+   * });
+   *
+   * @param sqliteDb an open SQLite database instance
+   * @param alaSqlDbSupplier Which AlaSQL database to add the SQLite content
+   */
   importSqliteDB(
     sqliteDb: sqlite.SqliteDatabase,
     alaSqlDbSupplier: (sqliteDb: sqlite.SqliteDatabase) => AlaSqlEngine,
