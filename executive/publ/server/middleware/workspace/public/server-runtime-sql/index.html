@@ -46,16 +46,18 @@
         </details>
     </div>
     <div>
-        <select id='database' onchange="selectDatabase({databaseID: this.value})">
+        <select id='database' onchange="selectDatabase({databaseID: this.value})" size="4">
             <option selected>Database</option>
         </select>
-        <select id='table'
+        <select id='table' size="4"
             onchange="selectTable({databaseID: document.getElementById('database').value, tableID: this.value});">
-            <option selected>Table</option>
+            <option selected>Tables</option>
         </select>
-        <select id='column'>
-            <option selected>Column</option>
+        <select id='column' multiple size="4">
+            <option selected>Columns</option>
         </select>
+        <button id="selectAllColsFromActiveDB" class="btn-success" href="#"
+            onclick="selectAllColsFromActiveDB();">SELECT *</button>
     </div>
     <div>
         <textarea rows="3" cols="50" name="SQL" id="SQL"></textarea>
@@ -93,6 +95,7 @@
             const dbSelectElem = document.getElementById("database");
             const tableSelectElem = document.getElementById("table");
             const columnSelectElem = document.getElementById("column");
+            const selectAllColsFromActiveDbElem = document.getElementById("selectAllColsFromActiveDB");
             const diagnosticsCheckboxElem = document.getElementById("diagnose");
             const diagnosticsElem = document.getElementById("diagnostics");
             const sqlStmtInventoryElem = document.getElementById("sqlStmtInventory");
@@ -102,6 +105,7 @@
             // const or let for anything not used by the DOM.
             window.selectDatabase = path.pageDomain.createEvent();
             window.selectTable = path.pageDomain.createEvent();
+            window.selectAllColsFromActiveDB = path.pageDomain.createEvent();
 
             const populateSqlStatement = path.pageDomain.createEvent();
 
@@ -163,16 +167,15 @@
             }
             populateSqlStatement.watch(({ sqlStmt }) => {
                 sqlCodeEditorValue(path.unindentWhitespace(sqlStmt.SQL));
-                window.selectDatabase({ databaseID: sqlStmt.database.identity });
+                selectDatabase({ databaseID: sqlStmt.database.identity });
                 if (autoExecSqlStmtInventoryElem.checked && window.dbQueryFormSubmitFx) {
-                    window.dbQueryFormSubmitFx({ sqlStmt });
+                    dbQueryFormSubmitFx({ sqlStmt });
                 }
             });
 
             // this is read from the server after content loading
             const dbmsInventoryQuery = `select value [databases] from prime.dbmsInventory`;
             $dbmsInventory.watch((databases) => {
-                console.log({ databases })
                 path.populateSelectElem(dbSelectElem,
                     () => databases
                         .filter(row => row.identity == 'pubctl' || row.tables.length > 0)
@@ -186,7 +189,7 @@
 
                 if (dbSelectElem?.options?.length > 1) {
                     // pick the first database by default
-                    window.selectDatabase({ databaseID: dbSelectElem.options[1].value });
+                    selectDatabase({ databaseID: dbSelectElem.options[1].value });
                 }
                 populateSqlStatement({ sqlStmt: sqlStmtsInventory.defaultSqlStmt });
             });
@@ -199,18 +202,20 @@
             $dbmsInventory.on(dbQueryDbmsInventoryFx.doneData, (_, databases) => databases);
             dbQueryDbmsInventoryFx();
 
-            $selectedDatabase.on(window.selectDatabase, (_, dbState) => {
+            $selectedDatabase.on(selectDatabase, (_, dbState) => {
                 const db = $dbmsInventory.getState().find(db => db.identity == dbState.databaseID);
                 dbSelectElem.selectedIndex = dbSelectElem.querySelector(`option[value="${dbState.databaseID}"]`)?.index ?? 0;
                 return { ...dbState, db };
             });
             $selectedDatabase.watch(({ db }) => {
+                selectAllColsFromActiveDbElem.disabled = true;
                 if (db) {
                     path.populateSelectElem(tableSelectElem,
                         () => db.tables
                             .filter(table => table.columns.length > 0)
                             .map(table => ({ value: table.identity }))
                     );
+                    columnSelectElem.length = 0;
                     const tableHints = {};
                     for (const table of db.tables) {
                         const columns = [];
@@ -224,7 +229,7 @@
                 }
             });
 
-            $selectedTable.on(window.selectTable, (_, dbTableState) => {
+            $selectedTable.on(selectTable, (_, dbTableState) => {
                 const db = $dbmsInventory.getState().find(db => db.identity == dbTableState.databaseID);
                 let table = undefined;
                 if (db) {
@@ -236,6 +241,22 @@
             $selectedTable.watch(({ table }) => {
                 if (table) {
                     path.populateSelectElem(columnSelectElem, () => table.columns.map(col => ({ value: col.identity })));
+                    selectAllColsFromActiveDbElem.disabled = false;
+                }
+            });
+
+            selectAllColsFromActiveDB.watch(() => {
+                const allColumnDefns = Array.from(columnSelectElem.options);
+                const selectedColumns = allColumnDefns.filter(o => o.selected);
+                const SQL = path.unindentWhitespace(`
+                    USE DATABASE ${dbSelectElem.value};\n
+                    SELECT ${selectedColumns.length == 0 ? '*' : selectedColumns.map(o => o.value).join(", ")}
+                      FROM ${tableSelectElem.value}
+                     ${allColumnDefns.find(o => o.value == 'created_at') ? 'ORDER BY created_at desc' : '-- no created_at column found, not ordering'}
+                     LIMIT 50`);
+                sqlCodeEditorValue(SQL);
+                if (autoExecSqlStmtInventoryElem.checked && window.dbQueryFormSubmitFx) {
+                    dbQueryFormSubmitFx({ sqlStmt: sqlStmtFromFromEditor() });
                 }
             });
 

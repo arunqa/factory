@@ -496,7 +496,7 @@ export const populateObjectJSON = (inspect, targetElem, open, options) => {
 }
 
 export const populateSelectElem = (selectElem, optionsSupplier) => {
-    selectElem.length = 1;
+    selectElem.length = 0;
     selectElem.selectedIndex = 0;
     for (const item of optionsSupplier()) {
         const nOption = document.createElement('option');
