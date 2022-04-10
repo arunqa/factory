@@ -469,6 +469,14 @@ export const activateSite = () => {
 
     document.addEventListener('DOMContentLoaded', () => {
         activateFooter();
+        // see https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon
+        // and https://css-tricks.com/send-an-http-request-on-page-exit/
+        document.addEventListener('visibilitychange', function logData() {
+            if (document.visibilityState === 'hidden') {
+                //TODO: [ ] add /server/beacon to record telemetry in database
+                navigator.sendBeacon('/server/beacon', analyticsData);
+            }
+        });
     });
 }
 
