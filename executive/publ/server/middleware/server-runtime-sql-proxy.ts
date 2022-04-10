@@ -59,6 +59,7 @@ export function isUseDatabaseResult(result: unknown): boolean {
 export interface SqlPayload extends SqlSupplier, ResultNatureSupplier {
   // deno-lint-ignore no-explicit-any
   readonly parsed: any; // TODO: type this, it's result of AlaSQL's parse()
+  readonly isPublicationDbRequest: () => false | string;
   readonly respondWithJSON: (body: unknown, decycle?: boolean) => void;
   readonly respondWithText: (text: string) => void;
 }
@@ -69,6 +70,7 @@ export interface SqlPayload extends SqlSupplier, ResultNatureSupplier {
  * store access logs, errors, and other diagnostic information for the server.
  */
 export class ServerRuntimeSqlProxyMiddlewareSupplier {
+  readonly pubCtlAlaSqlProxyDbName = "pubctl";
   readonly asp: alaSQL.AlaSqlProxy;
 
   constructor(
@@ -89,10 +91,10 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
           await this.prepareConfigDB();
           await this.prepareResourcesDB();
           if (this.database) {
-            asp.importSqliteDB(this.database, () => {
-              asp.alaSqlEngine("DROP DATABASE IF EXISTS pubctl");
-              return new asp.alaSqlEngine.Database("pubctl");
-            });
+            // this is a special "proxy" database that we handle special
+            asp.alaSqlEngine(
+              `CREATE DATABASE IF NOT EXISTS ${this.pubCtlAlaSqlProxyDbName}`,
+            );
           }
           asp.createJsFlexibleTableFromUntypedObjectArray(
             "dbms_reflection_prepare_db_tx_log",
@@ -111,6 +113,14 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
         });
         return ee;
       },
+      customDbInventory: this.database
+        ? (databaseID) => {
+          if (databaseID == this.pubCtlAlaSqlProxyDbName) {
+            return this.asp.sqliteDbInventory(this.database!, databaseID);
+          }
+          return undefined;
+        }
+        : undefined,
     });
 
     if (this.database) {
@@ -184,7 +194,8 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
       }
     }
 
-    let parsed = undefined;
+    // deno-lint-ignore no-explicit-any
+    let parsed: any = undefined;
     try {
       parsed = this.asp.alaSqlEngine.parse(SQL);
     } catch (error) {
@@ -204,6 +215,21 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
         ctx.response.body = text;
       },
       parsed,
+      isPublicationDbRequest: () => {
+        // if the SQL payload starts with `USE DATBASE pubctl;` we're going to
+        // "redirect" it from AlaSQL to SQLite
+        if (
+          parsed && Array.isArray(parsed?.statements) &&
+          parsed.statements.length == 2
+        ) {
+          const useDatabaseID = parsed.statements[0]?.databaseid;
+          if (useDatabaseID == this.pubCtlAlaSqlProxyDbName) {
+            // take the second expression as the SQL statment
+            return SQL.replace(/^\s*USE\s*DATABASE\s*.*?;[\r\n]*?/i, "");
+          }
+        }
+        return false;
+      },
     };
   }
 
@@ -226,6 +252,25 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
       if (parsed.error) {
         respondWithJSON(parsed);
         return;
+      }
+
+      const publDbSQL = payload.isPublicationDbRequest();
+      if (publDbSQL) {
+        if (this.database) {
+          const pubctlResult = this.database.recordsDQL(publDbSQL);
+          respondWithJSON(
+            resultNature == "model"
+              ? sql.detectQueryResultModel(pubctlResult.records, {
+                enhance: { payload, isPublicationDbRequest: true, publDbSQL },
+              })
+              : pubctlResult,
+          );
+          return;
+        } else {
+          throw new Error(
+            `no publication database provided as ${this.pubCtlAlaSqlProxyDbName} proxy`,
+          );
+        }
       }
 
       // this will throw an exception on errors, which will get trapped

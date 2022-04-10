@@ -13,6 +13,12 @@ export interface AlaSqlProxyInit<DBEE extends govn.SqlEventEmitter> {
   readonly statements?: (
     filter?: (e: govn.SqlStatement) => boolean,
   ) => Iterable<govn.SqlStatement>;
+  readonly customDbInventory?: (
+    databaseID: string,
+  ) =>
+    | govn.DbmsEngineSchemalessDatabase
+    | govn.DbmsEngineSchemaDatabase
+    | undefined;
 }
 
 export interface AlaSqlProxyContext
@@ -38,15 +44,26 @@ export class AlaSqlProxy<
   readonly statements?: (
     filter?: (e: govn.SqlStatement) => boolean,
   ) => Iterable<govn.SqlStatement>;
+  readonly customDbInventory?: (
+    databaseID: string,
+  ) =>
+    | govn.DbmsEngineSchemalessDatabase
+    | govn.DbmsEngineSchemaDatabase
+    | undefined;
 
   constructor(init: AlaSqlProxyInit<DBEE>) {
     this.alaSqlEngine = alaSQL.default;
     this.alaSqlPrimeDB = new alaSQL.default.Database("prime");
     this.dbee = init.events(this);
     this.statements = init.statements;
+    this.customDbInventory = init.customDbInventory;
   }
 
-  inventoryTable() {
+  inventoryTable(
+    inject?: (
+      rows: { db_name: string; table_name: string; column_name: string }[],
+    ) => void,
+  ) {
     const rows: { db_name: string; table_name: string; column_name: string }[] =
       [];
     for (const db of this.filteredDatabases()) {
@@ -62,6 +79,7 @@ export class AlaSqlProxy<
         }
       }
     }
+    inject?.(rows);
     return rows;
   }
 
@@ -69,50 +87,55 @@ export class AlaSqlProxy<
     const databases: govn.DbmsEngineDatabase[] = [];
     for (const dbRow of this.alaSqlEngine.exec("SHOW DATABASES")) {
       const databaseID = dbRow.databaseid;
-      const filteredTables = (filter?: (t: govn.DbmsTable) => boolean) => {
-        const tables: govn.DbmsTable[] = [];
-        for (
-          const tRow of this.alaSqlEngine.exec(`SHOW TABLES from ${databaseID}`)
-        ) {
-          const tableID = tRow.tableid;
-          const filteredColumns = (
-            filter?: (t: govn.DbmsTableColumn) => boolean,
-          ) => {
-            const columns: govn.DbmsTableColumn[] = [];
-            for (
-              const cRow of this.alaSqlEngine.exec(
-                `SHOW COLUMNS from ${tableID} from ${databaseID}`,
-              )
-            ) {
-              const columnID = cRow.columnid;
-              const dataType = cRow.dbtypeid;
-              const column: govn.DbmsTableColumn = {
-                identity: columnID,
-                nature: dataType ? { identity: dataType } : undefined,
-              };
-              if (!filter || filter(column)) {
-                columns.push(column);
+      let db = this.customDbInventory?.(databaseID);
+      if (!db) {
+        const filteredTables = (filter?: (t: govn.DbmsTable) => boolean) => {
+          const tables: govn.DbmsTable[] = [];
+          for (
+            const tRow of this.alaSqlEngine.exec(
+              `SHOW TABLES from ${databaseID}`,
+            )
+          ) {
+            const tableID = tRow.tableid;
+            const filteredColumns = (
+              filter?: (t: govn.DbmsTableColumn) => boolean,
+            ) => {
+              const columns: govn.DbmsTableColumn[] = [];
+              for (
+                const cRow of this.alaSqlEngine.exec(
+                  `SHOW COLUMNS from ${tableID} from ${databaseID}`,
+                )
+              ) {
+                const columnID = cRow.columnid;
+                const dataType = cRow.dbtypeid;
+                const column: govn.DbmsTableColumn = {
+                  identity: columnID,
+                  nature: dataType ? { identity: dataType } : undefined,
+                };
+                if (!filter || filter(column)) {
+                  columns.push(column);
+                }
               }
+              return columns;
+            };
+            const table: govn.DbmsTable = {
+              identity: tableID,
+              filteredColumns,
+              columns: filteredColumns(),
+            };
+            if (!filter || filter(tRow)) {
+              tables.push(table);
             }
-            return columns;
-          };
-          const table: govn.DbmsTable = {
-            identity: tableID,
-            filteredColumns,
-            columns: filteredColumns(),
-          };
-          if (!filter || filter(tRow)) {
-            tables.push(table);
           }
-        }
-        return tables;
-      };
-      const db: govn.DbmsEngineSchemalessDatabase = {
-        isSchemaDatabase: false,
-        identity: databaseID,
-        filteredTables,
-        tables: filteredTables(),
-      };
+          return tables;
+        };
+        db = {
+          isSchemaDatabase: false,
+          identity: databaseID,
+          filteredTables,
+          tables: filteredTables(),
+        };
+      }
       if (!filter || filter(db)) {
         databases.push(db);
       }
@@ -404,6 +427,72 @@ export class AlaSqlProxy<
         columnNames,
       });
     }
+  }
+
+  sqliteDbInventory(
+    sqliteDb: sqlite.SqliteDatabase,
+    databaseID: string,
+  ): govn.DbmsEngineSchemalessDatabase {
+    const filteredTables = (filter?: (t: govn.DbmsTable) => boolean) => {
+      const tableColDefnRows = sqliteDb.dbStore.queryEntries<{
+        table_name: string;
+        name: string;
+        type: string;
+        notnull: boolean;
+        pk: boolean;
+        dflt_value: unknown;
+      }>(
+        `  SELECT sm.name as table_name, table_info.*
+             FROM sqlite_master sm
+             JOIN pragma_table_info(sm.name) as table_info
+            WHERE sm.type = 'table' and sm.name != 'sqlite_sequence'
+         ORDER BY sm.name`,
+      );
+      const sqliteTableNames = [
+        ...new Set(tableColDefnRows.map((tc) => tc.table_name)),
+      ];
+      const tables: govn.DbmsTable[] = [];
+
+      for (const tableID of sqliteTableNames) {
+        const filteredColumns = (
+          filter?: (t: govn.DbmsTableColumn) => boolean,
+        ) => {
+          const columns: govn.DbmsTableColumn[] = [];
+          for (
+            const cRow of tableColDefnRows.filter((tc) =>
+              tc.table_name == tableID
+            )
+          ) {
+            const columnID = cRow.name;
+            const dataType = cRow.type;
+            const column: govn.DbmsTableColumn = {
+              identity: columnID,
+              nature: dataType ? { identity: dataType } : undefined,
+            };
+            if (!filter || filter(column)) {
+              columns.push(column);
+            }
+          }
+          return columns;
+        };
+        const table: govn.DbmsTable = {
+          identity: tableID,
+          filteredColumns,
+          columns: filteredColumns(),
+        };
+        if (!filter || filter(table)) {
+          tables.push(table);
+        }
+      }
+      return tables;
+    };
+    const db: govn.DbmsEngineSchemalessDatabase = {
+      isSchemaDatabase: false,
+      identity: databaseID,
+      filteredTables,
+      tables: filteredTables(),
+    };
+    return db;
   }
 
   /**

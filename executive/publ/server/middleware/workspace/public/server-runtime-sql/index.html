@@ -172,10 +172,16 @@
             // this is read from the server after content loading
             const dbmsInventoryQuery = `select value [databases] from prime.dbmsInventory`;
             $dbmsInventory.watch((databases) => {
+                console.log({ databases })
                 path.populateSelectElem(dbSelectElem,
                     () => databases
-                        .filter(row => row.tables.length > 0)
-                        .map(row => ({ text: `${row.identity} (${row.tables.length})`, value: row.identity }))
+                        .filter(row => row.identity == 'pubctl' || row.tables.length > 0)
+                        .map(row => ({
+                            text: row.identity == 'pubctl'
+                                ? `${row.identity} (SQLite, ${row.tables.length})`
+                                : `${row.identity} (${row.tables.length})`,
+                            value: row.identity
+                        }))
                 );
 
                 if (dbSelectElem?.options?.length > 1) {
