@@ -36,6 +36,7 @@ export interface ServerRuntimeScriptLibrary {
 }
 
 export interface ServerRuntimeScriptInventory {
+  readonly identity: string;
   // should match governance/module.ts LocationSupplier interface
   readonly origin: {
     readonly moduleImportMetaURL: string;
@@ -100,6 +101,7 @@ export interface ServerRuntimeSqlStmtLibrary<DatabaseID extends string> {
 }
 
 export interface ServerRuntimeSqlStmtInventory<DatabaseID extends string> {
+  readonly identity: string;
   // should match governance/module.ts LocationSupplier interface
   readonly origin: {
     readonly moduleImportMetaURL: string;

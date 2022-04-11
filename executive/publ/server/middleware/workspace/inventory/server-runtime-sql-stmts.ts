@@ -17,7 +17,9 @@ export const defaultSqlStmtID = "health-check-failed";
 // for security purposes, the user agent ("UA" or "client") is allowed to see
 // the sqlStmts but if the sqlstmt is passed into the server, the server ignores
 // the sqlStmt and uses what is in the catalog. By letting clients see the
-export function typicalSqlStmtsInventory(): govn.ServerRuntimeSqlStmtInventory<
+export function typicalSqlStmtsInventory(
+  identity = "typicalSqlStmts",
+): govn.ServerRuntimeSqlStmtInventory<
   TypicalSqlStmtDatabaseID
 > {
   const sqlStmtsIndex = new Map<
@@ -63,6 +65,7 @@ export function typicalSqlStmtsInventory(): govn.ServerRuntimeSqlStmtInventory<
   };
 
   const result: govn.ServerRuntimeSqlStmtInventory<TypicalSqlStmtDatabaseID> = {
+    identity,
     origin: {
       moduleImportMetaURL: import.meta.url,
     },
@@ -204,7 +207,7 @@ export function typicalSqlStmtsInventory(): govn.ServerRuntimeSqlStmtInventory<
       if (sqlstmt.qualifiedName == qualifiedNamePlaceholder) {
         // special cast required since sqlstmt.qualifiedName is read-only
         (sqlstmt as { qualifiedName: string }).qualifiedName =
-          `${library.name}_${sqlstmt.name}`;
+          `${identity}_${library.name}_${sqlstmt.name}`;
       }
       sqlStmtsIndex.set(sqlstmt.qualifiedName, sqlstmt);
     };

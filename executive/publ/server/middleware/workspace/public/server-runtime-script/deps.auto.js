@@ -6,7 +6,7 @@ const importMeta = {
     url: "file:///home/snshah/workspaces/github.com/resFactory/factory/executive/publ/server/middleware/workspace/inventory/server-runtime-scripts.ts",
     main: false
 };
-function typicalScriptsInventory() {
+function typicalScriptsInventory(identity1 = "typicalScripts") {
     const scriptsIndex = new Map();
     const jsonExplorer = {
         nature: "JSON-explorer"
@@ -30,6 +30,7 @@ function typicalScriptsInventory() {
         presentation: tableObjectProps
     };
     const result = {
+        identity: identity1,
         origin: {
             moduleImportMetaURL: importMeta.url
         },
@@ -138,7 +139,7 @@ function typicalScriptsInventory() {
     const indexLibraries = (libraries)=>{
         const indexScript = (script, library)=>{
             if (script.qualifiedName == qualifiedNamePlaceholder) {
-                script.qualifiedName = `${library.name}_${script.name}`;
+                script.qualifiedName = `${identity1}_${library.name}_${script.name}`;
             }
             scriptsIndex.set(script.qualifiedName, script);
         };

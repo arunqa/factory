@@ -11,7 +11,7 @@ const configDatabaseID = `config`;
 const observabilityDatabaseID = `observability`;
 const pubctlDatabaseID = `pubctl`;
 const defaultSqlStmtID = "health-check-failed";
-function typicalSqlStmtsInventory() {
+function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
     const sqlStmtsIndex = new Map();
     const DB = (identity)=>{
         return {
@@ -32,6 +32,7 @@ function typicalSqlStmtsInventory() {
         qualifiedName: qualifiedNamePlaceholder
     };
     const result = {
+        identity: identity1,
         origin: {
             moduleImportMetaURL: importMeta.url
         },
@@ -164,7 +165,7 @@ function typicalSqlStmtsInventory() {
     const indexLibraries = (libraries)=>{
         const indexSqlStmt = (sqlstmt, library)=>{
             if (sqlstmt.qualifiedName == qualifiedNamePlaceholder) {
-                sqlstmt.qualifiedName = `${library.name}_${sqlstmt.name}`;
+                sqlstmt.qualifiedName = `${identity1}_${library.name}_${sqlstmt.name}`;
             }
             sqlStmtsIndex.set(sqlstmt.qualifiedName, sqlstmt);
         };

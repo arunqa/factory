@@ -151,6 +151,9 @@
                         helpDiv.innerHTML = srScript.help;
                         scriptContainerElem.appendChild(helpDiv);
                     }
+                    const inspectDiv = document.createElement("div");
+                    path.populateObjectJSON(srScript, inspectDiv, 0);
+                    scriptContainerElem.appendChild(inspectDiv);
                     const jsCodeDiv = document.createElement("div");
                     jsCodeDiv.innerHTML = `<pre><code class="language-js">${path.unindentWhitespace(srScript.jsModule)}</code></pre>`;
                     scriptContainerElem.appendChild(jsCodeDiv);
@@ -172,22 +175,13 @@
             window.srScriptFromFromEditor = () => ({
                 name: 'editor.js.json',
                 qualifiedName: 'editor.js.json',
-                jsModule: scriptCodeEditorValue()
+                jsModule: scriptCodeEditorValue(),
+                isUserSupplied: true,
             });
-            window.execServerRuntimeScriptFx = path.siteDomain.createEffect(async (params) => {
-                if (params.srScript) {
-                    // srScript must be provided in params
-                    const args = {
-                        ...path.fetchFxInitServerSideSrc(`/unsafe-server-runtime-proxy/module/${params.srScript.name}`, params.srScript.jsModule),
-                        ...params,
-                        cache: false
-                    };
-                    return await path.pageFetchJsonFx(args);
 
-                } else {
-                    console.error(`srScript missing in params to window.execServerRuntimeScriptFx(params)`);
-                }
-            });
+            // setup alias for easier access in this module
+            window.execServerRuntimeScriptFx = path.pageFetchServerRuntimeScriptJsonFx;
+
             execServerRuntimeScriptFx.done.watch(({ params, result }) => {
                 const isErrorResult = typeof result === "object" && "error" in result ? true : false;
                 if (diagnosticsCheckboxElem.checked || isErrorResult) {

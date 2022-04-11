@@ -174,6 +174,53 @@ export const pageFetchRetrocycledJsonJFx = siteDomain.createEffect(async (params
     ...params, fetchValue: sb.fetchRespRetrocycledJsonValue
 }));
 
+export const pageFetchServerRuntimeScriptJsonFx = siteDomain.createEffect(async (params) => {
+    if (params.srScript) {
+        // srScript must be provided in params
+        const args = {
+            ...fetchFxInitServerSideSrc(`/unsafe-server-runtime-proxy/module/${params.srScript.name}`, params.srScript.jsModule),
+            ...params,
+            cache: false
+        };
+        return await pageFetchJsonFx(args);
+    } else {
+        console.error(`srScript missing in params to preparServerRuntimeScriptFx(params)`);
+        return undefined;
+    }
+});
+
+pageFetchServerRuntimeScriptJsonFx.fail.watch((watchParams) => {
+    console.error('pageFetchServerRuntimeScriptJsonFx.fail', { watchParams });
+})
+
+export function watchPageFetchServerRuntimeScriptJsonFxDone(watchSrScriptSupplier, watcher) {
+    let isTargetScript;
+    switch (typeof watchSrScriptSupplier) {
+        case "string":
+            isTargetScript = (srScript) => srScript.qualifiedName == watchSrScriptSupplier;
+            break;
+        case "object":
+            if (watchSrScriptSupplier?.qualifiedName) {
+                isTargetScript = (srScript) => srScript.qualifiedName == watchSrScriptSupplier.qualifiedName;
+            } else {
+                console.warn('watchPageFetchServerRuntimeScriptJsonFxDone', "watchSrScriptSupplier is an srScript but doesn't supply a .qualifiedName");
+                return;
+            }
+            break;
+        case "function":
+            isTargetScript = watchSrScriptSupplier;
+            break;
+        default:
+            console.warn('watchPageFetchServerRuntimeScriptJsonFxDone', "unknown watchSrScriptSupplier");
+            return;
+    }
+    pageFetchServerRuntimeScriptJsonFx.done.watch((watchParams) => {
+        if (isTargetScript(watchParams.srScript)) {
+            watcher(watchParams);
+        }
+    });
+}
+
 export const transformContentFx = siteDomain.createEffect(async () => {
     // find all <pre data-transformable="markdown"> and run Markdown-it transformation
     await d.transformMarkdownElems();
@@ -596,7 +643,7 @@ export const activateSite = () => {
     // <!-- --> are there in between <a> tags to allow easier readability here but render with no spacing in DOM
     navPrime.innerHTML = `
            <a href="#" class="highlight"><i class="fa-solid fa-file-code"></i> Edit</a><!--
-        --><a href="${baseURL}/server-runtime-sql/index.html"><i class="fa-solid fa-database"></i> Inspect</a><!--
+        --><a href="${baseURL}/server-runtime-sql/index.html"><i class="fa-solid fa-database"></i> SQL</a><!--
         --><a href="${baseURL}/server-runtime-script/index.html"><i class="fa-brands fa-js-square"></i> Evaluate</a><!--
         --><a href="${baseURL}/inspect/routes.html"><i class="fa-solid fa-route"></i> Routes</a><!--
         --><a href="${baseURL}/inspect/layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a><!--

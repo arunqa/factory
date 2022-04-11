@@ -4,7 +4,9 @@ import * as govn from "./governance.ts";
 // for security purposes, the user agent ("UA" or "client") is allowed to see
 // the scripts but if the script is passed into the server, the server ignores
 // the script and uses what is in the catalog. By letting clients see the
-export function typicalScriptsInventory(): govn.ServerRuntimeScriptInventory {
+export function typicalScriptsInventory(
+  identity = "typicalScripts",
+): govn.ServerRuntimeScriptInventory {
   const scriptsIndex = new Map<string, govn.ServerRuntimeScript>();
 
   const jsonExplorer: govn.ScriptResultPresentationStrategy = {
@@ -37,6 +39,7 @@ export function typicalScriptsInventory(): govn.ServerRuntimeScriptInventory {
   };
 
   const result: govn.ServerRuntimeScriptInventory = {
+    identity,
     origin: {
       moduleImportMetaURL: import.meta.url,
     },
@@ -150,7 +153,7 @@ export function typicalScriptsInventory(): govn.ServerRuntimeScriptInventory {
       if (script.qualifiedName == qualifiedNamePlaceholder) {
         // special cast required since script.qualifiedName is read-only
         (script as { qualifiedName: string }).qualifiedName =
-          `${library.name}_${script.name}`;
+          `${identity}_${library.name}_${script.name}`;
       }
       scriptsIndex.set(script.qualifiedName, script);
     };
