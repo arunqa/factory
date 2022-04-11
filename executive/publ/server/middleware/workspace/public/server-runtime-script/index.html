@@ -66,6 +66,7 @@
     <script type="module">
         import * as path from "../path.actuate.mjs";
         import * as deps from "./deps.auto.js";
+        import * as agG from "../aggrid.mjs";
 
         // automatically inject navbars and other site-wide elements
         path.activateSite();
@@ -119,15 +120,19 @@
             const renderFxExamplar = (srScript, tag = "div") => {
                 const renderHook =
                     `({ target }) => path.watchPageFetchServerRuntimeScriptJsonFxDone('${srScript.qualifiedName}', target.renderFx)`;
+                const renderHookAuto =
+                    `({ target }) => path.watchPageFetchServerRuntimeScriptJsonFxDone({ srScript: scriptsInventory.script('${srScript.qualifiedName}'), autoActivate: true }, target.renderFx)`;
                 const renderHookAttr = `render-hook="${renderHook}"`;
+                const renderHookAttrAuto = `render-hook="${renderHookAuto}"`;
                 return path.unindentWhitespace(`
                     <pre><code class="language-html">&lt${tag} interpolate-fx="{ result }" ${renderHookAttr}>result is \${JSON.stringify(result)}&lt/${tag}>
-                    &lt${tag} populate-json-fx ${renderHookAttr}>&lt/${tag}>
+                    &lt${tag} populate-json-fx ${renderHookAttrAuto}>&lt/${tag}>
                     &lt${tag} render-fx="({ target, result }) => target.innerHTML = 'something'" ${renderHookAttr}>&lt/${tag}>
                     &lt${tag} render-fx ${renderHookAttr}>({ target, result }) => target.innerHTML = 'something'&lt/${tag}>
-                    &lt${tag} render-fx ${renderHookAttr}>
+                    &lt${tag} render-fx ${renderHookAttrAuto}>
                         &lt;script type="render-fx">({ target, result }) => target.innerHTML = 'something'&lt;/script>
-                    &lt/${tag}></code></pre>`);
+                    &lt/${tag}>
+                    &lt;script>path.pageFetchServerRuntimeScriptJsonFx({ srScript: scriptsInventory.script('${srScript.qualifiedName}') });&lt;/script></code></pre>`);
             }
 
             for (const library of scriptsInventory.libraries) {
@@ -243,31 +248,22 @@
                             path.populateObjectJSON(result, destJSON, 2);
                             return;
                     }
-                    const gridOptions = {
-                        defaultColDef: { resizable: true },
-                        columnDefs,
-                        rowData,
-                        getRowHeight: (params) => {
-                            for (const value of Object.values(params.data)) {
-                                // if we're showing an object we will be using path.objectJsonHtmlElem()
-                                if (value && typeof value === "object") {
-                                    const keys = Object.keys(value);
-                                    return (keys.length * 20) + 25;
+                    agG.populateAgGrid(agGrid, destGrid, (agGridOptionsGen) => {
+                        return agGridOptionsGen({
+                            columnDefs,
+                            rowData,
+                            getRowHeight: (params) => {
+                                for (const value of Object.values(params.data)) {
+                                    // if we're showing an object we will be using path.objectJsonHtmlElem()
+                                    if (value && typeof value === "object") {
+                                        const keys = Object.keys(value);
+                                        return (keys.length * 20) + 25;
+                                    }
                                 }
-                            }
-                            return 25;
-                        },
-                        domLayout: 'autoHeight',
-                        onGridReady: (event) => event.columnApi.autoSizeAllColumns(),
-                        components: {
-                            // see https://www.ag-grid.com/javascript-grid/components/
-                            workspaceEditorRedirectCellRenderer: (params) => {
-                                const [src, label] = [params.data["editorRedirectSrc"], params.data["editorRedirectLabel"]];
-                                return `<a href="/workspace/editor-redirect/abs${src}" title="Open ${src} in IDE">${label}</a>`;
+                                return 25;
                             },
-                        },
-                    };
-                    new agGrid.Grid(destGrid, gridOptions);
+                        });
+                    });
                 }
             });
 

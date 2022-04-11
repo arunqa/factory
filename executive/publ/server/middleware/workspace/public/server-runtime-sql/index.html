@@ -83,6 +83,7 @@
     <script type="module">
         import * as path from "../path.actuate.mjs";
         import * as deps from "./deps.auto.js";
+        import * as agG from "../aggrid.mjs";
 
         // automatically inject navbars and other site-wide elements
         path.activateSite();
@@ -313,28 +314,22 @@
                         return jsonDiv;
                     },
                 }));
-                const gridOptions = {
-                    defaultColDef: { resizable: true },
-                    columnDefs,
-                    rowData: result.data,
-                    getRowHeight: (params) => {
-                        for (const value of Object.values(params.data)) {
-                            // if we're showing an object we will be using path.objectJsonHtmlElem()
-                            if (value && typeof value === "object") {
-                                const keys = Object.keys(value);
-                                return (keys.length * 15) + 25;
+                agG.populateAgGrid(agGrid, dest, (agGridOptionsGen) => {
+                    return agGridOptionsGen({
+                        columnDefs,
+                        rowData: result.data,
+                        getRowHeight: (params) => {
+                            for (const value of Object.values(params.data)) {
+                                // if we're showing an object we will be using path.objectJsonHtmlElem()
+                                if (value && typeof value === "object") {
+                                    const keys = Object.keys(value);
+                                    return (keys.length * 20) + 25;
+                                }
                             }
-                        }
-                        return 25;
-                    },
-                    domLayout: 'autoHeight',
-                    onGridReady: (event) => event.columnApi.autoSizeAllColumns(),
-                    components: {
-                        // see https://www.ag-grid.com/javascript-grid/components/
-                        locationCellRenderer: (params) => "location" in params.data ? path.locationEditorHTML(params.data.location, 5) : params.value,
-                    },
-                };
-                new agGrid.Grid(dest, gridOptions);
+                            return 25;
+                        },
+                    });
+                });
             });
 
             // all listeners are ready so let's activate the page and trigger the watchers;

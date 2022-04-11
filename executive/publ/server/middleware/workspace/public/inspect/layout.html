@@ -24,7 +24,8 @@
 
     <details class="explore" open>
         <summary>Design System</summary>
-        <div populate-json-fx render-hook="({ target }) => designSystemFetchFx.done.watch(target.renderFx)">
+        <div populate-json-fx render-hook="srScriptRenderHook('typicalScripts_design-system_design-system.js.json')">
+        </div>
         </div>
     </details>
 
@@ -35,6 +36,8 @@
 
     <script type="module">
         import * as path from "../path.actuate.mjs";
+        import * as srScriptDeps from "../server-runtime-script/deps.auto.js";
+        import * as agG from "../aggrid.mjs";
 
         // automatically inject navbars and other site-wide elements
         path.activateSite();
@@ -43,12 +46,11 @@
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
 
-            const designSystemFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                ...path.fetchFxInitServerSideSrc("/unsafe-server-runtime-proxy/module/design-system.js.json", `
-                    export default ({ publication }) => publication.ds.designSystem;
-                `),
-                ...params
-            })));
+            const scriptsInventory = srScriptDeps.typicalScriptsInventory();
+            window.srScriptRenderHook = (scriptID) => {
+                const srScript = scriptsInventory.script(scriptID);
+                return ({ target }) => path.watchPageFetchServerRuntimeScriptJsonFxDone({ srScript, autoActivate: true }, target.renderFx);
+            }
 
             // check all the DOM elements to see if any events, stores, or effects
             // want to "hook" into the Effector instances; assume all domEffects'
@@ -57,33 +59,17 @@
 
             const renderersGridElem = document.querySelector('#renderersGrid');
             if (renderersGridElem) {
-                const designSystemLayoutsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                    ...path.fetchFxInitServerSideSrc("/unsafe-server-runtime-proxy/module/design-system-layouts.js.json", `
-                    export default ({ publication }) => Array.from(publication.ds.designSystem.layoutStrategies.layouts.values());
-                `),
-                    ...params
-                })));
-
-                designSystemLayoutsFetchFx.done.watch(({ params, result: renderers }) => {
-                    const columnDefs = [
-                        { field: "identity" },
-                        {
-                            field: "location",
-                            cellRenderer: "locationCellRenderer",
-                        }
-                    ];
-                    const gridOptions = {
-                        columnDefs: columnDefs,
-                        rowData: renderers,
-                        domLayout: 'autoHeight',
-                        onGridReady: (event) => event.columnApi.autoSizeAllColumns(),
-                        components: {
-                            // see https://www.ag-grid.com/javascript-grid/components/
-                            locationCellRenderer: (params) => "location" in params.data ? path.locationEditorHTML(params.data.location, 5) : params.value,
-                        },
-                    };
-                    new agGrid.Grid(renderersGridElem, gridOptions);
-                })
+                path.watchPageFetchServerRuntimeScriptJsonFxDone({
+                    srScript: scriptsInventory.script('typicalScripts_design-system_layouts.js.json'),
+                    autoActivate: true
+                }, ({ params, result: renderers }) => {
+                    agG.populateAgGrid(agGrid, renderersGridElem, (agGridOptionsGen) => {
+                        return agGridOptionsGen({
+                            columnDefs: renderers.columnDefs,
+                            rowData: renderers.rowData
+                        });
+                    })
+                });
             }
 
             // all listeners are ready so let's activate the page and trigger the watchers;

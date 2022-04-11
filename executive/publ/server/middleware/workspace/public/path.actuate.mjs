@@ -195,15 +195,17 @@ pageFetchServerRuntimeScriptJsonFx.fail.watch((watchParams) => {
 
 export function watchPageFetchServerRuntimeScriptJsonFxDone(watchSrScriptSupplier, watcher) {
     let isTargetScript;
+    let launchableFxParams;
     switch (typeof watchSrScriptSupplier) {
         case "string":
             isTargetScript = (srScript) => srScript.qualifiedName == watchSrScriptSupplier;
             break;
         case "object":
-            if (watchSrScriptSupplier?.qualifiedName) {
-                isTargetScript = (srScript) => srScript.qualifiedName == watchSrScriptSupplier.qualifiedName;
+            if (watchSrScriptSupplier?.srScript) {
+                launchableFxParams = watchSrScriptSupplier;
+                isTargetScript = (srScript) => srScript.qualifiedName == launchableFxParams.srScript.qualifiedName;
             } else {
-                console.warn('watchPageFetchServerRuntimeScriptJsonFxDone', "watchSrScriptSupplier is an srScript but doesn't supply a .qualifiedName");
+                console.warn('watchPageFetchServerRuntimeScriptJsonFxDone', "watchSrScriptSupplier is a launchableFxParams candidate but doesn't supply .srScript");
                 return;
             }
             break;
@@ -215,10 +217,15 @@ export function watchPageFetchServerRuntimeScriptJsonFxDone(watchSrScriptSupplie
             return;
     }
     pageFetchServerRuntimeScriptJsonFx.done.watch((watchParams) => {
-        if (isTargetScript(watchParams.srScript)) {
+        if (isTargetScript(watchParams.params.srScript)) {
             watcher(watchParams);
         }
     });
+    if (launchableFxParams && launchableFxParams.autoActivate) {
+        activatePage.watch(() => {
+            pageFetchServerRuntimeScriptJsonFx(launchableFxParams);
+        });
+    }
 }
 
 export const transformContentFx = siteDomain.createEffect(async () => {
@@ -334,7 +341,7 @@ export function prepareDomEffects(domEffectsInit = {}) {
         renderFxAttrName = "render-fx", // custom renderer provided in <script> or attribute
         populateJsonAttrName = "populate-json-fx", // no body required, populateObjectJSON renders FX result
         interpolateFxAttrName = "interpolate-fx", // body is interpolated as template text literal
-        renderHookAttrName = "render-hook" // when to render one of the above
+        renderHookAttrName = "render-hook", // when to render one of the above
     } = domEffectsInit;
 
     for (const renderElem of document.querySelectorAll(`[${renderFxAttrName}]`)) {
