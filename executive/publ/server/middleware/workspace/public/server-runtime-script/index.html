@@ -7,6 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="http://codemirror.net/lib/codemirror.css">
     <link rel="stylesheet" href="http://codemirror.net/addon/hint/show-hint.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github-dark-dimmed.min.css">
     <link rel="stylesheet" href="../path.actuate.css">
     <script src="http://codemirror.net/lib/codemirror.js"></script>
     <script src="http://codemirror.net/addon/edit/matchbrackets.js"></script>
@@ -57,6 +59,7 @@
     </div>
 
     <div id="diagnostics"></div>
+    <div id="reveal-effector-fx"></div>
     <div id="script-eval-results-json"></div>
     <div id="script-eval-results-grid" class="ag-theme-balham"></div>
 
@@ -85,6 +88,7 @@
             const diagnosticsElem = document.getElementById("diagnostics");
             const scriptsInventoryElem = document.getElementById("scriptsInventory");
             const autoExecSeverRuntimeScriptElem = document.getElementById("autoExecute");
+            const revealEffectorFxElem = document.getElementById("reveal-effector-fx");
 
             const populateServerRuntimeScript = path.pageDomain.createEvent();
 
@@ -112,13 +116,27 @@
                 return scriptCodeEditor.getValue();
             }
 
+            const renderFxExamplar = (srScript, tag = "div") => {
+                const renderHook =
+                    `({ target }) => path.watchPageFetchServerRuntimeScriptJsonFxDone('${srScript.qualifiedName}', target.renderFx)`;
+                const renderHookAttr = `render-hook="${renderHook}"`;
+                return path.unindentWhitespace(`
+                    <pre><code class="language-html">&lt${tag} interpolate-fx="{ result }" ${renderHookAttr}>result is \${JSON.stringify(result)}&lt/${tag}>
+                    &lt${tag} populate-json-fx ${renderHookAttr}>&lt/${tag}>
+                    &lt${tag} render-fx="({ target, result }) => target.innerHTML = 'something'" ${renderHookAttr}>&lt/${tag}>
+                    &lt${tag} render-fx ${renderHookAttr}>({ target, result }) => target.innerHTML = 'something'&lt/${tag}>
+                    &lt${tag} render-fx ${renderHookAttr}>
+                        &lt;script type="render-fx">({ target, result }) => target.innerHTML = 'something'&lt;/script>
+                    &lt/${tag}></code></pre>`);
+            }
+
             for (const library of scriptsInventory.libraries) {
                 const libraryElem = document.createElement("details");
                 const libraryHeaderElem = document.createElement("summary");
                 libraryHeaderElem.innerHTML = library.label;
-                const libraryListElem = document.createElement("ul");
                 for (const srScript of library.scripts) {
-                    const li = document.createElement("li");
+                    const scriptContainerElem = document.createElement("details");
+                    const scriptHeaderElem = document.createElement("summary");
                     const a = document.createElement("a");
                     a.href = `#${srScript.qualifiedName}`;
                     a.onclick = () => {
@@ -126,11 +144,22 @@
                         return false;
                     };
                     a.innerHTML = srScript.label;
-                    li.appendChild(a);
-                    libraryListElem.appendChild(li);
+                    scriptHeaderElem.appendChild(a);
+                    scriptContainerElem.appendChild(scriptHeaderElem);
+                    if (srScript.help) {
+                        const helpDiv = document.createElement("div");
+                        helpDiv.innerHTML = srScript.help;
+                        scriptContainerElem.appendChild(helpDiv);
+                    }
+                    const jsCodeDiv = document.createElement("div");
+                    jsCodeDiv.innerHTML = `<pre><code class="language-js">${path.unindentWhitespace(srScript.jsModule)}</code></pre>`;
+                    scriptContainerElem.appendChild(jsCodeDiv);
+                    const exemplarDiv = document.createElement("div");
+                    exemplarDiv.innerHTML = renderFxExamplar(srScript);
+                    scriptContainerElem.appendChild(exemplarDiv);
+                    libraryElem.appendChild(scriptContainerElem);
                 }
                 libraryElem.appendChild(libraryHeaderElem);
-                libraryElem.appendChild(libraryListElem);
                 scriptsInventoryElem.appendChild(libraryElem);
             }
             populateServerRuntimeScript.watch(({ srScript }) => {
@@ -254,6 +283,8 @@
             populateServerRuntimeScript({ srScript: scriptsInventory.defaultScript });
         });
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
 </body>
 
 </html>
