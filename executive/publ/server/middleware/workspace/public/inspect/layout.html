@@ -13,8 +13,8 @@
     <details class="explore" open>
         <summary>Resource Layout ("renderer")</summary>
         <!-- see path.prepareDomEffectsActivation for interpolate-fx attr -->
-        <ul interpolate-fx="{ designSystem: ds }" render-hook="({ target }) => path.activatePage.watch(target.renderFx)"
-            diagnose>
+        <ul interpolate-fx="{ designSystem: ds }"
+            render-hook="({ target }) => path.activatePage.watch(target.renderFx)">
             <li>This page is rendered using <b>${ds.layout.name}</b> (${ds.layout.symbol}) layout
                 located at ${path.editableFileRefHTML(ds.layout.src, 5)}.</li>
             <li>This publication uses the <b>${ds.identity}</b> design system located at
@@ -24,10 +24,7 @@
 
     <details class="explore" open>
         <summary>Design System</summary>
-        <!-- <div data-populate-fetched-json-url="/unsafe-server-runtime-proxy/module/design-system.js.json"></div> -->
-        <div render-fx="{ target, result }"
-            render-hook="({ target }) => designSystemFetchFx.done.watch(target.renderFx)" diagnose>
-            path.populateObjectJSON(result, target, 2)
+        <div populate-json-fx render-hook="({ target }) => designSystemFetchFx.done.watch(target.renderFx)">
         </div>
     </details>
 
@@ -48,9 +45,6 @@
 
             const designSystemFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
                 ...path.fetchFxInitServerSideSrc("/unsafe-server-runtime-proxy/module/design-system.js.json", `
-                    // this code will be run on the server side and the return value be JSON;
-                    // everything after /unsafe-server-runtime-proxy/module (e.g. /design-system.js.json) is arbitrary
-                    // and for user-agent benefit
                     export default ({ publication }) => publication.ds.designSystem;
                 `),
                 ...params
@@ -61,19 +55,15 @@
             // eval()'s are done in this visiblity context
             path.prepareDomEffects({ evalJS: (js) => eval(js) });
 
-            const designSystemLayoutsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                ...path.fetchFxInitServerSideSrc("/unsafe-server-runtime-proxy/module/design-system-layouts.js.json", `
-                    // this code will be run on the server side and the return value be JSON;
-                    // everything after /unsafe-server-runtime-proxy/module (e.g. /design-system.js.json) is arbitrary
-                    // and for user-agent benefit;
-                    // use Array.from() since layouts.values() is an iterator; arrays are valid JSON
-                    export default ({ publication }) => Array.from(publication.ds.designSystem.layoutStrategies.layouts.values());
-                `),
-                ...params
-            })));
-
             const renderersGridElem = document.querySelector('#renderersGrid');
             if (renderersGridElem) {
+                const designSystemLayoutsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
+                    ...path.fetchFxInitServerSideSrc("/unsafe-server-runtime-proxy/module/design-system-layouts.js.json", `
+                    export default ({ publication }) => Array.from(publication.ds.designSystem.layoutStrategies.layouts.values());
+                `),
+                    ...params
+                })));
+
                 designSystemLayoutsFetchFx.done.watch(({ params, result: renderers }) => {
                     const columnDefs = [
                         { field: "identity" },

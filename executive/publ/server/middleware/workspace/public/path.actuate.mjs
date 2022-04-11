@@ -184,39 +184,47 @@ export const jsEvalFailureHTML = (evaluatedJS, error, location, context) => {
     return `Unable to evaluate <code><mark>${evaluatedJS}</mark></code>: <code><mark style="background-color:#FFF2F2">${error}</mark></code> in <code>${location}</code>`;
 }
 
-export function prepareDomRenderEffect(elem, options) {
-    const defaulJsEvalFailureHTML = ({ evaluatedJS, error, location = "prepareDomRenderEffect", context }) => {
+export function prepareHookableDomRenderEffect(elem, options) {
+    const defaulJsEvalFailureHTML = ({ evaluatedJS, error, location = "prepareHookableDomRenderEffect", context }) => {
         console.error(`Unable to evaluate ${evaluatedJS} in ${location}`, error, context);
         return `Unable to evaluate <code><mark>${evaluatedJS}</mark></code>: <code><mark style="background-color:#FFF2F2">${error}</mark></code> in <code>${location}</code>`;
     }
+
     const {
-        renderJsSrcCodeSupplier = (elem) => elem.innerHTML,
         evalJS = eval, // pass in context-aware eval if desired
-        fxDestructureArgs = "", // provide "local variables" support for elem.renderJsCode eval context
-        renderHookJsCodeSupplier,
+        renderJsDestructureArgs, // provide "local variables" support for elem.renderJsCode eval context
+        renderJsBodyCodeSupplier, // a function which gives the JS code for the body of the renderer
+        renderHookJsCodeSupplier, // a function which gives the JS code for the eval'able hook provider
         jsEvalFailureHTML = defaulJsEvalFailureHTML,
+        renderJS, // if you want to override the entire renderJS before eval, supply a string
+        render, // if you want to override the entire render method (no eval required), supply a function
+        renderFx // if you want to override the entire renderFx itself, supply an Effector createEffect() instance
     } = options ?? {};
 
-    // renderJsCode is the main JS code that will be evaluated
-    elem.renderJsCode = renderJsSrcCodeSupplier(elem, options);
-    let evaluatedJS = `
+    // when this method is finished, elem.render() and elem.renderFx() are core deliverables;
+    // elem.renderJsBody and elem.renderJS are for debugging and useful in error path.
+
+    elem.renderJsBody = renderJsBodyCodeSupplier?.(elem, options);
+    elem.renderJS = renderJS ?? `
             (fxParams) => {
-                // fxParams is what's passed via elem.renderFx.watch(): target, jsEvalFailureHTML, etc.
-                ${fxDestructureArgs && fxDestructureArgs.trim().length > 0 ? `const ${fxDestructureArgs} = fxParams;` : ''}
+                // fxParams is what's passed via elem.renderFx(): target, jsEvalFailureHTML, etc.
+                ${renderJsDestructureArgs && renderJsDestructureArgs.trim().length > 0 ? `const ${renderJsDestructureArgs} = fxParams;` : '// no local variables requested'}
                 try {
-                    ${elem.renderJsCode ?? "// no elem.renderJsCode available via renderJsSrcCodeSupplier(elem, options)"}
+                    ${elem.renderJsBody ?? "// no elem.renderJsBody available via renderJsBodyCodeSupplier(elem, options)"}
                 } catch(error) {
                     fxParams.target.innerHTML = fxParams.jsEvalFailureHTML({
-                        evaluatedJS: fxParams.target.renderJsCode, error,
+                        evaluatedJS: fxParams.target.renderJsBody, error,
                         location: fxParams.jsEvalFailureLocation, context: fxParams
                     });
                 }
             }`;
+    // prepare for exception
+    let evaluatedJS = elem.renderJS;
     try {
         // if evalJS is supplied by caller, evaluate the JS in that context otherwise
         // it will be evaluated in this script's context
-        elem.render = evalJS(evaluatedJS, elem, options);
-        elem.renderFx = pageDomain.createEffect((params) => elem.render({
+        elem.render = render ?? evalJS(evaluatedJS, elem, options);
+        elem.renderFx = renderFx ?? pageDomain.createEffect((params) => elem.render({
             ...params,
             target: elem,
             jsEvalFailureLocation: evaluatedJS,
@@ -225,7 +233,7 @@ export function prepareDomRenderEffect(elem, options) {
 
         // now that the effect is setup, see if the element wants to hook anything
         if (renderHookJsCodeSupplier) {
-            // we reuse evaluatedJS name so that if exception occurs, we use the new code
+            // we reuse evaluatedJS name so that if exception occurs, we use the new code;
             // evaluatedJS should be JS code which returns a function accepting a single
             // object which will have a 'target' property, like:
             //    ({ target }) => $store.watch(target.renderFx)
@@ -236,13 +244,13 @@ export function prepareDomRenderEffect(elem, options) {
     } catch (error) {
         elem.innerHTML = jsEvalFailureHTML({
             evaluatedJS, error,
-            location: `prepareDomRenderEffect[${elem.tagName}]`,
+            location: `prepareHookableDomRenderEffect[${elem.tagName}]`,
             context: { elem, options }
         });
     }
 
     if (elem.hasAttribute("diagnose")) {
-        console.log(`prepareDomRenderEffect diagnose`, { elem, options });
+        console.log(`prepareHookableDomRenderEffect diagnose`, { elem, options });
     }
 }
 
@@ -250,20 +258,20 @@ export function prepareDomEffects(domEffectsInit = {}) {
     // * `interpolate-fx` creates an Effector Effect that will modify HTML when called;
     // example:
     //
-    //   <div interpolate-fx="{ one, two }" interpolate-hook="({ target }) => $store.watch(target.interpolateFx)"
+    //   <div interpolate-fx="{ one, two }" render-hook="({ target }) => $store.watch(target.interpolateFx)"
     //      this is innerHTML, 2 + 2 ${2 + 2}
     //   </div>
     //
     //   * `interpolate-fx` attr value is the Effect's params context; once defined, the
     //     the <div> element will have a div.interpolateFx as an element property.
     //     parameters one, two, etc. are dependent on the hook-js and how it will be called.
-    //   * `interpolate-hook-js` attr attaches hooks like watching a store, reacting to events, etc.
-    //     if no `interpolate-hook-js` is provided the interpolate-fx is assumed to be executed
+    //   * `render-hook` attr attaches hooks like watching a store, reacting to events, etc.
+    //     if no `render-hook` is provided the interpolate-fx is assumed to be executed
     //     somewhere else.
     //
     // generates an effect which, when executed would run this function:
     //   (fxParams) => {
-    //       const { target, db } = fxParams; // from <DIV interpolate-fx="{ target, db }">
+    //       const { target, db } = fxParams;
     //       try {
     //           fxParams.target.innerHTML = `this is innerHTML, 2 + 2 ${2 + 2}`;
     //       } catch(error) {
@@ -274,13 +282,24 @@ export function prepareDomEffects(domEffectsInit = {}) {
     //       }
     //   }
 
-    const { evalJS, renderFxAttrName = "render-fx", interpolateFxAttrName = "interpolate-fx", renderHookAttrName = "render-hook" } = domEffectsInit;
+    const {
+        evalJS,
+        renderFxAttrName = "render-fx", // custom renderer provided in <script> or attribute
+        populateJsonAttrName = "populate-json-fx", // no body required, populateObjectJSON renders FX result
+        interpolateFxAttrName = "interpolate-fx", // body is interpolated as template text literal
+        renderHookAttrName = "render-hook" // when to render one of the above
+    } = domEffectsInit;
+
     for (const renderElem of document.querySelectorAll(`[${renderFxAttrName}]`)) {
-        prepareDomRenderEffect(renderElem, {
-            evalJS, fxDestructureArgs: renderElem.getAttribute(renderFxAttrName),
-            renderJsSrcCodeSupplier: (elem) => {
-                // use entire element HTML as executable JS code
-                return elem.innerHTML;
+        prepareHookableDomRenderEffect(renderElem, {
+            evalJS,
+            renderJS: (elem) => {
+                // if a <script type="render-fx"> is available, use it otherwise
+                // use render-fx="({ target, result }) => target.innerHTML = 'something'" attribute
+                // if no <script> or render-fx attr available, use the entire body as a script
+                const scriptElem = elem.querySelector('script[type="render-fx"]');
+                const attrValue = renderElem.getAttribute(renderFxAttrName);
+                return scriptElem ? scriptElem.innerText : (attrValue ? attrValue : elem.innerHTML);
             },
             renderHookJsCodeSupplier: (elem) => {
                 return elem.getAttribute(renderHookAttrName);
@@ -288,10 +307,27 @@ export function prepareDomEffects(domEffectsInit = {}) {
         });
     }
 
-    for (const interpElem of document.querySelectorAll(`[${interpolateFxAttrName}]`)) {
-        prepareDomRenderEffect(interpElem, {
-            evalJS, fxDestructureArgs: interpElem.getAttribute(interpolateFxAttrName),
-            renderJsSrcCodeSupplier: (elem) => {
+    for (const renderElem of document.querySelectorAll(`[${populateJsonAttrName}]`)) {
+        prepareHookableDomRenderEffect(renderElem, {
+            evalJS,
+            render: ({ result, target }) => {
+                const attrValue = renderElem.getAttribute(populateJsonAttrName);
+                if (!attrValue || attrValue != "append") {
+                    target.innerHTML = '';
+                }
+                populateObjectJSON(result, target, 2)
+            },
+            renderHookJsCodeSupplier: (elem) => {
+                return elem.getAttribute(renderHookAttrName);
+            },
+        });
+    }
+
+    for (const renderElem of document.querySelectorAll(`[${interpolateFxAttrName}]`)) {
+        prepareHookableDomRenderEffect(renderElem, {
+            evalJS,
+            renderJsDestructureArgs: renderElem.getAttribute(interpolateFxAttrName),
+            renderJsBodyCodeSupplier: (elem) => {
                 // use the entire element HTML as template literal string to interpolate
                 return `fxParams.target.innerHTML = \`${elem.innerHTML}\``;
             },
