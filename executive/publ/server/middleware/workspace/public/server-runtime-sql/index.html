@@ -62,7 +62,7 @@
     <div>
         <textarea rows="3" cols="50" name="SQL" id="SQL"></textarea>
         <!-- see path.prepareDomEffectsActivation for interpolate-fx attr -->
-        <div interpolate-fx="{ db }" interpolate-hook="({ target }) => $selectedDatabase.watch(target.interpolateFx)"
+        <div interpolate-fx="{ db }" render-hook="({ target }) => $selectedDatabase.watch(target.renderFx)"
             style="font-size:small; color: silver">
             Use <code>ctrl+space</code> to autocomplete ${db?.tables?.length ?? 0} tables and their
             columns in <code style="color:#889988">${db?.identity}</code> database.

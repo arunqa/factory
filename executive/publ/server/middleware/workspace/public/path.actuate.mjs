@@ -184,12 +184,69 @@ export const jsEvalFailureHTML = (evaluatedJS, error, location, context) => {
     return `Unable to evaluate <code><mark>${evaluatedJS}</mark></code>: <code><mark style="background-color:#FFF2F2">${error}</mark></code> in <code>${location}</code>`;
 }
 
-export function prepareDomEffects(domEffectsInit = {}) {
-    const jsEvalFailureHTML = ({ evaluatedJS, error, location = "activatePage.watch", context }) => {
+export function prepareDomRenderEffect(elem, options) {
+    const defaulJsEvalFailureHTML = ({ evaluatedJS, error, location = "prepareDomRenderEffect", context }) => {
         console.error(`Unable to evaluate ${evaluatedJS} in ${location}`, error, context);
         return `Unable to evaluate <code><mark>${evaluatedJS}</mark></code>: <code><mark style="background-color:#FFF2F2">${error}</mark></code> in <code>${location}</code>`;
     }
+    const {
+        renderJsSrcCodeSupplier = (elem) => elem.innerHTML,
+        evalJS = eval, // pass in context-aware eval if desired
+        fxDestructureArgs = "", // provide "local variables" support for elem.renderJsCode eval context
+        renderHookJsCodeSupplier,
+        jsEvalFailureHTML = defaulJsEvalFailureHTML,
+    } = options ?? {};
 
+    // renderJsCode is the main JS code that will be evaluated
+    elem.renderJsCode = renderJsSrcCodeSupplier(elem, options);
+    let evaluatedJS = `
+            (fxParams) => {
+                // fxParams is what's passed via elem.renderFx.watch(): target, jsEvalFailureHTML, etc.
+                ${fxDestructureArgs && fxDestructureArgs.trim().length > 0 ? `const ${fxDestructureArgs} = fxParams;` : ''}
+                try {
+                    ${elem.renderJsCode ?? "// no elem.renderJsCode available via renderJsSrcCodeSupplier(elem, options)"}
+                } catch(error) {
+                    fxParams.target.innerHTML = fxParams.jsEvalFailureHTML({
+                        evaluatedJS: fxParams.target.renderJsCode, error,
+                        location: fxParams.jsEvalFailureLocation, context: fxParams
+                    });
+                }
+            }`;
+    try {
+        // if evalJS is supplied by caller, evaluate the JS in that context otherwise
+        // it will be evaluated in this script's context
+        elem.render = evalJS(evaluatedJS, elem, options);
+        elem.renderFx = pageDomain.createEffect((params) => elem.render({
+            ...params,
+            target: elem,
+            jsEvalFailureLocation: evaluatedJS,
+            jsEvalFailureHTML
+        }));
+
+        // now that the effect is setup, see if the element wants to hook anything
+        if (renderHookJsCodeSupplier) {
+            // we reuse evaluatedJS name so that if exception occurs, we use the new code
+            // evaluatedJS should be JS code which returns a function accepting a single
+            // object which will have a 'target' property, like:
+            //    ({ target }) => $store.watch(target.renderFx)
+            evaluatedJS = renderHookJsCodeSupplier(elem, options);
+            elem.renderHook = evalJS(evaluatedJS, elem, { ...options, isRenderHookEvalJS: true });
+            elem.renderHook({ target: elem, jsEvalFailureHTML, jsEvalFailureLocation: evaluatedJS });
+        }
+    } catch (error) {
+        elem.innerHTML = jsEvalFailureHTML({
+            evaluatedJS, error,
+            location: `prepareDomRenderEffect[${elem.tagName}]`,
+            context: { elem, options }
+        });
+    }
+
+    if (elem.hasAttribute("diagnose")) {
+        console.log(`prepareDomRenderEffect diagnose`, { elem, options });
+    }
+}
+
+export function prepareDomEffects(domEffectsInit = {}) {
     // * `interpolate-fx` creates an Effector Effect that will modify HTML when called;
     // example:
     //
@@ -217,55 +274,31 @@ export function prepareDomEffects(domEffectsInit = {}) {
     //       }
     //   }
 
-    const { evalJS = eval, interpolateFxAttrName = "interpolate-fx", interpolateHookAttrName = "interpolate-hook" } = domEffectsInit;
+    const { evalJS, renderFxAttrName = "render-fx", interpolateFxAttrName = "interpolate-fx", renderHookAttrName = "render-hook" } = domEffectsInit;
+    for (const renderElem of document.querySelectorAll(`[${renderFxAttrName}]`)) {
+        prepareDomRenderEffect(renderElem, {
+            evalJS, fxDestructureArgs: renderElem.getAttribute(renderFxAttrName),
+            renderJsSrcCodeSupplier: (elem) => {
+                // use entire element HTML as executable JS code
+                return elem.innerHTML;
+            },
+            renderHookJsCodeSupplier: (elem) => {
+                return elem.getAttribute(renderHookAttrName);
+            },
+        });
+    }
+
     for (const interpElem of document.querySelectorAll(`[${interpolateFxAttrName}]`)) {
-        const fxDestructureArgs = interpElem.getAttribute(interpolateFxAttrName);
-        interpElem.interpolationTemplate = interpElem.innerHTML;
-        let evaluatedJS = `
-                (fxParams) => {
-                    const ${fxDestructureArgs && fxDestructureArgs.trim().length > 0 ? `${fxDestructureArgs} = fxParams; // from <${interpElem.tagName} ${interpolateFxAttrName}="${fxDestructureArgs}">` : ''}
-                    try {
-                        fxParams.target.innerHTML = \`${interpElem.interpolationTemplate}\`;
-                    } catch(error) {
-                        fxParams.jsEvalFailureHTML({
-                            evaluatedJS: fxParams.target.interpolationTemplate, error,
-                            location: fxParams.jsEvalFailureLocation, context: fxParams
-                        });
-                    }
-                }`;
-        try {
-            // if evalJS is supplied by caller, evaluate the JS in that context otherwise
-            // it will be evaluated in this script's context
-            interpElem.interpolateInnerHtml = evalJS(evaluatedJS);
-            interpElem.interpolateFx = pageDomain.createEffect();
-            interpElem.interpolateFx.watch((params) => interpElem.interpolateInnerHtml({
-                ...params,
-                target: interpElem,
-                jsEvalFailureLocation: evaluatedJS,
-                jsEvalFailureHTML
-            }));
-
-            // now that the effect is setup, see if the element wants to hook anything
-            if (interpolateHookAttrName) {
-                // we reuse evaluatedJS name so that if exception occurs, we use the new code
-                // evaluatedJS should be JS code which returns a function accepting a single
-                // object which will have a 'target' property, like:
-                //    ({ target }) => $store.watch(target.interpolateFx)
-                evaluatedJS = interpElem.getAttribute(interpolateHookAttrName);
-                interpElem.interpolateHook = evalJS(evaluatedJS);
-                interpElem.interpolateHook({ target: interpElem, jsEvalFailureHTML, jsEvalFailureLocation: evaluatedJS });
-            }
-        } catch (error) {
-            interpElem.innerHTML = jsEvalFailureHTML({
-                evaluatedJS, error,
-                location: `prepareDomEffects[${interpolateFxAttrName}]`,
-                context: { interpElem, domEffectsInit }
-            });
-        }
-
-        if (interpElem.hasAttribute("diagnose")) {
-            console.log(`${interpolateFxAttrName} diagnose`, { interpElem });
-        }
+        prepareDomRenderEffect(interpElem, {
+            evalJS, fxDestructureArgs: interpElem.getAttribute(interpolateFxAttrName),
+            renderJsSrcCodeSupplier: (elem) => {
+                // use the entire element HTML as template literal string to interpolate
+                return `fxParams.target.innerHTML = \`${elem.innerHTML}\``;
+            },
+            renderHookJsCodeSupplier: (elem) => {
+                return elem.getAttribute(renderHookAttrName);
+            },
+        });
     }
 }
 

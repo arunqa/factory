@@ -13,8 +13,8 @@
     <details class="explore" open>
         <summary>Resource Layout ("renderer")</summary>
         <!-- see path.prepareDomEffectsActivation for interpolate-fx attr -->
-        <ul interpolate-fx="{ designSystem: ds }"
-            interpolate-hook="({ target }) => path.activatePage.watch(target.interpolateFx)">
+        <ul interpolate-fx="{ designSystem: ds }" render-hook="({ target }) => path.activatePage.watch(target.renderFx)"
+            diagnose>
             <li>This page is rendered using <b>${ds.layout.name}</b> (${ds.layout.symbol}) layout
                 located at ${path.editableFileRefHTML(ds.layout.src, 5)}.</li>
             <li>This publication uses the <b>${ds.identity}</b> design system located at
@@ -24,7 +24,11 @@
 
     <details class="explore" open>
         <summary>Design System</summary>
-        <div data-populate-fetched-json-url="/unsafe-server-runtime-proxy/module/design-system.js.json"></div>
+        <!-- <div data-populate-fetched-json-url="/unsafe-server-runtime-proxy/module/design-system.js.json"></div> -->
+        <div render-fx="{ target, result }"
+            render-hook="({ target }) => designSystemFetchFx.done.watch(target.renderFx)" diagnose>
+            path.populateObjectJSON(result, target, 2)
+        </div>
     </details>
 
     <details class="explore" open>
@@ -42,11 +46,6 @@
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
 
-            // check all the DOM elements to see if any events, stores, or effects
-            // want to "hook" into the Effector instances; assume all domEffects'
-            // eval()'s are done in this visiblity context
-            path.prepareDomEffects({ evalJS: (js) => eval(js) });
-
             const designSystemFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
                 ...path.fetchFxInitServerSideSrc("/unsafe-server-runtime-proxy/module/design-system.js.json", `
                     // this code will be run on the server side and the return value be JSON;
@@ -56,6 +55,11 @@
                 `),
                 ...params
             })));
+
+            // check all the DOM elements to see if any events, stores, or effects
+            // want to "hook" into the Effector instances; assume all domEffects'
+            // eval()'s are done in this visiblity context
+            path.prepareDomEffects({ evalJS: (js) => eval(js) });
 
             const designSystemLayoutsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
                 ...path.fetchFxInitServerSideSrc("/unsafe-server-runtime-proxy/module/design-system-layouts.js.json", `
