@@ -12,15 +12,13 @@
 <body>
     <details class="explore" open>
         <summary>Resource Layout ("renderer")</summary>
-        <ul>
-            <li>This page is rendered using
-                <b><span data-populate-design-system-expr="`${layout.name} (${layout.symbol})`"></span></b> layout
-                located at <span data-populate-design-system-expr="path.editableFileRefHTML(layout.src, 5)"></span>.
-            </li>
-            <li>This publication uses the
-                <b><span data-populate-design-system-expr="ds.identity"></span></b> design system
-                located at <span data-populate-design-system-expr="path.locationEditorHTML(ds.location, 5)"></span>.
-            </li>
+        <!-- see path.prepareDomEffectsActivation for interpolate-fx attr -->
+        <ul interpolate-fx="{ designSystem: ds }"
+            interpolate-hook="({ target }) => path.activatePage.watch(target.interpolateFx)">
+            <li>This page is rendered using <b>${ds.layout.name}</b> (${ds.layout.symbol}) layout
+                located at ${path.editableFileRefHTML(ds.layout.src, 5)}.</li>
+            <li>This publication uses the <b>${ds.identity}</b> design system located at
+                ${path.locationEditorHTML(ds.location, 5)}.</li>
         </ul>
     </details>
 
@@ -44,6 +42,11 @@
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
 
+            // check all the DOM elements to see if any events, stores, or effects
+            // want to "hook" into the Effector instances; assume all domEffects'
+            // eval()'s are done in this visiblity context
+            path.prepareDomEffects({ evalJS: (js) => eval(js) });
+
             const designSystemFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
                 ...path.fetchFxInitServerSideSrc("/unsafe-server-runtime-proxy/module/design-system.js.json", `
                     // this code will be run on the server side and the return value be JSON;
@@ -64,23 +67,6 @@
                 `),
                 ...params
             })));
-
-            path.activatePage.watch(clientLayout => {
-                const { designSystem: ds } = clientLayout.originCtx;
-                const { layout } = ds;
-                for (const elem of document.querySelectorAll(`[data-populate-design-system-expr]`)) {
-                    // usage examples:
-                    //   <span data-populate-design-system-expr="ds.identity"></span>
-                    //   <span data-populate-design-system-expr="`${layout.name} (${layout.symbol})`"></span>
-                    //   <span data-populate-design-system-expr="path.editableFileRefHTML(layout.src, 5)"></span>
-                    const evalExpr = elem.dataset.populateDesignSystemExpr;
-                    try {
-                        elem.innerHTML = eval(evalExpr);
-                    } catch (error) {
-                        elem.innerHTML = path.jsEvalFailureHTML(evalExpr, error, 'activatePage.watch(data-populate-design-system-expr)', { layout, designSystem, clientLayout });
-                    }
-                }
-            });
 
             const renderersGridElem = document.querySelector('#renderersGrid');
             if (renderersGridElem) {
