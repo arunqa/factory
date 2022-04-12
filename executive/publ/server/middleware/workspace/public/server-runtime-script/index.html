@@ -68,9 +68,6 @@
         import * as deps from "./deps.auto.js";
         import * as agG from "../aggrid.mjs";
 
-        // automatically inject navbars and other site-wide elements
-        path.activateSite();
-
         document.addEventListener('DOMContentLoaded', function () {
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
@@ -268,9 +265,10 @@
                 }
             });
 
+            path.activatePageFx.done.watch(() => populateServerRuntimeScript({ srScript: scriptsInventory.defaultScript }));
+
             // all listeners are ready so let's activate the page and trigger the watchers;
-            path.activatePage(path.inspectableClientLayout());
-            populateServerRuntimeScript({ srScript: scriptsInventory.defaultScript });
+            path.activatePageFx();
         });
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>

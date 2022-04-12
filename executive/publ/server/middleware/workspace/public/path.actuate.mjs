@@ -119,13 +119,50 @@ export function fetchFxInitAlaSqlProxyDQL(SQL, fetchFxSqlID, resultNature) {
 }
 
 // prepare effects, events and stores that can be used for site management;
-// at a minimum, every page in the site should have this default Javascript:
-//   document.addEventListener('DOMContentLoaded', () => activatePage(inspectableClientLayout()));
-// assume that activatePage will be call after all content is loaded and that
-// the "inspectable clientLayout" is available.
 export const siteDomain = createDomain("project");
 export const pageDomain = createDomain("page");
-export const activatePage = siteDomain.createEvent();
+
+// This is the default activePage effect which just sets up the basic site
+// infrastructure. If no special setup is required, use:
+//
+//   document.addEventListener('DOMContentLoaded', activatePageFx);
+//
+// If you need special setup, use:
+//
+//   document.addEventListener('DOMContentLoaded', () => {
+//     -- create events, stores, etc. needed by activatePageFx.done.watch()
+//     activatePageFx();
+//   });
+//
+export const activatePageFx = siteDomain.createEffect(async (params) => {
+    const {
+        autoActivateSite = true,
+        onBeforeActivate, // in case something should be done before activation
+    } = params ?? {};
+
+    const activateFxResult = {
+        inspectableRFUL: inspectableClientLayout()
+    };
+
+    if (typeof autoActivateSite == "boolean" && autoActivateSite) {
+        activateSite(activateFxResult);
+    }
+
+    // it's best for onBeforeActivate to be an Effector effect but it can be
+    // any async function; page will not active until onBeforeActivate
+    // concludes and all triggers attached to it fire.
+    if (onBeforeActivate) await onBeforeActivate(activateFxResult);
+
+    // When page activation is completed, this can be used to do any further setup:
+    //    activatePageFx.done.watch(({ result: { inspectableRFUL } }) => {
+    //      console.log('done initializing', inspectableRFUL);
+    //    });
+    return activateFxResult;
+});
+
+activatePageFx.fail.watch((failedFxArgs) => {
+    console.error('activatePageFx.fail.watch', { failedFxArgs });
+});
 
 window.addEventListener(sb.fetchFxFailEventName, (event) => {
     console.error(sb.fetchFxFailEventName, { event });
@@ -197,7 +234,7 @@ export function watchPageFetchServerRuntimeScriptJsonFxDone(watchSrScriptSupplie
         }
     });
     if (launchableFxParams && launchableFxParams.autoActivate) {
-        activatePage.watch(() => {
+        activatePageFx.done.watch(() => {
             pageFetchServerRuntimeScriptJsonFx(launchableFxParams);
         });
     }
@@ -296,7 +333,7 @@ export function prepareDomEffects(domEffectsInit = {}) {
 
     const typicalRenderHook = (renderElem) => {
         if (renderElem.hasAttribute(renderHookActivatePageAttrName)) {
-            return ({ target }) => activatePage.watch(target.renderFx);
+            return ({ target }) => activatePageFx.done.watch(target.renderFx);
         }
         return undefined;
     }
@@ -449,7 +486,8 @@ export const activateFooter = () => {
 /**
  * Activate all site-wide functionality such as navigation. We use as much
  * modern HTML5, "vanilla" HTML, and as little JS as possible. When JS is needed
- * use Effector for state management and async effect.
+ * use Effector for state management and async effect. By default this function
+ * is called by activePageFx before any other activation/actuation is performed.
  * UI guide: https://www.w3schools.com/howto/
  */
 export const activateSite = () => {
@@ -485,16 +523,15 @@ export const activateSite = () => {
         }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        activateFooter();
-        // see https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon
-        // and https://css-tricks.com/send-an-http-request-on-page-exit/
-        document.addEventListener('visibilitychange', function logData() {
-            if (document.visibilityState === 'hidden') {
-                //TODO: [ ] add /server/beacon to record telemetry in database
-                navigator.sendBeacon('/server/beacon', "TODO");
-            }
-        });
+    activateFooter();
+
+    // see https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon
+    // and https://css-tricks.com/send-an-http-request-on-page-exit/
+    document.addEventListener('visibilitychange', function logData() {
+        if (document.visibilityState === 'hidden') {
+            //TODO: [ ] add /server/beacon to record telemetry in database
+            navigator.sendBeacon('/server/beacon', "TODO");
+        }
     });
 }
 

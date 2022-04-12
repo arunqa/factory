@@ -316,16 +316,14 @@
     <script type="module">
         import * as path from "../path.actuate.mjs";
 
-        // automatically inject navbars and other site-wide elements
-        path.activateSite();
-
         document.addEventListener('DOMContentLoaded', function () {
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
 
+            path.activatePageFx.done.watch(() => path.transformContentFx());
+
             // all listeners are ready so let's activate the page and trigger the watchers
-            path.activatePage(path.inspectableClientLayout());
-            path.transformContentFx(); // transform markdown to HTML
+            path.activatePageFx();
         });
     </script>
 </body>

@@ -66,6 +66,8 @@
             style="font-size:small; color: silver">
             Use <code>ctrl+space</code> to autocomplete ${db?.tables?.length ?? 0} tables and their
             columns in <code style="color:#889988">${db?.identity}</code> database.
+            Unless <code>pubctl</code> database is selected, uses <a href="http://alasql.org/">AlaSQL</a>
+            SQL syntax. If <code>pubctl</code> is chosen, the SQL is passed to SQLite.
         </div>
     </div>
 
@@ -85,9 +87,6 @@
         import * as deps from "./deps.auto.js";
         import * as agG from "../aggrid.mjs";
 
-        // automatically inject navbars and other site-wide elements
-        path.activateSite();
-
         document.addEventListener('DOMContentLoaded', function () {
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
@@ -96,7 +95,7 @@
             const sqlStmtInventorySource = sqlStmtsInventory.origin.moduleImportMetaURL.replace("file://", "");
 
             const editSqlStmtInventorySourceElem = document.getElementById("editSqlStmtInventorySource");
-            editSqlStmtInventorySourceElem.href = `/workspace/editor-redirect${sqlStmtInventorySource}`;
+            editSqlStmtInventorySourceElem.href = `/workspace/editor-redirect/abs${sqlStmtInventorySource}`;
             editSqlStmtInventorySourceElem.title = `Open /workspace/editor-redirect${sqlStmtInventorySource} in IDE`;
 
             const dbSelectElem = document.getElementById("database");
@@ -333,7 +332,7 @@
             });
 
             // all listeners are ready so let's activate the page and trigger the watchers;
-            path.activatePage(path.inspectableClientLayout());
+            path.activatePageFx();
         });
     </script>
 </body>

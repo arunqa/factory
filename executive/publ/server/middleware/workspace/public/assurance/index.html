@@ -41,12 +41,9 @@
     <script type="module">
         import * as path from "../path.actuate.mjs";
 
-        // automatically inject navbars and other site-wide elements
-        path.activateSite();
-
         document.addEventListener('DOMContentLoaded', function () {
-            // all listeners are ready so let's activate the page and trigger the watchers
-            path.activatePage(path.inspectableClientLayout());
+            // all listeners are ready so let's activate the page and trigger the watchers;
+            path.activatePageFx();
         });
     </script>
 </body>

@@ -13,9 +13,12 @@
     <details class="explore">
         <summary>Client-side RF Layout</summary>
         <p>
-            <code>rfUniversalLayout</code> (exposed as <code>clientLayout</code> and often referred to colloquially
-            as "client cargo") provides a unified browser-side global Javascript object that holds server-side data
-            useful for the page when it's served to a user agent ("UA" or "client").
+            <code>rfUniversalLayout</code> (exposed as <code>clientLayout</code> in the target build site / publication.
+            It is often referred to colloquially as "client cargo" container and provides a unified browser-side global
+            Javascript object that holds server-side data useful for the page when it's served to a user agent ("UA" or
+            "client"). Within the Resource Factory Explorer (<code>RFE</code>) the <em>inspectable</em>
+            <code>rfUniversalLayout</code> is referred to as <code>inspectableRFUL</code> and is available as part of
+            <code>activatePageFx.done.watch(({{ result: { inspectableRFUL } }}) => ...)</code>.
         </p>
         <p>
             Since RF strives to generate all HTML on the server side
@@ -30,14 +33,14 @@
             You can try out the <code>window.clientLayout</code> in your browser's console. Here's the current RF page's
             clientLayout value:</p>
 
-        <div render-fx="(clientLayout) => path.populateObjectJSON(clientLayout, clientLayout.target)"
+        <div render-fx="({ target, result: { inspectableRFUL } }) => path.populateObjectJSON(inspectableRFUL, target)"
             render-hook-activate-page></div>
     </details>
 
     <details class="explore" open>
         <summary>Server-side RF Layout ("renderer")</summary>
         <!-- see path.prepareDomEffectsActivation for interpolate-fx attr -->
-        <ul interpolate-fx="{ designSystem: ds }" render-hook-activate-page>
+        <ul interpolate-fx="{ result: { inspectableRFUL: { designSystem: ds } } }" render-hook-activate-page>
             <li>This page is rendered using <b>${ds.layout.name}</b> (${ds.layout.symbol}) layout
                 located at ${path.editableFileRefHTML(ds.layout.src, 5)}.</li>
             <li>This publication uses the <b>${ds.identity}</b> design system located at
@@ -61,9 +64,6 @@
         import * as path from "../path.actuate.mjs";
         import * as srScriptDeps from "../server-runtime-script/deps.auto.js";
         import * as agG from "../aggrid.mjs";
-
-        // automatically inject navbars and other site-wide elements
-        path.activateSite();
 
         document.addEventListener('DOMContentLoaded', function () {
             // setup events, stores, and effects listeners so that we can be
@@ -95,8 +95,8 @@
                 });
             }
 
-            // all listeners are ready so let's activate the page and trigger the watchers;
-            path.activatePage(path.inspectableClientLayout());
+            // all listeners are ready so let's activate the page and trigger the watchers
+            path.activatePageFx();
         });
     </script>
 </body>

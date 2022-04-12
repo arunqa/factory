@@ -11,7 +11,7 @@
 <body>
     <p style="font-weight: bolder;">
         <code class="rf-resource-inspectable-active">
-            <span render-fx="(clientLayout) => clientLayout.target.innerHTML = path.editableClientLayoutTarget()?.fileName"
+            <span render-fx="({ target }) => target.innerHTML = path.editableClientLayoutTarget()?.fileName"
                 render-hook-activate-page>
             </span>
         </code>
@@ -22,7 +22,7 @@
         <summary>Frontmatter</summary>
         <p><em>Frontmatter</em> is an <em>untyped</em> dictionary of key/value pairs that can hold arbitrary page
             properties.</p>
-        <div render-fx="(clientLayout) => path.populateObjectJSON(clientLayout.frontmatter, clientLayout.target)"
+        <div render-fx="({ target, result: { inspectableRFUL } }) => path.populateObjectJSON(inspectableRFUL.frontmatter, target)"
             render-hook-activate-page></div>
     </details>
 
@@ -34,9 +34,6 @@
         import * as path from "../path.actuate.mjs";
         import * as srScriptDeps from "../server-runtime-script/deps.auto.js";
         import * as agG from "../aggrid.mjs";
-
-        // automatically inject navbars and other site-wide elements
-        path.activateSite();
 
         document.addEventListener('DOMContentLoaded', function () {
             // setup events, stores, and effects listeners so that we can be
@@ -53,8 +50,8 @@
             // eval()'s are done in this visiblity context
             path.prepareDomEffects({ evalJS: (js) => eval(js) });
 
-            // all listeners are ready so let's activate the page and trigger the watchers;
-            path.activatePage(path.inspectableClientLayout());
+            // all listeners are ready so let's activate the page and trigger the watchers
+            path.activatePageFx();
         });
     </script>
 </body>
