@@ -12,18 +12,7 @@
     <!-- setting open because onSqlResult script will fail otherwise -->
     <details class="explore" open>
         <summary>Publication</summary>
-        <div>
-            <script type="SQL" onSqlResult="populateObjectJSON(result[0], self)">
-                SELECT operationalCtx->projectRootPath("/", true) as projectHome,
-                       operationalCtx->projectRootPath("/.envrc", true) as ".envrc"
-                  FROM config.prime
-            </script>
-        </div>
-    </details>
-
-    <details class="explore">
-        <summary>Client Layout</summary>
-        <div data-populate-activate-page-watch-json="clientLayout"></div>
+        <div populate-json-fx render-hook="srScriptRenderHook('typicalScripts_config_project.js.json')"></div>
     </details>
 
     <details class="explore" open>
@@ -31,12 +20,14 @@
 
         <details class="explore" open>
             <summary>Terminal Unit</summary>
-            <div data-populate-activate-page-watch-json="clientLayout.route.terminal"></div>
+            <div render-fx="(clientLayout) => path.populateObjectJSON(clientLayout.route.terminal, clientLayout.target)"
+                render-hook="({ target }) => path.activatePage.watch(target.renderFx)"></div>
         </details>
 
         <details class="explore">
             <summary>Route</summary>
-            <div data-populate-activate-page-watch-json="clientLayout.route"></div>
+            <div render-fx="(clientLayout) => path.populateObjectJSON(clientLayout.route, clientLayout.target)"
+                render-hook="({ target }) => path.activatePage.watch(target.renderFx)"></div>
         </details>
     </details>
 
@@ -48,13 +39,10 @@
         <summary><code>publication.routes.resourcesTree<b>.items</b></code></summary>
     </details>
 
-    <details class="explore">
-        <summary><code>publication.routes</code></summary>
-        <div data-populate-fetched-json-url="/unsafe-server-runtime-proxy/module/publication-routes.js.json"></div>
-    </details>
-
     <script type="module">
         import * as path from "../path.actuate.mjs";
+        import * as srScriptDeps from "../server-runtime-script/deps.auto.js";
+        import * as agG from "../aggrid.mjs";
 
         // automatically inject navbars and other site-wide elements
         path.activateSite();
@@ -63,19 +51,16 @@
             // setup events, stores, and effects listeners so that we can be
             // as decoupled from business logic as possible
 
-            const navTreeItemsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                ...path.fetchFxInitServerSideSrc(
-                    "/unsafe-server-runtime-proxy/module/routes/navigation-tree-items.js.json",
-                    `export default ({ publication }) => publication.routes.navigationTree.items`),
-                ...params
-            })));
+            const scriptsInventory = srScriptDeps.typicalScriptsInventory();
+            window.srScriptRenderHook = (scriptID) => {
+                const srScript = scriptsInventory.script(scriptID);
+                return ({ target }) => path.watchPageFetchServerRuntimeScriptJsonFxDone({ srScript, autoActivate: true }, target.renderFx);
+            }
 
-            const allResourcesTreeItemsFetchFx = path.pageAutoEffect(path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                ...path.fetchFxInitServerSideSrc(
-                    "/unsafe-server-runtime-proxy/module/routes/resources-tree-items.js.json",
-                    `export default ({ publication }) => publication.routes.resourcesTree.items`),
-                ...params
-            })));
+            // check all the DOM elements to see if any events, stores, or effects
+            // want to "hook" into the Effector instances; assume all domEffects'
+            // eval()'s are done in this visiblity context
+            path.prepareDomEffects({ evalJS: (js) => eval(js) });
 
             const populateTreeNodes = (treeContainer, items) => {
                 items.sort((a, b) => (a.label > b.label) ? 1 : -1).forEach(i => {
@@ -99,7 +84,10 @@
                 });
             };
 
-            navTreeItemsFetchFx.done.watch(({ params, result: items }) => {
+            path.watchPageFetchServerRuntimeScriptJsonFxDone({
+                srScript: scriptsInventory.script('typicalScripts_routes_navigation-tree-items.js.json'),
+                autoActivate: true
+            }, ({ params, result: items }) => {
                 const elem = document.querySelector("#ui-navigation-tree");
                 if (!elem.dataset.isPopulated) {
                     elem.dataset.isPopulated = "yes";
@@ -107,7 +95,10 @@
                 }
             });
 
-            allResourcesTreeItemsFetchFx.done.watch(({ params, result: items }) => {
+            path.watchPageFetchServerRuntimeScriptJsonFxDone({
+                srScript: scriptsInventory.script('typicalScripts_routes_resources-tree-items.js.json'),
+                autoActivate: true
+            }, ({ params, result: items }) => {
                 const elem = document.querySelector("#all-resources-tree");
                 if (!elem.dataset.isPopulated) {
                     elem.dataset.isPopulated = "yes";
@@ -115,17 +106,9 @@
                 }
             });
 
-            document.addEventListener("transformed-markdown", (event) => {
-                // The parent is assumed to be a <details> tag, which was was
-                // open by default. For some reason if <details> is not open
-                // Markdown-it rendering will fail so now we want to close it.
-                event.detail.mdHtmlElem.parentElement.open = false;
-            });
-
             // all listeners are ready so let's activate the page and trigger the watchers;
             // (this will run all the path.pageAutoEffect() registrations)
             path.activatePage(path.inspectableClientLayout());
-            path.transformContentFx(); // transform markdown to HTML
         });
     </script>
 </body>

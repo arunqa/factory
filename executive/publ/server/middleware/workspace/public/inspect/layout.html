@@ -10,8 +10,32 @@
 </head>
 
 <body>
+    <details class="explore">
+        <summary>Client-side RF Layout</summary>
+        <p>
+            <code>rfUniversalLayout</code> (exposed as <code>clientLayout</code> and often referred to colloquially
+            as "client cargo") provides a unified browser-side global Javascript object that holds server-side data
+            useful for the page when it's served to a user agent ("UA" or "client").
+        </p>
+        <p>
+            Since RF strives to generate all HTML on the server side
+            almost all page <em>layouts</em> are finished at build time so the user agent client does not
+            have access to context information such as server side routes or page origination context.
+            The <code>rfUniversalLayout</code> instance available to each page as a global
+            <code>window.clientLayout</code>
+            variable which gives you get server-side layout data on the client, giving you the ability to
+            perform UA or client side content updates, make server side API calls, etc.
+        </p>
+        <p>
+            You can try out the <code>window.clientLayout</code> in your browser's console. Here's the current RF page's
+            clientLayout value:</p>
+
+        <div render-fx="(clientLayout) => path.populateObjectJSON(clientLayout, clientLayout.target)"
+            render-hook="({ target }) => path.activatePage.watch(target.renderFx)"></div>
+    </details>
+
     <details class="explore" open>
-        <summary>Resource Layout ("renderer")</summary>
+        <summary>Server-side RF Layout ("renderer")</summary>
         <!-- see path.prepareDomEffectsActivation for interpolate-fx attr -->
         <ul interpolate-fx="{ designSystem: ds }"
             render-hook="({ target }) => path.activatePage.watch(target.renderFx)">
@@ -22,14 +46,14 @@
         </ul>
     </details>
 
-    <details class="explore" open>
+    <details class="explore">
         <summary>Design System</summary>
         <div populate-json-fx render-hook="srScriptRenderHook('typicalScripts_design-system_design-system.js.json')">
         </div>
         </div>
     </details>
 
-    <details class="explore" open>
+    <details class="explore">
         <summary>Design System Layouts ("renderers")</summary>
         <div id="renderersGrid" class="ag-theme-alpine"></div>
     </details>
