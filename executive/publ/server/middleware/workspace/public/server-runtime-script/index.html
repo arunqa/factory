@@ -125,7 +125,8 @@
                 const renderHookAttr = `render-hook="${renderHook}"`;
                 const renderHookAttrAuto = `render-hook="${renderHookAuto}"`;
                 return path.unindentWhitespace(`
-                    <pre><code class="language-html">&lt${tag} interpolate-fx="{ result }" ${renderHookAttr}>result is \${JSON.stringify(result)}&lt/${tag}>
+                    <pre><code class="language-html">&lt!-- render-hook-activate-page can be supplied where render-hook is allowed --&gt;
+                    &lt${tag} interpolate-fx="{ result }" ${renderHookAttr}>result is \${JSON.stringify(result)}&lt/${tag}>
                     &lt${tag} populate-json-fx ${renderHookAttrAuto}>&lt/${tag}>
                     &lt${tag} render-fx="({ target, result }) => target.innerHTML = 'something'" ${renderHookAttr}>&lt/${tag}>
                     &lt${tag} render-fx ${renderHookAttr}>({ target, result }) => target.innerHTML = 'something'&lt/${tag}>

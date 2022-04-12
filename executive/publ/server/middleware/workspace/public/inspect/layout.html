@@ -31,14 +31,13 @@
             clientLayout value:</p>
 
         <div render-fx="(clientLayout) => path.populateObjectJSON(clientLayout, clientLayout.target)"
-            render-hook="({ target }) => path.activatePage.watch(target.renderFx)"></div>
+            render-hook-activate-page></div>
     </details>
 
     <details class="explore" open>
         <summary>Server-side RF Layout ("renderer")</summary>
         <!-- see path.prepareDomEffectsActivation for interpolate-fx attr -->
-        <ul interpolate-fx="{ designSystem: ds }"
-            render-hook="({ target }) => path.activatePage.watch(target.renderFx)">
+        <ul interpolate-fx="{ designSystem: ds }" render-hook-activate-page>
             <li>This page is rendered using <b>${ds.layout.name}</b> (${ds.layout.symbol}) layout
                 located at ${path.editableFileRefHTML(ds.layout.src, 5)}.</li>
             <li>This publication uses the <b>${ds.identity}</b> design system located at

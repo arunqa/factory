@@ -15,22 +15,6 @@
         <div populate-json-fx render-hook="srScriptRenderHook('typicalScripts_config_project.js.json')"></div>
     </details>
 
-    <details class="explore" open>
-        <summary>Resource Route</summary>
-
-        <details class="explore" open>
-            <summary>Terminal Unit</summary>
-            <div render-fx="(clientLayout) => path.populateObjectJSON(clientLayout.route.terminal, clientLayout.target)"
-                render-hook="({ target }) => path.activatePage.watch(target.renderFx)"></div>
-        </details>
-
-        <details class="explore">
-            <summary>Route</summary>
-            <div render-fx="(clientLayout) => path.populateObjectJSON(clientLayout.route, clientLayout.target)"
-                render-hook="({ target }) => path.activatePage.watch(target.renderFx)"></div>
-        </details>
-    </details>
-
     <details id="ui-navigation-tree" class="explore" open>
         <summary><code>publication.routes.navigationTree<b>.items</b></code></summary>
     </details>

@@ -224,6 +224,7 @@ export function prepareHookableDomRenderEffect(elem, options) {
         renderJsDestructureArgs, // provide "local variables" support for elem.renderJsCode eval context
         renderJsBodyCodeSupplier, // a function which gives the JS code for the body of the renderer
         renderHookJsCodeSupplier, // a function which gives the JS code for the eval'able hook provider
+        renderHook, // if you want to override the entire render hook, supply the method
         jsEvalFailureHTML = defaulJsEvalFailureHTML,
         renderJS, // if you want to override the entire renderJS before eval, supply a string
         render, // if you want to override the entire render method (no eval required), supply a function
@@ -261,13 +262,13 @@ export function prepareHookableDomRenderEffect(elem, options) {
         }));
 
         // now that the effect is setup, see if the element wants to hook anything
-        if (renderHookJsCodeSupplier) {
+        if (renderHook || renderHookJsCodeSupplier) {
             // we reuse evaluatedJS name so that if exception occurs, we use the new code;
             // evaluatedJS should be JS code which returns a function accepting a single
             // object which will have a 'target' property, like:
             //    ({ target }) => $store.watch(target.renderFx)
-            evaluatedJS = renderHookJsCodeSupplier(elem, options);
-            elem.renderHook = evalJS(evaluatedJS, elem, { ...options, isRenderHookEvalJS: true });
+            if (renderHookJsCodeSupplier) evaluatedJS = renderHookJsCodeSupplier(elem, options);
+            elem.renderHook = renderHook ?? evalJS(evaluatedJS, elem, { ...options, isRenderHookEvalJS: true });
             elem.renderHook({ target: elem, jsEvalFailureHTML, jsEvalFailureLocation: evaluatedJS });
         }
     } catch (error) {
@@ -284,40 +285,21 @@ export function prepareHookableDomRenderEffect(elem, options) {
 }
 
 export function prepareDomEffects(domEffectsInit = {}) {
-    // * `interpolate-fx` creates an Effector Effect that will modify HTML when called;
-    // example:
-    //
-    //   <div interpolate-fx="{ one, two }" render-hook="({ target }) => $store.watch(target.interpolateFx)"
-    //      this is innerHTML, 2 + 2 ${2 + 2}
-    //   </div>
-    //
-    //   * `interpolate-fx` attr value is the Effect's params context; once defined, the
-    //     the <div> element will have a div.interpolateFx as an element property.
-    //     parameters one, two, etc. are dependent on the hook-js and how it will be called.
-    //   * `render-hook` attr attaches hooks like watching a store, reacting to events, etc.
-    //     if no `render-hook` is provided the interpolate-fx is assumed to be executed
-    //     somewhere else.
-    //
-    // generates an effect which, when executed would run this function:
-    //   (fxParams) => {
-    //       const { target, db } = fxParams;
-    //       try {
-    //           fxParams.target.innerHTML = `this is innerHTML, 2 + 2 ${2 + 2}`;
-    //       } catch(error) {
-    //           jsEvalFailureHTML({
-    //               evaluatedJS: fxParams.target.interpolationTemplate, error,
-    //               location: fxParams.jsEvalFailureLocation, context: params
-    //           });
-    //       }
-    //   }
-
     const {
         evalJS,
         renderFxAttrName = "render-fx", // custom renderer provided in <script> or attribute
         populateJsonAttrName = "populate-json-fx", // no body required, populateObjectJSON renders FX result
         interpolateFxAttrName = "interpolate-fx", // body is interpolated as template text literal
         renderHookAttrName = "render-hook", // when to render one of the above
+        renderHookActivatePageAttrName = "render-hook-activate-page", // special hook for page activation
     } = domEffectsInit;
+
+    const typicalRenderHook = (renderElem) => {
+        if (renderElem.hasAttribute(renderHookActivatePageAttrName)) {
+            return ({ target }) => activatePage.watch(target.renderFx);
+        }
+        return undefined;
+    }
 
     for (const renderElem of document.querySelectorAll(`[${renderFxAttrName}]`)) {
         prepareHookableDomRenderEffect(renderElem, {
@@ -333,6 +315,7 @@ export function prepareDomEffects(domEffectsInit = {}) {
             renderHookJsCodeSupplier: (elem) => {
                 return elem.getAttribute(renderHookAttrName);
             },
+            renderHook: typicalRenderHook(renderElem)
         });
     }
 
@@ -349,6 +332,7 @@ export function prepareDomEffects(domEffectsInit = {}) {
             renderHookJsCodeSupplier: (elem) => {
                 return elem.getAttribute(renderHookAttrName);
             },
+            renderHook: typicalRenderHook(renderElem)
         });
     }
 
@@ -363,82 +347,24 @@ export function prepareDomEffects(domEffectsInit = {}) {
             renderHookJsCodeSupplier: (elem) => {
                 return elem.getAttribute(renderHookAttrName);
             },
+            renderHook: typicalRenderHook(renderElem)
         });
     }
 }
-
-// find any fetchable JSON placeholders and fill them in
-activatePage.watch((clientLayout) => {
-    const populateJSON = (elem, result, evalExpr, scope) => {
-        if (evalExpr) {
-            // if given an eval'able expression, get the expression value
-            // in this context and populate that JSON instead of full JSON
-            try {
-                populateObjectJSON(eval(evalExpr), elem);
-            } catch (error) {
-                elem.innerHTML = jsEvalFailureHTML(evalExpr, error, 'activatePage.watch.populateJSON(${scope})', { clientLayout });
-            }
-        } else {
-            // Not given an eval'able expression, populate full JSON
-            populateObjectJSON(result, elem);
-        }
-    }
-
-    // prepare event listeners for fetched URLs (client-side hydration);
-    // all page-auto-effects and sb.fetchFx calls will generate events.
-    for (const elem of document.querySelectorAll(`[data-populate-fetched-json-url]`)) {
-        // usage example:
-        //   <div data-populate-fetched-json-url="/workspace/inspect/env-vars.json"></div>
-        //   <div data-populate-fetched-json-url="/workspace/inspect/env-vars.json" data-populate-fetched-json-expr="result.something"></div>
-        const fetchURL = elem.dataset.populateFetchedJsonUrl;
-        window.addEventListener(sb.fetchFxSuccessEventName, (event) => {
-            const { fetchedValue: result, fetchFxCtx } = (event.detail ? event.detail : {});
-            if (fetchFxCtx.params.fetchURL) {
-                if (fetchFxCtx.params.fetchURL === fetchURL) {
-                    populateJSON(elem, result, elem.dataset.populateFetchedJsonExpr, "data-populate-fetched-json-url");
-                }
-            } else {
-                console.error(`activatePage.watch() => window.addEventListener(${sb.fetchFxSuccessEventName}) has no fetchURL`, event);
-            }
-        });
-        if (!isServerSideSrcFetchURL(fetchURL)) {
-            // if a fetch is not server side source code, execute it now;
-            // due to caching, pageFetchJsonFx (which uses sb.fetchFx) is
-            // idempotent and can be safely called multiple times.
-            pageFetchJsonFx({ fetchURL });
-        }
-    }
-
-    for (const elem of document.querySelectorAll(`[data-populate-activate-page-watch-json]`)) {
-        // usage examples:
-        //   <div data-populate-activate-page-watch-json="clientLayout.route"></div>
-        //   <div data-populate-activate-page-watch-json="clientLayout.route.terminal"></div>
-        const evalExpr = elem.dataset.populateActivatePageWatchJson;
-        try {
-            const result = eval(evalExpr);
-            if (result) {
-                populateObjectJSON(result, elem);
-            } else {
-                elem.innerHTML = `Unable to evaluate <code><mark>${evalExpr}</mark></code>: produced undefined result`;
-            }
-        } catch (error) {
-            elem.innerHTML = jsEvalFailureHTML(evalExpr, error, 'activatePage.watch(data-populate-activate-page-watch-json)', { clientLayout });
-        }
-    }
-});
 
 /**
  * Given a Resource Factory route-like instance, derive parts that could be used
  * to prepare an anchor, button or link that would lead to the editable resource
  * in IDEs like VS Code.
  * @param {rfGovn.Route} route RF route-like instance
- * @returns {{ src: string, href: string, narrative: string}} parts that could be used in anchors
+ * @returns {{ fileName: string, src: string, href: string, narrative: string}} parts that could be used in anchors
  */
 export const editableRouteAnchor = (route, onNotEditable) => {
     const activeResourceAbsPath = route?.terminal?.fileSysPath;
     if (activeResourceAbsPath) {
         const [redirectURL, src] = d.editableFileRedirectURL(activeResourceAbsPath);
         return {
+            fileName: route?.terminal?.fileSysPathParts?.base,
             src,
             href: redirectURL,
             narrative: `Edit ${route?.terminal?.fileSysPathParts?.base} in IDE`,
@@ -450,6 +376,7 @@ export const editableRouteAnchor = (route, onNotEditable) => {
         const lastSlash = src ? src.lastIndexOf('/') : -1;
         if (lastSlash > 0) fileName = src.substring(lastSlash + 1);
         return {
+            fileName,
             src,
             href,
             narrative: `Edit ${fileName} in IDE${origin.label ? ` (look for ${origin.label})` : ''}`,
@@ -530,27 +457,27 @@ export const activateSite = () => {
     const baseURL = "/workspace";
     const navPrime = document.createElement("nav");
     navPrime.className = "prime";
-    // <!-- --> are there in between <a> tags to allow easier readability here but render with no spacing in DOM
-    navPrime.innerHTML = `
-           <a href="#" class="highlight"><i class="fa-solid fa-file-code"></i> Edit</a><!--
-        --><a href="${baseURL}/server-runtime-sql/index.html"><i class="fa-solid fa-database"></i> SQL</a><!--
-        --><a href="${baseURL}/server-runtime-script/index.html"><i class="fa-brands fa-js-square"></i> Evaluate</a><!--
-        --><a href="${baseURL}/inspect/routes.html"><i class="fa-solid fa-route"></i> Routes</a><!--
-        --><a href="${baseURL}/inspect/layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a><!--
-        --><a href="${baseURL}/assurance/"><i class="fa-solid fa-microscope"></i> Unit Tests</a>`;
-    document.body.insertBefore(navPrime, document.body.firstChild);
 
-    const editAnchor = navPrime.querySelector("a"); // the first anchor is the Edit button
+    let contextBarHTML;
     if (isClientLayoutInspectable()) {
         const eclTarget = editableClientLayoutTarget(
             inspectableClientLayout(), (route) => ({
                 href: "#", narrative: `route not editable: ${JSON.stringify(route)}`
             }));
-        editAnchor.href = eclTarget.href;
-        editAnchor.title = eclTarget.narrative;
-    } else {
-        editAnchor.style.display = "none";
+        contextBarHTML = `<a href="${eclTarget.href}" title="${eclTarget.narrative}">Edit <code class="rf-resource-inspectable-active">${eclTarget.fileName}</code> in IDE</a>`
     }
+
+    // <!-- --> are there in between <a> tags to allow easier readability here but render with no spacing in DOM
+    navPrime.innerHTML = `
+        ${contextBarHTML ? `<div class="context">${contextBarHTML}</div>` : ''}<!--
+        --><a href="${baseURL}/inspect/route.html"><i class="fa-solid fa-route"></i> Route</a><!--
+        --><a href="${baseURL}/inspect/information-architecture.html" title="Information Architecture"><i class="fa-solid fa-circle-info"></i> IA</a><!--
+        --><a href="${baseURL}/inspect/layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a><!--
+        --><a href="${baseURL}/inspect/site.html"><i class="fa-solid fa-sitemap"></i> Site</a><!--
+        --><a href="${baseURL}/server-runtime-sql/index.html"><i class="fa-solid fa-database"></i> SQL</a><!--
+        --><a href="${baseURL}/server-runtime-script/index.html"><i class="fa-brands fa-js-square"></i> Evaluate</a><!--
+        --><a href="${baseURL}/assurance/"><i class="fa-solid fa-microscope"></i> Unit Tests</a>`;
+    document.body.insertBefore(navPrime, document.body.firstChild);
 
     for (const a of navPrime.children) {
         if (a.href == window.location) {

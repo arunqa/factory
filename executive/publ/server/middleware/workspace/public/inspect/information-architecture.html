@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../path.actuate.css">
+</head>
+
+<body>
+    <p style="font-weight: bolder;">
+        <code class="rf-resource-inspectable-active">
+            <span render-fx="(clientLayout) => clientLayout.target.innerHTML = path.editableClientLayoutTarget()?.fileName"
+                render-hook-activate-page>
+            </span>
+        </code>
+        Information Architecture
+    </p>
+
+    <details class="explore" open>
+        <summary>Frontmatter</summary>
+        <p><em>Frontmatter</em> is an <em>untyped</em> dictionary of key/value pairs that can hold arbitrary page
+            properties.</p>
+        <div render-fx="(clientLayout) => path.populateObjectJSON(clientLayout.frontmatter, clientLayout.target)"
+            render-hook-activate-page></div>
+    </details>
+
+    <details class="explore" open>
+        <summary>Model</summary>
+    </details>
+
+    <script type="module">
+        import * as path from "../path.actuate.mjs";
+        import * as srScriptDeps from "../server-runtime-script/deps.auto.js";
+        import * as agG from "../aggrid.mjs";
+
+        // automatically inject navbars and other site-wide elements
+        path.activateSite();
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // setup events, stores, and effects listeners so that we can be
+            // as decoupled from business logic as possible
+
+            const scriptsInventory = srScriptDeps.typicalScriptsInventory();
+            window.srScriptRenderHook = (scriptID) => {
+                const srScript = scriptsInventory.script(scriptID);
+                return ({ target }) => path.watchPageFetchServerRuntimeScriptJsonFxDone({ srScript, autoActivate: true }, target.renderFx);
+            }
+
+            // check all the DOM elements to see if any events, stores, or effects
+            // want to "hook" into the Effector instances; assume all domEffects'
+            // eval()'s are done in this visiblity context
+            path.prepareDomEffects({ evalJS: (js) => eval(js) });
+
+            // all listeners are ready so let's activate the page and trigger the watchers;
+            path.activatePage(path.inspectableClientLayout());
+        });
+    </script>
+</body>
+
+</html>

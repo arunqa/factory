@@ -7,7 +7,7 @@ body {
         "Fira Sans", "Droid Sans", "Helvetica Neue",
         sans-serif;
     /* because primary navigation sticks to the top of the page, give it a margin */
-    margin-top: 50px;
+    margin-top: 75px;
     /* because footer sticks to the top of the page, give it a margin */
     margin-bottom: 50px;
 }
@@ -74,12 +74,33 @@ nav.prime {
     overflow-x: auto;
 }
 
+nav.prime .context {
+    background-color: indigo;
+    color: lightyellow;
+    font-size: small;
+    padding: 5px;
+}
+
 /* Navbar links */
-nav.prime a {
+nav.prime .context a {
+    color: lightyellow;
+    text-decoration: none;
+}
+
+/* Navbar links on mouse-over */
+nav.prime .context a:hover {
+    background-color: indigo;
+}
+
+/* Navbar links */
+nav.prime:not(.context) > a {
     /* since parent is set to white-space: nowrap, display: inline-block will keep all nav items on the same line */
     display: inline-block;
     text-align: center;
-    padding: 12px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 7px;
+    padding-right: 7px;
     color: white;
     text-decoration: none;
     font-size: 9pt;
@@ -93,13 +114,6 @@ nav.prime a:hover {
 /* Current/active primary navigation link */
 nav.prime .active {
     background-color: #04AA6D;
-}
-
-/* "Special" primary navigation link (for highlighting in a menu) */
-nav.prime .highlight {
-    background-color: indigo;
-    color: lightyellow;
-    padding: 12px 18px 12px 18px;
 }
 
 /******************************************************************************
