@@ -41,7 +41,7 @@
         <summary>Server-side RF Layout ("renderer")</summary>
         <!-- see path.prepareDomEffectsActivation for interpolate-fx attr -->
         <ul interpolate-fx="{ result: { inspectableRFUL: { designSystem: ds } } }" render-hook-activate-page>
-            <li>This page is rendered using <b>${ds.layout.name}</b> (${ds.layout.symbol}) layout
+            <li>This page is rendered using <b>${ds.layout.name}</b> (<code>${ds.layout.symbol}</code>) layout
                 located at ${path.editableFileRefHTML(ds.layout.src, 5)}.</li>
             <li>This publication uses the <b>${ds.identity}</b> design system located at
                 ${path.locationEditorHTML(ds.location, 5)}.</li>
