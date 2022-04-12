@@ -140,6 +140,27 @@ export function typicalScriptsInventory(
         },
       ],
       qualifiedName: qualifiedNamePlaceholder,
+    }, {
+      name: "routes",
+      label: "Routes",
+      scripts: [
+        {
+          name: "navigation-tree-items.js.json",
+          label: "Show all navigation tree items",
+          jsModule:
+            `export default ({ publication }) => publication.routes.navigationTree.items`,
+          qualifiedName: qualifiedNamePlaceholder,
+          presentation: tableObjectProps,
+        },
+        {
+          name: "resources-tree-items.js.json",
+          label: "Show all resources in a tree",
+          jsModule:
+            `export default ({ publication }) => publication.routes.resourcesTree.items`,
+          qualifiedName: qualifiedNamePlaceholder,
+        },
+      ],
+      qualifiedName: qualifiedNamePlaceholder,
     }],
   };
 
