@@ -19,8 +19,13 @@
 // messages.
 //
 // Philosopy:
-// * Don't re-invent or re-imagine HTML, even if it's extra code just use HTML.
-// * Allow progressive rendering to stream content users as soon as it's ready.
+// * Don't re-invent or re-imagine HTML, even if it's extra code just use HTML. It's
+//   better not to create one-liners as functions unless those functions are events,
+//   effects or stores that are observable.
+// * HTML should be easy, where possible, for content authors / editors / writers.
+//   This means that the HTML should not be assumed to be targeted at developers but
+//   to a broad audience which might include non-developers (e.g. QA, editors, authors).
+// * Allow progressive rendering to stream content to users as soon as it's ready.
 //   Client side JavaScript bundles should be eliminated or async defered. Data
 //   requests should never prevent rendering (load them after first paint). HTML,
 //   assets, and images must be loaded as soon as possible with asynchronous

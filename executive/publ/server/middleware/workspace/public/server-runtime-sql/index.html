@@ -33,10 +33,21 @@
 </head>
 
 <body>
+    <details open>
+        <summary>Access site content as SQL</summary>
+        <p>
+            This page gives access to the publication / site content, information architecture and assets as SQL.
+            <a href="http://alasql.org/">AlaSQL</a> is used to act as a proxy to all publication server-side
+            content. This means whatever structures have been exposed on the server runtime to AlaSQL will be
+            available through SQL select statements.
+        </p>
+        <p>Use the <em>SQL Statements Inventory</em> to learn more about the databases, tables, and columns available.
+        </p>
+    </details>
     <div>
         <details id="sqlStmtInventory" style="padding-bottom: 25px;" open>
             <summary>
-                SQL Statements Library
+                SQL Statements Inventory
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                 📝 <a id="editSqlStmtInventorySource" style="color: #889988">Edit</a>
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
