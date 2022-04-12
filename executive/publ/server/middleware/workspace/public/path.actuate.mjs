@@ -127,31 +127,6 @@ export const siteDomain = createDomain("project");
 export const pageDomain = createDomain("page");
 export const activatePage = siteDomain.createEvent();
 
-// content effect (CFX) block (CFXB) events; CFXB events are guaranteed to be
-// called after all DOM content has been loaded. Each event has clientLayout
-// passed in as a parameter (in addition to event-specific parameters).
-export const cfxbFetchSqlJsonDomElemDetected = siteDomain.createEvent();
-export const cfxbFetchSqlJsonFxPrepared = siteDomain.createEvent();
-
-/**
- * pageAutoEffects are "registered" Effector effects that will be auto-executed
- * by the activatePage event (mainly for convenience and literate programming
- * documentation).
- */
-const pageAutoEffects = [];
-
-export const pageAutoEffect = (effect, params) => {
-    pageAutoEffects.push({ effect, params, isApplied: false });
-    return effect;
-}
-
-export const pageAutoFetchSqlEffect = (fetchFxSqlID, SQL) => {
-    return pageAutoEffect(siteDomain.createEffect(async (params) => await pageFetchJsonFx({
-        ...fetchFxInitSQL(SQL, fetchFxSqlID),
-        ...params,
-    })));
-}
-
 window.addEventListener(sb.fetchFxFailEventName, (event) => {
     console.error(sb.fetchFxFailEventName, { event });
 });
@@ -449,98 +424,6 @@ activatePage.watch((clientLayout) => {
         } catch (error) {
             elem.innerHTML = jsEvalFailureHTML(evalExpr, error, 'activatePage.watch(data-populate-activate-page-watch-json)', { clientLayout });
         }
-    }
-
-    // apply all auto-effects and see if they resolve any dependencies
-    for (const autoEffect of pageAutoEffects) {
-        const { effect, params } = autoEffect;
-        effect(params);
-        autoEffect.isApplied = true;
-    }
-});
-
-cfxbFetchSqlJsonDomElemDetected.watch((cfxbSqlDomElemDetectedParams) => {
-    const { clientLayout, cfxbDomElem, SQL, fetchSqlJsonFxInit, jsEvalFailureHTML, sqlScriptElem } = cfxbSqlDomElemDetectedParams;
-
-    const fetchSqlJsonFx = siteDomain.createEffect(async (params) => await pageFetchJsonFx({
-        ...fetchSqlJsonFxInit,
-        ...params,
-    }));
-    const watchScriptElem = cfxbDomElem.querySelector('script[type="onSqlResult"]');
-    const watchScriptAttr = sqlScriptElem?.getAttribute('onSqlResult') ?? cfxbDomElem.getAttribute('onSqlResult');
-    const diagnose = watchScriptElem?.hasAttribute("diagnose") ?? (sqlScriptElem?.getAttribute('diagnose') ?? cfxbDomElem.getAttribute('diagnose'));
-    const onSqlResultExpr = watchScriptElem ? watchScriptElem.innerText : watchScriptAttr;
-    fetchSqlJsonFx.done.watch(({ result }) => {
-        if (watchScriptElem || watchScriptAttr) {
-            const diagnostics = () => ({
-                result, onSqlResultExpr, cfxbSqlDomElemDetectedParams, SQL, fetchSqlJsonFx, fetchSqlJsonFxInit, clientLayout, watchScriptElem, watchScriptAttr
-            });
-            if (diagnose) console.log('onSqlResult', diagnostics());
-            try {
-                // tokens `result`, `SQL`, `clientLayout`, etc. will all be in scope
-                // add the `self` alias for convenience so that content producers can
-                // use self.innerHTML = 'X' instead of cfxbDomElem (in case we have
-                // to rename that variable in the future)
-                // deno-lint-ignore no-unused-vars
-                const self = cfxbDomElem;
-                eval(onSqlResultExpr);
-            } catch (error) {
-                cfxbDomElem.innerHTML = jsEvalFailureHTML({
-                    evaluatedJS: onSqlResultExpr, error,
-                    location: 'cfxbFetchSqlJsonDomElemDetected.watch(SQL-result-eval)',
-                    context: diagnostics()
-                });
-            }
-        } else {
-            populateObjectJSON(result, cfxbDomElem);
-        }
-    });
-
-    // announce we're about to execute a SQL effect, let others hook in to the
-    // fetchSqlJsonFx if they also need to handle the SQL result; the cfxbFetchSqlJsonFxPrepared
-    // event receives all parameters of this event plus a few extras
-    cfxbFetchSqlJsonFxPrepared({
-        ...cfxbSqlDomElemDetectedParams,
-        fetchSqlJsonFxID: fetchSqlJsonFxInit.fetchFxSqlID, // hoist the identity for convenience
-        fetchSqlJsonFx,
-        onSqlResultExpr,
-        watchScriptElem,
-        diagnose
-    });
-
-    // we're all wired up (including new hooks introduced through cfxbFetchSqlJsonFxPrepared
-    // observers), execute the SQL effect now and trigger all the watchers
-    fetchSqlJsonFx();
-});
-
-// execute content effect (CFX) blocks (CFXBs)
-activatePage.watch((clientLayout) => {
-    const jsEvalFailureHTML = ({ evaluatedJS, error, location, context }) => {
-        console.error(`Unable to evaluate ${evaluatedJS} in ${location}`, error, context);
-        return `Unable to evaluate <code><mark>${evaluatedJS}</mark></code>: <code><mark style="background-color:#FFF2F2">${error}</mark></code> in <code>${location}</code>`;
-    }
-
-    // any element which has a SQL attribute is considered a content effect
-    for (const cfxbDomElem of document.querySelectorAll(`[SQL]`)) {
-        const SQL = cfxbDomElem.getAttribute("SQL");
-        const fetchFxSqlID = cfxbDomElem.id;
-        const fetchSqlJsonFxInit = fetchFxInitAlaSqlProxyDQL(SQL, fetchFxSqlID);
-        // trigger anyone watching cfxbFetchSqlJsonDomElemDetected event
-        cfxbFetchSqlJsonDomElemDetected({
-            clientLayout, cfxbDomElem, SQL, fetchSqlJsonFxInit, jsEvalFailureHTML
-        });
-    }
-
-    // any element which has a <script type="SQL"> element is considered a content effect
-    for (const sqlScriptElem of document.querySelectorAll('script[type="SQL"]')) {
-        const cfxbDomElem = sqlScriptElem.parentNode;
-        const SQL = sqlScriptElem.innerHTML.trim();
-        const fetchFxSqlID = sqlScriptElem.id ?? cfxbDomElem.id;
-        const fetchSqlJsonFxInit = fetchFxInitAlaSqlProxyDQL(SQL, fetchFxSqlID);
-        // trigger anyone watching cfxbFetchSqlJsonDomElemDetected event
-        cfxbFetchSqlJsonDomElemDetected({
-            clientLayout, cfxbDomElem, SQL, fetchSqlJsonFxInit, sqlScriptElem, jsEvalFailureHTML
-        });
     }
 });
 
