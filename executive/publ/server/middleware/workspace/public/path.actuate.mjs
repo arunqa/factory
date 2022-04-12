@@ -259,7 +259,7 @@ export function prepareHookableDomRenderEffect(elem, options) {
     // elem.renderJsBody and elem.renderJS are for debugging and useful in error path.
 
     elem.renderJsBody = renderJsBodyCodeSupplier?.(elem, options);
-    elem.renderJS = renderJS ?? `
+    elem.renderJS = renderJS?.(elem) ?? `
             (fxParams) => {
                 // fxParams is what's passed via elem.renderFx(): target, jsEvalFailureHTML, etc.
                 ${renderJsDestructureArgs && renderJsDestructureArgs.trim().length > 0 ? `const ${renderJsDestructureArgs} = fxParams;` : '// no local variables requested'}
