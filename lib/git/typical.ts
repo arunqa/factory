@@ -392,7 +392,7 @@ export class TypicalGit implements govn.GitExecutive {
   ): Promise<govn.GitBranch | undefined> {
     const cmdResult = await this.run(cmdOptions);
     if (isGitCmdSuccessful(cmdResult)) {
-      return cmdResult.stdOut;
+      return cmdResult.stdOut?.trim();
     } else {
       return undefined;
     }
@@ -426,10 +426,12 @@ export class TypicalGit implements govn.GitExecutive {
     }
   }
 
-  async log<Field extends govn.CommitField = gl.DefaultField>(): Promise<
+  async log<Field extends govn.CommitField = gl.DefaultField>(
+    options?: govn.GitLogOptions,
+  ): Promise<
     govn.GitCommitBase<Field>[] | govn.GitCommitBaseWithFiles<Field>[] | void
   > {
-    const [cmdOptions, onSuccess] = gl.gitLogCmd<Field>();
+    const [cmdOptions, onSuccess] = gl.gitLogCmd<Field>(options);
     const cmdResult = await this.run(cmdOptions);
     if (isGitCmdSuccessful(cmdResult)) {
       return onSuccess(cmdResult.stdOut);

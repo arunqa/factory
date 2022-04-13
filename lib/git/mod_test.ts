@@ -6,8 +6,9 @@ const testPath = path.relative(
   Deno.cwd(),
   path.dirname(import.meta.url).substr("file://".length),
 );
+const testPathLoc = testPath.trim().length > 0 ? testPath : "./";
 
-Deno.test(`Git in ${testPath}`, async () => {
+Deno.test(`Git in ${testPathLoc}`, async () => {
   const gitPaths = mod.discoverGitWorkTree(Deno.cwd());
   ta.assert(gitPaths);
 
@@ -39,7 +40,7 @@ Deno.test(`Git in ${testPath}`, async () => {
   ta.assert(await git.log());
 });
 
-Deno.test(`Git Executive in ${testPath}`, async () => {
+Deno.test(`Git Executive in ${testPathLoc}`, async () => {
   const git = await mod.discoverGitWorktreeExecutive(testPath, {
     ...mod.typicalGitWorkTreeAssetUrlResolvers(),
     remoteCommit: () => undefined,
@@ -58,4 +59,28 @@ Deno.test(`Git Executive in ${testPath}`, async () => {
   // TODO: figure out how to test this deterministically
   ta.assert(await git.status());
   ta.assert(await git.log());
+});
+
+Deno.test(`Git single file history in ${testPathLoc}`, async () => {
+  const git = await mod.discoverGitWorktreeExecutive(testPath, {
+    ...mod.typicalGitWorkTreeAssetUrlResolvers(),
+    remoteCommit: () => undefined,
+    workTreeAsset: mod.typicalGitWorkTreeAssetResolver,
+    changelogReportAnchorHref: () => "/activity-log/git-changelog/",
+    cicdBuildStatusHTML: () => `TODO`,
+  });
+  ta.assert(git);
+
+  const currentBranch = await git.currentBranch();
+  const isDirty = await git.isDirty();
+  ta.assert(currentBranch);
+  ta.assert(isDirty || !isDirty);
+
+  // TODO: figure out how to test this deterministically
+  const status = await git.status();
+  ta.assert(status);
+
+  // TODO: support --follow? git log --follow pubctl.ts
+  const log = await git.log({ file: "./mod_test.ts", number: -1 });
+  ta.assert(log);
 });

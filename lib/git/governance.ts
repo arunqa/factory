@@ -145,6 +145,79 @@ export type GitBranch = string;
 export type GitTag = string;
 export type GitBranchOrTag = string;
 
+export interface FileLineRange {
+  /** Will be pass as -L <startLine>,<endLine>:<file> */
+
+  /** The file to get the commits for */
+  file: string;
+  /** The number of the first line in the desired range */
+  startLine: number;
+  /**
+   * Either the absolute line number for the end of the desired range,
+   * or the offset from the startLine
+   */
+  endLine: number | string;
+}
+
+export interface GitLogOptions {
+  /**
+   * Much more likely to set status codes to 'C' if files are exact copies of each other.
+   *
+   * @default false
+   */
+  findCopiesHarder?: boolean;
+  /**
+   * Find commits on all branches instead of just on the current one.
+   *
+   * @default false
+   */
+  all?: boolean;
+  /**
+   * Pass the -m option to includes files in a merge commit
+   *
+   * @default false
+   */
+  includeMergeCommitFiles?: boolean;
+  /**
+   * The number of commits to return, -1 for most recent, > 0 for more
+   *
+   * @default 500
+   */
+  number?: number;
+
+  /**
+   * Below fields was returned from the log:
+   *
+   * - files - changed files names (array)
+   * - status - changed files status (array)
+   *
+   * @default true
+   */
+  nameStatus?: boolean;
+  /**
+   * Show only commits in the specified branch or revision range.
+   * By default uses the current branch and defaults to HEAD (i.e.
+   * the whole history leading to the current commit).
+   */
+  branch?: string;
+  /** Range of lines for a given file to find the commits for */
+  fileLineRange?: FileLineRange;
+  /** File filter for the git log command */
+  file?: string;
+  /** Limit the commits output to ones with author header lines that match the specified pattern. */
+  author?: string;
+  /** Limit the commits output to ones with committer header lines that match the specified pattern. */
+  committer?: string;
+  /** Show commits more recent than a specific date. */
+  since?: string;
+  /** Show commits more recent than a specific date. */
+  after?: string;
+  /** Show commits older than a specific date */
+  until?: string;
+  /** Show commits older than a specific date */
+  before?: string;
+}
+
 export interface GitCacheablesSupplier extends GitPathsSupplier {
   readonly currentBranch: GitBranch | undefined;
   readonly mostRecentCommit:
@@ -169,7 +242,7 @@ export interface GitExecutive extends GitPathsSupplier {
     cmd?: GitRunCmdOptionsSupplier,
   ) => Promise<GitEntriesStatusesSupplier>;
   readonly isDirty: () => Promise<boolean>;
-  readonly log: <Field extends CommitField>() => Promise<
+  readonly log: <Field extends CommitField>(options?: GitLogOptions) => Promise<
     GitCommitBase<Field>[] | GitCommitBaseWithFiles<Field>[] | void
   >;
   readonly latestTag: (
