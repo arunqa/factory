@@ -153,6 +153,19 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                     }, 
                 ],
                 qualifiedName: qualifiedNamePlaceholder
+            },
+            {
+                name: "version-control",
+                label: "Version Control (Git)",
+                scripts: [
+                    {
+                        name: "git-log-active-route.js.json",
+                        label: "Show revision history of the active route",
+                        jsModule: `export default async ({ publication, args }) => await publication.config.git.log({ file: args.get("routeFileSysPath") })`,
+                        qualifiedName: qualifiedNamePlaceholder
+                    }, 
+                ],
+                qualifiedName: qualifiedNamePlaceholder
             }
         ]
     };
