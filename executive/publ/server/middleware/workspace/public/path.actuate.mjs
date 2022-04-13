@@ -46,6 +46,14 @@ export const inspectableClientLayout = () => window.parent.inspectableClientLayo
 export const isClientLayoutInspectable = () => window.parent.inspectableClientLayout ? true : false;
 export const isFramedExplorer = () => window.parent.isFramedExplorer && window.parent.isFramedExplorer() ? true : false;
 
+// if a URL needs to pass information about a route, use routeUrlSearchParams
+export const routeUrlSearchParams = (route) => {
+    const usp = new URLSearchParams();
+    usp.set('routeFileSysPath', route.fileSysPath);
+    return usp;
+};
+
+
 // if a fetchURL looks like "x/y/test.ts.json" or "test.js.json" it's
 // considered a server-side source (serverSideSrc) fetch URL, which runs JS/TS
 // code on the server and returns JSON response as evaluated on the server.
@@ -191,13 +199,25 @@ export const pageFetchRetrocycledJsonJFx = siteDomain.createEffect(async (params
     ...params, fetchValue: sb.fetchRespRetrocycledJsonValue
 }));
 
+// create an effect for a specific script with given arguments
+export function prepareFetchServerRuntimeScriptJsonEffect(srScript, srScriptArgs) {
+    const fetchFxArgs = {
+        ...fetchFxInitServerSideSrc(`/unsafe-server-runtime-proxy/module/${srScript.name}${srScriptArgs ? `?${srScriptArgs.toString()}` : ''}`, srScript.jsModule),
+        srScript, srScriptArgs,
+        cache: false,
+        fetchValue: sb.fetchRespJsonValue,
+    };
+    return siteDomain.createEffect(async (params) => await sb.fetchFx({ ...fetchFxArgs, ...params }));
+}
+
+// create an effect for any script - where script is passed in when effect is launched
 export const pageFetchServerRuntimeScriptJsonFx = siteDomain.createEffect(async (params) => {
     if (params.srScript) {
         // srScript must be provided in params
         const args = {
-            ...fetchFxInitServerSideSrc(`/unsafe-server-runtime-proxy/module/${params.srScript.name}`, params.srScript.jsModule),
+            ...fetchFxInitServerSideSrc(`/unsafe-server-runtime-proxy/module/${params.srScript.name}${params.srScriptArgs ? `?${params.srScriptArgs.toString()}` : ''}`, params.srScript.jsModule),
             ...params,
-            cache: false
+            cache: false,
         };
         return await pageFetchJsonFx(args);
     } else {
@@ -330,7 +350,8 @@ export function prepareDomEffects(domEffectsInit = {}) {
     const {
         evalJS,
         renderFxAttrName = "render-fx", // custom renderer provided in <script> or attribute
-        populateJsonAttrName = "populate-json-fx", // no body required, populateObjectJSON renders FX result
+        populateJsonFxResultAttrName = "populate-json-fx", // no body required, populateObjectJSON renders FX result
+        populateJsonStoreAttrName = "populate-json-store", // no body required, populateObjectJSON renders FX result
         interpolateFxAttrName = "interpolate-fx", // body is interpolated as template text literal
         renderHookAttrName = "render-hook", // when to render one of the above
         renderHookActivatePageAttrName = "render-hook-activate-page", // special hook for page activation
@@ -361,11 +382,11 @@ export function prepareDomEffects(domEffectsInit = {}) {
         });
     }
 
-    for (const renderElem of document.querySelectorAll(`[${populateJsonAttrName}]`)) {
+    for (const renderElem of document.querySelectorAll(`[${populateJsonFxResultAttrName}]`)) {
         prepareHookableDomRenderEffect(renderElem, {
             evalJS,
             render: ({ result, target }) => {
-                const attrValue = renderElem.getAttribute(populateJsonAttrName);
+                const attrValue = renderElem.getAttribute(populateJsonFxResultAttrName);
                 if (!attrValue || attrValue != "append") {
                     target.innerHTML = '';
                 }
@@ -378,13 +399,33 @@ export function prepareDomEffects(domEffectsInit = {}) {
         });
     }
 
+    for (const renderElem of document.querySelectorAll(`[${populateJsonStoreAttrName}]`)) {
+        prepareHookableDomRenderEffect(renderElem, {
+            evalJS,
+            render: (storeValue) => {
+                const attrValue = renderElem.getAttribute(populateJsonStoreAttrName);
+                if (!attrValue || attrValue != "append") {
+                    renderElem.innerHTML = '';
+                }
+                populateObjectJSON(storeValue, renderElem, 2);
+            },
+            renderHookJsCodeSupplier: (elem) => {
+                return elem.getAttribute(renderHookAttrName);
+            },
+            renderHook: typicalRenderHook(renderElem)
+        });
+    }
+
     for (const renderElem of document.querySelectorAll(`[${interpolateFxAttrName}]`)) {
+        const scriptElem = renderElem.querySelector('script[type="interpolate-fx"]');
+        const jsBodyCode = scriptElem ? scriptElem.innerText : renderElem.innerHTML;
         prepareHookableDomRenderEffect(renderElem, {
             evalJS,
             renderJsDestructureArgs: renderElem.getAttribute(interpolateFxAttrName),
-            renderJsBodyCodeSupplier: (elem) => {
-                // use the entire element HTML as template literal string to interpolate
-                return `fxParams.target.innerHTML = \`${elem.innerHTML}\``;
+            renderJsBodyCodeSupplier: () => {
+                // use the entire element HTML as template literal string to interpolate;
+                // the interpolated text will have access to whatever the effect/store passes in
+                return `fxParams.target.innerHTML = \`${jsBodyCode}\``;
             },
             renderHookJsCodeSupplier: (elem) => {
                 return elem.getAttribute(renderHookAttrName);
@@ -566,3 +607,36 @@ export const populateSelectElem = (selectElem, optionsSupplier) => {
         selectElem.appendChild(nOption);
     }
 }
+
+const MINUTE = 60,
+    HOUR = MINUTE * 60,
+    DAY = HOUR * 24,
+    WEEK = DAY * 7,
+    MONTH = DAY * 30,
+    YEAR = DAY * 365
+
+export function timeSince(date) {
+    const secondsAgo = Math.round((+new Date() - date) / 1000)
+    let divisor = null
+    let unit = null
+
+    if (secondsAgo < MINUTE) {
+        return secondsAgo + " seconds ago"
+    } else if (secondsAgo < HOUR) {
+        [divisor, unit] = [MINUTE, 'minute']
+    } else if (secondsAgo < DAY) {
+        [divisor, unit] = [HOUR, 'hour']
+    } else if (secondsAgo < WEEK) {
+        [divisor, unit] = [DAY, 'day']
+    } else if (secondsAgo < MONTH) {
+        [divisor, unit] = [WEEK, 'week']
+    } else if (secondsAgo < YEAR) {
+        [divisor, unit] = [MONTH, 'month']
+    } else if (secondsAgo > YEAR) {
+        [divisor, unit] = [YEAR, 'year']
+    }
+
+    const count = Math.floor(secondsAgo / divisor)
+    return `${count} ${unit}${(count > 1) ? 's' : ''}`
+}
+

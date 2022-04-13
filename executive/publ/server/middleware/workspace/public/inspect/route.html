@@ -6,6 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="../path.actuate.css">
+    <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.js"></script>
 </head>
 
 <body>
@@ -25,6 +26,7 @@
         level
         ${route.terminal?.level + 1} and has ${route.units.length} ancestor${route.units.length == 1 ? '' : 's'}.
     </p>
+    <p id="revisionSummary" style="padding-top: 5px; padding-bottom: 5px"></p>
 
     <details class="explore" open>
         <summary>Page Terminal Route Unit</summary>
@@ -34,13 +36,18 @@
             render-hook-activate-page></div>
     </details>
 
-    <details class="explore" open>
+    <details class="explore">
         <summary>Page Route</summary>
         <p><code>clientLayout.route</code> is referred to as the <em>route</em> because it describes the full path where
             this page is located. A single route is always comprised of one or more <em>route units</em>. The <em>route
                 units</em> can be used to create <em>breadcrumbs</em> in the UI.</p>
         <div render-fx="({ target, result: { inspectableRFUL: { route } } }) => path.populateObjectJSON(route, target)"
             render-hook-activate-page></div>
+    </details>
+
+    <details class="explore">
+        <summary>Page Version History (Git Commits)</summary>
+        <div id="routeGitLog" class="ag-theme-alpine"></div>
     </details>
 
     <script type="module">
@@ -53,10 +60,31 @@
             // as decoupled from business logic as possible
 
             const scriptsInventory = srScriptDeps.typicalScriptsInventory();
-            window.srScriptRenderHook = (scriptID) => {
-                const srScript = scriptsInventory.script(scriptID);
-                return ({ target }) => path.watchPageFetchServerRuntimeScriptJsonFxDone({ srScript, autoActivate: true }, target.renderFx);
-            }
+            const routeGitLogFx = path.prepareFetchServerRuntimeScriptJsonEffect(
+                scriptsInventory.script('typicalScripts_version-control_git-log-active-route.js.json'),
+                path.routeUrlSearchParams(path.inspectableClientLayout().route.terminal)
+            );
+
+            const $routeGitLog = path.pageDomain.createStore([]);
+            $routeGitLog.on(routeGitLogFx.doneData, (_, routeGitLog) => routeGitLog);
+            $routeGitLog.watch((routeGitLog) => {
+                if (routeGitLog.length > 0) {
+                    const authors = [...new Set(routeGitLog.map(entry => entry.authorName))];
+                    const author = (entry) => { return `<b>${routeGitLog[entry].authorName}</b> <i>${path.timeSince(new Date(routeGitLog[entry].authorDate))} ago</i>` }
+                    document.getElementById("revisionSummary").innerHTML =
+                        `Created by ${author(routeGitLog.length - 1)}, last modified by ${author(0)} (${routeGitLog.length} total commits by ${authors.length} author${authors.length > 1 ? 's' : ''})`;
+                }
+                agG.populateAgGrid(agGrid, document.getElementById("routeGitLog"), (agGridOptionsGen) => {
+                    return agGridOptionsGen({
+                        columnDefs: [
+                            { field: "subject" },
+                            { field: "authorName" },
+                            { field: "authorDate" }
+                        ],
+                        rowData: routeGitLog
+                    });
+                })
+            });
 
             // check all the DOM elements to see if any events, stores, or effects
             // want to "hook" into the Effector instances; assume all domEffects'
@@ -65,6 +93,7 @@
 
             // all listeners are ready so let's activate the page and trigger the watchers
             path.activatePageFx();
+            routeGitLogFx();
         });
     </script>
 </body>
