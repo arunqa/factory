@@ -60,11 +60,15 @@ export class ServerRuntimeJsTsProxyMiddlewareSupplier<
           // deno-lint-ignore no-explicit-any
           const value = (extn.module as any).default;
           if (typeof value === "function") {
-            const evaluated = value(this.exposureCtx, {
-              oakCtx: ctx,
-              pathInfo,
-              payload,
-            });
+            const args = ctx.request.url.searchParams;
+            const evaluated = await value(
+              { ...this.exposureCtx, oakCtx: ctx, args },
+              {
+                oakCtx: ctx,
+                pathInfo,
+                payload,
+              },
+            );
             if (typeof evaluated === "string") {
               // the default function evaluated to a string so we'll just return it as the body
               ctx.response.body = evaluated;
