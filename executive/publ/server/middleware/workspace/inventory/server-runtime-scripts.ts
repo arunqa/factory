@@ -161,6 +161,20 @@ export function typicalScriptsInventory(
         },
       ],
       qualifiedName: qualifiedNamePlaceholder,
+    }, {
+      name: "version-control",
+      label: "Version Control (Git)",
+      scripts: [
+        {
+          name: "git-log-active-route.js.json",
+          label: "Show revision history of the active route",
+          jsModule:
+            // args is a URLSearchParams instance on the server side, sent from the client
+            `export default async ({ publication, args }) => await publication.config.git.log({ file: args.get("routeFileSysPath") })`,
+          qualifiedName: qualifiedNamePlaceholder,
+        },
+      ],
+      qualifiedName: qualifiedNamePlaceholder,
     }],
   };
 
