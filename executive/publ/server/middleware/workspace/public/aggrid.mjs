@@ -16,5 +16,6 @@ export function typicalAgGridOptions(inherit) {
 
 export function populateAgGrid(agGrid, target, gridDefn) {
     const gridOptions = gridDefn(typicalAgGridOptions);
+    target.innerHTML = "";
     new agGrid.Grid(target, gridOptions);
 }
