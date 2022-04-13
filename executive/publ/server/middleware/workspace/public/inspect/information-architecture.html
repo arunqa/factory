@@ -27,6 +27,13 @@
     </details>
 
     <details class="explore" open>
+        <summary>Folksonomy</summary>
+        <p><em>Folksonomy</em> ("tagging") is used as a classification system when type-safety is not important.</p>
+        <div render-fx="({ target, result: { inspectableRFUL } }) => path.populateObjectJSON(inspectableRFUL.frontmatter?.folksonomy, target)"
+            render-hook-activate-page></div>
+    </details>
+
+    <details class="explore" open>
         <summary>Model</summary>
     </details>
 
