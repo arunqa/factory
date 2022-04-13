@@ -393,6 +393,37 @@ Content-Type: text/plain
 export default ({ publicationDB }) => ({ sqliteFileName: publicationDB ? publicationDB.dbStoreFsPath : `publicationDB not provided` });
 
 ###
+
+POST {{srJsTsModuleEndpoint}}/git-log-file.js.json
+Content-Type: text/plain
+
+export default ({ publication }) => publication.config.git;
+
+###
+
+POST {{srJsTsModuleEndpoint}}/git-log-file.js.json
+Content-Type: text/plain
+
+export default async ({ publication }) => await publication.config.git.currentBranch();
+
+###
+
+POST {{srJsTsModuleEndpoint}}/git-log-file.js.json
+Content-Type: text/plain
+
+export default async ({ publication }) => await publication.config.git.status();
+
+###
+
+# You can pass in _arguments_ via URL search parameters; in that case, `args` is a URLSearchParams instance.
+# Also available for the function is oakCtx in case any other context instances are required.
+
+POST {{srJsTsModuleEndpoint}}/git-log-file.js.json?number=5
+Content-Type: text/plain
+
+export default async ({ publication, args }) => await publication.config.git.log({ number: args.get("number") ?? 1 });
+
+###
 # in /unsafe-server-runtime-proxy/module we need to pass in either a typescript
 # or javascript module; use *.js or *.ts as name, text/plain as content-type and
 # POST the source code that should be executed on the server
