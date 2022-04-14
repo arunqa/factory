@@ -5,12 +5,14 @@ export const defaultDatabaseID = `prime` as const;
 export const configDatabaseID = `config` as const;
 export const observabilityDatabaseID = `observability` as const;
 export const pubctlDatabaseID = `pubctl` as const;
+export const gitSqlDatabaseID = `gitsql` as const;
 
 export type TypicalSqlStmtDatabaseID =
   | typeof defaultDatabaseID
   | typeof configDatabaseID
   | typeof observabilityDatabaseID
-  | typeof pubctlDatabaseID;
+  | typeof pubctlDatabaseID
+  | typeof gitSqlDatabaseID;
 
 export const defaultSqlStmtID = "health-check-failed";
 
@@ -185,7 +187,7 @@ export function typicalSqlStmtsInventory(
           label:
             "Show 100 most recent entries in the pubctl.ts server access log",
           SQL: whs.unindentWhitespace(`
-            USE DATABASE ${pubctlDatabaseID};\n
+            USE DATABASE ${pubctlDatabaseID}; -- pubctl.sqlite.db \n
                 SELECT log.created_at, log.asset_nature, status, log.location_href, log.filesys_target_path, log.filesys_target_symlink
                 FROM publ_server_static_access_log log
             ORDER BY log.created_at DESC
@@ -193,6 +195,49 @@ export function typicalSqlStmtsInventory(
           qualifiedName: qualifiedNamePlaceholder,
         },
       ],
+      qualifiedName: qualifiedNamePlaceholder,
+    }, {
+      name: "revision-control-git",
+      label: "Revision Control (Git)",
+      sqlStmts: [{
+        database: DB(gitSqlDatabaseID),
+        name: "top-50-most-frequently-changed-annual",
+        label:
+          "Show top 50 files changed most frequently in the past year (warning: slow, might take 30+ seconds to compute)",
+        SQL: whs.unindentWhitespace(`
+            USE DATABASE ${gitSqlDatabaseID}; -- https://github.com/mergestat/mergestat\n
+            SELECT file_path, COUNT(*)
+              FROM commits, stats('', commits.hash)
+             WHERE commits.author_when > DATE('now', '-12 month')
+               AND commits.parents < 2 -- ignore merge commits
+             GROUP BY file_path
+             ORDER BY COUNT(*) DESC
+             LIMIT 50`),
+        qualifiedName: qualifiedNamePlaceholder,
+      }, {
+        database: DB(gitSqlDatabaseID),
+        name: "total-commit-counts-by-author",
+        label: "Show total commits counts grouped by author",
+        SQL: whs.unindentWhitespace(`
+            USE DATABASE ${gitSqlDatabaseID}; -- https://github.com/mergestat/mergestat\n
+            SELECT author_name, count(*)
+              FROM commits
+             WHERE parents < 2 -- ignore merge commits
+             GROUP BY author_name ORDER BY count(*) DESC`),
+        qualifiedName: qualifiedNamePlaceholder,
+      }, {
+        database: DB(gitSqlDatabaseID),
+        name: "total-commit-counts-by-author-email-domain",
+        label: "Show total commits counts grouped by email domain of author",
+        SQL: whs.unindentWhitespace(`
+            USE DATABASE ${gitSqlDatabaseID}; -- https://github.com/mergestat/mergestat\n
+            SELECT count(*), substr(author_email, instr(author_email, '@')+1) AS email_domain -- https://sqlite.org/lang_corefunc.html
+              FROM commits
+             WHERE parents < 2 -- ignore merge commits
+             GROUP BY email_domain
+             ORDER BY count(*) DESC`),
+        qualifiedName: qualifiedNamePlaceholder,
+      }],
       qualifiedName: qualifiedNamePlaceholder,
     }],
   };
