@@ -168,7 +168,7 @@
                     path.populateObjectJSON(srScript, inspectDiv, 0);
                     scriptContainerElem.appendChild(inspectDiv);
                     const jsCodeDiv = document.createElement("div");
-                    jsCodeDiv.innerHTML = `<pre><code class="language-js">${path.unindentWhitespace(srScript.jsModule)}</code></pre>`;
+                    jsCodeDiv.innerHTML = `<pre><code class="language-js">${srScript.jsModule}</code></pre>`;
                     scriptContainerElem.appendChild(jsCodeDiv);
                     const exemplarDiv = document.createElement("div");
                     exemplarDiv.innerHTML = renderFxExamplar(srScript);
@@ -179,7 +179,7 @@
                 scriptsInventoryElem.appendChild(libraryElem);
             }
             populateServerRuntimeScript.watch(({ srScript }) => {
-                scriptCodeEditorValue(path.unindentWhitespace(srScript.jsModule));
+                scriptCodeEditorValue(srScript.jsModule);
                 if (autoExecSeverRuntimeScriptElem.checked && window.execServerRuntimeScriptFx) {
                     window.execServerRuntimeScriptFx({ srScript });
                 }

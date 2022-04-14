@@ -188,7 +188,7 @@
                 sqlStmtInventoryElem.appendChild(libraryElem);
             }
             populateSqlStatement.watch(({ sqlStmt }) => {
-                sqlCodeEditorValue(path.unindentWhitespace(sqlStmt.SQL));
+                sqlCodeEditorValue(sqlStmt.SQL);
                 selectDatabase({ databaseID: sqlStmt.database.identity });
                 if (autoExecSqlStmtInventoryElem.checked && window.dbQueryFormSubmitFx) {
                     dbQueryFormSubmitFx({ sqlStmt });

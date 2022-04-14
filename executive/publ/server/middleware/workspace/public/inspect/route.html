@@ -12,9 +12,9 @@
 <body>
     <p style="font-weight: bolder;">
         <code class="rf-resource-inspectable-active">
-            <span render-fx="({ target }) => target.innerHTML = path.editableClientLayoutTarget()?.fileName"
+            <marK><span render-fx="({ target }) => target.innerHTML = path.editableClientLayoutTarget()?.fileName"
                 render-hook-activate-page>
-            </span>
+            </span></marK>
         </code>
         Resource Route
     </p>
@@ -22,11 +22,11 @@
         is comprised of one or more <em>route units</em>, which are the component's of the path where the page is
         located.</p>
     <p interpolate-fx="{ result: { inspectableRFUL: { route } } }" render-hook-activate-page>
-        <b>${route.terminal?.label}</b> is a <code class="mime-type">${route.nature.mediaType}</code> page at route
-        level
-        ${route.terminal?.level + 1} and has ${route.units.length} ancestor${route.units.length == 1 ? '' : 's'}.
+        <b><marK>${route.terminal?.label}</marK></b> is a <code class="mime-type">${route.nature.mediaType}</code> page
+        at route level ${route.terminal?.level + 1} and has ${route.units.length} ancestor${route.units.length == 1 ? ''
+        : 's'}.
+        <span id="revisionSummary" style="padding-top: 5px; padding-bottom: 5px"></span>
     </p>
-    <p id="revisionSummary" style="padding-top: 5px; padding-bottom: 5px"></p>
 
     <details class="explore" open>
         <summary>Page Terminal Route Unit</summary>
@@ -72,7 +72,7 @@
                     const authors = [...new Set(routeGitLog.map(entry => entry.authorName))];
                     const author = (entry) => { return `<b>${routeGitLog[entry].authorName}</b> <i>${path.timeSince(new Date(routeGitLog[entry].authorDate))} ago</i>` }
                     document.getElementById("revisionSummary").innerHTML =
-                        `Created by ${author(routeGitLog.length - 1)}, last modified by ${author(0)} (${routeGitLog.length} total commits by ${authors.length} author${authors.length > 1 ? 's' : ''})`;
+                        `It was created by ${author(routeGitLog.length - 1)}, last modified by ${author(0)} (${routeGitLog.length} total commits by ${authors.length} author${authors.length > 1 ? 's' : ''})`;
                 }
                 agG.populateAgGrid(agGrid, document.getElementById("routeGitLog"), (agGridOptionsGen) => {
                     return agGridOptionsGen({

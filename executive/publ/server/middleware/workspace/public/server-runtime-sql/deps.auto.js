@@ -2,6 +2,17 @@
 // deno-lint-ignore-file
 // This code was bundled using `deno bundle` and it's not recommended to edit it manually
 
+function minWhitespaceIndent(text) {
+    const match = text.match(/^[ \t]*(?=\S)/gm);
+    return match ? match.reduce((r, a)=>Math.min(r, a.length)
+    , Infinity) : 0;
+}
+function unindentWhitespace(text, removeInitialNewLine = true) {
+    const indent = minWhitespaceIndent(text);
+    const regex = new RegExp(`^[ \\t]{${indent}}`, "gm");
+    const result = text.replace(regex, "");
+    return removeInitialNewLine ? result.replace(/^\n/, "") : result;
+}
 const importMeta = {
     url: "file:///home/snshah/workspaces/github.com/resFactory/factory/executive/publ/server/middleware/workspace/inventory/server-runtime-sql-stmts.ts",
     main: false
@@ -23,11 +34,11 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
         database: DB(observabilityDatabaseID),
         name: "health-check-failed",
         label: "Show entries in <code>health.json</code> with <bold>fail</bold> status",
-        SQL: `
+        SQL: unindentWhitespace(`
         USE DATABASE ${observabilityDatabaseID};\n
         SELECT *
         FROM health_check hc
-        WHERE hc.status = 'fail';`,
+        WHERE hc.status = 'fail';`),
         help: `These are the health checks performed by pubctl.ts and stored in health.json`,
         qualifiedName: qualifiedNamePlaceholder
     };
@@ -49,22 +60,22 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
                         database: DB(defaultDatabaseID),
                         name: "alaSQL-DDL",
                         label: "Show all the server runtime proxy tables defined",
-                        SQL: `
+                        SQL: unindentWhitespace(`
             USE DATABASE ${defaultDatabaseID};\n
             SELECT *
-            FROM dbms_reflection_prepare_db_tx_log txLog
-            WHERE txLog.error is NULL`,
+              FROM dbms_reflection_prepare_db_tx_log txLog
+             WHERE txLog.error is NULL`),
                         qualifiedName: qualifiedNamePlaceholder
                     },
                     {
                         database: DB(defaultDatabaseID),
                         name: "alaSQL-DDL-errors",
                         label: "Show all the server runtime proxy tables definition errors",
-                        SQL: `
+                        SQL: unindentWhitespace(`
             USE DATABASE ${defaultDatabaseID};\n
             SELECT *
               FROM dbms_reflection_prepare_db_tx_log txLog
-             WHERE txLog.error is not NULL`,
+             WHERE txLog.error is not NULL`),
                         qualifiedName: qualifiedNamePlaceholder
                     }, 
                 ],
@@ -78,34 +89,34 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
                         database: DB(configDatabaseID),
                         name: "server-runtime-environment",
                         label: "Show environment variables seen by the server runtime",
-                        SQL: `
+                        SQL: unindentWhitespace(`
             USE DATABASE ${configDatabaseID};\n
               SELECT *
                 FROM environment env
-            ORDER BY env.var_name`,
+            ORDER BY env.var_name`),
                         qualifiedName: qualifiedNamePlaceholder,
-                        help: `These are all the environment variables known to the publication server (<code>pubctl.ts</code>) <mark>including sensitive values without masking</mark>.
+                        help: unindentWhitespace(`These are all the environment variables known to the publication server (<code>pubctl.ts</code>) <mark>including sensitive values without masking</mark>.
             <em>Be careful about copy/pasting this content</em>.
-            If you need a "sanitized" version of environment variables, there is a safer version in <code>health.json</code> as a health check.`
+            If you need a "sanitized" version of environment variables, there is a safer version in <code>health.json</code> as a health check.`)
                     },
                     {
                         database: DB(configDatabaseID),
                         name: "content-database-connections",
                         label: "Show database connections used to generate content",
-                        SQL: `
+                        SQL: unindentWhitespace(`
             USE DATABASE ${configDatabaseID};\n
             SELECT *
-            FROM globalSqlDbConns conns`,
+            FROM globalSqlDbConns conns`),
                         qualifiedName: qualifiedNamePlaceholder
                     },
                     {
                         database: DB(configDatabaseID),
                         name: "operationalCtx",
                         label: "Show pubctl.ts server operational context (live reload)",
-                        SQL: `
-                USE DATABASE ${configDatabaseID};\n
-                SELECT operationalCtx
-                FROM prime;`,
+                        SQL: unindentWhitespace(`
+            USE DATABASE ${configDatabaseID};\n
+            SELECT operationalCtx
+            FROM prime;`),
                         qualifiedName: qualifiedNamePlaceholder
                     }, 
                 ],
@@ -120,10 +131,10 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
                         database: DB(observabilityDatabaseID),
                         name: "health-check-full",
                         label: "Show all entries in <code>health.json</code>",
-                        SQL: `
+                        SQL: unindentWhitespace(`
             USE DATABASE ${observabilityDatabaseID};\n
             SELECT *
-            FROM health_check hc;`,
+            FROM health_check hc;`),
                         help: `These are the health checks performed by pubctl.ts and stored in health.json`,
                         qualifiedName: qualifiedNamePlaceholder
                     },
@@ -131,11 +142,11 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
                         database: DB(observabilityDatabaseID),
                         name: "fs-asset-metrics",
                         label: "Show all file system asset metrics (<mark>TODO</mark>: figure out why 'public' is not showing all counts, issue with symlinks not being followed?)",
-                        SQL: `
+                        SQL: unindentWhitespace(`
             USE DATABASE ${observabilityDatabaseID};\n
             SELECT *
                 FROM fs_asset_metric fsam
-            WHERE fsam.[Files Path] in ('content', 'public');`,
+            WHERE fsam.[Files Path] in ('content', 'public');`),
                         qualifiedName: qualifiedNamePlaceholder
                     }, 
                 ],
@@ -149,12 +160,12 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
                         database: DB(pubctlDatabaseID),
                         name: "most-recent-access-log",
                         label: "Show 100 most recent entries in the pubctl.ts server access log",
-                        SQL: `
+                        SQL: unindentWhitespace(`
             USE DATABASE ${pubctlDatabaseID};\n
                 SELECT log.created_at, log.asset_nature, status, log.location_href, log.filesys_target_path, log.filesys_target_symlink
                 FROM publ_server_static_access_log log
             ORDER BY log.created_at DESC
-                LIMIT 100`,
+                LIMIT 100`),
                         qualifiedName: qualifiedNamePlaceholder
                     }, 
                 ],

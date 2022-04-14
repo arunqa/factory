@@ -2,6 +2,17 @@
 // deno-lint-ignore-file
 // This code was bundled using `deno bundle` and it's not recommended to edit it manually
 
+function minWhitespaceIndent(text) {
+    const match = text.match(/^[ \t]*(?=\S)/gm);
+    return match ? match.reduce((r, a)=>Math.min(r, a.length)
+    , Infinity) : 0;
+}
+function unindentWhitespace(text, removeInitialNewLine = true) {
+    const indent = minWhitespaceIndent(text);
+    const regex = new RegExp(`^[ \\t]{${indent}}`, "gm");
+    const result = text.replace(regex, "");
+    return removeInitialNewLine ? result.replace(/^\n/, "") : result;
+}
 const importMeta = {
     url: "file:///home/snshah/workspaces/github.com/resFactory/factory/executive/publ/server/middleware/workspace/inventory/server-runtime-scripts.ts",
     main: false
@@ -18,14 +29,14 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
     const defaultScript = {
         name: "project.js.json",
         label: "Show project summary",
-        jsModule: `
+        jsModule: unindentWhitespace(`
     export default ({ publication }) => {
         const projectRootPath = publication.config.operationalCtx.projectRootPath;
         return {
             projectHome: projectRootPath("/", true),
             envrc: projectRootPath("/.envrc", true),
         };
-    };`,
+    };`),
         qualifiedName: qualifiedNamePlaceholder,
         presentation: tableObjectProps
     };
@@ -65,17 +76,17 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                     {
                         name: "publication-db.js.json",
                         label: "Show name of SQLite database storing pubctl state",
-                        jsModule: `
+                        jsModule: unindentWhitespace(`
           export default ({ publicationDB }) => ({
               sqliteFileName: publicationDB ? publicationDB.dbStoreFsPath : "publicationDB not provided"
-          });`,
+          });`),
                         qualifiedName: qualifiedNamePlaceholder,
                         presentation: tableObjectProps
                     },
                     {
                         name: "global-sql-db-conns.js.json",
                         label: "Show database connections used to generate content",
-                        jsModule: `
+                        jsModule: unindentWhitespace(`
             // we convert to JSON ourselves since we have to do some special processing for
             // possible bigints
             export default ({ globalSqlDbConns }) => JSON.stringify(
@@ -87,7 +98,7 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                     }
                     return value;
                 },
-            );`,
+            );`),
                         qualifiedName: qualifiedNamePlaceholder,
                         presentation: jsonExplorer
                     }, 
@@ -108,7 +119,7 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                     {
                         name: "layouts.js.json",
                         label: "Show all design system layouts",
-                        jsModule: `
+                        jsModule: unindentWhitespace(`
             // we're going to give a AGGrid definition for full control
             function layouts(publication) {
                 const layouts = Array.from(publication.ds.designSystem.layoutStrategies.layouts.values());
@@ -128,7 +139,7 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                     rowData
                 };
             }
-            export default ({ publication }) => layouts(publication);`,
+            export default ({ publication }) => layouts(publication);`),
                         qualifiedName: qualifiedNamePlaceholder
                     }, 
                 ],

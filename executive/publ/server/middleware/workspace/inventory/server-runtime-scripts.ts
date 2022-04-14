@@ -1,4 +1,5 @@
 import * as govn from "./governance.ts";
+import * as whs from "../../../../../../lib/text/whitespace.ts";
 
 // inventory is used as-is by the server-side but used as a reference by client;
 // for security purposes, the user agent ("UA" or "client") is allowed to see
@@ -26,14 +27,14 @@ export function typicalScriptsInventory(
   const defaultScript: govn.ServerRuntimeScript = {
     name: "project.js.json",
     label: "Show project summary",
-    jsModule: `
+    jsModule: whs.unindentWhitespace(`
     export default ({ publication }) => {
         const projectRootPath = publication.config.operationalCtx.projectRootPath;
         return {
             projectHome: projectRootPath("/", true),
             envrc: projectRootPath("/.envrc", true),
         };
-    };`,
+    };`),
     qualifiedName: qualifiedNamePlaceholder,
     presentation: tableObjectProps,
   };
@@ -72,17 +73,17 @@ export function typicalScriptsInventory(
         {
           name: "publication-db.js.json",
           label: "Show name of SQLite database storing pubctl state",
-          jsModule: `
+          jsModule: whs.unindentWhitespace(`
           export default ({ publicationDB }) => ({
               sqliteFileName: publicationDB ? publicationDB.dbStoreFsPath : "publicationDB not provided"
-          });`,
+          });`),
           qualifiedName: qualifiedNamePlaceholder,
           presentation: tableObjectProps,
         },
         {
           name: "global-sql-db-conns.js.json",
           label: "Show database connections used to generate content",
-          jsModule: `
+          jsModule: whs.unindentWhitespace(`
             // we convert to JSON ourselves since we have to do some special processing for
             // possible bigints
             export default ({ globalSqlDbConns }) => JSON.stringify(
@@ -94,7 +95,7 @@ export function typicalScriptsInventory(
                     }
                     return value;
                 },
-            );`,
+            );`),
           qualifiedName: qualifiedNamePlaceholder,
           presentation: jsonExplorer,
         },
@@ -115,7 +116,7 @@ export function typicalScriptsInventory(
         {
           name: "layouts.js.json",
           label: "Show all design system layouts",
-          jsModule: `
+          jsModule: whs.unindentWhitespace(`
             // we're going to give a AGGrid definition for full control
             function layouts(publication) {
                 const layouts = Array.from(publication.ds.designSystem.layoutStrategies.layouts.values());
@@ -135,7 +136,7 @@ export function typicalScriptsInventory(
                     rowData
                 };
             }
-            export default ({ publication }) => layouts(publication);`,
+            export default ({ publication }) => layouts(publication);`),
           qualifiedName: qualifiedNamePlaceholder,
         },
       ],
