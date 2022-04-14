@@ -1,5 +1,15 @@
 import * as govn from "./governance.ts";
 import * as h from "../text/human.ts";
+import * as safety from "../safety/mod.ts";
+
+export const isQueryExecutionRowsSupplier = safety.typeGuard<
+  // deno-lint-ignore no-explicit-any
+  govn.QueryExecutionRowsSupplier<any>
+>("rows", "SQL");
+export const isQueryExecutionRecordsSupplier = safety.typeGuard<
+  // deno-lint-ignore no-explicit-any
+  govn.QueryExecutionRecordsSupplier<any>
+>("records", "SQL");
 
 export function detectQueryResultNature(
   o: unknown,

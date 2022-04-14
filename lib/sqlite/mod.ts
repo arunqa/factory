@@ -27,9 +27,6 @@ export class SqliteDatabase<
   readonly dbStoreFsPath: string;
   readonly dbStore: sqlite.DB;
   readonly dbee: DBEE;
-  readonly dbRefs: {
-    activeHost?: { hostID: number };
-  } = {};
 
   constructor(init: SqliteInstanceInit<DBEE>) {
     this.dbStoreFsPath = init.storageFileName();
@@ -50,36 +47,38 @@ export class SqliteDatabase<
   init() {
     this.dbee.emitSync("openingDatabase", this);
 
-    this.dbee.on("openedDatabase", () => {
-      this.dbee.emitSync("constructStorage", this);
-      this.dbee.emitSync("constructIdempotent", this);
-      this.dbee.emitSync("populateSeedData", this);
+    this.dbee.on("openedDatabase", async () => {
+      await this.dbee.emit("constructStorage", this);
+      await this.dbee.emit("constructIdempotent", this);
+      await this.dbee.emit("populateSeedData", this);
     });
 
     this.dbee.emitSync("openedDatabase", this);
   }
 
-  rowsDDL<Row extends govn.SqlRow>(
+  // deno-lint-ignore require-await
+  async rowsDDL<Row extends govn.SqlRow>(
     SQL: string,
     params?: govn.SqlQueryParameterSet | undefined,
-  ): govn.QueryExecutionRowsSupplier<Row> {
+  ): Promise<govn.QueryExecutionRowsSupplier<Row>> {
     const rows = this.dbStore.query<Row>(SQL, params);
     const result: govn.QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
     this.dbee.emit("executedDDL", result);
     return result;
   }
 
-  rowsDML<Row extends govn.SqlRow>(
+  // deno-lint-ignore require-await
+  async rowsDML<Row extends govn.SqlRow>(
     SQL: string,
     params?: govn.SqlQueryParameterSet | undefined,
-  ): govn.QueryExecutionRowsSupplier<Row> {
+  ): Promise<govn.QueryExecutionRowsSupplier<Row>> {
     const rows = this.dbStore.query<Row>(SQL, params);
     const result: govn.QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
     this.dbee.emit("executedDML", result);
     return result;
   }
 
-  insertedRecord<
+  async insertedRecord<
     Insert extends Record<string, govn.SqlQueryParameter>,
     Return extends govn.SqlRecord,
   >(
@@ -110,7 +109,7 @@ export class SqliteDatabase<
         insertErr?: Error,
       ) => Return | undefined;
     },
-  ): Return | undefined {
+  ): Promise<Return | undefined> {
     const names: string[] = Object.keys(insert);
     const insertDML: (
       names: string[],
@@ -148,7 +147,7 @@ export class SqliteDatabase<
       : afterInsertDQL(names, insert);
 
     const [afterInsertSQL, afterInsertQPS] = afterInsertArgs;
-    return this.firstRecordDQL<Return>(afterInsertSQL, afterInsertQPS, {
+    return await this.firstRecordDQL<Return>(afterInsertSQL, afterInsertQPS, {
       enhance: options?.transformInserted,
       onNotFound: () => {
         if (options?.onNotInserted) {
@@ -159,20 +158,22 @@ export class SqliteDatabase<
     });
   }
 
-  rowsDQL<Row extends govn.SqlRow>(
+  // deno-lint-ignore require-await
+  async rowsDQL<Row extends govn.SqlRow>(
     SQL: string,
     params?: govn.SqlQueryParameterSet | undefined,
-  ): govn.QueryExecutionRowsSupplier<Row> {
+  ): Promise<govn.QueryExecutionRowsSupplier<Row>> {
     const rows = this.dbStore.query<Row>(SQL, params);
     const result: govn.QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
     this.dbee.emit("executedDQL", result);
     return result;
   }
 
-  recordsDQL<Object extends govn.SqlRecord>(
+  // deno-lint-ignore require-await
+  async recordsDQL<Object extends govn.SqlRecord>(
     SQL: string,
     params?: govn.SqlQueryParameterSet | undefined,
-  ): govn.QueryExecutionRecordsSupplier<Object> {
+  ): Promise<govn.QueryExecutionRecordsSupplier<Object>> {
     const records = this.dbStore.queryEntries<Object>(SQL, params);
     const result: govn.QueryExecutionRecordsSupplier<Object> = {
       records,
@@ -183,7 +184,7 @@ export class SqliteDatabase<
     return result;
   }
 
-  firstRecordDQL<Object extends govn.SqlRecord>(
+  async firstRecordDQL<Object extends govn.SqlRecord>(
     SQL: string,
     params?: govn.SqlQueryParameterSet | undefined,
     options?: {
@@ -191,9 +192,9 @@ export class SqliteDatabase<
       readonly onNotFound?: () => Object | undefined;
       readonly autoLimitSQL?: (SQL: string) => string;
     },
-  ): Object | undefined {
+  ): Promise<Object | undefined> {
     const { autoLimitSQL = (() => `${SQL} LIMIT 1`) } = options ?? {};
-    const selected = this.recordsDQL<Object>(autoLimitSQL(SQL), params);
+    const selected = await this.recordsDQL<Object>(autoLimitSQL(SQL), params);
     if (selected.records.length > 0) {
       const record = selected.records[0];
       if (options?.enhance) return options.enhance(record);

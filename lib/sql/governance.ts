@@ -153,14 +153,14 @@ export interface QueryRowsExecutor {
   <R extends SqlRow = SqlRow>(
     SQL: string,
     params?: SqlQueryParameterSet,
-  ): QueryExecutionRowsSupplier<R>;
+  ): Promise<QueryExecutionRowsSupplier<R>>;
 }
 
 export interface QueryRecordsExecutor {
   <O extends SqlRecord = SqlRecord>(
     SQL: string,
     params?: SqlQueryParameterSet,
-  ): QueryExecutionRecordsSupplier<O>;
+  ): Promise<QueryExecutionRecordsSupplier<O>>;
 }
 
 export interface SqlEventEmitterContext {
@@ -181,7 +181,7 @@ export interface SqlReadConnContext extends SqlEventEmitterContext {
       readonly onNotFound?: () => Object | undefined;
       readonly autoLimitSQL?: (SQL: string) => string;
     },
-  ) => Object | undefined;
+  ) => Promise<Object | undefined>;
 }
 
 export interface SqlWriteConnContext extends SqlEventEmitterContext {

@@ -183,20 +183,22 @@ export class AlaSqlProxy<
     this.dbee.emitSync("closedDatabase", this);
   }
 
-  rowsDDL<Row extends govn.SqlRow>(
+  // deno-lint-ignore require-await
+  async rowsDDL<Row extends govn.SqlRow>(
     SQL: string,
     params?: govn.SqlQueryParameterSet | undefined,
-  ): govn.QueryExecutionRowsSupplier<Row> {
+  ): Promise<govn.QueryExecutionRowsSupplier<Row>> {
     const rows = this.alaSqlPrimeDB.exec(SQL, params);
     const result: govn.QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
     this.dbee.emit("executedDDL", result);
     return result;
   }
 
-  rowsDML<Row extends govn.SqlRow>(
+  // deno-lint-ignore require-await
+  async rowsDML<Row extends govn.SqlRow>(
     SQL: string,
     params?: govn.SqlQueryParameterSet | undefined,
-  ): govn.QueryExecutionRowsSupplier<Row> {
+  ): Promise<govn.QueryExecutionRowsSupplier<Row>> {
     const rows = this.alaSqlPrimeDB.exec(SQL, params);
     const result: govn.QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
     this.dbee.emit("executedDML", result);
@@ -508,7 +510,7 @@ export class AlaSqlProxy<
    * @param sqliteDb an open SQLite database instance
    * @param alaSqlDbSupplier Which AlaSQL database to add the SQLite content
    */
-  importSqliteDB(
+  async importSqliteDB(
     sqliteDb: sqlite.SqliteDatabase,
     alaSqlDbSupplier: (sqliteDb: sqlite.SqliteDatabase) => AlaSqlEngine,
   ) {
@@ -518,7 +520,7 @@ export class AlaSqlProxy<
     );
     for (const table of tables) {
       const [tableName] = table;
-      const rows = sqliteDb.recordsDQL(`SELECT * FROM ${tableName}`);
+      const rows = await sqliteDb.recordsDQL(`SELECT * FROM ${tableName}`);
       if (rows) {
         this.createJsObjectsTable(tableName, rows.records, alaSqlDB, {
           prepareTxLogEntry: (suggested) => ({
@@ -531,10 +533,11 @@ export class AlaSqlProxy<
     }
   }
 
-  rowsDQL<Row extends govn.SqlRow>(
+  // deno-lint-ignore require-await
+  async rowsDQL<Row extends govn.SqlRow>(
     SQL: string,
     params?: govn.SqlQueryParameterSet | undefined,
-  ): govn.QueryExecutionRowsSupplier<Row> {
+  ): Promise<govn.QueryExecutionRowsSupplier<Row>> {
     // TODO: add check to make sure "SELECT MATRIX is used"
     const rows = this.alaSqlPrimeDB.exec(SQL, params);
     const result: govn.QueryExecutionRowsSupplier<Row> = { rows, SQL, params };
@@ -542,10 +545,11 @@ export class AlaSqlProxy<
     return result;
   }
 
-  recordsDQL<Object extends govn.SqlRecord>(
+  // deno-lint-ignore require-await
+  async recordsDQL<Object extends govn.SqlRecord>(
     SQL: string,
     params?: govn.SqlQueryParameterSet | undefined,
-  ): govn.QueryExecutionRecordsSupplier<Object> {
+  ): Promise<govn.QueryExecutionRecordsSupplier<Object>> {
     const records = this.alaSqlPrimeDB.exec(SQL, params);
     const result: govn.QueryExecutionRecordsSupplier<Object> = {
       records,
@@ -556,7 +560,7 @@ export class AlaSqlProxy<
     return result;
   }
 
-  firstRecordDQL<Object extends govn.SqlRecord>(
+  async firstRecordDQL<Object extends govn.SqlRecord>(
     SQL: string,
     params?: govn.SqlQueryParameterSet | undefined,
     options?: {
@@ -564,10 +568,10 @@ export class AlaSqlProxy<
       readonly onNotFound?: () => Object | undefined;
       readonly autoLimitSQL?: (SQL: string) => string;
     },
-  ): Object | undefined {
+  ): Promise<Object | undefined> {
     // TODO: add check to make sure "SELECT ROW"
     const { autoLimitSQL = (() => `${SQL} LIMIT 1`) } = options ?? {};
-    const selected = this.recordsDQL<Object>(autoLimitSQL(SQL), params);
+    const selected = await this.recordsDQL<Object>(autoLimitSQL(SQL), params);
     if (selected.records.length > 0) {
       const record = selected.records[0];
       if (options?.enhance) return options.enhance(record);
