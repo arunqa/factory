@@ -12,9 +12,9 @@
 <body>
     <p style="font-weight: bolder;">
         <code class="rf-resource-inspectable-active">
-            <marK><span render-fx="({ target }) => target.innerHTML = path.editableClientLayoutTarget()?.fileName"
-                render-hook-activate-page>
-            </span></marK>
+            <marK interpolate-fx render-hook-activate-page>
+                <span title="${path.editableClientLayoutTarget()?.src}">${path.editableClientLayoutTarget()?.fileName}</span>
+            </marK>
         </code>
         Resource Route
     </p>
