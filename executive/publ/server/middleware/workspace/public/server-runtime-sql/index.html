@@ -77,8 +77,10 @@
             style="font-size:small; color: silver">
             Use <code>ctrl+space</code> to autocomplete ${db?.tables?.length ?? 0} tables and their
             columns in <code style="color:#889988">${db?.identity}</code> database.
-            Unless <code>pubctl</code> database is selected, uses <a href="http://alasql.org/">AlaSQL</a>
-            SQL syntax. If <code>pubctl</code> is chosen, the SQL is passed to SQLite.
+            Unless <code>pubctl</code> or <code>gitsql</code> database is selected, uses <a
+                href="http://alasql.org/">AlaSQL</a> SQL syntax. If <code>pubctl</code> is chosen, the SQL is passed to
+            SQLite. If <code>gitsql</code> is selected, SQL is passed to <a
+                href="https://github.com/mergestat/mergestat"><code>mergestat</code></a>.
         </div>
     </div>
 

@@ -197,10 +197,10 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
                         label: "Show total commits counts grouped by author",
                         SQL: unindentWhitespace(`
             USE DATABASE ${gitSqlDatabaseID}; -- https://github.com/mergestat/mergestat\n
-            SELECT author_name, count(*)
+            SELECT count(*), author_email, author_name
               FROM commits
              WHERE parents < 2 -- ignore merge commits
-             GROUP BY author_name ORDER BY count(*) DESC`),
+             GROUP BY author_name, author_email ORDER BY count(*) DESC`),
                         qualifiedName: qualifiedNamePlaceholder
                     },
                     {
