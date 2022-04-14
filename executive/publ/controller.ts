@@ -96,13 +96,13 @@ export class Executive<
     const oc = ctl.operationalCtx;
     const db = oc.publStateDB();
     const ps = new class extends server.PublicationServer {
-      server() {
-        const result = super.server();
+      async server() {
+        const result = await super.server();
         ctl.events.on("cleanup", async ({ nature }) => {
           console.log(colors.gray(`[cleanup] ${nature}: Close tunnels`));
           if (this.workspace) await this.workspace.tunnel.cleanup();
         });
-        result.app.addEventListener("listen", (event) => {
+        result.app.addEventListener("listen", async (event) => {
           const iterationIndex = oc.iterationCount || -1;
           const buildCompletedAt = new Date();
           const buildDurationMs = buildCompletedAt.valueOf() -
@@ -120,7 +120,7 @@ export class Executive<
               ? publication.state.resourcesIndex.memoizedProducers.size
               : undefined,
           };
-          db.persistBuildEvent(be);
+          await db.persistBuildEvent(be);
           // deno-fmt-ignore
           console.info(`   Built in: ${colors.brightMagenta((buildDurationMs / 1000).toString())} seconds ${colors.dim(`(iteration ${iterationIndex})`)}`);
           // deno-fmt-ignore
@@ -145,7 +145,7 @@ export class Executive<
           console.info(
             `    ======== Ready to serve [${serviceStartedAt}] ========`,
           );
-          db.persistServerService({
+          await db.persistServerService({
             listenHost: this.listenHostname,
             listenPort: this.listenPort,
             publishUrl: this.publicURL(),

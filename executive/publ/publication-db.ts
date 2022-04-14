@@ -13,7 +13,8 @@ export class PublicationDatabase
   activeServerService?: pdbs.PublServerService;
 
   init() {
-    this.dbee.on("constructStorage", () => {
+    // deno-lint-ignore require-await
+    this.dbee.on("constructStorage", async () => {
       this.dbStore.execute(
         Deno.readTextFileSync(
           path.join(moduleHome, "publication-db-schema.sql"),
@@ -21,8 +22,8 @@ export class PublicationDatabase
       );
     });
 
-    this.dbee.on("populateSeedData", () => {
-      this.activeHost = this.insertedRecord<
+    this.dbee.on("populateSeedData", async () => {
+      this.activeHost = await this.insertedRecord<
         pdbs.publ_host_insertable,
         pdbs.PublHost
       >(
@@ -52,12 +53,13 @@ export class PublicationDatabase
     super.init();
   }
 
-  persistStaticServed(
+  async persistStaticServed(
     sat: s.StaticServedTarget,
-  ):
+  ): Promise<
     | sql.QueryExecutionRowsSupplier
-    | sql.QueryExecutionRecordsSupplier {
-    const result = this.rowsDML(
+    | sql.QueryExecutionRecordsSupplier
+  > {
+    const result = await this.rowsDML(
       `INSERT INTO publ_server_static_access_log
                    (publ_server_service_id, status, asset_nature, location_href, filesys_target_path, filesys_target_symlink)
             VALUES (?, ?, ?, ?, ?, ?)`,
@@ -73,7 +75,7 @@ export class PublicationDatabase
     return result;
   }
 
-  persistBuildEvent(
+  async persistBuildEvent(
     pbe: Omit<pdbs.PublBuildEventInsertable, "publHostId">,
   ) {
     if (!this.activeHost) {
@@ -88,7 +90,7 @@ export class PublicationDatabase
         ...pbe,
         publHostId: this.activeHost.publHostId,
       });
-    this.activeBuildEvent = this.insertedRecord<
+    this.activeBuildEvent = await this.insertedRecord<
       pdbs.publ_build_event_insertable,
       pdbs.PublBuildEvent
     >(insert, pdbs.transformPublBuildEvent.tableName, {
@@ -105,7 +107,7 @@ export class PublicationDatabase
     return this.activeBuildEvent;
   }
 
-  persistServerService(
+  async persistServerService(
     ss: Omit<pdbs.PublServerServiceInsertable, "publBuildEventId">,
   ) {
     if (!this.activeBuildEvent) {
@@ -120,7 +122,7 @@ export class PublicationDatabase
         ...ss,
         publBuildEventId: this.activeBuildEvent.publBuildEventId,
       });
-    this.activeServerService = this.insertedRecord<
+    this.activeServerService = await this.insertedRecord<
       pdbs.publ_server_service_insertable,
       pdbs.PublServerService
     >(insert, pdbs.transformPublServerService.tableName, {
@@ -137,7 +139,7 @@ export class PublicationDatabase
     return this.activeServerService;
   }
 
-  persistServerError(
+  async persistServerError(
     err: Omit<pdbs.PublServerErrorLogInsertable, "publServerServiceId">,
   ) {
     if (!this.activeServerService) {
@@ -152,7 +154,7 @@ export class PublicationDatabase
         ...err,
         publServerServiceId: this.activeServerService.publServerServiceId,
       });
-    const logged = this.insertedRecord<
+    const logged = await this.insertedRecord<
       pdbs.publ_server_error_log_insertable,
       pdbs.PublServerErrorLog
     >(insert, pdbs.transformPublServerErrorLog.tableName, {

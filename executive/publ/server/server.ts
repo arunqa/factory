@@ -310,13 +310,12 @@ export class PublicationServer {
     });
   }
 
-  // deno-lint-ignore require-await
   async persistDiagnostics(
     locationHref: string,
     errorSummary: string,
     diagnostics: unknown,
   ) {
-    const stored = this.serverStateDB?.persistServerError({
+    const stored = await this.serverStateDB?.persistServerError({
       locationHref,
       errorSummary,
       errorElaboration: JSON.stringify(diagnostics),
@@ -333,7 +332,8 @@ export class PublicationServer {
     );
   }
 
-  protected server() {
+  // deno-lint-ignore require-await
+  protected async server() {
     const app = new oak.Application({
       serverConstructor: oak.HttpServerNative,
       logErrors: false,
@@ -464,7 +464,7 @@ export class PublicationServer {
   }
 
   async serve() {
-    const server = this.server();
+    const server = await this.server();
     let listener: Promise<void> | undefined = undefined;
 
     const listen = async () => {
