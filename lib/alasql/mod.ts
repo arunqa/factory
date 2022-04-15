@@ -15,10 +15,11 @@ export interface AlaSqlProxyInit<DBEE extends govn.SqlEventEmitter> {
   ) => Iterable<govn.SqlStatement>;
   readonly customDbInventory?: (
     databaseID: string,
-  ) =>
+  ) => Promise<
     | govn.DbmsEngineSchemalessDatabase
     | govn.DbmsEngineSchemaDatabase
-    | undefined;
+    | undefined
+  >;
 }
 
 export interface AlaSqlProxyContext
@@ -46,10 +47,17 @@ export class AlaSqlProxy<
   ) => Iterable<govn.SqlStatement>;
   readonly customDbInventory?: (
     databaseID: string,
-  ) =>
+  ) => Promise<
     | govn.DbmsEngineSchemalessDatabase
     | govn.DbmsEngineSchemaDatabase
-    | undefined;
+    | undefined
+  >;
+  #databases?: govn.DbmsEngineDatabase[];
+  #inventoryTable?: {
+    db_name: string;
+    table_name: string;
+    column_name: string;
+  }[];
 
   constructor(init: AlaSqlProxyInit<DBEE>) {
     this.alaSqlEngine = alaSQL.default;
@@ -59,14 +67,14 @@ export class AlaSqlProxy<
     this.customDbInventory = init.customDbInventory;
   }
 
-  inventoryTable(
+  createInventoryTableRows(
     inject?: (
       rows: { db_name: string; table_name: string; column_name: string }[],
     ) => void,
   ) {
     const rows: { db_name: string; table_name: string; column_name: string }[] =
       [];
-    for (const db of this.filteredDatabases()) {
+    for (const db of this.#databases!) {
       if (!db.isSchemaDatabase) {
         for (const table of db.tables) {
           for (const column of table.columns) {
@@ -83,11 +91,34 @@ export class AlaSqlProxy<
     return rows;
   }
 
-  filteredDatabases(filter?: (e: govn.DbmsEngineDatabase) => boolean) {
+  get databases() {
+    return this.#databases!;
+  }
+
+  set databases(value) {
+    this.#databases = value;
+    this.#inventoryTable = this.createInventoryTableRows();
+    // add a denormalized table in case users want to see it that way
+    this.createJsFlexibleTableFromUntypedObjectArray(
+      "dbms_reflection_inventory",
+      this.#inventoryTable,
+    );
+    // add the object model in case user's want to see it that way
+    this.createJsFlexibleTableFromUntypedObjectArray(
+      "dbmsInventory",
+      this.engines(),
+    );
+  }
+
+  get inventoryTable() {
+    return this.#inventoryTable;
+  }
+
+  async filteredDatabases(filter?: (e: govn.DbmsEngineDatabase) => boolean) {
     const databases: govn.DbmsEngineDatabase[] = [];
     for (const dbRow of this.alaSqlEngine.exec("SHOW DATABASES")) {
       const databaseID = dbRow.databaseid;
-      let db = this.customDbInventory?.(databaseID);
+      let db = await this.customDbInventory?.(databaseID);
       if (!db) {
         const filteredTables = (filter?: (t: govn.DbmsTable) => boolean) => {
           const tables: govn.DbmsTable[] = [];
@@ -143,19 +174,10 @@ export class AlaSqlProxy<
     return databases;
   }
 
-  get databases() {
-    return this.filteredDatabases();
-  }
-
   engines() {
-    const filteredDatabases = (
-      filter?: (db: govn.DbmsEngineDatabase) => boolean,
-    ) => {
-      return this.filteredDatabases(filter);
-    };
     return [{
       identity: this.identity,
-      databases: filteredDatabases(),
+      databases: this.databases,
     }];
   }
 
@@ -175,6 +197,8 @@ export class AlaSqlProxy<
     });
 
     await this.dbee.emit("openedDatabase", this);
+    this.databases = await this.filteredDatabases();
+
     this.#initialized = true;
   }
 
