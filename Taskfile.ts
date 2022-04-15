@@ -3,6 +3,7 @@ import * as tcss from "./lib/task/transform-css.ts";
 import * as bjs from "./lib/task/bundle-js.ts";
 import * as udd from "./lib/task/udd.ts";
 import * as gh from "./lib/task/github.ts";
+import * as dzx from "https://deno.land/x/dzx@0.3.1/mod.ts";
 
 // see setup and usage instructions in lib/task/README.md
 
@@ -28,7 +29,7 @@ export class Tasks extends t.EventEmitter<{
     this.on(
       "updateSupportDeps",
       async () => {
-        const options = { verbose: false };
+        const options = { verbose: true };
         await gh.ensureGitHubBinary({
           // https://github.com/mergestat/mergestat
           // https://docs.mergestat.com/examples/basic-git
@@ -59,6 +60,21 @@ export class Tasks extends t.EventEmitter<{
                 stripComponents: 1,
               },
             ),
+          },
+        }, options)();
+        await gh.ensureGitHubBinary({
+          // https://github.com/jhspetersson/fselect
+          repo: "jhspetersson/fselect",
+          destPath: "support/bin",
+          release: {
+            baseName: () => `fselect-x86_64-linux-musl.gz`,
+            unarchive: async (archiveFsPath, finalize, ghbs, options) => {
+              const destFsPath = path.join(ghbs.destPath, "fselect");
+              dzx.$.verbose = options?.verbose ?? false;
+              await dzx.$`gunzip -c ${archiveFsPath} > ${destFsPath}`;
+              await finalize(destFsPath, ghbs);
+              return destFsPath;
+            },
           },
         }, options)();
       },
