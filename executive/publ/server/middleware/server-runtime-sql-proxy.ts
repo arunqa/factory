@@ -1,4 +1,4 @@
-import { colors, path } from "../../../../core/deps.ts";
+import { colors } from "../../../../core/deps.ts";
 import { oak } from "../deps.ts";
 import * as safety from "../../../../lib/safety/mod.ts";
 import * as pDB from "../../publication-db.ts";
@@ -6,6 +6,9 @@ import * as p from "../../publication.ts";
 import * as m from "../../../../lib/metrics/mod.ts";
 import * as sql from "../../../../lib/sql/mod.ts";
 import * as alaSQL from "../../../../lib/alasql/mod.ts";
+import * as gitSQL from "../../../../lib/sql/shell/git.ts";
+import * as fsSQL from "../../../../lib/sql/shell/fs.ts";
+import * as osQ from "../../../../lib/sql/shell/osquery.ts";
 import "../../../../lib/db/sql.ts"; // for window.globalSqlDbConns
 
 export const firstWordRegEx = /^\s*([a-zA-Z0-9]+)/;
@@ -81,56 +84,15 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
   readonly pubCtlAlaSqlProxyDbName = "pubctl";
   readonly gitSqlAlaSqlProxyDbName = "gitsql";
   readonly fileSysSqlAlaSqlProxyDbName = "fssql";
+  readonly osQuerySqlAlaSqlProxyDbName = "osquery";
+  readonly osQueryClientPath = "/usr/local/bin/osqueryi";
   readonly customDatabaseIDs = [
     this.pubCtlAlaSqlProxyDbName,
     this.gitSqlAlaSqlProxyDbName,
     this.fileSysSqlAlaSqlProxyDbName,
+    this.osQuerySqlAlaSqlProxyDbName,
   ];
   readonly asp: alaSQL.AlaSqlProxy;
-  readonly gitSqlCmdProxy = new sql.SqlCmdExecutive({
-    prepareExecuteSqlCmd: (SQL) => {
-      const mergeStatAbsPath = path.resolve(
-        path.dirname(path.fromFileUrl(import.meta.url)),
-        "../../../../support/bin/mergestat",
-      );
-      return {
-        cmd: [mergeStatAbsPath, "-f", "json", SQL],
-        stdout: "piped",
-        stderr: "piped",
-      };
-    },
-    events: () => {
-      return new sql.SqlEventEmitter();
-    },
-  });
-  readonly fileSysSqlCmdProxy = new sql.SqlCmdExecutive({
-    prepareExecuteSqlCmd: (parsedSQL) => {
-      // https://github.com/jhspetersson/fselect
-      const fselectAbsPath = path.resolve(
-        path.dirname(path.fromFileUrl(import.meta.url)),
-        "../../../../support/bin/fselect",
-      );
-      // fselect does not support comments
-      let SQL = parsedSQL.replaceAll(/\-\-.*$/mg, " ");
-      // fselect does not like line breaks between SQL tokens
-      SQL = SQL.replaceAll(/(\r\n|\r|\n)/mg, " ");
-      // fselect does not start with "select" SQL, it goes straight into columns
-      const firstWordMatch = SQL.match(firstWordRegEx);
-      if (firstWordMatch && firstWordMatch.length > 1) {
-        if (firstWordMatch[1].toUpperCase() == "SELECT") {
-          SQL = SQL.replace(firstWordRegEx, "");
-        }
-      }
-      return {
-        cmd: [fselectAbsPath, SQL, "into", "json"],
-        stdout: "piped",
-        stderr: "piped",
-      };
-    },
-    events: () => {
-      return new sql.SqlEventEmitter();
-    },
-  });
 
   constructor(
     readonly app: oak.Application,
@@ -161,37 +123,32 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
           asp.alaSqlEngine(
             `CREATE DATABASE IF NOT EXISTS ${this.fileSysSqlAlaSqlProxyDbName}`,
           );
+          asp.alaSqlEngine(
+            `CREATE DATABASE IF NOT EXISTS ${this.osQuerySqlAlaSqlProxyDbName}`,
+          );
           asp.createJsFlexibleTableFromUntypedObjectArray(
             "dbms_reflection_prepare_db_tx_log",
             asp.defnTxLog,
           );
-          // add a denormalized table in case users want to see it that way
-          asp.createJsFlexibleTableFromUntypedObjectArray(
-            "dbms_reflection_inventory",
-            asp.inventoryTable(),
-          );
-          // add the object model in case user's want to see it that way
-          asp.createJsFlexibleTableFromUntypedObjectArray(
-            "dbmsInventory",
-            asp.engines(),
-          );
         });
         return ee;
       },
-      customDbInventory: this.database
-        ? (databaseID) => {
-          switch (databaseID) {
-            case this.pubCtlAlaSqlProxyDbName:
-              return this.asp.sqliteDbInventory(this.database!, databaseID);
-            case this.gitSqlAlaSqlProxyDbName:
-              return this.gitSqlInventory(databaseID);
-            case this.fileSysSqlAlaSqlProxyDbName:
-              return this.fileSysSqlInventory(databaseID);
-            default:
-              return undefined;
-          }
+      customDbInventory: async (databaseID) => {
+        switch (databaseID) {
+          case this.pubCtlAlaSqlProxyDbName:
+            return this.database
+              ? this.asp.sqliteDbInventory(this.database, databaseID)
+              : undefined;
+          case this.gitSqlAlaSqlProxyDbName:
+            return gitSQL.gitSqlInventory(databaseID);
+          case this.fileSysSqlAlaSqlProxyDbName:
+            return fsSQL.fileSysSqlInventory(databaseID);
+          case this.osQuerySqlAlaSqlProxyDbName:
+            return await osQ.osQuerySqlInventory(databaseID);
+          default:
+            return undefined;
         }
-        : undefined,
+      },
     });
 
     if (this.database) {
@@ -314,14 +271,21 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
               return {
                 SQL,
                 // deno-lint-ignore no-explicit-any
-                data: await this.gitSqlCmdProxy.recordsDQL<any>(SQL),
+                data: await gitSQL.gitSqlCmdProxy.recordsDQL<any>(SQL),
               };
 
             case this.fileSysSqlAlaSqlProxyDbName:
               return {
                 SQL,
                 // deno-lint-ignore no-explicit-any
-                data: await this.fileSysSqlCmdProxy.recordsDQL<any>(SQL),
+                data: await fsSQL.fileSysSqlCmdProxy.recordsDQL<any>(SQL),
+              };
+
+            case this.osQuerySqlAlaSqlProxyDbName:
+              return {
+                SQL,
+                // deno-lint-ignore no-explicit-any
+                data: await osQ.osQuerySqlCmdProxy.recordsDQL<any>(SQL),
               };
 
             default:
@@ -543,258 +507,5 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
         observabilityDB,
       );
     }
-  }
-
-  gitSqlInventory(databaseID: string): sql.DbmsEngineSchemalessDatabase {
-    // use `gitql show-tables` to get schema
-
-    // https://github.com/filhodanuvem/gitql
-    const _gitqlDialect = () => {
-      const filteredTables = (filter?: (t: sql.DbmsTable) => boolean) => {
-        const commitsColumns = (
-          filter?: (t: sql.DbmsTableColumn) => boolean,
-        ) => {
-          const columns: sql.DbmsTableUntypedColumn[] = [
-            "hash",
-            "date",
-            "author",
-            "author_email",
-            "committer",
-            "committer_email",
-            "message",
-            "full_message",
-          ].map((name) => ({ identity: name }));
-          return filter ? columns.filter((c) => filter(c)) : columns;
-        };
-        const commitsTable: sql.DbmsTable = {
-          identity: "commits",
-          filteredColumns: commitsColumns,
-          columns: commitsColumns(),
-        };
-
-        const refsColumns = (
-          filter?: (t: sql.DbmsTableColumn) => boolean,
-        ) => {
-          const columns: sql.DbmsTableUntypedColumn[] = [
-            "hash",
-            "name",
-            "full_name",
-            "type",
-          ].map((name) => ({ identity: name }));
-          return filter ? columns.filter((c) => filter(c)) : columns;
-        };
-        const refsTable: sql.DbmsTable = {
-          identity: "refs",
-          filteredColumns: refsColumns,
-          columns: refsColumns(),
-        };
-
-        const tagsColumns = (
-          filter?: (t: sql.DbmsTableColumn) => boolean,
-        ) => {
-          const columns: sql.DbmsTableUntypedColumn[] = [
-            "hash",
-            "name",
-            "full_name",
-          ].map((name) => ({ identity: name }));
-          return filter ? columns.filter((c) => filter(c)) : columns;
-        };
-        const tagsTable: sql.DbmsTable = {
-          identity: "tags",
-          filteredColumns: tagsColumns,
-          columns: tagsColumns(),
-        };
-
-        const branchesColumns = (
-          filter?: (t: sql.DbmsTableColumn) => boolean,
-        ) => {
-          const columns: sql.DbmsTableUntypedColumn[] = [
-            "hash",
-            "name",
-            "full_name",
-          ].map((name) => ({ identity: name }));
-          return filter ? columns.filter((c) => filter(c)) : columns;
-        };
-        const branchesTable: sql.DbmsTable = {
-          identity: "branches",
-          filteredColumns: branchesColumns,
-          columns: branchesColumns(),
-        };
-
-        const tables: sql.DbmsTable[] = [
-          commitsTable,
-          refsTable,
-          tagsTable,
-          branchesTable,
-        ];
-        return filter ? tables.filter((t) => filter(t)) : tables;
-      };
-      const db: sql.DbmsEngineSchemalessDatabase = {
-        isSchemaDatabase: false,
-        identity: databaseID,
-        filteredTables,
-        tables: filteredTables(),
-      };
-      return db;
-    };
-
-    // https://github.com/mergestat/mergestat
-    const mergestatDialect = () => {
-      const filteredTables = (filter?: (t: sql.DbmsTable) => boolean) => {
-        const commitsColumns = (
-          filter?: (t: sql.DbmsTableColumn) => boolean,
-        ) => {
-          const columns: sql.DbmsTableUntypedColumn[] = [
-            "hash",
-            "date",
-            "author_name",
-            "author_email",
-            "author_when",
-            "committer_name",
-            "committer_email",
-            "committer_when",
-            "message",
-            "parents",
-          ].map((name) => ({ identity: name }));
-          return filter ? columns.filter((c) => filter(c)) : columns;
-        };
-        const commitsTable: sql.DbmsTable = {
-          identity: "commits",
-          filteredColumns: commitsColumns,
-          columns: commitsColumns(),
-        };
-
-        const refsColumns = (
-          filter?: (t: sql.DbmsTableColumn) => boolean,
-        ) => {
-          const columns: sql.DbmsTableUntypedColumn[] = [
-            "hash",
-            "name",
-            "full_name",
-            "type",
-            "remote",
-            "target",
-          ].map((name) => ({ identity: name }));
-          return filter ? columns.filter((c) => filter(c)) : columns;
-        };
-        const refsTable: sql.DbmsTable = {
-          identity: "refs",
-          filteredColumns: refsColumns,
-          columns: refsColumns(),
-        };
-
-        const statsColumns = (
-          filter?: (t: sql.DbmsTableColumn) => boolean,
-        ) => {
-          const columns: sql.DbmsTableUntypedColumn[] = [
-            "file_path",
-            "additions",
-            "deletions",
-          ].map((name) => ({ identity: name }));
-          return filter ? columns.filter((c) => filter(c)) : columns;
-        };
-        const statsTable: sql.DbmsTable = {
-          identity: "stats",
-          filteredColumns: statsColumns,
-          columns: statsColumns(),
-        };
-
-        const filesColumns = (
-          filter?: (t: sql.DbmsTableColumn) => boolean,
-        ) => {
-          const columns: sql.DbmsTableUntypedColumn[] = [
-            "path",
-            "executable",
-            "contents",
-          ].map((name) => ({ identity: name }));
-          return filter ? columns.filter((c) => filter(c)) : columns;
-        };
-        const filesTable: sql.DbmsTable = {
-          identity: "files",
-          filteredColumns: filesColumns,
-          columns: filesColumns(),
-        };
-
-        const tables: sql.DbmsTable[] = [
-          commitsTable,
-          refsTable,
-          statsTable,
-          filesTable,
-        ];
-        return filter ? tables.filter((t) => filter(t)) : tables;
-      };
-      const db: sql.DbmsEngineSchemalessDatabase = {
-        isSchemaDatabase: false,
-        identity: databaseID,
-        filteredTables,
-        tables: filteredTables(),
-      };
-      return db;
-    };
-
-    return mergestatDialect();
-  }
-
-  fileSysSqlInventory(databaseID: string): sql.DbmsEngineSchemalessDatabase {
-    // https://github.com/jhspetersson/fselect
-    const fselectDialect = () => {
-      const filteredTables = (filter?: (t: sql.DbmsTable) => boolean) => {
-        const commitsColumns = (
-          filter?: (t: sql.DbmsTableColumn) => boolean,
-        ) => {
-          // use `fselect --help` at the command line to see all the columns supported
-          const columns: sql.DbmsTableUntypedColumn[] = [
-            "name",
-            "extension",
-            "path",
-            "abspath",
-            "directory",
-            "absdir",
-            "size",
-            "fsize",
-            "accessed",
-            "created",
-            "modified",
-            "user",
-            "group",
-            "mime",
-            "is_binary",
-            "is_text",
-            "is_image",
-            "line_count",
-            "sha1",
-            "sha2_256",
-            "sha2_512",
-            "sha3_512",
-          ].map((name) => ({ identity: name }));
-          return filter ? columns.filter((c) => filter(c)) : columns;
-        };
-        const tables: sql.DbmsTable[] = [
-          // tables in fselect are just directories; we use content/public
-          // because our assumption is that the current working directory
-          // is where pubctl.ts is running in the project home.
-          {
-            identity: "content",
-            filteredColumns: commitsColumns,
-            columns: commitsColumns(),
-          },
-          {
-            identity: "public",
-            filteredColumns: commitsColumns,
-            columns: commitsColumns(),
-          },
-        ];
-        return filter ? tables.filter((t) => filter(t)) : tables;
-      };
-      const db: sql.DbmsEngineSchemalessDatabase = {
-        isSchemaDatabase: false,
-        identity: databaseID,
-        filteredTables,
-        tables: filteredTables(),
-      };
-      return db;
-    };
-
-    return fselectDialect();
   }
 }

@@ -57,6 +57,7 @@
         </details>
     </div>
     <div>
+        <span id="dbmsInventoryState" style="font-size:small">Loading Proxyable SQL Databases...</span><br>
         <select id='database' onchange="selectDatabase({databaseID: this.value})" size="4">
             <option selected>Database</option>
         </select>
@@ -218,6 +219,7 @@
                     selectDatabase({ databaseID: dbSelectElem.options[1].value });
                 }
                 populateSqlStatement({ sqlStmt: sqlStmtsInventory.defaultSqlStmt });
+                document.getElementById("dbmsInventoryState").innerHTML = `Loaded inventory for ${databases.length} proxyable SQL databases.`;
             });
 
             const dbQueryDbmsInventoryFx = path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
