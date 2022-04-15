@@ -7,11 +7,14 @@ export interface GitHubBinaryHandler {
   (
     fsPath: string,
     ghbs: GitHubBinarySource,
+    options?: {
+      readonly verbose?: boolean;
+    },
   ): Promise<void>;
 }
 
 export function makeGitHubBinaryExecutable(): GitHubBinaryHandler {
-  return async (fsPath: string) => {
+  return async (fsPath) => {
     // 0o755 = owner can do anything, everyone can read/execute
     await Deno.chmod(fsPath, 0o755);
   };
@@ -22,27 +25,38 @@ export interface GitHubBinaryArchiveHandler {
     archiveFsPath: string,
     finalize: GitHubBinaryHandler,
     ghbs: GitHubBinarySource,
-  ): Promise<void>;
+    options?: {
+      readonly verbose?: boolean;
+    },
+  ): Promise<string>;
 }
 
 export function extractSingleFileFromTarGZ(
-  baseName: string,
+  archiveName: string,
+  destName: string = archiveName,
+  esfOptions?: {
+    readonly stripComponents?: number;
+  },
 ): GitHubBinaryArchiveHandler {
-  return async (
-    archiveFsPath: string,
-    finalize: GitHubBinaryHandler,
-    ghbs: GitHubBinarySource,
-  ) => {
-    console.log((await dzx.$`tar -tz -f ${archiveFsPath}`).stdout);
-    await dzx.$`tar -xz -C ${ghbs.destPath} ${baseName} -f ${archiveFsPath}`;
-    await finalize(path.join(ghbs.destPath, baseName), ghbs);
+  return async (archiveFsPath, finalize, ghbs, options) => {
+    dzx.$.verbose = options?.verbose ?? false;
+    if (esfOptions?.stripComponents) {
+      await dzx.$
+        `tar -xz -f ${archiveFsPath} -C ${ghbs.destPath} --strip-components=${esfOptions.stripComponents} ${archiveName}`;
+    } else {
+      await dzx.$
+        `tar -xz -f ${archiveFsPath} -C ${ghbs.destPath} ${archiveName}`;
+    }
+    const destFsPath = path.join(ghbs.destPath, destName);
+    await finalize(destFsPath, ghbs);
+    return destFsPath;
   };
 }
 
 export async function latestGitHubRepoRelease(
   { repo }: { readonly repo: string },
   options?: {
-    onFetchError: (error: Error) => Promise<void>;
+    readonly onFetchError?: (error: Error) => Promise<void>;
   },
 ) {
   try {
@@ -59,34 +73,38 @@ export interface GitHubBinarySource {
   readonly repo: string;
   readonly destPath: string;
   readonly release: {
-    readonly baseName: string;
+    readonly baseName: (latestRelease: { readonly tag_name: string }) => string;
     readonly unarchive?: GitHubBinaryArchiveHandler;
     readonly finalize?: GitHubBinaryHandler;
   };
 }
 
 export function ensureGitHubBinary(bin: GitHubBinarySource, options?: {
-  onFetchError: (error: Error) => Promise<void>;
+  verbose?: boolean;
+  onFetchError?: (error: Error) => Promise<void>;
 }) {
   return async () => {
+    const verbose = options?.verbose;
     const latest = await latestGitHubRepoRelease(bin, options);
     const latestTagName = latest?.tag_name;
-    console.log({ latestTagName });
     await Deno.mkdir(bin.destPath, { recursive: true });
     const finalize = bin.release.finalize ?? makeGitHubBinaryExecutable();
+    const baseName = bin.release.baseName(latest);
     const srcEndpoint =
-      `https://github.com/${bin.repo}/releases/download/${latestTagName}/${bin.release.baseName}`;
+      `https://github.com/${bin.repo}/releases/download/${latestTagName}/${baseName}`;
     const tmpDir = await Deno.makeTempDir();
-    const tmpDownloadPath = path.join(tmpDir, bin.release.baseName);
+    const tmpDownloadPath = path.join(tmpDir, baseName);
     await f.downloadAsset(
       srcEndpoint,
       bin.release.unarchive
         ? tmpDownloadPath
-        : path.join(bin.destPath, bin.release.baseName),
-      async (destFile, srcEndpoint) => {
-        console.log(colors.green(destFile), colors.dim(srcEndpoint));
+        : path.join(bin.destPath, baseName),
+      async (srcEndpoint, destFile) => {
+        if (verbose) {
+          console.log(colors.yellow(srcEndpoint), colors.dim(destFile));
+        }
         if (bin.release.unarchive) {
-          await bin.release.unarchive(tmpDownloadPath, finalize, bin);
+          await bin.release.unarchive(tmpDownloadPath, finalize, bin, options);
         } else {
           await finalize(destFile, bin);
         }
@@ -96,10 +114,5 @@ export function ensureGitHubBinary(bin: GitHubBinarySource, options?: {
         console.error(error, colors.red(destFile), colors.dim(srcEndpoint));
       },
     );
-    // const tmpDir = await Deno.makeTempDir();
-    // const tmpDownloadPath = path.join(tmpDir, bin.release.baseName);
-    // dzx.$.verbose = true;
-    // await dzx.$`curl -s -L ${srcEndpoint} -o ${tmpDownloadPath}`;
-    // await bin.release.unarchive?.(tmpDownloadPath, finalize, bin);
   };
 }

@@ -27,16 +27,41 @@ export class Tasks extends t.EventEmitter<{
     this.on("help", t.eeHelpTask(this));
     this.on(
       "updateSupportDeps",
-      gh.ensureGitHubBinary({
-        // https://github.com/mergestat/mergestat
-        // https://docs.mergestat.com/examples/basic-git
-        repo: "mergestat/mergestat",
-        destPath: "support/bin",
-        release: {
-          baseName: "mergestat-linux-amd64.tar.gz",
-          unarchive: gh.extractSingleFileFromTarGZ("./mergestat"),
-        },
-      }),
+      async () => {
+        const options = { verbose: false };
+        await gh.ensureGitHubBinary({
+          // https://github.com/mergestat/mergestat
+          // https://docs.mergestat.com/examples/basic-git
+          repo: "mergestat/mergestat",
+          destPath: "support/bin",
+          release: {
+            baseName: () => "mergestat-linux-amd64.tar.gz",
+            unarchive: gh.extractSingleFileFromTarGZ(
+              "./mergestat",
+              "mergestat",
+              {
+                stripComponents: 1,
+              },
+            ),
+          },
+        }, options)();
+        await gh.ensureGitHubBinary({
+          // https://github.com/kashav/fsql
+          repo: "kashav/fsql",
+          destPath: "support/bin",
+          release: {
+            baseName: (latest) =>
+              `fsql-${latest.tag_name.substring(1)}-linux-amd64.tar.gz`,
+            unarchive: gh.extractSingleFileFromTarGZ(
+              "linux-amd64/fsql",
+              "fsql",
+              {
+                stripComponents: 1,
+              },
+            ),
+          },
+        }, options)();
+      },
     );
     this.on("updateDenoDeps", udd.updateDenoDepsTask());
     this.on("bundleJsFromTsTwin", bjs.bundleJsFromTsTwinTask());
