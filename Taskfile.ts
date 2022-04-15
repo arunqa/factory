@@ -2,8 +2,7 @@ import * as t from "./lib/task/core.ts";
 import * as tcss from "./lib/task/transform-css.ts";
 import * as bjs from "./lib/task/bundle-js.ts";
 import * as udd from "./lib/task/udd.ts";
-import * as gh from "./lib/task/github.ts";
-import * as dzx from "https://deno.land/x/dzx@0.3.1/mod.ts";
+import * as ss from "./lib/sql/shell/task.ts";
 
 // see setup and usage instructions in lib/task/README.md
 
@@ -26,59 +25,7 @@ export class Tasks extends t.EventEmitter<{
     super();
     // this is ugly but necessary due to events.EventEmitter making _events_ private :-(
     this.on("help", t.eeHelpTask(this));
-    this.on(
-      "updateSupportDeps",
-      async () => {
-        const options = { verbose: true };
-        await gh.ensureGitHubBinary({
-          // https://github.com/mergestat/mergestat
-          // https://docs.mergestat.com/examples/basic-git
-          repo: "mergestat/mergestat",
-          destPath: "support/bin",
-          release: {
-            baseName: () => "mergestat-linux-amd64.tar.gz",
-            unarchive: gh.extractSingleFileFromTarGZ(
-              "./mergestat",
-              "mergestat",
-              {
-                stripComponents: 1,
-              },
-            ),
-          },
-        }, options)();
-        await gh.ensureGitHubBinary({
-          // https://github.com/kashav/fsql
-          repo: "kashav/fsql",
-          destPath: "support/bin",
-          release: {
-            baseName: (latest) =>
-              `fsql-${latest.tag_name.substring(1)}-linux-amd64.tar.gz`,
-            unarchive: gh.extractSingleFileFromTarGZ(
-              "linux-amd64/fsql",
-              "fsql",
-              {
-                stripComponents: 1,
-              },
-            ),
-          },
-        }, options)();
-        await gh.ensureGitHubBinary({
-          // https://github.com/jhspetersson/fselect
-          repo: "jhspetersson/fselect",
-          destPath: "support/bin",
-          release: {
-            baseName: () => `fselect-x86_64-linux-musl.gz`,
-            unarchive: async (archiveFsPath, finalize, ghbs, options) => {
-              const destFsPath = path.join(ghbs.destPath, "fselect");
-              dzx.$.verbose = options?.verbose ?? false;
-              await dzx.$`gunzip -c ${archiveFsPath} > ${destFsPath}`;
-              await finalize(destFsPath, ghbs);
-              return destFsPath;
-            },
-          },
-        }, options)();
-      },
-    );
+    this.on("updateSupportDeps", ss.ensureSupportBinsTask());
     this.on("updateDenoDeps", udd.updateDenoDepsTask());
     this.on("bundleJsFromTsTwin", bjs.bundleJsFromTsTwinTask());
     this.on("discoverBundleJsFromTsTwin", bjs.discoverBundleJsFromTsTwinTask());
