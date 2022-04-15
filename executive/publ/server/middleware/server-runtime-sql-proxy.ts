@@ -268,13 +268,13 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
     // deno-lint-ignore no-explicit-any
     let parsed: any = undefined;
     let foundCustomDB: string | undefined = undefined;
-    const useDatabaseRegEx = /^\s*USE\s*DATABASE\s*(.*?);[\r\n]*?/gmi;
+    const useDatabaseRegEx = /^\s*USE\s*DATABASE\s*(\w+).*$/gmi;
     const useDatabaseMatch = useDatabaseRegEx.exec(SQL);
     if (useDatabaseMatch) {
       const useDB = useDatabaseMatch[1];
       foundCustomDB = this.customDatabaseIDs.find((db) => db == useDB);
       if (foundCustomDB) {
-        SQL = SQL.replace(/^\s*USE\s*DATABASE\s*.*?;[\r\n]*?/i, "").trim();
+        SQL = SQL.replace(/^\s*USE\s*DATABASE.*$/mi, "").trim();
       }
     }
     if (!foundCustomDB) {
