@@ -1,5 +1,5 @@
-import * as govn from "./governance.ts";
-import * as safety from "../safety/mod.ts";
+import * as govn from "../governance.ts";
+import * as safety from "../../safety/mod.ts";
 
 // nomenclature and conventions should follow PgDCP whenever possible
 
