@@ -23,6 +23,7 @@ const observabilityDatabaseID = `observability`;
 const pubctlDatabaseID = `pubctl`;
 const gitSqlDatabaseID = `gitsql`;
 const fileSysSqlDatabaseID = `fssql`;
+const osQueryDatabaseID = `osquery`;
 const defaultSqlStmtID = "health-check-failed";
 function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
     const sqlStmtsIndex = new Map();
@@ -30,6 +31,9 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
         return {
             identity
         };
+    };
+    const tableObjectProps = {
+        nature: "table-object-properties"
     };
     const qualifiedNamePlaceholder = "[TBD]";
     const defaultSqlStmt = {
@@ -291,6 +295,24 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
                     }, 
                 ],
                 qualifiedName: qualifiedNamePlaceholder
+            },
+            {
+                name: "osquery",
+                label: "osQuery (operating system)",
+                sqlStmts: [
+                    {
+                        database: DB(osQueryDatabaseID),
+                        name: "system-info",
+                        label: "Show system information",
+                        SQL: unindentWhitespace(`
+            USE DATABASE ${osQueryDatabaseID}; -- https://osquery.io/\n
+                SELECT computer_name, hostname, cpu_brand, cpu_physical_cores, cpu_logical_cores, printf("%.2f", (physical_memory / 1024.0 / 1024.0 / 1024.0)) as memory_gb
+                FROM system_info`),
+                        presentation: tableObjectProps,
+                        qualifiedName: qualifiedNamePlaceholder
+                    }, 
+                ],
+                qualifiedName: qualifiedNamePlaceholder
             }
         ]
     };
@@ -321,6 +343,7 @@ export { observabilityDatabaseID as observabilityDatabaseID };
 export { pubctlDatabaseID as pubctlDatabaseID };
 export { gitSqlDatabaseID as gitSqlDatabaseID };
 export { fileSysSqlDatabaseID as fileSysSqlDatabaseID };
+export { osQueryDatabaseID as osQueryDatabaseID };
 export { defaultSqlStmtID as defaultSqlStmtID };
 export { typicalSqlStmtsInventory as typicalSqlStmtsInventory };
 export { defaultSqlStmtSupplier as defaultSqlStmtSupplier };

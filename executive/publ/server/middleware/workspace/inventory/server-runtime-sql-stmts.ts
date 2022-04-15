@@ -7,6 +7,7 @@ export const observabilityDatabaseID = `observability` as const;
 export const pubctlDatabaseID = `pubctl` as const;
 export const gitSqlDatabaseID = `gitsql` as const;
 export const fileSysSqlDatabaseID = `fssql` as const;
+export const osQueryDatabaseID = `osquery` as const;
 
 export type TypicalSqlStmtDatabaseID =
   | typeof defaultDatabaseID
@@ -14,7 +15,8 @@ export type TypicalSqlStmtDatabaseID =
   | typeof observabilityDatabaseID
   | typeof pubctlDatabaseID
   | typeof gitSqlDatabaseID
-  | typeof fileSysSqlDatabaseID;
+  | typeof fileSysSqlDatabaseID
+  | typeof osQueryDatabaseID;
 
 export const defaultSqlStmtID = "health-check-failed";
 
@@ -49,7 +51,7 @@ export function typicalSqlStmtsInventory(
   const _tableRecords: govn.SqlStmtResultTableRecordsPresentation = {
     nature: "table-records",
   };
-  const _tableObjectProps: govn.SqlStmtResultTableObjectPropsPresentation = {
+  const tableObjectProps: govn.SqlStmtResultTableObjectPropsPresentation = {
     nature: "table-object-properties",
   };
 
@@ -309,6 +311,23 @@ export function typicalSqlStmtsInventory(
               FROM ~/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/content
              WHERE name = '*.md'
              LIMIT 50`),
+          qualifiedName: qualifiedNamePlaceholder,
+        },
+      ],
+      qualifiedName: qualifiedNamePlaceholder,
+    }, {
+      name: "osquery",
+      label: "osQuery (operating system)",
+      sqlStmts: [
+        {
+          database: DB(osQueryDatabaseID),
+          name: "system-info",
+          label: "Show system information",
+          SQL: whs.unindentWhitespace(`
+            USE DATABASE ${osQueryDatabaseID}; -- https://osquery.io/\n
+                SELECT computer_name, hostname, cpu_brand, cpu_physical_cores, cpu_logical_cores, printf("%.2f", (physical_memory / 1024.0 / 1024.0 / 1024.0)) as memory_gb
+                FROM system_info`),
+          presentation: tableObjectProps,
           qualifiedName: qualifiedNamePlaceholder,
         },
       ],
