@@ -76,11 +76,13 @@
         <div interpolate-fx="{ db }" render-hook="({ target }) => $selectedDatabase.watch(target.renderFx)"
             style="font-size:small; color: silver">
             Use <code>ctrl+space</code> to autocomplete ${db?.tables?.length ?? 0} tables and their
-            columns in <code style="color:#889988">${db?.identity}</code> database.
-            Unless <code>pubctl</code> or <code>gitsql</code> database is selected, uses <a
-                href="http://alasql.org/">AlaSQL</a> SQL syntax. If <code>pubctl</code> is chosen, the SQL is passed to
-            SQLite. If <code>gitsql</code> is selected, SQL is passed to <a
-                href="https://github.com/mergestat/mergestat"><code>mergestat</code></a>.
+            columns in <code style="color:#889988">${db?.identity}</code> database. Use <ahref="http: //alasql.org/">
+                AlaSQL</a> SQL syntax for all databases except <code>pubctl</code>,
+                <code>gitsql</code>, and <code>fssql</code>.<br>
+                <code>pubctl</code> SQL is passed to a physical SQLite database, <code>gitsql</code> SQL is passed to <a
+                    href="https://github.com/mergestat/mergestat"><code>mergestat</code></a> subshell,
+                and <code>fssql</code> SQL
+                is passed to a <a href="https://github.com/jhspetersson/fselect"><code>fselect</code></a> subshell.
         </div>
     </div>
 

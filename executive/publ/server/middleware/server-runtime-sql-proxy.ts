@@ -1,4 +1,4 @@
-import { colors } from "../../../../core/deps.ts";
+import { colors, path } from "../../../../core/deps.ts";
 import { oak } from "../deps.ts";
 import * as safety from "../../../../lib/safety/mod.ts";
 import * as pDB from "../../publication-db.ts";
@@ -57,6 +57,7 @@ export function isUseDatabaseResult(result: unknown): boolean {
 }
 
 export interface SqlPayload extends SqlSupplier, ResultNatureSupplier {
+  readonly isError: Error | false;
   // deno-lint-ignore no-explicit-any
   readonly parsed: any; // TODO: type this, it's result of AlaSQL's parse()
   readonly isCustomSqlExecRequest: () => Promise<
@@ -79,6 +80,12 @@ export interface SqlPayload extends SqlSupplier, ResultNatureSupplier {
 export class ServerRuntimeSqlProxyMiddlewareSupplier {
   readonly pubCtlAlaSqlProxyDbName = "pubctl";
   readonly gitSqlAlaSqlProxyDbName = "gitsql";
+  readonly fileSysSqlAlaSqlProxyDbName = "fssql";
+  readonly customDatabaseIDs = [
+    this.pubCtlAlaSqlProxyDbName,
+    this.gitSqlAlaSqlProxyDbName,
+    this.fileSysSqlAlaSqlProxyDbName,
+  ];
   readonly asp: alaSQL.AlaSqlProxy;
   readonly gitSqlCmdProxy = new sql.SqlCmdExecutive({
     prepareExecuteSqlCmd: (SQL) => {
@@ -88,6 +95,34 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
       );
       return {
         cmd: [mergeStatAbsPath, "-f", "json", SQL],
+        stdout: "piped",
+        stderr: "piped",
+      };
+    },
+    events: () => {
+      return new sql.SqlEventEmitter();
+    },
+  });
+  readonly fileSysSqlCmdProxy = new sql.SqlCmdExecutive({
+    prepareExecuteSqlCmd: (parsedSQL) => {
+      // https://github.com/jhspetersson/fselect
+      const fselectAbsPath = path.resolve(
+        path.dirname(path.fromFileUrl(import.meta.url)),
+        "../../../../support/bin/fselect",
+      );
+      // fselect does not support comments
+      let SQL = parsedSQL.replaceAll(/\-\-.*$/mg, " ");
+      // fselect does not like line breaks between SQL tokens
+      SQL = SQL.replaceAll(/(\r\n|\r|\n)/mg, " ");
+      // fselect does not start with "select" SQL, it goes straight into columns
+      const firstWordMatch = SQL.match(firstWordRegEx);
+      if (firstWordMatch && firstWordMatch.length > 1) {
+        if (firstWordMatch[1].toUpperCase() == "SELECT") {
+          SQL = SQL.replace(firstWordRegEx, "");
+        }
+      }
+      return {
+        cmd: [fselectAbsPath, SQL, "into", "json"],
         stdout: "piped",
         stderr: "piped",
       };
@@ -123,6 +158,9 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
           asp.alaSqlEngine(
             `CREATE DATABASE IF NOT EXISTS ${this.gitSqlAlaSqlProxyDbName}`,
           );
+          asp.alaSqlEngine(
+            `CREATE DATABASE IF NOT EXISTS ${this.fileSysSqlAlaSqlProxyDbName}`,
+          );
           asp.createJsFlexibleTableFromUntypedObjectArray(
             "dbms_reflection_prepare_db_tx_log",
             asp.defnTxLog,
@@ -142,13 +180,16 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
       },
       customDbInventory: this.database
         ? (databaseID) => {
-          if (databaseID == this.pubCtlAlaSqlProxyDbName) {
-            return this.asp.sqliteDbInventory(this.database!, databaseID);
+          switch (databaseID) {
+            case this.pubCtlAlaSqlProxyDbName:
+              return this.asp.sqliteDbInventory(this.database!, databaseID);
+            case this.gitSqlAlaSqlProxyDbName:
+              return this.gitSqlInventory(databaseID);
+            case this.fileSysSqlAlaSqlProxyDbName:
+              return this.fileSysSqlInventory(databaseID);
+            default:
+              return undefined;
           }
-          if (databaseID == this.gitSqlAlaSqlProxyDbName) {
-            return this.gitSqlInventory(databaseID);
-          }
-          return undefined;
         }
         : undefined,
     });
@@ -226,16 +267,30 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
 
     // deno-lint-ignore no-explicit-any
     let parsed: any = undefined;
-    try {
-      parsed = this.asp.alaSqlEngine.parse(SQL);
-    } catch (error) {
-      parsed = this.prepareErrorResponse(error, {
-        isParseError: true,
-        SQL,
-        resultNature,
-      });
+    let foundCustomDB: string | undefined = undefined;
+    const useDatabaseRegEx = /^\s*USE\s*DATABASE\s*(.*?);[\r\n]*?/gmi;
+    const useDatabaseMatch = useDatabaseRegEx.exec(SQL);
+    if (useDatabaseMatch) {
+      const useDB = useDatabaseMatch[1];
+      foundCustomDB = this.customDatabaseIDs.find((db) => db == useDB);
+      if (foundCustomDB) {
+        SQL = SQL.replace(/^\s*USE\s*DATABASE\s*.*?;[\r\n]*?/i, "").trim();
+      }
+    }
+    if (!foundCustomDB) {
+      try {
+        parsed = this.asp.alaSqlEngine.parse(SQL);
+      } catch (error) {
+        // /^\s*USE\s*DATABASE\s*.*?;[\r\n]*?/i
+        parsed = this.prepareErrorResponse(error, {
+          isParseError: true,
+          SQL,
+          resultNature,
+        });
+      }
     }
     return {
+      isError: parsed ? parsed.error : false,
       SQL,
       resultNature,
       respondWithJSON: (body) => {
@@ -245,38 +300,43 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
         ctx.response.body = text;
       },
       parsed,
-      isCustomSqlExecRequest: async () => {
-        // if the SQL payload starts with `USE DATBASE .*;` we're going to
-        // "redirect" it from AlaSQL to another Rows supplier
-        if (
-          parsed && Array.isArray(parsed?.statements) &&
-          parsed.statements.length == 2
-        ) {
-          const useDatabaseID = parsed.statements[0]?.databaseid;
-          const justSQL = SQL.replace(/^\s*USE\s*DATABASE\s*.*?;[\r\n]*?/i, "");
-          switch (useDatabaseID) {
+      isCustomSqlExecRequest: foundCustomDB
+        ? (async () => {
+          switch (foundCustomDB) {
             case this.pubCtlAlaSqlProxyDbName:
               return {
-                SQL: justSQL,
+                SQL,
                 // deno-lint-ignore no-explicit-any
-                data: await this.database!.recordsDQL<any>(justSQL),
+                data: await this.database!.recordsDQL<any>(SQL),
               };
 
             case this.gitSqlAlaSqlProxyDbName:
               return {
-                SQL: justSQL,
+                SQL,
                 // deno-lint-ignore no-explicit-any
-                data: await this.gitSqlCmdProxy.recordsDQL<any>(justSQL),
+                data: await this.gitSqlCmdProxy.recordsDQL<any>(SQL),
               };
+
+            case this.fileSysSqlAlaSqlProxyDbName:
+              return {
+                SQL,
+                // deno-lint-ignore no-explicit-any
+                data: await this.fileSysSqlCmdProxy.recordsDQL<any>(SQL),
+              };
+
+            default:
+              throw new Error(
+                `custom database ${foundCustomDB} has no handler`,
+              );
           }
-        }
-        return false;
-      },
+        })
+        : // deno-lint-ignore require-await
+          (async () => false),
     };
   }
 
   protected async handleSqlPayload(payload: SqlPayload) {
-    const { SQL, parsed, resultNature, respondWithJSON } = payload;
+    const { isError, SQL, parsed, resultNature, respondWithJSON } = payload;
     try {
       if (!this.asp.initialized) {
         // since preparing the databases might take time, only do this
@@ -291,8 +351,8 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
         );
       }
 
-      if (parsed.error) {
-        respondWithJSON(parsed);
+      if (isError) {
+        respondWithJSON(isError);
         return;
       }
 
@@ -489,7 +549,7 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
     // use `gitql show-tables` to get schema
 
     // https://github.com/filhodanuvem/gitql
-    const gitqlDialect = () => {
+    const _gitqlDialect = () => {
       const filteredTables = (filter?: (t: sql.DbmsTable) => boolean) => {
         const commitsColumns = (
           filter?: (t: sql.DbmsTableColumn) => boolean,
@@ -673,5 +733,68 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
     };
 
     return mergestatDialect();
+  }
+
+  fileSysSqlInventory(databaseID: string): sql.DbmsEngineSchemalessDatabase {
+    // https://github.com/jhspetersson/fselect
+    const fselectDialect = () => {
+      const filteredTables = (filter?: (t: sql.DbmsTable) => boolean) => {
+        const commitsColumns = (
+          filter?: (t: sql.DbmsTableColumn) => boolean,
+        ) => {
+          // use `fselect --help` at the command line to see all the columns supported
+          const columns: sql.DbmsTableUntypedColumn[] = [
+            "name",
+            "extension",
+            "path",
+            "abspath",
+            "directory",
+            "absdir",
+            "size",
+            "fsize",
+            "accessed",
+            "created",
+            "modified",
+            "user",
+            "group",
+            "mime",
+            "is_binary",
+            "is_text",
+            "is_image",
+            "line_count",
+            "sha1",
+            "sha2_256",
+            "sha2_512",
+            "sha3_512",
+          ].map((name) => ({ identity: name }));
+          return filter ? columns.filter((c) => filter(c)) : columns;
+        };
+        const tables: sql.DbmsTable[] = [
+          // tables in fselect are just directories; we use content/public
+          // because our assumption is that the current working directory
+          // is where pubctl.ts is running in the project home.
+          {
+            identity: "content",
+            filteredColumns: commitsColumns,
+            columns: commitsColumns(),
+          },
+          {
+            identity: "public",
+            filteredColumns: commitsColumns,
+            columns: commitsColumns(),
+          },
+        ];
+        return filter ? tables.filter((t) => filter(t)) : tables;
+      };
+      const db: sql.DbmsEngineSchemalessDatabase = {
+        isSchemaDatabase: false,
+        identity: databaseID,
+        filteredTables,
+        tables: filteredTables(),
+      };
+      return db;
+    };
+
+    return fselectDialect();
   }
 }

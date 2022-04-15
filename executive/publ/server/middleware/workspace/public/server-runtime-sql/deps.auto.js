@@ -22,6 +22,7 @@ const configDatabaseID = `config`;
 const observabilityDatabaseID = `observability`;
 const pubctlDatabaseID = `pubctl`;
 const gitSqlDatabaseID = `gitsql`;
+const fileSysSqlDatabaseID = `fssql`;
 const defaultSqlStmtID = "health-check-failed";
 function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
     const sqlStmtsIndex = new Map();
@@ -218,6 +219,78 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
                     }
                 ],
                 qualifiedName: qualifiedNamePlaceholder
+            },
+            {
+                name: "file-system",
+                label: "File System",
+                sqlStmts: [
+                    {
+                        database: DB(fileSysSqlDatabaseID),
+                        name: "image-dimensions",
+                        label: "Show images and their dimensions",
+                        SQL: unindentWhitespace(`
+            USE DATABASE ${fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
+            SELECT CONCAT(width, 'x', height), path, size
+              FROM content
+             WHERE is_image and extension != 'svg'`),
+                        qualifiedName: qualifiedNamePlaceholder
+                    },
+                    {
+                        database: DB(fileSysSqlDatabaseID),
+                        name: "large-images",
+                        label: "Show large images (by dimension)",
+                        SQL: unindentWhitespace(`
+            USE DATABASE ${fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
+            SELECT CONCAT(width, 'x', height), path, fsize, mime
+              FROM content -- assumes current working directory is project home (usually true)
+             WHERE width >= 500 and height >= 500`),
+                        qualifiedName: qualifiedNamePlaceholder
+                    },
+                    {
+                        database: DB(fileSysSqlDatabaseID),
+                        name: "project-path-statistics",
+                        label: "Show useful file system statistics (WARNING: can be slow, be careful)",
+                        SQL: unindentWhitespace(`
+            USE DATABASE ${fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
+            SELECT MIN(size), MAX{size}, AVG(size), SUM{size}, COUNT(*)
+              FROM ~/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com`),
+                        qualifiedName: qualifiedNamePlaceholder
+                    },
+                    {
+                        database: DB(fileSysSqlDatabaseID),
+                        name: "project-path-image-statistics",
+                        label: "Show useful image statistics",
+                        SQL: unindentWhitespace(`
+            USE DATABASE ${fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
+            SELECT MIN(size), MAX{size}, AVG(size), SUM{size}, COUNT(*)
+              FROM ~/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/content
+             WHERE is_image and extension != 'svg'`),
+                        qualifiedName: qualifiedNamePlaceholder
+                    },
+                    {
+                        database: DB(fileSysSqlDatabaseID),
+                        name: "count-files-in-path",
+                        label: "Show total files in project path",
+                        SQL: unindentWhitespace(`
+            USE DATABASE ${fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
+            SELECT count(*)
+              FROM ~/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com`),
+                        qualifiedName: qualifiedNamePlaceholder
+                    },
+                    {
+                        database: DB(fileSysSqlDatabaseID),
+                        name: "markdown-files-and-sizes",
+                        label: "Show markdown files in content path",
+                        SQL: unindentWhitespace(`
+            USE DATABASE ${fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
+            SELECT size, path
+              FROM ~/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/content
+             WHERE name = '*.md'
+             LIMIT 50`),
+                        qualifiedName: qualifiedNamePlaceholder
+                    }, 
+                ],
+                qualifiedName: qualifiedNamePlaceholder
             }
         ]
     };
@@ -247,6 +320,7 @@ export { configDatabaseID as configDatabaseID };
 export { observabilityDatabaseID as observabilityDatabaseID };
 export { pubctlDatabaseID as pubctlDatabaseID };
 export { gitSqlDatabaseID as gitSqlDatabaseID };
+export { fileSysSqlDatabaseID as fileSysSqlDatabaseID };
 export { defaultSqlStmtID as defaultSqlStmtID };
 export { typicalSqlStmtsInventory as typicalSqlStmtsInventory };
 export { defaultSqlStmtSupplier as defaultSqlStmtSupplier };
