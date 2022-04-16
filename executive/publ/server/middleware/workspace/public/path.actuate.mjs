@@ -142,19 +142,19 @@ export const dependencyBundleAcquired = siteDomain.createEvent();
 export const duplicateDependencyRequest = siteDomain.createEvent();
 
 dependencyAcquired.watch((params) => {
-    if (params?.verbose) {
+    if (params?.verbose || params?.diagnose) {
         console.log('dependencyAcquired', params);
     }
 });
 
 dependencyBundleAcquired.watch((params) => {
-    if (params?.verbose) {
+    if (params?.verbose || params?.diagnose) {
         console.log('dependencyBundleAcquired', params);
     }
 });
 
 duplicateDependencyRequest.watch((params) => {
-    if (params?.verbose) {
+    if (params?.verbose || params?.diagnose) {
         console.log('duplicateDependencyRequest', params);
     }
 });
@@ -170,12 +170,13 @@ export const acquireDependencyFx = pageDomain.createEffect((params) => {
         dependency = undefined,
         dependencies = dependency ? [dependency] : undefined,
         verbose = false,
+        diagnose = false,
         createDocHeadScriptAppendEvent = () => pageDomain.createEvent(),
         depsAcquiredCache = pageDepsAcquired
     } = params ? (typeof params === "string" ? { dependency: params } : params) : {};
 
     const fxResult = { strategies: [] };
-    const appendSingleScriptHead = (ctx) => {
+    const appendSingleHeadScript = (ctx) => {
         if (typeof ctx !== "object" && typeof ctx.jsScriptSrc !== "string") {
             console.error(`[acquireDependencyFx.appendSingleScriptHead] expecting jsScriptSrc property`, ctx);
             return;
@@ -200,7 +201,7 @@ export const acquireDependencyFx = pageDomain.createEffect((params) => {
         const strategy = {
             strategy: 'document-head-script-appended',
             scriptElem,
-            verbose, ...ctx
+            verbose, diagnose, ...ctx
         };
         depsAcquiredCache.set(cacheKey, strategy);
         strategy.onLoadEvent = ctx.createOnLoadEvent?.(strategy) || createDocHeadScriptAppendEvent?.(strategy);
@@ -216,20 +217,26 @@ export const acquireDependencyFx = pageDomain.createEffect((params) => {
         fxResult.strategies.push(strategy);
     }
 
-    const appendBundledScriptHead = (bundle, bundleCtx) => {
+    const appendBundledHeadScripts = (bundle, bundleCtx) => {
+        // a bundle is an array of strings (string[]) where each each "bundle entry"
+        // is assumed to be a dependency of its prior string entry; we use recursion
+        // to make the job easier - each bundle entry calls the next after it finishes.
         const recurse = (bundleEntryIndex, bundleEntryParent) => {
+            const isLastBundleEntry = bundleEntryIndex == (bundle.length - 1) ? true : false;
             acquireDependencyFx({
                 dependency: {
                     jsScriptSrc: bundle[bundleEntryIndex],
                     isBundleEntry: true,
                     bundleEntryParent,
                     bundleEntryIndex,
+                    bundle,
+                    isLastBundleEntry,
                     onLoadEventWatcher: (params) => {
-                        if (bundleEntryIndex < (bundle.length - 1)) {
-                            recurse(bundleEntryIndex + 1, params)
-                        } else {
+                        if (isLastBundleEntry) {
                             bundleCtx.onLoadEventWatcher?.(params);
                             dependencyBundleAcquired(params);
+                        } else {
+                            recurse(bundleEntryIndex + 1, params)
                         }
                     }
                 },
@@ -238,22 +245,22 @@ export const acquireDependencyFx = pageDomain.createEffect((params) => {
         recurse(0);
     }
 
-    const appendScriptHead = (src, ctx) => {
+    const appendHeadScript = (src, ctx) => {
         if (typeof src === "string") {
             // simplest case with single script to load as a string
-            appendSingleScriptHead({ ...ctx, jsScriptSrc: src });
+            appendSingleHeadScript({ ...ctx, jsScriptSrc: src });
         } else if (Array.isArray(src) && src.length > 0) {
-            appendBundledScriptHead(src, ctx);
+            appendBundledHeadScripts(src, ctx);
         } else if (typeof src === "object" && src.jsScriptSrc) {
-            // single object
-            appendScriptHead(src.jsScriptSrc, src);
+            // single object, recurse
+            appendHeadScript(src.jsScriptSrc, src);
         } else {
             console.error(`[acquireDependencyFx.appendScriptHead] invalid dependency type`, { src, ctx, dependency, dependencies });
         }
     }
 
     // load each dependency and fire off events as completed
-    dependencies.forEach(dep => appendScriptHead(dep));
+    dependencies.forEach(dep => appendHeadScript(dep));
     return fxResult;
 });
 
@@ -492,6 +499,72 @@ export function prepareHookableDomRenderEffect(elem, options) {
     }
 }
 
+export const registerFootnotesContainer = pageDomain.createEvent();
+export const $footnotesContainer = pageDomain.createStore(null)
+    .on(registerFootnotesContainer, (_, value) => value);
+
+export const registerFootnote = pageDomain.createEvent();
+export const clearFootnotes = pageDomain.createEvent();
+export const $footnotes = pageDomain.createStore({})
+    .on(registerFootnote, (list, args) => {
+        let { elem, content = elem?.innerHTML, defaultIndex } = args;
+        const {
+            nature = "footnote",
+            identitySupplier = () => elem.id.length > 0 ? elem.id : undefined,
+            fnIndexAttrName = "fn-index",
+            refAnchorHTML = (state) => `<a href="#fn${state.index}" class="fn-ref fn-ref-${state.index}">${state.index}<a>`,
+            targetAnchorHTML = (state) => {
+                const refs = state.refElems();
+                return `<a id="fn${state.index}" title="${refs.length} ref${refs.length != 1 ? 's' : ''}" class="fn-ref-target fn-ref-target-${state.index}">${state.index}<a>`;
+            },
+            refsSelector = (state) => document.querySelectorAll(`sup[elaboration="${state.identity}"]`),
+        } = args;
+
+        const fnContainer = $footnotesContainer.getState();
+        if (!elem) {
+            if (args.identity && content && fnContainer) {
+                elem = document.createElement("div");
+                elem.id = args.identity;
+                fnContainer.appendChild(elem);
+                defaultIndex = fnContainer.querySelectorAll("div").length;
+            } else {
+                console.error(`[$footnotes.on(registerFootnote)] unable to create footnote content, need identity + content + fnContainer`);
+            }
+        }
+
+        const domSuppliedIndex = elem.getAttribute(fnIndexAttrName);
+        const index = domSuppliedIndex && domSuppliedIndex.length > 0 ? domSuppliedIndex : defaultIndex
+        const identity = identitySupplier() ?? `fn${index}`;
+        const elaborationState = {
+            nature,
+            identity,
+            content, // "frozen" version so
+            index,
+            refElems: () => refsSelector(elaborationState),
+            render: () => {
+                elem.innerHTML = `<sup>${targetAnchorHTML(elaborationState)}</sup> ${content}`;
+                elaborationState.refElems().forEach(refElem => {
+                    refElem.innerHTML = refAnchorHTML(elaborationState);
+                    if (window.tippy) {
+                        window.tippy(refElem, {
+                            content,
+                            allowHTML: true,
+                            placement: 'right'
+                        });
+                    }
+                });
+            }
+        };
+        elem.elaborationState = elaborationState;
+        return { ...list, [identity]: elaborationState };
+    })
+    .reset(clearFootnotes);
+
+$footnotes.watch((footnotes) => {
+    // render all on any change (in case dynamic content supplied)
+    Object.values(footnotes).forEach(fn => fn.render());
+});
+
 export function prepareDomEffects(domEffectsInit = {}) {
     const {
         evalJS,
@@ -583,41 +656,17 @@ export function prepareDomEffects(domEffectsInit = {}) {
     // footnote content is placed in a class class "elaborations"
     const elaborations = document.querySelectorAll(`.elaborations div`);
     if (elaborations.length > 0) {
-        elaborations.forEach((elab, index) => {
-            if (!("footnoteIndex" in elab)) {
-                const footnoteIndex = elab.getAttribute("fn-index");
-                elab.elaborationContent = elab.innerHTML; // we will add a number to the content so grab it before mutation
-                elab.footnoteIndex = footnoteIndex && footnoteIndex.length > 0 ? footnoteIndex : index + 1;
-                const fnRef = document.createElement("sup");
-                fnRef.innerHTML = `<a id="fn${elab.footnoteIndex}" class="fn-ref-target fn-ref-target-${elab.footnoteIndex}">${elab.footnoteIndex}<a>`;
-                elab.prepend(fnRef);
-            }
+        // load the tippy dependencies and then build up the footnotes registry
+        acquireTippyJsDeps(() => {
+            elaborations.forEach((elem, index) => registerFootnote({ elem, defaultIndex: index + 1 }));
         });
-
-        const elaborationRefs = document.querySelectorAll(`sup[elaboration]`);
-        if (elaborationRefs.length > 0) {
-            acquireTippyJsDeps(() => {
-                elaborationRefs.forEach(sup => {
-                    const refID = sup.getAttribute("elaboration");
-                    if (refID) {
-                        const refElem = document.getElementById(refID);
-                        if (refElem) {
-                            const content = () => refElem.elaborationContent;
-                            sup.innerHTML = `<a href="#fn${refElem.footnoteIndex}" class="fn-ref fn-ref-${refElem.footnoteIndex}">${refElem.footnoteIndex}<a>`; // turn content into into a footnote ref
-                            // API: https://atomiks.github.io/tippyjs/
-                            window.tippy(sup, { content, allowHTML: true, placement: 'right', });
-                        }
-                    }
-                })
-            });
-        }
     } else {
         const elaborationRefs = document.querySelectorAll(`sup[elaboration]`);
         elaborationRefs.forEach(elem => {
             elem.title = `no elaboration content supplied for ${elem.getAttribute("elaboration")}`;
             elem.innerHTML = `⚠️`;
             console.warn(elem.title, { elem });
-        })
+        });
     }
 }
 
@@ -738,7 +787,7 @@ export const activateSite = () => {
     // <!-- --> are there in between <a> tags to allow easier readability here but render with no spacing in DOM
     navPrime.innerHTML = `
         ${contextBarHTML ? `<div class="context">${contextBarHTML}</div>` : ''}<!--
-        --><a href="${baseURL}/product/index.html"><i class="fa-solid fa-route"></i> Product</a><!--
+        --><a href="${baseURL}/resource/index.html"><i class="fa-solid fa-file-lines"></i> Resource</a><!--
         --><a href="${baseURL}/inspect/route.html"><i class="fa-solid fa-route"></i> Route</a><!--
         --><a href="${baseURL}/inspect/information-architecture.html" title="Information Architecture"><i class="fa-solid fa-circle-info"></i> IA</a><!--
         --><a href="${baseURL}/inspect/layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a><!--

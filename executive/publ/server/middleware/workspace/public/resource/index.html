@@ -12,45 +12,52 @@
 <body>
     <p style="font-weight: bolder;">
         <code class="rf-resource-inspectable-active">
-            <marK interpolate-fx render-hook-activate-page>
+            <mark interpolate-fx render-hook-activate-page>
                 <span title="${path.editableClientLayoutTarget()?.src}">${path.editableClientLayoutTarget()?.fileName}</span>
             </marK>
         </code>
-        🏭 Product<sup elaboration="rf-product">#</sup>
+        🏭 Resource<sup elaboration="rf-resource">#</sup>
     </p>
     <p interpolate-fx="{ result: { inspectableRFUL: { route } } }" render-hook-activate-page>
         <b><marK>${route.terminal?.label}</marK></b> is a <code class="mime-type">${route.nature.mediaType}</code> page
         at route level ${route.terminal?.level + 1} and has ${route.units.length} ancestor${route.units.length == 1 ? ''
         : 's'}.
-        <span id="revisionSummary" style="padding-top: 5px; padding-bottom: 5px"></span>.
+        <span id="revisionSummary" style="padding-top: 5px; padding-bottom: 5px"></span>
+        <sup elaboration="page-authors">#</sup>.
     </p>
 
-    <details class="explore" open>
-        <summary>Page Terminal Route Unit</summary>
-        <p><code>clientLayout.route.terminal</code> is referred to as the <em>terminal route unit</em> because it
-            'terminates' the path where this page is located.</p>
+    <details class="explore">
+        <summary><code>window.clientLayout.route.terminal</code><sup
+                elaboration="rf-clientLayout.route.terminal">#</sup></summary>
         <div render-fx="({ target, result: { inspectableRFUL: { route } } }) => path.populateObjectJSON(route.terminal, target)"
             render-hook-activate-page></div>
     </details>
 
     <details class="explore">
-        <summary>Page Route</summary>
-        <p><code>clientLayout.route</code> is referred to as the <em>route</em> because it describes the full path where
-            this page is located. A single route is always comprised of one or more <em>route units</em>. The <em>route
-                units</em> can be used to create <em>breadcrumbs</em> in the UI.</p>
+        <summary><code>window.clientLayout.route</code><sup elaboration="rf-clientLayout.route">#</sup></summary>
         <div render-fx="({ target, result: { inspectableRFUL: { route } } }) => path.populateObjectJSON(route, target)"
             render-hook-activate-page></div>
     </details>
 
     <details class="explore">
-        <summary>Page Version History (Git Commits)</summary>
+        <summary>
+            <code><span interpolate-fx render-hook-activate-page>${path.editableClientLayoutTarget()?.fileName}</span></code>
+            Version History (Git Commits)
+        </summary>
         <div id="routeGitLog" class="ag-theme-alpine"></div>
     </details>
 
-    <details class="elaborations footnotes" open>
+    <details id="footnotes" class="elaborations footnotes">
         <summary>Notes</summary>
-        <div id="rf-product">A Resource Factory (🏭) <em>Product</em> is typically an HTML page but could be almost any
-            type of generated asset.</div>
+        <div id="rf-resource">A Resource Factory (🏭) <em>Resource</em> is the <em>source</em> of content and could be
+            HTML, Markdown, a database query result, a Javascript or Typescript module.</div>
+        <div id="rf-clientLayout.route.terminal"><code>window.clientLayout.route.terminal</code> is referred to as the
+            <em>terminal route unit</em> because it 'terminates' the path where this page is located.
+        </div>
+        <div id="rf-clientLayout.route"><code>clientLayout.route</code> is referred to as the <em>route</em> because it
+            describes the full path where this page is located. A single route is always comprised of one or more
+            <em>route units</em>. The <em>route units</em> can be used to create <em>breadcrumbs</em> in the UI.
+        </div>
     </details>
 
     <script type="module">
@@ -68,14 +75,20 @@
                 path.routeUrlSearchParams(path.inspectableClientLayout().route.terminal)
             );
 
+            path.registerFootnotesContainer(document.getElementById("footnotes"));
+
             const $routeGitLog = path.pageDomain.createStore([]);
             $routeGitLog.on(routeGitLogFx.doneData, (_, routeGitLog) => routeGitLog);
             $routeGitLog.watch((routeGitLog) => {
                 if (routeGitLog.length > 0) {
-                    const authors = [...new Set(routeGitLog.map(entry => entry.authorName))];
+                    const authors = [...new Set(routeGitLog.map(entry => {
+                        const authorRevisions = routeGitLog.filter(filter => filter.authorName == entry.authorName);
+                        return `${entry.authorName} <span style="color:silver">(${authorRevisions.length} revision${authorRevisions.length != 1 ? 's' : ''})</span>`;
+                    }))];
                     const author = (entry) => { return `<b>${routeGitLog[entry].authorName}</b> <i>${path.timeSince(new Date(routeGitLog[entry].authorDate))} ago</i>` }
                     document.getElementById("revisionSummary").innerHTML =
                         `It was created by ${author(routeGitLog.length - 1)}, last modified by ${author(0)} (${routeGitLog.length} total commits by ${authors.length} author${authors.length > 1 ? 's' : ''})`;
+                    path.registerFootnote({ identity: "page-authors", content: authors.join(", ") });
                 }
                 agG.populateAgGrid(agGrid, document.getElementById("routeGitLog"), (agGridOptionsGen) => {
                     return agGridOptionsGen({
@@ -86,7 +99,7 @@
                         ],
                         rowData: routeGitLog
                     });
-                })
+                });
             });
 
             // check all the DOM elements to see if any events, stores, or effects

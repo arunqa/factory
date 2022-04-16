@@ -191,6 +191,11 @@ a.fn-ref {
     text-decoration: none;
 }
 
+a.fn-ref-target {
+    color: purple;
+    font-weight: bold;
+}
+
 details.footnotes {
     border-top: 1px dotted #555;
     font-size: small;
@@ -200,6 +205,10 @@ details.footnotes {
 
 details.footnotes summary {
     cursor: pointer;
+}
+
+details.footnotes div {
+    padding-top: 5px;
 }
 
 /******************************************************************************
