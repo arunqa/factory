@@ -15,10 +15,10 @@
 
 export * from "../../../../../../lib/reflect/mod.ts";
 export * from "../../../../../../lib/text/human.ts";
-export * from "https://unpkg.com/effector@22.2.0/effector.mjs";
+export * from "https://unpkg.com/effector@22.3.0/effector.mjs";
 export * from "../../workspace/ua-editable.ts";
 
-import { createDomain } from "https://unpkg.com/effector@22.2.0/effector.mjs";
+import { createDomain } from "https://unpkg.com/effector@22.3.0/effector.mjs";
 
 // TODO[essential]: figure out how to properly type createDomain in Deno
 // deno-lint-ignore no-explicit-any

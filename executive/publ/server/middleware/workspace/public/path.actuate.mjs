@@ -31,7 +31,7 @@
 //   assets, and images must be loaded as soon as possible with asynchronous
 //   data loading in as it completes.
 
-import { createDomain } from "https://unpkg.com/effector@22.2.0/effector.mjs";
+import { createDomain } from "https://unpkg.com/effector@22.3.0/effector.mjs";
 import JSONFormatter from "https://cdn.jsdelivr.net/npm/json-formatter-js@2.3.4/dist/json-formatter.esm.js";
 import * as sb from "./service-bus.mjs";
 
@@ -135,7 +135,153 @@ export function fetchFxInitAlaSqlProxyDQL(SQL, fetchFxSqlID, resultNature) {
 export const siteDomain = createDomain("project");
 export const pageDomain = createDomain("page");
 
-// This is the default activePage effect which just sets up the basic site
+// when acquireDependencyFx is called, it generates these events
+export const pageDepsAcquired = new Map();
+export const dependencyAcquired = siteDomain.createEvent();
+export const dependencyBundleAcquired = siteDomain.createEvent();
+export const duplicateDependencyRequest = siteDomain.createEvent();
+
+dependencyAcquired.watch((params) => {
+    if (params?.verbose) {
+        console.log('dependencyAcquired', params);
+    }
+});
+
+dependencyBundleAcquired.watch((params) => {
+    if (params?.verbose) {
+        console.log('dependencyBundleAcquired', params);
+    }
+});
+
+duplicateDependencyRequest.watch((params) => {
+    if (params?.verbose) {
+        console.log('duplicateDependencyRequest', params);
+    }
+});
+
+/**
+ * This is the default conditional import strategy, used to acquire a script or
+ * CSS dependency dynamically and fire off events as the imports are completed.
+ * @param {*} params can be a single string or object which lists dependencies
+ * @returns an object with the dependencies and imports accomplished
+ */
+export const acquireDependencyFx = pageDomain.createEffect((params) => {
+    const {
+        dependency = undefined,
+        dependencies = dependency ? [dependency] : undefined,
+        verbose = false,
+        createDocHeadScriptAppendEvent = () => pageDomain.createEvent(),
+        depsAcquiredCache = pageDepsAcquired
+    } = params ? (typeof params === "string" ? { dependency: params } : params) : {};
+
+    const fxResult = { strategies: [] };
+    const appendSingleScriptHead = (ctx) => {
+        if (typeof ctx !== "object" && typeof ctx.jsScriptSrc !== "string") {
+            console.error(`[acquireDependencyFx.appendSingleScriptHead] expecting jsScriptSrc property`, ctx);
+            return;
+        }
+
+        const cacheKey = ctx.jsScriptSrc;
+        const acquiredAlready = depsAcquiredCache.get(cacheKey);
+        if (acquiredAlready) {
+            const dupeRequest = { ...acquiredAlready, duplicateRequestCtx: ctx }
+            duplicateDependencyRequest(dupeRequest);
+            if (acquiredAlready.isLoaded) {
+                // we're already loaded, just fire off the event
+                ctx.onLoadEventWatcher?.(dupeRequest);
+            } else {
+                // it hasn't been loaded yet, so add subscriber
+                if (ctx.onLoadEventWatcher) acquiredAlready.onLoadEvent?.watch(ctx.onLoadEventWatcher);
+            }
+            return;
+        }
+
+        const scriptElem = document.createElement('script');
+        const strategy = {
+            strategy: 'document-head-script-appended',
+            scriptElem,
+            verbose, ...ctx
+        };
+        depsAcquiredCache.set(cacheKey, strategy);
+        strategy.onLoadEvent = ctx.createOnLoadEvent?.(strategy) || createDocHeadScriptAppendEvent?.(strategy);
+        if (ctx.onLoadEventWatcher && strategy.onLoadEvent) strategy.onLoadEvent.watch(ctx.onLoadEventWatcher);
+        scriptElem.onload = ctx.scriptElemOnLoad ? ctx.scriptElemOnLoad(strategy) : (() => {
+            strategy.isLoaded = true;
+            strategy.onLoadEvent?.(strategy); // fire off the specific event, might have multiple watchers
+            dependencyAcquired(strategy); // fire off the generic event
+        })
+        scriptElem.type = ctx.mimeType ?? 'text/javascript';
+        scriptElem.src = ctx.jsScriptSrc; // this will start load and fire off "scriptElem.onload"
+        document.head.appendChild(scriptElem);
+        fxResult.strategies.push(strategy);
+    }
+
+    const appendBundledScriptHead = (bundle, bundleCtx) => {
+        const recurse = (bundleEntryIndex, bundleEntryParent) => {
+            acquireDependencyFx({
+                dependency: {
+                    jsScriptSrc: bundle[bundleEntryIndex],
+                    isBundleEntry: true,
+                    bundleEntryParent,
+                    bundleEntryIndex,
+                    onLoadEventWatcher: (params) => {
+                        if (bundleEntryIndex < (bundle.length - 1)) {
+                            recurse(bundleEntryIndex + 1, params)
+                        } else {
+                            bundleCtx.onLoadEventWatcher?.(params);
+                            dependencyBundleAcquired(params);
+                        }
+                    }
+                },
+            })
+        }
+        recurse(0);
+    }
+
+    const appendScriptHead = (src, ctx) => {
+        if (typeof src === "string") {
+            // simplest case with single script to load as a string
+            appendSingleScriptHead({ ...ctx, jsScriptSrc: src });
+        } else if (Array.isArray(src) && src.length > 0) {
+            appendBundledScriptHead(src, ctx);
+        } else if (typeof src === "object" && src.jsScriptSrc) {
+            // single object
+            appendScriptHead(src.jsScriptSrc, src);
+        } else {
+            console.error(`[acquireDependencyFx.appendScriptHead] invalid dependency type`, { src, ctx, dependency, dependencies });
+        }
+    }
+
+    // load each dependency and fire off events as completed
+    dependencies.forEach(dep => appendScriptHead(dep));
+    return fxResult;
+});
+
+acquireDependencyFx.fail.watch((failedFxArgs) => {
+    console.error('acquireDependencyFx.fail.watch', failedFxArgs);
+});
+
+export function acquirePopperJsDeps(onLoadEventWatcher) {
+    acquireDependencyFx({
+        dependency: {
+            id: "popperjs",
+            jsScriptSrc: "https://unpkg.com/@popperjs/core@2",
+            onLoadEventWatcher
+        },
+    });
+}
+
+export function acquireTippyJsDeps(onLoadEventWatcher) {
+    acquireDependencyFx({
+        dependency: {
+            id: "tippyjs",
+            jsScriptSrc: ["https://unpkg.com/@popperjs/core@2", "https://unpkg.com/tippy.js@6"],
+            onLoadEventWatcher
+        },
+    });
+}
+
+// This is the default activatePage effect which just sets up the basic site
 // infrastructure. If no special setup is required, use:
 //
 //   document.addEventListener('DOMContentLoaded', activatePageFx);
@@ -433,6 +579,46 @@ export function prepareDomEffects(domEffectsInit = {}) {
             renderHook: typicalRenderHook(renderElem)
         });
     }
+
+    // footnote content is placed in a class class "elaborations"
+    const elaborations = document.querySelectorAll(`.elaborations div`);
+    if (elaborations.length > 0) {
+        elaborations.forEach((elab, index) => {
+            if (!("footnoteIndex" in elab)) {
+                const footnoteIndex = elab.getAttribute("fn-index");
+                elab.elaborationContent = elab.innerHTML; // we will add a number to the content so grab it before mutation
+                elab.footnoteIndex = footnoteIndex && footnoteIndex.length > 0 ? footnoteIndex : index + 1;
+                const fnRef = document.createElement("sup");
+                fnRef.innerHTML = `<a id="fn${elab.footnoteIndex}" class="fn-ref-target fn-ref-target-${elab.footnoteIndex}">${elab.footnoteIndex}<a>`;
+                elab.prepend(fnRef);
+            }
+        });
+
+        const elaborationRefs = document.querySelectorAll(`sup[elaboration]`);
+        if (elaborationRefs.length > 0) {
+            acquireTippyJsDeps(() => {
+                elaborationRefs.forEach(sup => {
+                    const refID = sup.getAttribute("elaboration");
+                    if (refID) {
+                        const refElem = document.getElementById(refID);
+                        if (refElem) {
+                            const content = () => refElem.elaborationContent;
+                            sup.innerHTML = `<a href="#fn${refElem.footnoteIndex}" class="fn-ref fn-ref-${refElem.footnoteIndex}">${refElem.footnoteIndex}<a>`; // turn content into into a footnote ref
+                            // API: https://atomiks.github.io/tippyjs/
+                            window.tippy(sup, { content, allowHTML: true, placement: 'right', });
+                        }
+                    }
+                })
+            });
+        }
+    } else {
+        const elaborationRefs = document.querySelectorAll(`sup[elaboration]`);
+        elaborationRefs.forEach(elem => {
+            elem.title = `no elaboration content supplied for ${elem.getAttribute("elaboration")}`;
+            elem.innerHTML = `⚠️`;
+            console.warn(elem.title, { elem });
+        })
+    }
 }
 
 /**
@@ -530,11 +716,9 @@ export const activateFooter = () => {
 }
 
 /**
- * Activate all site-wide functionality such as navigation. We use as much
- * modern HTML5, "vanilla" HTML, and as little JS as possible. When JS is needed
- * use Effector for state management and async effect. By default this function
- * is called by activePageFx before any other activation/actuation is performed.
- * UI guide: https://www.w3schools.com/howto/
+ * Activate all site-wide functionality such as navigation and footers. We use
+ * as much modern HTML5, "vanilla" HTML, and as little JS as possible. When JS
+ * is needed use Effector for state management and async effect.
  */
 export const activateSite = () => {
     // TODO: consider using https://www.w3schools.com/howto/howto_html_include.asp
@@ -554,6 +738,7 @@ export const activateSite = () => {
     // <!-- --> are there in between <a> tags to allow easier readability here but render with no spacing in DOM
     navPrime.innerHTML = `
         ${contextBarHTML ? `<div class="context">${contextBarHTML}</div>` : ''}<!--
+        --><a href="${baseURL}/product/index.html"><i class="fa-solid fa-route"></i> Product</a><!--
         --><a href="${baseURL}/inspect/route.html"><i class="fa-solid fa-route"></i> Route</a><!--
         --><a href="${baseURL}/inspect/information-architecture.html" title="Information Architecture"><i class="fa-solid fa-circle-info"></i> IA</a><!--
         --><a href="${baseURL}/inspect/layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a><!--

@@ -184,6 +184,25 @@ nav.prime .active {
 }
 
 /******************************************************************************
+ * Elaborations (footnotes, etc.)
+ ******************************************************************************/
+
+a.fn-ref {
+    text-decoration: none;
+}
+
+details.footnotes {
+    border-top: 1px dotted #555;
+    font-size: small;
+    margin-left: 1rem;
+    margin-top: 1rem;
+}
+
+details.footnotes summary {
+    cursor: pointer;
+}
+
+/******************************************************************************
  * Footer
  ******************************************************************************/
 
