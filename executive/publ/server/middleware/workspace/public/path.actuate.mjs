@@ -144,21 +144,19 @@ export const dependencyBundleAcquired = siteDomain.createEvent();
 export const duplicateDependencyRequest = siteDomain.createEvent();
 
 dependencyAcquired.watch((params) => {
-    if (params?.verbose || params?.diagnose) {
+    if (params?.diagnose) {
         console.log('dependencyAcquired', params);
     }
 });
 
 dependencyBundleAcquired.watch((params) => {
-    if (params?.verbose || params?.diagnose) {
+    if (params?.diagnose) {
         console.log('dependencyBundleAcquired', params);
     }
 });
 
 duplicateDependencyRequest.watch((params) => {
-    if (params?.verbose || params?.diagnose) {
-        console.log('duplicateDependencyRequest', params);
-    }
+    console.warn('duplicateDependencyRequest, should probably use `isDependencyAvailable: () => boolean` property', params);
 });
 
 /**
@@ -168,6 +166,8 @@ duplicateDependencyRequest.watch((params) => {
  * @returns an object with the dependencies and imports accomplished
  */
 export const acquireDependencyFx = pageDomain.createEffect((params) => {
+    // IMPORTANT: if you add any config args here, be sure to pass them through
+    // to recursive call in appendBundledHeadScripts if necessary
     const {
         dependency = undefined,
         dependencies = dependency ? [dependency] : undefined,
@@ -242,6 +242,7 @@ export const acquireDependencyFx = pageDomain.createEffect((params) => {
                         }
                     }
                 },
+                verbose, diagnose, createDocHeadScriptAppendEvent, depsAcquiredCache
             })
         }
         recurse(0);
@@ -249,9 +250,23 @@ export const acquireDependencyFx = pageDomain.createEffect((params) => {
 
     const appendHeadScript = (src, ctx) => {
         if (typeof src === "string") {
+            const singleDependentAvailableResult = ctx.isDependencyAvailable && ctx.isDependencyAvailable('single', src, ctx);
+            if (singleDependentAvailableResult) {
+                ctx.onLoadEventWatcher?.({ isLoadRequired: false, singleDependentAvailableResult })
+                if (verbose) console.info(`[acquireDependencyFx.appendHeadScript] single script dependency fulfilled already, not loading`, { src, ctx, singleDependentAvailableResult });
+                return;
+            }
+
             // simplest case with single script to load as a string
             appendSingleHeadScript({ ...ctx, jsScriptSrc: src });
         } else if (Array.isArray(src) && src.length > 0) {
+            const bundledDependentsAvailableResult = ctx.isDependencyAvailable && ctx.isDependencyAvailable('bundled', src, ctx);
+            if (bundledDependentsAvailableResult) {
+                ctx.onLoadEventWatcher?.({ isLoadRequired: false, bundledDependentsAvailableResult })
+                if (verbose) console.info(`[acquireDependencyFx.appendHeadScript] bundled script dependencies fulfilled already, not loading`, { src, ctx, bundledDependentsAvailableResult });
+                return;
+            }
+
             appendBundledHeadScripts(src, ctx);
         } else if (typeof src === "object" && src.jsScriptSrc) {
             // single object, recurse
@@ -275,8 +290,10 @@ export function acquirePopperJsDeps(onLoadEventWatcher) {
         dependency: {
             id: "popperjs",
             jsScriptSrc: "https://unpkg.com/@popperjs/core@2",
-            onLoadEventWatcher
+            isDependencyAvailable: () => window.popper ? true : false,
+            onLoadEventWatcher,
         },
+        verbose: true,
     });
 }
 
@@ -285,8 +302,10 @@ export function acquireTippyJsDeps(onLoadEventWatcher) {
         dependency: {
             id: "tippyjs",
             jsScriptSrc: ["https://unpkg.com/@popperjs/core@2", "https://unpkg.com/tippy.js@6"],
-            onLoadEventWatcher
+            isDependencyAvailable: () => window.tippy ? true : false,
+            onLoadEventWatcher, // this will be called whether tippyjs was loaded on-demand or already available
         },
+        verbose: true,
     });
 }
 
@@ -554,6 +573,8 @@ export const $footnotes = pageDomain.createStore({})
                 elem.innerHTML = `<sup>${targetAnchorHTML(elaborationState)}</sup> ${content}`;
                 elaborationState.refElems().forEach(refElem => {
                     refElem.innerHTML = refAnchorHTML(elaborationState);
+                    // Tippy.js might not be loaded yet so check first; if it's
+                    // not already loaded, it will be lazily imported later.
                     if (window.tippy) {
                         window.tippy(refElem, {
                             content,
