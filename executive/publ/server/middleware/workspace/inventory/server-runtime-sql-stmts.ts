@@ -325,8 +325,8 @@ export function typicalSqlStmtsInventory(
           label: "Show system information",
           SQL: whs.unindentWhitespace(`
             USE DATABASE ${osQueryDatabaseID}; -- https://osquery.io/\n
-                SELECT computer_name, hostname, cpu_brand, cpu_physical_cores, cpu_logical_cores, printf("%.2f", (physical_memory / 1024.0 / 1024.0 / 1024.0)) as memory_gb
-                FROM system_info`),
+            SELECT computer_name, hostname, cpu_brand, cpu_physical_cores, cpu_logical_cores, printf("%.2f", (physical_memory / 1024.0 / 1024.0 / 1024.0)) as memory_gb
+            FROM system_info`),
           presentation: tableObjectProps,
           qualifiedName: qualifiedNamePlaceholder,
         },
