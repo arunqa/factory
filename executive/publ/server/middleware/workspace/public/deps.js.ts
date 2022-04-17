@@ -14,6 +14,8 @@
  */
 
 export * from "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js";
+export * from "https://unpkg.com/@popperjs/core@2.11.5/dist/umd/popper.min.js";
+// export * from "https://cdn.skypack.dev/tippy.js@v6.3.7";
 export * from "../../../../../../lib/reflect/mod.ts";
 export * from "../../../../../../lib/text/human.ts";
 export * from "../../../../../../lib/text/whitespace.ts";

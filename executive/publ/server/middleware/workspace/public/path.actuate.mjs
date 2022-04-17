@@ -39,7 +39,6 @@ import * as sb from "./service-bus.mjs";
 // deps.auto.js is auto-bundled from any Typescript we consider a dependency.
 import * as d from "./deps.auto.js";
 export * from "./deps.auto.js"; // make symbols available to pages
-export { createWatch } from "https://unpkg.com/effector@22.3.0/effector.mjs"; // make symbols available to pages
 
 // public/operational-context/server.auto.mjs sets window.parent.inspectableClientLayout
 // using executive/publ/server/middleware/workspace/public/inspect/index.html registerRfExplorerTarget
@@ -137,175 +136,78 @@ export function fetchFxInitAlaSqlProxyDQL(SQL, fetchFxSqlID, resultNature) {
 export const siteDomain = createDomain("project");
 export const pageDomain = createDomain("page");
 
-// when acquireDependencyFx is called, it generates these events
-export const pageDepsAcquired = new Map();
-export const dependencyAcquired = siteDomain.createEvent();
-export const dependencyBundleAcquired = siteDomain.createEvent();
-export const duplicateDependencyRequest = siteDomain.createEvent();
-
-dependencyAcquired.watch((params) => {
-    if (params?.diagnose) {
-        console.log('dependencyAcquired', params);
-    }
-});
-
-dependencyBundleAcquired.watch((params) => {
-    if (params?.diagnose) {
-        console.log('dependencyBundleAcquired', params);
-    }
-});
-
-duplicateDependencyRequest.watch((params) => {
-    console.warn('duplicateDependencyRequest, should probably use `isDependencyAvailable: () => boolean` property', params);
-});
-
-/**
- * This is the default conditional import strategy, used to acquire a script or
- * CSS dependency dynamically and fire off events as the imports are completed.
- * @param {*} params can be a single string or object which lists dependencies
- * @returns an object with the dependencies and imports accomplished
- */
-export const acquireDependencyFx = pageDomain.createEffect((params) => {
-    // IMPORTANT: if you add any config args here, be sure to pass them through
-    // to recursive call in appendBundledHeadScripts if necessary
+export function withScriptDeps(deps, depsID, onReady, options) {
     const {
-        dependency = undefined,
-        dependencies = dependency ? [dependency] : undefined,
-        verbose = false,
-        diagnose = false,
-        createDocHeadScriptAppendEvent = () => pageDomain.createEvent(),
-        depsAcquiredCache = pageDepsAcquired
-    } = params ? (typeof params === "string" ? { dependency: params } : params) : {};
-
-    const fxResult = { strategies: [] };
-    const appendSingleHeadScript = (ctx) => {
-        if (typeof ctx !== "object" && typeof ctx.jsScriptSrc !== "string") {
-            console.error(`[acquireDependencyFx.appendSingleScriptHead] expecting jsScriptSrc property`, ctx);
-            return;
-        }
-
-        const cacheKey = ctx.jsScriptSrc;
-        const acquiredAlready = depsAcquiredCache.get(cacheKey);
-        if (acquiredAlready) {
-            const dupeRequest = { ...acquiredAlready, duplicateRequestCtx: ctx }
-            duplicateDependencyRequest(dupeRequest);
-            if (acquiredAlready.isLoaded) {
-                // we're already loaded, just fire off the event
-                ctx.onLoadEventWatcher?.(dupeRequest);
-            } else {
-                // it hasn't been loaded yet, so add subscriber
-                if (ctx.onLoadEventWatcher) acquiredAlready.onLoadEvent?.watch(ctx.onLoadEventWatcher);
-            }
-            return;
-        }
-
-        const scriptElem = document.createElement('script');
-        const strategy = {
-            strategy: 'document-head-script-appended',
-            scriptElem,
-            verbose, diagnose, ...ctx
-        };
-        depsAcquiredCache.set(cacheKey, strategy);
-        strategy.onLoadEvent = ctx.createOnLoadEvent?.(strategy) || createDocHeadScriptAppendEvent?.(strategy);
-        if (ctx.onLoadEventWatcher && strategy.onLoadEvent) strategy.onLoadEvent.watch(ctx.onLoadEventWatcher);
-        scriptElem.onload = ctx.scriptElemOnLoad ? ctx.scriptElemOnLoad(strategy) : (() => {
-            strategy.isLoaded = true;
-            strategy.onLoadEvent?.(strategy); // fire off the specific event, might have multiple watchers
-            dependencyAcquired(strategy); // fire off the generic event
-        })
-        scriptElem.type = ctx.mimeType ?? 'text/javascript';
-        scriptElem.src = ctx.jsScriptSrc; // this will start load and fire off "scriptElem.onload"
-        document.head.appendChild(scriptElem);
-        fxResult.strategies.push(strategy);
-    }
-
-    const appendBundledHeadScripts = (bundle, bundleCtx) => {
-        // a bundle is an array of strings (string[]) where each each "bundle entry"
-        // is assumed to be a dependency of its prior string entry; we use recursion
-        // to make the job easier - each bundle entry calls the next after it finishes.
-        const recurse = (bundleEntryIndex, bundleEntryParent) => {
-            const isLastBundleEntry = bundleEntryIndex == (bundle.length - 1) ? true : false;
-            acquireDependencyFx({
-                dependency: {
-                    jsScriptSrc: bundle[bundleEntryIndex],
-                    isBundleEntry: true,
-                    bundleEntryParent,
-                    bundleEntryIndex,
-                    bundle,
-                    isLastBundleEntry,
-                    onLoadEventWatcher: (params) => {
-                        if (isLastBundleEntry) {
-                            bundleCtx.onLoadEventWatcher?.(params);
-                            dependencyBundleAcquired(params);
+        autoLoadScriptJS = "//cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js",
+        onError = (reason) => console.error(`withScriptDeps error: ${reason}`),
+        onReadyGuard = undefined, // () => truthy will test for a truthy result before returning
+        onReadyGuardMaxAttempts = 10, // if attempts is greater than 0, will wait for onReadyGuard
+        onReadyGuardInterval = 500, // milliseconds between attempts
+        onReadyGuardFailed = undefined, // what to call on failure
+        report = undefined, // (...args) => console.log(`[withScriptDeps]`, ...args)
+    } = options ?? {};
+    let onReadyGuardResult = onReadyGuard && onReadyGuard(options);
+    if (onReadyGuardResult) {
+        onReady(onReadyGuardResult);
+    } else {
+        if ("$script" in window) {
+            $script(deps, depsID, () => {
+                onReadyGuardResult = onReadyGuard && onReadyGuard(options);
+                report?.('[withScriptDeps] loaded', { onReadyGuardResult, deps, depsID, onReady, options });
+                if (!onReadyGuard || onReadyGuardResult) {
+                    onReady(onReadyGuardResult);
+                } else if (onReadyGuard && onReadyGuardMaxAttempts) {
+                    const guard = (onReadyGuardAttempt = 0) => {
+                        onReadyGuardResult = onReadyGuard(options);
+                        if (onReadyGuardResult) {
+                            onReady(onReadyGuardResult);
                         } else {
-                            recurse(bundleEntryIndex + 1, params)
+                            if (onReadyGuardAttempt < onReadyGuardMaxAttempts) {
+                                report?.('[onReadyGuard] attempt', onReadyGuardAttempt, 'of', onReadyGuardMaxAttempts, { onReadyGuardResult, deps, depsID, onReady, options });
+                                setTimeout(() => guard(onReadyGuardAttempt + 1), onReadyGuardInterval);
+                            } else {
+                                report?.('[onReadyGuard] onReadyGuardMaxAttempts exceeded', { onReadyGuardResult, deps, depsID, onReady, options });
+                                onReadyGuardFailed?.(deps, depsID, onReady, options, onReadyGuardAttempt);
+                            }
                         }
                     }
-                },
-                verbose, diagnose, createDocHeadScriptAppendEvent, depsAcquiredCache
-            })
-        }
-        recurse(0);
-    }
-
-    const appendHeadScript = (src, ctx) => {
-        if (typeof src === "string") {
-            const singleDependentAvailableResult = ctx.isDependencyAvailable && ctx.isDependencyAvailable('single', src, ctx);
-            if (singleDependentAvailableResult) {
-                ctx.onLoadEventWatcher?.({ isLoadRequired: false, singleDependentAvailableResult })
-                if (verbose) console.info(`[acquireDependencyFx.appendHeadScript] single script dependency fulfilled already, not loading`, { src, ctx, singleDependentAvailableResult });
-                return;
-            }
-
-            // simplest case with single script to load as a string
-            appendSingleHeadScript({ ...ctx, jsScriptSrc: src });
-        } else if (Array.isArray(src) && src.length > 0) {
-            const bundledDependentsAvailableResult = ctx.isDependencyAvailable && ctx.isDependencyAvailable('bundled', src, ctx);
-            if (bundledDependentsAvailableResult) {
-                ctx.onLoadEventWatcher?.({ isLoadRequired: false, bundledDependentsAvailableResult })
-                if (verbose) console.info(`[acquireDependencyFx.appendHeadScript] bundled script dependencies fulfilled already, not loading`, { src, ctx, bundledDependentsAvailableResult });
-                return;
-            }
-
-            appendBundledHeadScripts(src, ctx);
-        } else if (typeof src === "object" && src.jsScriptSrc) {
-            // single object, recurse
-            appendHeadScript(src.jsScriptSrc, src);
+                    guard();
+                } else {
+                    report?.('[onReadyGuardFailed] onReadyGuard without onReadyGuardMaxAttempts', { deps, depsID, onReady, options });
+                    onReadyGuardFailed?.(deps, depsID, onReady, options);
+                }
+            });
         } else {
-            console.error(`[acquireDependencyFx.appendScriptHead] invalid dependency type`, { src, ctx, dependency, dependencies });
+            if (autoLoadScriptJS && !options.isAutoLoadRecursionResult) {
+                report?.('auto-loading $script', autoLoadScriptJS);
+                const scriptElem = document.createElement('script');
+                scriptElem.onload = () => {
+                    report?.('auto-loaded $script', autoLoadScriptJS);
+                    withScriptDeps(deps, depsID, onReady, { ...options, isAutoLoadRecursionResult: true });
+                }
+                scriptElem.type = 'text/javascript';
+                scriptElem.src = autoLoadScriptJS;
+                document.head.appendChild(scriptElem);
+            } else {
+                // need loader: <script src="https://cdnjs.cloudflare.com/ajax/libs/script.js/2.5.9/script.min.js"></script>
+                onError?.('$script-not-available');
+            }
         }
     }
-
-    // load each dependency and fire off events as completed
-    dependencies.forEach(dep => appendHeadScript(dep));
-    return fxResult;
-});
-
-acquireDependencyFx.fail.watch((failedFxArgs) => {
-    console.error('acquireDependencyFx.fail.watch', failedFxArgs);
-});
-
-export function acquirePopperJsDeps(onLoadEventWatcher) {
-    acquireDependencyFx({
-        dependency: {
-            id: "popperjs",
-            jsScriptSrc: "https://unpkg.com/@popperjs/core@2",
-            isDependencyAvailable: () => window.popper ? true : false,
-            onLoadEventWatcher,
-        },
-        verbose: true,
-    });
 }
 
-export function acquireTippyJsDeps(onLoadEventWatcher) {
-    acquireDependencyFx({
-        dependency: {
-            id: "tippyjs",
-            jsScriptSrc: ["https://unpkg.com/@popperjs/core@2", "https://unpkg.com/tippy.js@6"],
-            isDependencyAvailable: () => window.tippy ? true : false,
-            onLoadEventWatcher, // this will be called whether tippyjs was loaded on-demand or already available
-        },
-        verbose: true,
+export function withTippyJsDeps(onReady) {
+    // reminder: tippy.js needs popperjs, popper is loaded in deps.js.ts;
+    // TODO: once we figure out how to get tippy.js into deps.js.ts let's move it
+    withScriptDeps("//unpkg.com/tippy.js@6", 'tippyjs', (tippyJsInstance) => {
+        onReady(tippyJsInstance);
+    }, {
+        // after loading the script dependencies we need to see if Tippy.js is available;
+        // if it's not, we'll check every 500ms up to 10 times (5 seconds).
+        onReadyGuard: () => window.tippy,
+        onReadyGuardInterval: 500, // in milleseconds
+        onReadyGuardMaxAttempts: 10,
+        onReadyGuardFailed: (deps, depsID) => console.error(`[withTippyJsDeps] unable to load deps with guard`, { deps, depsID, tippyJsInstance: window.tippy }),
     });
 }
 
@@ -573,15 +475,11 @@ export const $footnotes = pageDomain.createStore({})
                 elem.innerHTML = `<sup>${targetAnchorHTML(elaborationState)}</sup> ${content}`;
                 elaborationState.refElems().forEach(refElem => {
                     refElem.innerHTML = refAnchorHTML(elaborationState);
-                    // Tippy.js might not be loaded yet so check first; if it's
-                    // not already loaded, it will be lazily imported later.
-                    if (window.tippy) {
-                        window.tippy(refElem, {
-                            content,
-                            allowHTML: true,
-                            placement: 'right'
-                        });
-                    }
+                    withTippyJsDeps((tippy) => tippy(refElem, {
+                        content,
+                        allowHTML: true,
+                        placement: 'right'
+                    }));
                 });
             }
         };
@@ -686,10 +584,7 @@ export function prepareDomEffects(domEffectsInit = {}) {
     // footnote content is placed in a class class "elaborations"
     const elaborations = document.querySelectorAll(`.elaborations div`);
     if (elaborations.length > 0) {
-        // load the tippy dependencies and then build up the footnotes registry
-        acquireTippyJsDeps(() => {
-            elaborations.forEach((elem, index) => registerFootnote({ elem, defaultIndex: index + 1 }));
-        });
+        elaborations.forEach((elem, index) => registerFootnote({ elem, defaultIndex: index + 1 }));
     } else {
         const elaborationRefs = document.querySelectorAll(`sup[elaboration]`);
         elaborationRefs.forEach(elem => {
@@ -772,8 +667,11 @@ export const activateFooter = () => {
     restartAnchor.className = "info action-restart-publ-server";
     restartAnchor.onclick = () => fetch('/server/restart');
     restartAnchor.innerHTML = "↻ Restart";
-    restartAnchor.title = "Restart pubctl.ts server";
     footer.appendChild(restartAnchor);
+    withTippyJsDeps((tippy) => tippy(restartAnchor, {
+        content: "Restart pubctl.ts server",
+        placement: 'top'
+    }));
 
     const todoAnchor = document.createElement("a");
     todoAnchor.className = "info action-TODO";

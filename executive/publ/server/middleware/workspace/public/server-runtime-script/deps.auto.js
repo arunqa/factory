@@ -171,6 +171,25 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                 label: "Site",
                 scripts: [
                     {
+                        name: "rf-site-build.js.json",
+                        label: "Show site's active build and server properties",
+                        module: jsModule(`
+          export default ({ publicationDB }) => {
+            // always return objects, not strings
+            if(!publicationDB) return { warning: "no publicationDB available" };
+            const {
+              dbStoreFsPath: publicationDbFsPath,
+              activeHost: buildHost,
+              activeBuildEvent: buildEvent,
+              activeServerService: serverService
+            } = publicationDB;
+            return { publicationDbFsPath, buildHost, buildEvent, serverService };
+          }`),
+                        transformResult: "retrocycle-JSON",
+                        presentation: tableObjectProps,
+                        qualifiedName: qualifiedNamePlaceholder
+                    },
+                    {
                         name: "navigation-tree-items.js.json",
                         label: "Show all navigation tree items",
                         module: jsModule(`export default ({ publication }) => publication.routes.navigationTree.items`),
