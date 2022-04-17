@@ -168,7 +168,7 @@
                     path.populateObjectJSON(srScript, inspectDiv, 0);
                     scriptContainerElem.appendChild(inspectDiv);
                     const jsCodeDiv = document.createElement("div");
-                    jsCodeDiv.innerHTML = `<pre><code class="language-js">${srScript.jsModule}</code></pre>`;
+                    jsCodeDiv.innerHTML = `<pre><code class="language-${srScript.module.language}">${srScript.module.code}</code></pre>`;
                     scriptContainerElem.appendChild(jsCodeDiv);
                     const exemplarDiv = document.createElement("div");
                     exemplarDiv.innerHTML = renderFxExamplar(srScript);
@@ -179,7 +179,7 @@
                 scriptsInventoryElem.appendChild(libraryElem);
             }
             populateServerRuntimeScript.watch(({ srScript }) => {
-                scriptCodeEditorValue(srScript.jsModule);
+                scriptCodeEditorValue(srScript.module.code);
                 if (autoExecSeverRuntimeScriptElem.checked && window.execServerRuntimeScriptFx) {
                     window.execServerRuntimeScriptFx({ srScript });
                 }
@@ -188,7 +188,7 @@
             window.srScriptFromFromEditor = () => ({
                 name: 'editor.js.json',
                 qualifiedName: 'editor.js.json',
-                jsModule: scriptCodeEditorValue(),
+                module: { language: "js", code: scriptCodeEditorValue() },
                 isUserSupplied: true,
             });
 

@@ -26,9 +26,63 @@
         <sup elaboration="page-authors">#</sup>.
     </p>
 
+    <details class="explore" open>
+        <summary>
+            <code><span interpolate-fx render-hook-activate-page>${path.editableClientLayoutTarget()?.fileName}</span></code>
+            Server-side RF Layout ("renderer")<sup elaboration="rf-resource-server-side-renderer">#</sup>
+        </summary>
+        <!-- see path.prepareDomEffectsActivation for interpolate-fx attr -->
+        <ul interpolate-fx="{ result: { inspectableRFUL: { designSystem: ds } } }" render-hook-activate-page>
+            <li>This page is rendered using <b>${ds.layout.name}</b> (<code>${ds.layout.symbol}</code>) layout
+                located at ${path.editableFileRefHTML(ds.layout.src, 5)}.</li>
+            <li>This publication uses the <b>${ds.identity}</b> design system located at
+                ${path.locationEditorHTML(ds.location, 5)}.</li>
+        </ul>
+    </details>
+
     <details class="explore">
-        <summary><code>window.clientLayout.route.terminal</code><sup
-                elaboration="rf-clientLayout.route.terminal">#</sup></summary>
+        <summary>
+            <code><span interpolate-fx render-hook-activate-page>${path.editableClientLayoutTarget()?.fileName}</span></code>
+            Resource Instance
+        </summary>
+        <div render-fx="({ target, result: { resource = 'not found' } }) => path.populateObjectJSON(resource, target)"
+            render-hook="({ target }) => routeResourceFx.done.watch(target.renderFx)">
+        </div>
+    </details>
+
+    <details class="explore">
+        <summary>
+            <code><span interpolate-fx render-hook-activate-page>${path.editableClientLayoutTarget()?.fileName}</span></code>
+            Frontmatter<sup elaboration="rf-resource-frontmatter">#</sup>
+        </summary>
+        <div render-fx="({ target, result: { inspectableRFUL } }) => path.populateObjectJSON(inspectableRFUL.frontmatter, target)"
+            render-hook-activate-page></div>
+    </details>
+
+    <details class="explore">
+        <summary>
+            <code><span interpolate-fx render-hook-activate-page>${path.editableClientLayoutTarget()?.fileName}</span></code>
+            Folksonomy<sup elaboration="rf-resource-folksonomy">#</sup>
+        </summary>
+        <div render-fx="({ target, result: { inspectableRFUL } }) => { path.populateObjectJSON(inspectableRFUL.frontmatter?.folksonomy, target); if(!inspectableRFUL.frontmatter?.folksonomy) target.parentNode.style.display = 'none';  }"
+            render-hook-activate-page></div>
+    </details>
+
+    <details class="explore">
+        <summary><code>window.clientLayout</code><sup elaboration="rf-clientLayout">#</sup>
+            (Client-side<sup elaboration="rf-client-side-rf-layout">#</sup> RF Layout)
+        </summary>
+        <p> You can try out the <code>window.clientLayout</code> in your browser's console. Here's the current RF page's
+            clientLayout value:</p>
+
+        <div render-fx="({ target, result: { inspectableRFUL } }) => path.populateObjectJSON(inspectableRFUL, target)"
+            render-hook-activate-page></div>
+    </details>
+
+    <details class="explore">
+        <summary><code>window.clientLayout.route.terminal</code>
+            <sup elaboration="rf-clientLayout.route.terminal">#</sup>
+        </summary>
         <div render-fx="({ target, result: { inspectableRFUL: { route } } }) => path.populateObjectJSON(route.terminal, target)"
             render-hook-activate-page></div>
     </details>
@@ -51,6 +105,23 @@
         <summary>Notes</summary>
         <div id="rf-resource">A Resource Factory (🏭) <em>Resource</em> is the <em>source</em> of content and could be
             HTML, Markdown, a database query result, a Javascript or Typescript module.</div>
+        <div id="rf-clientLayout"><code>rfUniversalLayout</code> (exposed as <code>window.clientLayout</code> in the
+            target build site / publication. It is often referred to colloquially as "client cargo" container and
+            provides a unified browser-side global Javascript object that holds server-side data useful for the page
+            when it's served to a user agent ("UA" or
+            "client"). Within the Resource Factory Explorer (<code>RFE</code>) the <em>inspectable</em>
+            <code>rfUniversalLayout</code> is referred to as <code>inspectableRFUL</code> and is available as part of
+            <code>activatePageFx.done.watch(({{ result: { inspectableRFUL } }}) => ...)</code>.
+        </div>
+        <div id="rf-client-side-rf-layout">
+            Since RF strives to generate all HTML on the server side
+            almost all page <em>layouts</em> are finished at build time so the user agent client does not
+            have access to context information such as server side routes or page origination context.
+            The <code>rfUniversalLayout</code> instance available to each page as a global
+            <code>window.clientLayout</code> variable which gives you get server-side layout data on the client, giving
+            you the ability to
+            perform UA or client side content updates, make server side API calls, etc.
+        </div>
         <div id="rf-clientLayout.route.terminal"><code>window.clientLayout.route.terminal</code> is referred to as the
             <em>terminal route unit</em> because it 'terminates' the path where this page is located.
         </div>
@@ -58,6 +129,11 @@
             describes the full path where this page is located. A single route is always comprised of one or more
             <em>route units</em>. The <em>route units</em> can be used to create <em>breadcrumbs</em> in the UI.
         </div>
+        <div id="rf-resource-frontmatter"><em>Frontmatter</em> is an <em>untyped</em> dictionary of key/value pairs that
+            can hold arbitrary page
+            properties.</div>
+        <div id="rf-resource-folksonomy"><em>Folksonomy</em> ("tagging") is used as a classification system when
+            type-safety is not important.</div>
     </details>
 
     <script type="module">
@@ -70,9 +146,14 @@
             // as decoupled from business logic as possible
 
             const scriptsInventory = srScriptDeps.typicalScriptsInventory();
+            const routUnitUrlParams = path.routeUnitUrlSearchParams(path.inspectableClientLayout().route.terminal);
+            window.routeResourceFx = path.prepareFetchServerRuntimeScriptJsonEffect(
+                scriptsInventory.script('typicalScripts_site_resource-by-route.js.json'),
+                routUnitUrlParams
+            );
             const routeGitLogFx = path.prepareFetchServerRuntimeScriptJsonEffect(
                 scriptsInventory.script('typicalScripts_version-control_git-log-active-route.js.json'),
-                path.routeUrlSearchParams(path.inspectableClientLayout().route.terminal)
+                routUnitUrlParams
             );
 
             path.registerFootnotesContainer(document.getElementById("footnotes"));
@@ -109,6 +190,7 @@
 
             // all listeners are ready so let's activate the page and trigger the watchers
             path.activatePageFx();
+            window.routeResourceFx();
             routeGitLogFx();
         });
     </script>

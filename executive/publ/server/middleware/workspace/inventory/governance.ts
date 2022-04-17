@@ -19,13 +19,45 @@ export interface ScriptResultTableObjectPropsPresentation
   readonly nature: "table-object-properties";
 }
 
+export type ServerRuntimeScriptArgDataType =
+  | "boolean"
+  | "number"
+  | "bigint"
+  | "string"
+  | "null"
+  | "undefined"
+  | "Date"
+  | "Uint8Array";
+
+export interface ServerRuntimeScriptArgument {
+  readonly identity: string;
+  readonly dataType: ServerRuntimeScriptArgDataType;
+}
+
+export type ServerRuntimeScriptArguments =
+  | Record<string, ServerRuntimeScriptArgument>
+  | Array<ServerRuntimeScriptArgument>;
+
+export interface ServerRuntimeScriptResultTransformer {
+  (result: unknown): unknown;
+}
+
+export interface ServerRuntimeScriptCode {
+  readonly language: "js" | "ts";
+  readonly code: string;
+}
+
 export interface ServerRuntimeScript {
   readonly qualifiedName: string;
   readonly name: string;
   readonly label: string;
-  readonly jsModule: string; // TODO: add tsModule for Typescript
+  readonly module: ServerRuntimeScriptCode; // TODO: add tsModule for Typescript
+  readonly moduleArgs?: ServerRuntimeScriptArguments;
   readonly help?: string;
   readonly presentation?: ScriptResultPresentationStrategy;
+  readonly transformResult?:
+    | "retrocycle-JSON"
+    | ServerRuntimeScriptResultTransformer; // "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js"
 }
 
 export interface ServerRuntimeScriptLibrary {

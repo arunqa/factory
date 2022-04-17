@@ -39,6 +39,7 @@ import * as sb from "./service-bus.mjs";
 // deps.auto.js is auto-bundled from any Typescript we consider a dependency.
 import * as d from "./deps.auto.js";
 export * from "./deps.auto.js"; // make symbols available to pages
+export { createWatch } from "https://unpkg.com/effector@22.3.0/effector.mjs"; // make symbols available to pages
 
 // public/operational-context/server.auto.mjs sets window.parent.inspectableClientLayout
 // using executive/publ/server/middleware/workspace/public/inspect/index.html registerRfExplorerTarget
@@ -46,10 +47,11 @@ export const inspectableClientLayout = () => window.parent.inspectableClientLayo
 export const isClientLayoutInspectable = () => window.parent.inspectableClientLayout ? true : false;
 export const isFramedExplorer = () => window.parent.isFramedExplorer && window.parent.isFramedExplorer() ? true : false;
 
-// if a URL needs to pass information about a route, use routeUrlSearchParams
-export const routeUrlSearchParams = (route) => {
+// if a URL needs to pass information about a route, use routeUnitUrlSearchParams
+export const routeUnitUrlSearchParams = (routeUnit) => {
     const usp = new URLSearchParams();
-    usp.set('routeFileSysPath', route.fileSysPath);
+    usp.set('routeUnitFileSysPath', routeUnit.fileSysPath);
+    usp.set('routeUnitQualifiedPath', routeUnit.qualifiedPath);
     return usp;
 };
 
@@ -342,23 +344,27 @@ window.addEventListener(sb.fetchFxFailEventName, (event) => {
 // You can pass in diagnose to add some diagnostics or pass in cache: false
 // if a caching is not desired (don't use cache: undefined, use cache: false).
 export const pageFetchJsonFx = siteDomain.createEffect(async (params) => await sb.fetchFx({
-    ...params, fetchValue: sb.fetchRespJsonValue
+    // put fetchValue first since it may be overwritten in ...params
+    fetchValue: sb.fetchRespJsonValue, ...params,
 }));
 
 // Since deps.js.ts contains "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js",
 // pageFetchJsonFx also supports JSON.decycle and JSON.retrocycle to allow complex
-// JSON values which might have circular values. By default retrocyle is TRUE.
+// JSON values which might have circular values.
 export const pageFetchRetrocycledJsonJFx = siteDomain.createEffect(async (params) => await sb.fetchFx({
-    ...params, fetchValue: sb.fetchRespRetrocycledJsonValue
+    // put fetchValue first since it may be overwritten in ...params
+    fetchValue: sb.fetchRespRetrocycledJsonValue, ...params,
 }));
 
 // create an effect for a specific script with given arguments
 export function prepareFetchServerRuntimeScriptJsonEffect(srScript, srScriptArgs) {
     const fetchFxArgs = {
-        ...fetchFxInitServerSideSrc(`/unsafe-server-runtime-proxy/module/${srScript.name}${srScriptArgs ? `?${srScriptArgs.toString()}` : ''}`, srScript.jsModule),
+        ...fetchFxInitServerSideSrc(`/unsafe-server-runtime-proxy/module/${srScript.name}${srScriptArgs ? `?${srScriptArgs.toString()}` : ''}`, srScript.module.code),
         srScript, srScriptArgs,
         cache: false,
-        fetchValue: sb.fetchRespJsonValue,
+        fetchValue: srScript.transformResult == "retrocycle-JSON"
+            ? sb.fetchRespRetrocycledJsonValue
+            : sb.fetchRespJsonValue,
     };
     return siteDomain.createEffect(async (params) => await sb.fetchFx({ ...fetchFxArgs, ...params }));
 }
@@ -368,9 +374,12 @@ export const pageFetchServerRuntimeScriptJsonFx = siteDomain.createEffect(async 
     if (params.srScript) {
         // srScript must be provided in params
         const args = {
-            ...fetchFxInitServerSideSrc(`/unsafe-server-runtime-proxy/module/${params.srScript.name}${params.srScriptArgs ? `?${params.srScriptArgs.toString()}` : ''}`, params.srScript.jsModule),
+            ...fetchFxInitServerSideSrc(`/unsafe-server-runtime-proxy/module/${params.srScript.name}${params.srScriptArgs ? `?${params.srScriptArgs.toString()}` : ''}`, params.srScript.module.code),
             ...params,
             cache: false,
+            fetchValue: params.srScript.transformResult == "retrocycle-JSON"
+                ? sb.fetchRespRetrocycledJsonValue
+                : sb.fetchRespJsonValue,
         };
         return await pageFetchJsonFx(args);
     } else {
@@ -481,7 +490,7 @@ export function prepareHookableDomRenderEffect(elem, options) {
             // we reuse evaluatedJS name so that if exception occurs, we use the new code;
             // evaluatedJS should be JS code which returns a function accepting a single
             // object which will have a 'target' property, like:
-            //    ({ target }) => $store.watch(target.renderFx)
+            //    ({ target }) => someFx.done.watch(target.renderFx)
             if (renderHookJsCodeSupplier) evaluatedJS = renderHookJsCodeSupplier(elem, options);
             elem.renderHook = renderHook ?? evalJS(evaluatedJS, elem, { ...options, isRenderHookEvalJS: true });
             elem.renderHook({ target: elem, jsEvalFailureHTML, jsEvalFailureLocation: evaluatedJS });
@@ -788,10 +797,8 @@ export const activateSite = () => {
     navPrime.innerHTML = `
         ${contextBarHTML ? `<div class="context">${contextBarHTML}</div>` : ''}<!--
         --><a href="${baseURL}/resource/index.html"><i class="fa-solid fa-file-lines"></i> Resource</a><!--
-        --><a href="${baseURL}/inspect/route.html"><i class="fa-solid fa-route"></i> Route</a><!--
-        --><a href="${baseURL}/inspect/information-architecture.html" title="Information Architecture"><i class="fa-solid fa-circle-info"></i> IA</a><!--
-        --><a href="${baseURL}/inspect/layout.html"><i class="fa-solid fa-layer-group"></i> Layout</a><!--
-        --><a href="${baseURL}/inspect/site.html"><i class="fa-solid fa-sitemap"></i> Site</a><!--
+        --><a href="${baseURL}/design-system/index.html"><i class="fa-solid fa-layer-group"></i> Design System</a><!--
+        --><a href="${baseURL}/site/index.html"><i class="fa-solid fa-sitemap"></i> Site</a><!--
         --><a href="${baseURL}/server-runtime-sql/index.html"><i class="fa-solid fa-database"></i> SQL</a><!--
         --><a href="${baseURL}/server-runtime-script/index.html"><i class="fa-brands fa-js-square"></i> Evaluate</a><!--
         --><a href="${baseURL}/assurance/"><i class="fa-solid fa-microscope"></i> Unit Tests</a>`;

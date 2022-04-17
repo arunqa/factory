@@ -3,10 +3,10 @@ import * as safety from "../safety/mod.ts";
 export type GovnIndexFilterCacheKey = string;
 
 export interface GovnIndexFilterPredicate<Resource> {
-  (r: Resource, index?: number, options?: {
-    total?: number;
-    isFirst?: boolean;
-    isLast?: boolean;
+  (r: Resource, index: number, options: {
+    total: number;
+    isFirst: boolean;
+    isLast: boolean;
   }): boolean;
 }
 

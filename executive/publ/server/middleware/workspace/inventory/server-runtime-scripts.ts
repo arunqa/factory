@@ -1,6 +1,27 @@
 import * as govn from "./governance.ts";
 import * as whs from "../../../../../../lib/text/whitespace.ts";
 
+export function jsModule(code: string): govn.ServerRuntimeScriptCode {
+  return {
+    language: "js",
+    code: whs.unindentWhitespace(code),
+  };
+}
+
+export function flexibleModuleArgs(
+  ...args: govn.ServerRuntimeScriptArgument[]
+): govn.ServerRuntimeScriptArguments {
+  const srScriptArgs: Record<string, govn.ServerRuntimeScriptArgument> = {};
+  for (const arg of args) {
+    srScriptArgs[arg.identity] = arg;
+  }
+  return srScriptArgs;
+}
+
+export function routeUnitModuleArgs(): govn.ServerRuntimeScriptArgument[] {
+  return [{ identity: "routeUnitFileSysPath", dataType: "string" }];
+}
+
 // inventory is used as-is by the server-side but used as a reference by client;
 // for security purposes, the user agent ("UA" or "client") is allowed to see
 // the scripts but if the script is passed into the server, the server ignores
@@ -27,7 +48,7 @@ export function typicalScriptsInventory(
   const defaultScript: govn.ServerRuntimeScript = {
     name: "project.js.json",
     label: "Show project summary",
-    jsModule: whs.unindentWhitespace(`
+    module: jsModule(`
     export default ({ publication }) => {
         const projectRootPath = publication.config.operationalCtx.projectRootPath;
         return {
@@ -59,7 +80,7 @@ export function typicalScriptsInventory(
         {
           name: "memory.js.json",
           label: "Show server runtime (Deno) memory statistics",
-          jsModule: `export default () => Deno.memoryUsage();`,
+          module: jsModule(`export default () => Deno.memoryUsage();`),
           qualifiedName: qualifiedNamePlaceholder,
           presentation: tableObjectProps,
         },
@@ -73,7 +94,7 @@ export function typicalScriptsInventory(
         {
           name: "publication-db.js.json",
           label: "Show name of SQLite database storing pubctl state",
-          jsModule: whs.unindentWhitespace(`
+          module: jsModule(`
           export default ({ publicationDB }) => ({
               sqliteFileName: publicationDB ? publicationDB.dbStoreFsPath : "publicationDB not provided"
           });`),
@@ -83,7 +104,7 @@ export function typicalScriptsInventory(
         {
           name: "global-sql-db-conns.js.json",
           label: "Show database connections used to generate content",
-          jsModule: whs.unindentWhitespace(`
+          module: jsModule(`
             // we convert to JSON ourselves since we have to do some special processing for
             // possible bigints
             export default ({ globalSqlDbConns }) => JSON.stringify(
@@ -108,15 +129,16 @@ export function typicalScriptsInventory(
         {
           name: "design-system.js.json",
           label: "Show summary of design system",
-          jsModule:
+          module: jsModule(
             `export default ({ publication }) => publication.ds.designSystem`,
+          ),
           qualifiedName: qualifiedNamePlaceholder,
           presentation: tableObjectProps,
         },
         {
           name: "layouts.js.json",
           label: "Show all design system layouts",
-          jsModule: whs.unindentWhitespace(`
+          module: jsModule(`
             // we're going to give a AGGrid definition for full control
             function layouts(publication) {
                 const layouts = Array.from(publication.ds.designSystem.layoutStrategies.layouts.values());
@@ -142,22 +164,49 @@ export function typicalScriptsInventory(
       ],
       qualifiedName: qualifiedNamePlaceholder,
     }, {
-      name: "routes",
-      label: "Routes",
+      name: "site",
+      label: "Site",
       scripts: [
         {
           name: "navigation-tree-items.js.json",
           label: "Show all navigation tree items",
-          jsModule:
+          module: jsModule(
             `export default ({ publication }) => publication.routes.navigationTree.items`,
-          qualifiedName: qualifiedNamePlaceholder,
+          ),
+          transformResult: "retrocycle-JSON",
           presentation: tableObjectProps,
+          qualifiedName: qualifiedNamePlaceholder,
+        },
+        {
+          name: "resource-by-route.js.json",
+          label: "Get resource by args.fileSysPath or args.location",
+          module: jsModule(`
+            export default ({ publication, args }) => {
+              let resource = undefined;
+              let resources = undefined;
+              const routeUnitFileSysPath = args.get("routeUnitFileSysPath");
+              if(routeUnitFileSysPath) {
+                const filtered = Array.from(publication.state.resourcesIndex.filterSync((r) => r.route?.terminal?.fileSysPath == routeUnitFileSysPath ? true : false));
+                if(filtered && filtered.length > 0) {
+                  if(filtered.length == 1)
+                    resource = filtered[0];
+                  else
+                    resources = filtered;
+                }
+              }
+              return { routeUnitFileSysPath, resource, resources };
+            }`),
+          moduleArgs: flexibleModuleArgs(...routeUnitModuleArgs()),
+          transformResult: "retrocycle-JSON",
+          qualifiedName: qualifiedNamePlaceholder,
         },
         {
           name: "resources-tree-items.js.json",
           label: "Show all resources in a tree",
-          jsModule:
+          module: jsModule(
             `export default ({ publication }) => publication.routes.resourcesTree.items`,
+          ),
+          transformResult: "retrocycle-JSON",
           qualifiedName: qualifiedNamePlaceholder,
         },
       ],
@@ -169,9 +218,10 @@ export function typicalScriptsInventory(
         {
           name: "git-log-active-route.js.json",
           label: "Show revision history of the active route",
-          jsModule:
-            // args is a URLSearchParams instance on the server side, sent from the client
-            `export default async ({ publication, args }) => await publication.config.git.log({ file: args.get("routeFileSysPath") })`,
+          module: jsModule(
+            `export default async ({ publication, args }) => await publication.config.git.log({ file: args.get("routeUnitFileSysPath") })`,
+          ),
+          moduleArgs: flexibleModuleArgs(...routeUnitModuleArgs()),
           qualifiedName: qualifiedNamePlaceholder,
         },
       ],
