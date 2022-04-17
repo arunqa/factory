@@ -12,6 +12,13 @@
     <pre data-transformable="markdown" class="md">
     ## Essential
 
+    * Accelerate native Windows support to make it easier for non-engineers to use RF.
+      - Since we have a robust dev mode server we can move away from symlinks and other Linux-specific functionality so
+    that the rfExplorer-based sites can be run on Windows with WSL.
+        - We use symlinks to prevent all assets/graphics being being _copied_ during builds (for performance); with rfExplorer
+          the server can automatically "mount" asset endpoints and automatically coordinate asset locations.
+      - We can move away from .envrc and other environment-specific functionality to TypeScript and SQLite-based configuration
+      - Move away from `Justfile` and any other external utilities to pure Deno/TS/JS integrated into RF `lib`
     * Move most (if not all) `.envrc` configuration into `*.ts` files using SQLite store
     (on each start of `pubctl.ts` import records `*.ts` to SQLite). This will allow us to
     be platform-neutral and remove data entry errors in `.envrc`. Treat what's in `.envrc`
