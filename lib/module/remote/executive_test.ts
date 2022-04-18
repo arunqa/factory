@@ -48,7 +48,6 @@ export function testInventory(
       return scriptsIndex.get(identity);
     },
     scriptIdentities: () => scriptsIndex.keys(),
-    defaultScript,
     libraries: [{
       name: "test",
       label: "Test",

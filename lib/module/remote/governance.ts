@@ -72,5 +72,4 @@ export interface ServerRuntimeScriptInventory<
   readonly libraries: Iterable<Library>;
   readonly script: (identity: string) => Script | undefined;
   readonly scriptIdentities: () => Iterable<string>;
-  readonly defaultScript?: Script;
 }

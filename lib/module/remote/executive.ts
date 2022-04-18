@@ -35,14 +35,6 @@ export function isTypescriptForeignCodeSupplier(
   return guard.isForeignCodeSupplier(o) && o.foreignCodeLanguage == "ts";
 }
 
-import "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js";
-
-export function isJsonDecyclable(
-  o: unknown,
-): o is { decycle: (value: unknown) => unknown } {
-  return o === JSON && "decycle" in JSON;
-}
-
 export interface ExecuteForeignCodeArgsSupplier<
   Payload extends ForeignCodePayload = ForeignCodePayload,
 > {
@@ -53,29 +45,6 @@ export interface ExecuteForeignCodeArgsSupplier<
   ) => Promise<unknown>;
   readonly inventory?: rGovn.ServerRuntimeScriptInventory;
 }
-
-export const mapToObjectJsonReplacer = (_key: string, value: unknown) => {
-  if (value instanceof Map) {
-    // deno-lint-ignore no-explicit-any
-    return Array.from(value).reduce((obj: any, [key, value]) => {
-      obj[key] = value;
-      return obj;
-    }, {});
-  } else {
-    return value;
-  }
-};
-
-export const typicalSerializedJSON = (value: unknown, options?: {
-  readonly decycle?: boolean;
-  readonly transformMapsToObjects?: boolean;
-}) => {
-  const { decycle, transformMapsToObjects } = options ?? {};
-  return JSON.stringify(
-    decycle ? (isJsonDecyclable(JSON) ? JSON.decycle(value) : value) : value,
-    transformMapsToObjects ? mapToObjectJsonReplacer : undefined,
-  );
-};
 
 export interface ExecuteForeignCodeResult<
   Value = unknown,
