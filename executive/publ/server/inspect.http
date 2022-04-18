@@ -332,6 +332,20 @@ Accept: application/json
 GET {{srJsTsEvalEndpoint}}/this.exposureCtx.publication.state.resourcesIndex.resourcesIndex.length
 
 ###
+## in /unsafe-server-runtime-proxy/module a GET method will lookup and run an inventoried JS/TS module
+
+GET {{srJsTsModuleEndpoint}}/typicalScripts_config_project.js.json
+
+###
+
+GET {{srJsTsModuleEndpoint}}/typicalScripts_runtime_memory.js.json
+
+###
+## passing in diagnose will get details
+
+GET {{srJsTsModuleEndpoint}}/typicalScripts_runtime_memory.js.json?diagnose
+
+###
 ## in /unsafe-server-runtime-proxy/module we need to pass in either a typescript or javascript module;
 ## use *.js or *.ts as the extension (path or name can be anything), text/plain as content-type and POST the source
 
@@ -434,7 +448,7 @@ Content-Type: text/plain
 // any Typescript you want can be passed in POST body; you can return a string
 // which will be passed as-is to the browser or an object/JSON which will be
 // intelligently serialized
-export default ({ publication }: any, { pathInfo, payload }: any) => [publication.state.resourcesIndex.resourcesIndex.length, pathInfo, payload];
+export default ({ publication }: any, { request, payload }: any) => ['it worked! :-)', publication.state.resourcesIndex.resourcesIndex.length, request.url.pathname, payload];
 
 ###
 # ------------------

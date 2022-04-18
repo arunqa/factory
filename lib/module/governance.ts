@@ -36,6 +36,12 @@ export interface ExtensionsManagerNotifyArguments {
 export interface ExtensionsManager {
   readonly extensions: Iterable<ExtensionModule>;
   readonly importModule: (name: string) => Promise<ExtensionModule>;
+  readonly importDynamicScript: (
+    source: {
+      readonly typescript?: () => string;
+      readonly javascript?: () => string;
+    },
+  ) => Promise<[extn?: ExtensionModule, dataURL?: string]>;
   readonly extend: (...ec: ExtensionConsumer[]) => Promise<void>;
   readonly isManagedExtension: (
     identity: string | Deno.FsEvent,

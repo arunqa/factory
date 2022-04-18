@@ -54,28 +54,33 @@ export const routeUnitUrlSearchParams = (routeUnit) => {
     return usp;
 };
 
-
-// if a fetchURL looks like "x/y/test.ts.json" or "test.js.json" it's
-// considered a server-side source (serverSideSrc) fetch URL, which runs JS/TS
-// code on the server and returns JSON response as evaluated on the server.
-export const isServerSideSrcFetchURL = (fetchURL) => fetchURL.match(/\.(js|ts)\.json$/);
-
 /**
- * fetchFxInitServerSideSrc prepares sb.fetchFx params with requestInit and
+ * fetchFxInitServerRuntimeScript prepares sb.fetchFx params with requestInit and
  * fetchURL for fetching server-side source (serverSideSrc) JSON value.
  * @param {*} fetchURL the endpoint to call
- * @param {*} serverSideSrc text of JS or TS source code to send to the server
+ * @param {*} srScript a governed server runtime script matching lib/module/remote/governance.ts::ServerRuntimeScript
  * @returns partial sb.fetchFx params which for spreading with other params
  */
-export function fetchFxInitServerSideSrc(fetchURL, serverSideSrc) {
-    return {
-        fetchURL,
-        requestInit: (_fetchFxParams) => {
-            return {
-                method: "POST",
-                body: serverSideSrc,
-                headers: { "Content-Type": "text/plain" }
-            };
+export function fetchFxInitServerRuntimeScript(baseURL, srScript, srScriptArgs) {
+    // if an identity is provided, the server will ignore code and use what's available on the server
+    if (srScript.foreignCodeIdentity) {
+        return {
+            fetchURL: `${baseURL}/${srScript.foreignCodeIdentity}${srScriptArgs ? `?${srScriptArgs.toString()}` : ''}`,
+        }
+    } else {
+        // if an identity is not provided, we can supply our own code - the server will run it untrusted
+        const { foreignModule: fm } = srScript;
+        return {
+            // the server's POST looks at the request.url.pathname and if it ends with ".ts.json" it's treated as Typescript;
+            // any other pathname is treated as Javascript
+            fetchURL: `${baseURL}/user-supplied.${fm.foreignCodeLanguage}.json${srScriptArgs ? `?${srScriptArgs.toString()}` : ''}`,
+            requestInit: (_fetchFxParams) => {
+                return {
+                    method: "POST",
+                    body: srScript.foreignModule.foreignCode,
+                    headers: { "Content-Type": "text/plain" } // very important so server-side doesn't try to parse it as JSON
+                };
+            }
         }
     }
 }
@@ -280,10 +285,10 @@ export const pageFetchRetrocycledJsonJFx = siteDomain.createEffect(async (params
 // create an effect for a specific script with given arguments
 export function prepareFetchServerRuntimeScriptJsonEffect(srScript, srScriptArgs) {
     const fetchFxArgs = {
-        ...fetchFxInitServerSideSrc(`/unsafe-server-runtime-proxy/module/${srScript.name}${srScriptArgs ? `?${srScriptArgs.toString()}` : ''}`, srScript.module.code),
+        ...fetchFxInitServerRuntimeScript(`/unsafe-server-runtime-proxy/module`, srScript, srScriptArgs),
         srScript, srScriptArgs,
         cache: false,
-        fetchValue: srScript.transformResult == "retrocycle-JSON"
+        fetchValue: srScript.retrocyleJsonOnUserAgent
             ? sb.fetchRespRetrocycledJsonValue
             : sb.fetchRespJsonValue,
     };
@@ -295,10 +300,10 @@ export const pageFetchServerRuntimeScriptJsonFx = siteDomain.createEffect(async 
     if (params.srScript) {
         // srScript must be provided in params
         const args = {
-            ...fetchFxInitServerSideSrc(`/unsafe-server-runtime-proxy/module/${params.srScript.name}${params.srScriptArgs ? `?${params.srScriptArgs.toString()}` : ''}`, params.srScript.module.code),
+            ...fetchFxInitServerRuntimeScript(`/unsafe-server-runtime-proxy/module`, params.srScript, params.srScriptArgs),
             ...params,
             cache: false,
-            fetchValue: params.srScript.transformResult == "retrocycle-JSON"
+            fetchValue: params.srScript.retrocyleJsonOnUserAgent
                 ? sb.fetchRespRetrocycledJsonValue
                 : sb.fetchRespJsonValue,
         };
@@ -318,12 +323,12 @@ export function watchPageFetchServerRuntimeScriptJsonFxDone(watchSrScriptSupplie
     let launchableFxParams;
     switch (typeof watchSrScriptSupplier) {
         case "string":
-            isTargetScript = (srScript) => srScript.qualifiedName == watchSrScriptSupplier;
+            isTargetScript = (srScript) => srScript.foreignCodeIdentity == watchSrScriptSupplier;
             break;
         case "object":
             if (watchSrScriptSupplier?.srScript) {
                 launchableFxParams = watchSrScriptSupplier;
-                isTargetScript = (srScript) => srScript.qualifiedName == launchableFxParams.srScript.qualifiedName;
+                isTargetScript = (srScript) => srScript.foreignCodeIdentity == launchableFxParams.srScript.foreignCodeIdentity;
             } else {
                 console.warn('watchPageFetchServerRuntimeScriptJsonFxDone', "watchSrScriptSupplier is a launchableFxParams candidate but doesn't supply .srScript");
                 return;

@@ -1,24 +1,24 @@
+import * as rm from "../../../../../../lib/module/remote/governance.ts";
 import * as govn from "./governance.ts";
 import * as whs from "../../../../../../lib/text/whitespace.ts";
 
-export function jsModule(code: string): govn.ServerRuntimeScriptCode {
+export function jsModule(
+  code: string,
+  ...args: rm.ForeignCodeExpectedArgument[]
+): rm.ForeignCodeSupplier {
   return {
-    language: "js",
-    code: whs.unindentWhitespace(code),
+    foreignCodeLanguage: "js",
+    foreignCode: whs.unindentWhitespace(code),
+    foreignCodeArgsExpected: args.length > 0
+      ? args.reduce((args, arg) => {
+        args[arg.identity] = arg;
+        return args;
+      }, {} as Record<string, rm.ForeignCodeExpectedArgument>)
+      : undefined,
   };
 }
 
-export function flexibleModuleArgs(
-  ...args: govn.ServerRuntimeScriptArgument[]
-): govn.ServerRuntimeScriptArguments {
-  const srScriptArgs: Record<string, govn.ServerRuntimeScriptArgument> = {};
-  for (const arg of args) {
-    srScriptArgs[arg.identity] = arg;
-  }
-  return srScriptArgs;
-}
-
-export function routeUnitModuleArgs(): govn.ServerRuntimeScriptArgument[] {
+export function routeUnitModuleArgs(): rm.ForeignCodeExpectedArgument[] {
   return [{ identity: "routeUnitFileSysPath", dataType: "string" }];
 }
 
@@ -29,7 +29,7 @@ export function routeUnitModuleArgs(): govn.ServerRuntimeScriptArgument[] {
 export function typicalScriptsInventory(
   identity = "typicalScripts",
 ): govn.ServerRuntimeScriptInventory {
-  const scriptsIndex = new Map<string, govn.ServerRuntimeScript>();
+  const scriptsIndex = new Map<string, rm.ServerRuntimeScript>();
 
   const jsonExplorer: govn.ScriptResultPresentationStrategy = {
     nature: "JSON-explorer",
@@ -48,7 +48,7 @@ export function typicalScriptsInventory(
   const defaultScript: govn.ServerRuntimeScript = {
     name: "project.js.json",
     label: "Show project summary",
-    module: jsModule(`
+    foreignModule: jsModule(`
     export default ({ publication }) => {
         const projectRootPath = publication.config.operationalCtx.projectRootPath;
         return {
@@ -56,7 +56,7 @@ export function typicalScriptsInventory(
             envrc: projectRootPath("/.envrc", true),
         };
     };`),
-    qualifiedName: qualifiedNamePlaceholder,
+    foreignCodeIdentity: qualifiedNamePlaceholder,
     presentation: tableObjectProps,
   };
 
@@ -65,13 +65,10 @@ export function typicalScriptsInventory(
     origin: {
       moduleImportMetaURL: import.meta.url,
     },
-    endpoints: {
-      eval: "/unsafe-server-runtime-proxy/eval",
-      module: "/unsafe-server-runtime-proxy/module",
-    },
     script: (identity: string) => {
       return scriptsIndex.get(identity);
     },
+    scriptIdentities: () => scriptsIndex.keys(),
     defaultScript,
     libraries: [{
       name: "runtime",
@@ -80,8 +77,8 @@ export function typicalScriptsInventory(
         {
           name: "memory.js.json",
           label: "Show server runtime (Deno) memory statistics",
-          module: jsModule(`export default () => Deno.memoryUsage();`),
-          qualifiedName: qualifiedNamePlaceholder,
+          foreignModule: jsModule(`export default () => Deno.memoryUsage();`),
+          foreignCodeIdentity: qualifiedNamePlaceholder,
           presentation: tableObjectProps,
         },
       ],
@@ -94,17 +91,17 @@ export function typicalScriptsInventory(
         {
           name: "publication-db.js.json",
           label: "Show name of SQLite database storing pubctl state",
-          module: jsModule(`
+          foreignModule: jsModule(`
           export default ({ publicationDB }) => ({
               sqliteFileName: publicationDB ? publicationDB.dbStoreFsPath : "publicationDB not provided"
           });`),
-          qualifiedName: qualifiedNamePlaceholder,
+          foreignCodeIdentity: qualifiedNamePlaceholder,
           presentation: tableObjectProps,
         },
         {
           name: "global-sql-db-conns.js.json",
           label: "Show database connections used to generate content",
-          module: jsModule(`
+          foreignModule: jsModule(`
             // we convert to JSON ourselves since we have to do some special processing for
             // possible bigints
             export default ({ globalSqlDbConns }) => JSON.stringify(
@@ -117,7 +114,7 @@ export function typicalScriptsInventory(
                     return value;
                 },
             );`),
-          qualifiedName: qualifiedNamePlaceholder,
+          foreignCodeIdentity: qualifiedNamePlaceholder,
           presentation: jsonExplorer,
         },
       ],
@@ -129,16 +126,16 @@ export function typicalScriptsInventory(
         {
           name: "design-system.js.json",
           label: "Show summary of design system",
-          module: jsModule(
+          foreignModule: jsModule(
             `export default ({ publication }) => publication.ds.designSystem`,
           ),
-          qualifiedName: qualifiedNamePlaceholder,
+          foreignCodeIdentity: qualifiedNamePlaceholder,
           presentation: tableObjectProps,
         },
         {
           name: "layouts.js.json",
           label: "Show all design system layouts",
-          module: jsModule(`
+          foreignModule: jsModule(`
             // we're going to give a AGGrid definition for full control
             function layouts(publication) {
                 const layouts = Array.from(publication.ds.designSystem.layoutStrategies.layouts.values());
@@ -159,7 +156,7 @@ export function typicalScriptsInventory(
                 };
             }
             export default ({ publication }) => layouts(publication);`),
-          qualifiedName: qualifiedNamePlaceholder,
+          foreignCodeIdentity: qualifiedNamePlaceholder,
         },
       ],
       qualifiedName: qualifiedNamePlaceholder,
@@ -170,7 +167,7 @@ export function typicalScriptsInventory(
         {
           name: "rf-site-build.js.json",
           label: "Show site's active build and server properties",
-          module: jsModule(`
+          foreignModule: jsModule(`
           export default ({ publicationDB }) => {
             // always return objects, not strings
             if(!publicationDB) return { warning: "no publicationDB available" };
@@ -182,24 +179,25 @@ export function typicalScriptsInventory(
             } = publicationDB;
             return { publicationDbFsPath, buildHost, buildEvent, serverService };
           }`),
-          transformResult: "retrocycle-JSON",
+          retrocyleJsonOnUserAgent: true,
           presentation: tableObjectProps,
-          qualifiedName: qualifiedNamePlaceholder,
+          foreignCodeIdentity: qualifiedNamePlaceholder,
         },
         {
           name: "navigation-tree-items.js.json",
           label: "Show all navigation tree items",
-          module: jsModule(
+          foreignModule: jsModule(
             `export default ({ publication }) => publication.routes.navigationTree.items`,
           ),
-          transformResult: "retrocycle-JSON",
+          retrocyleJsonOnUserAgent: true,
           presentation: tableObjectProps,
-          qualifiedName: qualifiedNamePlaceholder,
+          foreignCodeIdentity: qualifiedNamePlaceholder,
         },
         {
           name: "resource-by-route.js.json",
           label: "Get resource by args.fileSysPath or args.location",
-          module: jsModule(`
+          foreignModule: jsModule(
+            `
             export default ({ publication, args }) => {
               let resource = undefined;
               let resources = undefined;
@@ -214,19 +212,20 @@ export function typicalScriptsInventory(
                 }
               }
               return { routeUnitFileSysPath, resource, resources };
-            }`),
-          moduleArgs: flexibleModuleArgs(...routeUnitModuleArgs()),
-          transformResult: "retrocycle-JSON",
-          qualifiedName: qualifiedNamePlaceholder,
+            }`,
+            ...routeUnitModuleArgs(),
+          ),
+          retrocyleJsonOnUserAgent: true,
+          foreignCodeIdentity: qualifiedNamePlaceholder,
         },
         {
           name: "resources-tree-items.js.json",
           label: "Show all resources in a tree",
-          module: jsModule(
+          foreignModule: jsModule(
             `export default ({ publication }) => publication.routes.resourcesTree.items`,
           ),
-          transformResult: "retrocycle-JSON",
-          qualifiedName: qualifiedNamePlaceholder,
+          retrocyleJsonOnUserAgent: true,
+          foreignCodeIdentity: qualifiedNamePlaceholder,
         },
       ],
       qualifiedName: qualifiedNamePlaceholder,
@@ -237,11 +236,11 @@ export function typicalScriptsInventory(
         {
           name: "git-log-active-route.js.json",
           label: "Show revision history of the active route",
-          module: jsModule(
+          foreignModule: jsModule(
             `export default async ({ publication, args }) => await publication.config.git.log({ file: args.get("routeUnitFileSysPath") })`,
+            ...routeUnitModuleArgs(),
           ),
-          moduleArgs: flexibleModuleArgs(...routeUnitModuleArgs()),
-          qualifiedName: qualifiedNamePlaceholder,
+          foreignCodeIdentity: qualifiedNamePlaceholder,
         },
       ],
       qualifiedName: qualifiedNamePlaceholder,
@@ -249,18 +248,18 @@ export function typicalScriptsInventory(
   };
 
   const indexLibraries = (
-    libraries: Iterable<govn.ServerRuntimeScriptLibrary>,
+    libraries: Iterable<rm.ServerRuntimeScriptLibrary>,
   ) => {
     const indexScript = (
-      script: govn.ServerRuntimeScript,
-      library: govn.ServerRuntimeScriptLibrary,
+      script: rm.ServerRuntimeScript,
+      library: rm.ServerRuntimeScriptLibrary,
     ) => {
-      if (script.qualifiedName == qualifiedNamePlaceholder) {
-        // special cast required since script.qualifiedName is read-only
-        (script as { qualifiedName: string }).qualifiedName =
+      if (script.foreignCodeIdentity == qualifiedNamePlaceholder) {
+        // special cast required since script.foreignCodeIdentity is read-only
+        (script as { foreignCodeIdentity: string }).foreignCodeIdentity =
           `${identity}_${library.name}_${script.name}`;
       }
-      scriptsIndex.set(script.qualifiedName, script);
+      scriptsIndex.set(script.foreignCodeIdentity, script);
     };
 
     for (const library of libraries) {
@@ -279,7 +278,4 @@ export function typicalScriptsInventory(
   return result;
 }
 
-export const defaultScriptSupplier: govn.ScriptInventorySupplier = () =>
-  typicalScriptsInventory();
-
-export default defaultScriptSupplier;
+export default typicalScriptsInventory();

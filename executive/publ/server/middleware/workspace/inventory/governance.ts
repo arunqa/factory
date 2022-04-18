@@ -1,3 +1,6 @@
+// only import types because this is a user agent module
+import * as rm from "../../../../../../lib/module/remote/governance.ts";
+
 export type ScriptResultPresentationNature =
   | "JSON-explorer"
   | "table-matrix"
@@ -19,75 +22,18 @@ export interface ScriptResultTableObjectPropsPresentation
   readonly nature: "table-object-properties";
 }
 
-export type ServerRuntimeScriptArgDataType =
-  | "boolean"
-  | "number"
-  | "bigint"
-  | "string"
-  | "null"
-  | "undefined"
-  | "Date"
-  | "Uint8Array";
-
-export interface ServerRuntimeScriptArgument {
-  readonly identity: string;
-  readonly dataType: ServerRuntimeScriptArgDataType;
-}
-
-export type ServerRuntimeScriptArguments =
-  | Record<string, ServerRuntimeScriptArgument>
-  | Array<ServerRuntimeScriptArgument>;
-
-export interface ServerRuntimeScriptResultTransformer {
-  (result: unknown): unknown;
-}
-
-export interface ServerRuntimeScriptCode {
-  readonly language: "js" | "ts";
-  readonly code: string;
-}
-
-export interface ServerRuntimeScript {
-  readonly qualifiedName: string;
-  readonly name: string;
-  readonly label: string;
-  readonly module: ServerRuntimeScriptCode; // TODO: add tsModule for Typescript
-  readonly moduleArgs?: ServerRuntimeScriptArguments;
+export interface ServerRuntimeScript extends rm.ServerRuntimeScript {
   readonly help?: string;
   readonly presentation?: ScriptResultPresentationStrategy;
-  readonly transformResult?:
-    | "retrocycle-JSON"
-    | ServerRuntimeScriptResultTransformer; // "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js"
 }
 
-export interface ServerRuntimeScriptLibrary {
-  readonly qualifiedName: string;
-  readonly name: string;
-  readonly label: string;
-  readonly scripts: Iterable<ServerRuntimeScript>;
-}
-
-export interface ServerRuntimeScriptInventory {
+export interface ServerRuntimeScriptInventory
+  extends rm.ServerRuntimeScriptInventory<ServerRuntimeScript> {
   readonly identity: string;
   // should match governance/module.ts LocationSupplier interface
   readonly origin: {
     readonly moduleImportMetaURL: string;
   };
-  readonly endpoints: {
-    readonly eval: string;
-    readonly module: string;
-  };
-  readonly libraries: Iterable<ServerRuntimeScriptLibrary>;
-  readonly script: (identity: string) => ServerRuntimeScript | undefined;
-  readonly defaultScript?: ServerRuntimeScript;
-}
-
-// deno-lint-ignore no-empty-interface
-export interface ServerRuntimeScriptAccessCtx {
-}
-
-export interface ScriptInventorySupplier {
-  (ctx: ServerRuntimeScriptAccessCtx): ServerRuntimeScriptInventory;
 }
 
 export type SqlStmtResultPresentationNature =

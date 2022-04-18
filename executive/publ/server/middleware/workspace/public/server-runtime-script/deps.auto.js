@@ -17,18 +17,15 @@ const importMeta = {
     url: "file:///home/snshah/workspaces/github.com/resFactory/factory/executive/publ/server/middleware/workspace/inventory/server-runtime-scripts.ts",
     main: false
 };
-function jsModule(code) {
+function jsModule(code, ...args1) {
     return {
-        language: "js",
-        code: unindentWhitespace(code)
+        foreignCodeLanguage: "js",
+        foreignCode: unindentWhitespace(code),
+        foreignCodeArgsExpected: args1.length > 0 ? args1.reduce((args, arg)=>{
+            args[arg.identity] = arg;
+            return args;
+        }, {}) : undefined
     };
-}
-function flexibleModuleArgs(...args) {
-    const srScriptArgs = {};
-    for (const arg of args){
-        srScriptArgs[arg.identity] = arg;
-    }
-    return srScriptArgs;
 }
 function routeUnitModuleArgs() {
     return [
@@ -50,7 +47,7 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
     const defaultScript = {
         name: "project.js.json",
         label: "Show project summary",
-        module: jsModule(`
+        foreignModule: jsModule(`
     export default ({ publication }) => {
         const projectRootPath = publication.config.operationalCtx.projectRootPath;
         return {
@@ -58,7 +55,7 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
             envrc: projectRootPath("/.envrc", true),
         };
     };`),
-        qualifiedName: qualifiedNamePlaceholder,
+        foreignCodeIdentity: qualifiedNamePlaceholder,
         presentation: tableObjectProps
     };
     const result = {
@@ -66,13 +63,11 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
         origin: {
             moduleImportMetaURL: importMeta.url
         },
-        endpoints: {
-            eval: "/unsafe-server-runtime-proxy/eval",
-            module: "/unsafe-server-runtime-proxy/module"
-        },
         script: (identity)=>{
             return scriptsIndex.get(identity);
         },
+        scriptIdentities: ()=>scriptsIndex.keys()
+        ,
         defaultScript,
         libraries: [
             {
@@ -82,8 +77,8 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                     {
                         name: "memory.js.json",
                         label: "Show server runtime (Deno) memory statistics",
-                        module: jsModule(`export default () => Deno.memoryUsage();`),
-                        qualifiedName: qualifiedNamePlaceholder,
+                        foreignModule: jsModule(`export default () => Deno.memoryUsage();`),
+                        foreignCodeIdentity: qualifiedNamePlaceholder,
                         presentation: tableObjectProps
                     }, 
                 ],
@@ -97,17 +92,17 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                     {
                         name: "publication-db.js.json",
                         label: "Show name of SQLite database storing pubctl state",
-                        module: jsModule(`
+                        foreignModule: jsModule(`
           export default ({ publicationDB }) => ({
               sqliteFileName: publicationDB ? publicationDB.dbStoreFsPath : "publicationDB not provided"
           });`),
-                        qualifiedName: qualifiedNamePlaceholder,
+                        foreignCodeIdentity: qualifiedNamePlaceholder,
                         presentation: tableObjectProps
                     },
                     {
                         name: "global-sql-db-conns.js.json",
                         label: "Show database connections used to generate content",
-                        module: jsModule(`
+                        foreignModule: jsModule(`
             // we convert to JSON ourselves since we have to do some special processing for
             // possible bigints
             export default ({ globalSqlDbConns }) => JSON.stringify(
@@ -120,7 +115,7 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                     return value;
                 },
             );`),
-                        qualifiedName: qualifiedNamePlaceholder,
+                        foreignCodeIdentity: qualifiedNamePlaceholder,
                         presentation: jsonExplorer
                     }, 
                 ],
@@ -133,14 +128,14 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                     {
                         name: "design-system.js.json",
                         label: "Show summary of design system",
-                        module: jsModule(`export default ({ publication }) => publication.ds.designSystem`),
-                        qualifiedName: qualifiedNamePlaceholder,
+                        foreignModule: jsModule(`export default ({ publication }) => publication.ds.designSystem`),
+                        foreignCodeIdentity: qualifiedNamePlaceholder,
                         presentation: tableObjectProps
                     },
                     {
                         name: "layouts.js.json",
                         label: "Show all design system layouts",
-                        module: jsModule(`
+                        foreignModule: jsModule(`
             // we're going to give a AGGrid definition for full control
             function layouts(publication) {
                 const layouts = Array.from(publication.ds.designSystem.layoutStrategies.layouts.values());
@@ -161,7 +156,7 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                 };
             }
             export default ({ publication }) => layouts(publication);`),
-                        qualifiedName: qualifiedNamePlaceholder
+                        foreignCodeIdentity: qualifiedNamePlaceholder
                     }, 
                 ],
                 qualifiedName: qualifiedNamePlaceholder
@@ -173,7 +168,7 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                     {
                         name: "rf-site-build.js.json",
                         label: "Show site's active build and server properties",
-                        module: jsModule(`
+                        foreignModule: jsModule(`
           export default ({ publicationDB }) => {
             // always return objects, not strings
             if(!publicationDB) return { warning: "no publicationDB available" };
@@ -185,22 +180,22 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
             } = publicationDB;
             return { publicationDbFsPath, buildHost, buildEvent, serverService };
           }`),
-                        transformResult: "retrocycle-JSON",
+                        retrocyleJsonOnUserAgent: true,
                         presentation: tableObjectProps,
-                        qualifiedName: qualifiedNamePlaceholder
+                        foreignCodeIdentity: qualifiedNamePlaceholder
                     },
                     {
                         name: "navigation-tree-items.js.json",
                         label: "Show all navigation tree items",
-                        module: jsModule(`export default ({ publication }) => publication.routes.navigationTree.items`),
-                        transformResult: "retrocycle-JSON",
+                        foreignModule: jsModule(`export default ({ publication }) => publication.routes.navigationTree.items`),
+                        retrocyleJsonOnUserAgent: true,
                         presentation: tableObjectProps,
-                        qualifiedName: qualifiedNamePlaceholder
+                        foreignCodeIdentity: qualifiedNamePlaceholder
                     },
                     {
                         name: "resource-by-route.js.json",
                         label: "Get resource by args.fileSysPath or args.location",
-                        module: jsModule(`
+                        foreignModule: jsModule(`
             export default ({ publication, args }) => {
               let resource = undefined;
               let resources = undefined;
@@ -215,17 +210,16 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                 }
               }
               return { routeUnitFileSysPath, resource, resources };
-            }`),
-                        moduleArgs: flexibleModuleArgs(...routeUnitModuleArgs()),
-                        transformResult: "retrocycle-JSON",
-                        qualifiedName: qualifiedNamePlaceholder
+            }`, ...routeUnitModuleArgs()),
+                        retrocyleJsonOnUserAgent: true,
+                        foreignCodeIdentity: qualifiedNamePlaceholder
                     },
                     {
                         name: "resources-tree-items.js.json",
                         label: "Show all resources in a tree",
-                        module: jsModule(`export default ({ publication }) => publication.routes.resourcesTree.items`),
-                        transformResult: "retrocycle-JSON",
-                        qualifiedName: qualifiedNamePlaceholder
+                        foreignModule: jsModule(`export default ({ publication }) => publication.routes.resourcesTree.items`),
+                        retrocyleJsonOnUserAgent: true,
+                        foreignCodeIdentity: qualifiedNamePlaceholder
                     }, 
                 ],
                 qualifiedName: qualifiedNamePlaceholder
@@ -237,9 +231,8 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                     {
                         name: "git-log-active-route.js.json",
                         label: "Show revision history of the active route",
-                        module: jsModule(`export default async ({ publication, args }) => await publication.config.git.log({ file: args.get("routeUnitFileSysPath") })`),
-                        moduleArgs: flexibleModuleArgs(...routeUnitModuleArgs()),
-                        qualifiedName: qualifiedNamePlaceholder
+                        foreignModule: jsModule(`export default async ({ publication, args }) => await publication.config.git.log({ file: args.get("routeUnitFileSysPath") })`, ...routeUnitModuleArgs()),
+                        foreignCodeIdentity: qualifiedNamePlaceholder
                     }, 
                 ],
                 qualifiedName: qualifiedNamePlaceholder
@@ -248,10 +241,10 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
     };
     const indexLibraries = (libraries)=>{
         const indexScript = (script, library)=>{
-            if (script.qualifiedName == qualifiedNamePlaceholder) {
-                script.qualifiedName = `${identity1}_${library.name}_${script.name}`;
+            if (script.foreignCodeIdentity == qualifiedNamePlaceholder) {
+                script.foreignCodeIdentity = `${identity1}_${library.name}_${script.name}`;
             }
-            scriptsIndex.set(script.qualifiedName, script);
+            scriptsIndex.set(script.foreignCodeIdentity, script);
         };
         for (const library1 of libraries){
             if (library1.qualifiedName == qualifiedNamePlaceholder) {
@@ -265,10 +258,7 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
     indexLibraries(result.libraries);
     return result;
 }
-const defaultScriptSupplier = ()=>typicalScriptsInventory()
-;
+typicalScriptsInventory();
 export { jsModule as jsModule };
-export { flexibleModuleArgs as flexibleModuleArgs };
 export { routeUnitModuleArgs as routeUnitModuleArgs };
 export { typicalScriptsInventory as typicalScriptsInventory };
-export { defaultScriptSupplier as defaultScriptSupplier };

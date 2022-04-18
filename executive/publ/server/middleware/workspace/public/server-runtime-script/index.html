@@ -126,9 +126,9 @@
 
             const renderFxExamplar = (srScript, tag = "div") => {
                 const renderHook =
-                    `({ target }) => path.watchPageFetchServerRuntimeScriptJsonFxDone('${srScript.qualifiedName}', target.renderFx)`;
+                    `({ target }) => path.watchPageFetchServerRuntimeScriptJsonFxDone('${srScript.foreignCodeIdentity}', target.renderFx)`;
                 const renderHookAuto =
-                    `({ target }) => path.watchPageFetchServerRuntimeScriptJsonFxDone({ srScript: scriptsInventory.script('${srScript.qualifiedName}'), autoActivate: true }, target.renderFx)`;
+                    `({ target }) => path.watchPageFetchServerRuntimeScriptJsonFxDone({ srScript: scriptsInventory.script('${srScript.foreignCodeIdentity}'), autoActivate: true }, target.renderFx)`;
                 const renderHookAttr = `render-hook="${renderHook}"`;
                 const renderHookAttrAuto = `render-hook="${renderHookAuto}"`;
                 return path.unindentWhitespace(`
@@ -140,7 +140,7 @@
                     &lt${tag} render-fx ${renderHookAttrAuto}>
                         &lt;script type="render-fx">({ target, result }) => target.innerHTML = 'something'&lt;/script>
                     &lt/${tag}>
-                    &lt;script>path.pageFetchServerRuntimeScriptJsonFx({ srScript: scriptsInventory.script('${srScript.qualifiedName}') });&lt;/script></code></pre>`);
+                    &lt;script>path.pageFetchServerRuntimeScriptJsonFx({ srScript: scriptsInventory.script('${srScript.foreignCodeIdentity}') });&lt;/script></code></pre>`);
             }
 
             for (const library of scriptsInventory.libraries) {
@@ -151,7 +151,7 @@
                     const scriptContainerElem = document.createElement("details");
                     const scriptHeaderElem = document.createElement("summary");
                     const a = document.createElement("a");
-                    a.href = `#${srScript.qualifiedName}`;
+                    a.href = `#${srScript.foreignCodeIdentity}`;
                     a.onclick = () => {
                         populateServerRuntimeScript({ srScript });
                         return false;
@@ -168,7 +168,7 @@
                     path.populateObjectJSON(srScript, inspectDiv, 0);
                     scriptContainerElem.appendChild(inspectDiv);
                     const jsCodeDiv = document.createElement("div");
-                    jsCodeDiv.innerHTML = `<pre><code class="language-${srScript.module.language}">${srScript.module.code}</code></pre>`;
+                    jsCodeDiv.innerHTML = `<pre><code class="language-${srScript.foreignModule.foreignCodeLanguage}">${srScript.foreignModule.foreignCode}</code></pre>`;
                     scriptContainerElem.appendChild(jsCodeDiv);
                     const exemplarDiv = document.createElement("div");
                     exemplarDiv.innerHTML = renderFxExamplar(srScript);
@@ -179,16 +179,14 @@
                 scriptsInventoryElem.appendChild(libraryElem);
             }
             populateServerRuntimeScript.watch(({ srScript }) => {
-                scriptCodeEditorValue(srScript.module.code);
+                scriptCodeEditorValue(srScript.foreignModule.foreignCode);
                 if (autoExecSeverRuntimeScriptElem.checked && window.execServerRuntimeScriptFx) {
                     window.execServerRuntimeScriptFx({ srScript });
                 }
             });
 
             window.srScriptFromFromEditor = () => ({
-                name: 'editor.js.json',
-                qualifiedName: 'editor.js.json',
-                module: { language: "js", code: scriptCodeEditorValue() },
+                foreignModule: { foreignCodeLanguage: "js", foreignCode: scriptCodeEditorValue() },
                 isUserSupplied: true,
             });
 

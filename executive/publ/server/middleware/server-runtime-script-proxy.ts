@@ -1,5 +1,7 @@
 import { oak } from "../deps.ts";
 import * as extn from "../../../../lib/module/mod.ts";
+import * as rme from "../../../../lib/module/remote/executive.ts";
+import * as s from "./workspace/inventory/server-runtime-scripts.ts";
 
 export interface RuntimeExpositionSerializationSupplier {
   readonly serializedJSON: (value: unknown, options?: {
@@ -22,6 +24,7 @@ export interface RuntimeExposureContext {
 export class ServerRuntimeJsTsProxyMiddlewareSupplier<
   REContext extends RuntimeExposureContext,
 > {
+  readonly inventory = s.typicalScriptsInventory();
   readonly extensions = new extn.CachedExtensions();
   constructor(
     readonly app: oak.Application,
@@ -42,76 +45,84 @@ export class ServerRuntimeJsTsProxyMiddlewareSupplier<
     });
 
     const extnEndpoint = `${this.htmlEndpointURL}/module`;
+    router.get(`${extnEndpoint}(.*)`, async (ctx) => {
+      const foreignCodeIdentity = ctx.request.url.pathname.substring(
+        extnEndpoint.length + 1, // +1 is because we don't want a leading /
+      );
+      await this.executeForeignCode({
+        foreignCodeIdentity,
+        foreignCodeExecArgs: ctx.request.url.searchParams,
+      }, ctx);
+    });
+
     router.post(`${extnEndpoint}(.*)`, async (ctx) => {
-      const body = ctx.request.body();
       // API callers should use content-type: text/plain so that body.value is
       // parsed as text, not JSON or other any other format
-      const payload = await body.value;
+      const body = ctx.request.body();
+
       const pathInfo = ctx.request.url.pathname.substring(extnEndpoint.length);
-      const source = {
-        typescript: pathInfo.endsWith(".ts.json") ? (() => payload) : undefined,
-        javascript: pathInfo.endsWith(".js.json") ? (() => payload) : undefined,
-      };
-      if (source.javascript || source.typescript) {
-        const [extn, dataURL] = await this.extensions.importDynamicScript(
-          source,
-        );
-        if (extn && extn.isValid) {
-          // deno-lint-ignore no-explicit-any
-          const value = (extn.module as any).default;
-          if (typeof value === "function") {
-            const args = ctx.request.url.searchParams;
-            const evaluated = await value(
-              { ...this.exposureCtx, oakCtx: ctx, args },
-              {
-                oakCtx: ctx,
-                pathInfo,
-                payload,
-              },
-            );
-            if (typeof evaluated === "string") {
-              // the default function evaluated to a string so we'll just return it as the body
-              ctx.response.body = evaluated;
-            } else if (evaluated) {
-              // the default function evaluated to something else so let's serialize it
-              ctx.response.body = this.serializer.serializedJSON(evaluated, {
-                decycle: true,
-              });
-            }
-          } else if (typeof value === "string") {
-            // the default value evaluated to a string so we'll just return it as the body
-            ctx.response.body = value;
-          } else if (value) {
-            // the module default was not a function or a string so let's serialize it
-            ctx.response.body = this.serializer.serializedJSON(value, {
-              decycle: true,
-            });
-          } else {
-            ctx.response.body = JSON.stringify({
-              error:
-                `imported valid payload but no valid module default was found`,
-              payload,
-              dataURL,
-              pathInfo,
-            });
-          }
-        } else {
-          ctx.response.body = JSON.stringify({
-            error: `unable to import payload as data URL`,
-            payload,
-            dataURL,
-            pathInfo,
-            importError: extn?.importError,
-          });
-        }
-      } else {
-        ctx.response.body = JSON.stringify({
-          error:
-            `pathInfo ${pathInfo} should be either *.ts or *.js and POST body should be source`,
-          payload,
-          pathInfo,
-        });
-      }
+      await this.executeForeignCode({
+        foreignModule: {
+          foreignCode: await body.value,
+          foreignCodeLanguage: pathInfo.endsWith(".ts.json") ? "ts" : "js",
+        },
+        foreignCodeExecArgs: ctx.request.url.searchParams,
+      }, ctx);
     });
+  }
+
+  async executeForeignCode(
+    payload: rme.ForeignCodePayload,
+    oakCtx: oak.Context,
+  ) {
+    try {
+      const efcResult = await rme.executeForeignCode({
+        payload,
+        extensions: this.extensions,
+        inventory: this.inventory,
+        callModuleDefaultFn: (fn) => {
+          return fn(
+            { ...this.exposureCtx, args: payload.foreignCodeExecArgs },
+            { oakCtx, request: oakCtx.request, payload },
+          );
+        },
+      });
+      if (oakCtx.request.url.searchParams.has("diagnose")) {
+        // if diagnostics are requested we just return the payload and full result
+        oakCtx.response.body = JSON.stringify({
+          payload,
+          efcResult,
+        });
+        return;
+      }
+      if (efcResult.error) {
+        oakCtx.response.body = JSON.stringify({
+          payload,
+          inventory: this.inventory.scriptIdentities(),
+          efcResult,
+        });
+      } else {
+        if (typeof efcResult.value === "string") {
+          // the default function evaluated to a string so we'll just return it as the body;
+          // this is a special feature which allows modules to compute their own JSON;
+          oakCtx.response.body = efcResult.value;
+        } else if (efcResult.value) {
+          // the default function evaluated to something else so let's serialize it
+          oakCtx.response.body = this.serializer.serializedJSON(
+            efcResult.value,
+            {
+              decycle: true,
+            },
+          );
+        }
+      }
+    } catch (error) {
+      oakCtx.response.body = JSON.stringify({
+        payload: payload,
+        inventory: this.inventory.scriptIdentities(),
+        error: JSON.stringify(error),
+        message: error.toString(),
+      });
+    }
   }
 }
