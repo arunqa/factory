@@ -12,6 +12,8 @@
     <pre data-transformable="markdown" class="md">
     ## Essential
 
+    * `import.meta.url` references in `deps.js.ts` will be "frozen" in `deps.auto.js` and not portable. Search for '/snshah' to see what I mean.
+      - On the server side `import.meta.url` will be portable but we need another way to do that in user agent (client) side.
     * Accelerate native Windows support to make it easier for non-engineers to use RF.
       - Since we have a robust dev mode server we can move away from symlinks and other Linux-specific functionality so
     that the rfExplorer-based sites can be run on Windows with WSL.
