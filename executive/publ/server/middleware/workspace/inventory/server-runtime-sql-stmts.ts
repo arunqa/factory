@@ -1,22 +1,18 @@
 import * as govn from "./governance.ts";
 import * as whs from "../../../../../../lib/text/whitespace.ts";
+import * as sqlShG from "../../../../../../lib/sql/shell/governance.ts";
 
 export const defaultDatabaseID = `prime` as const;
 export const configDatabaseID = `config` as const;
 export const observabilityDatabaseID = `observability` as const;
 export const pubctlDatabaseID = `pubctl` as const;
-export const gitSqlDatabaseID = `gitsql` as const;
-export const fileSysSqlDatabaseID = `fssql` as const;
-export const osQueryDatabaseID = `osquery` as const;
 
 export type TypicalSqlStmtDatabaseID =
   | typeof defaultDatabaseID
   | typeof configDatabaseID
   | typeof observabilityDatabaseID
   | typeof pubctlDatabaseID
-  | typeof gitSqlDatabaseID
-  | typeof fileSysSqlDatabaseID
-  | typeof osQueryDatabaseID;
+  | sqlShG.CommonDatabaseID;
 
 export const defaultSqlStmtID = "health-check-failed";
 
@@ -204,12 +200,12 @@ export function typicalSqlStmtsInventory(
       name: "revision-control-git",
       label: "Revision Control (Git)",
       sqlStmts: [{
-        database: DB(gitSqlDatabaseID),
+        database: DB(sqlShG.gitSqlDatabaseID),
         name: "top-50-most-frequently-changed-annual",
         label:
           "Show top 50 files changed most frequently in the past year (warning: slow, might take 30+ seconds to compute)",
         SQL: whs.unindentWhitespace(`
-            USE DATABASE ${gitSqlDatabaseID}; -- https://github.com/mergestat/mergestat\n
+            USE DATABASE ${sqlShG.gitSqlDatabaseID}; -- https://github.com/mergestat/mergestat\n
             SELECT file_path, COUNT(*)
               FROM commits, stats('', commits.hash)
              WHERE commits.author_when > DATE('now', '-12 month')
@@ -219,22 +215,22 @@ export function typicalSqlStmtsInventory(
              LIMIT 50`),
         qualifiedName: qualifiedNamePlaceholder,
       }, {
-        database: DB(gitSqlDatabaseID),
+        database: DB(sqlShG.gitSqlDatabaseID),
         name: "total-commit-counts-by-author",
         label: "Show total commits counts grouped by author",
         SQL: whs.unindentWhitespace(`
-            USE DATABASE ${gitSqlDatabaseID}; -- https://github.com/mergestat/mergestat\n
+            USE DATABASE ${sqlShG.gitSqlDatabaseID}; -- https://github.com/mergestat/mergestat\n
             SELECT count(*), author_email, author_name
               FROM commits
              WHERE parents < 2 -- ignore merge commits
              GROUP BY author_name, author_email ORDER BY count(*) DESC`),
         qualifiedName: qualifiedNamePlaceholder,
       }, {
-        database: DB(gitSqlDatabaseID),
+        database: DB(sqlShG.gitSqlDatabaseID),
         name: "total-commit-counts-by-author-email-domain",
         label: "Show total commits counts grouped by email domain of author",
         SQL: whs.unindentWhitespace(`
-            USE DATABASE ${gitSqlDatabaseID}; -- https://github.com/mergestat/mergestat\n
+            USE DATABASE ${sqlShG.gitSqlDatabaseID}; -- https://github.com/mergestat/mergestat\n
             SELECT count(*), substr(author_email, instr(author_email, '@')+1) AS email_domain -- https://sqlite.org/lang_corefunc.html
               FROM commits
              WHERE parents < 2 -- ignore merge commits
@@ -248,65 +244,65 @@ export function typicalSqlStmtsInventory(
       label: "File System",
       sqlStmts: [
         {
-          database: DB(fileSysSqlDatabaseID),
+          database: DB(sqlShG.fileSysSqlDatabaseID),
           name: "image-dimensions",
           label: "Show images and their dimensions",
           SQL: whs.unindentWhitespace(`
-            USE DATABASE ${fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
+            USE DATABASE ${sqlShG.fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
             SELECT CONCAT(width, 'x', height), path, size
               FROM content
              WHERE is_image and extension != 'svg'`),
           qualifiedName: qualifiedNamePlaceholder,
         },
         {
-          database: DB(fileSysSqlDatabaseID),
+          database: DB(sqlShG.fileSysSqlDatabaseID),
           name: "large-images",
           label: "Show large images (by dimension)",
           SQL: whs.unindentWhitespace(`
-            USE DATABASE ${fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
+            USE DATABASE ${sqlShG.fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
             SELECT CONCAT(width, 'x', height), path, fsize, mime
               FROM content -- assumes current working directory is project home (usually true)
              WHERE width >= 500 and height >= 500`),
           qualifiedName: qualifiedNamePlaceholder,
         },
         {
-          database: DB(fileSysSqlDatabaseID),
+          database: DB(sqlShG.fileSysSqlDatabaseID),
           name: "project-path-statistics",
           label:
             "Show useful file system statistics (WARNING: can be slow, be careful)",
           SQL: whs.unindentWhitespace(`
-            USE DATABASE ${fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
+            USE DATABASE ${sqlShG.fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
             SELECT MIN(size), MAX{size}, AVG(size), SUM{size}, COUNT(*)
               FROM ~/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com`),
           qualifiedName: qualifiedNamePlaceholder,
         },
         {
-          database: DB(fileSysSqlDatabaseID),
+          database: DB(sqlShG.fileSysSqlDatabaseID),
           name: "project-path-image-statistics",
           label: "Show useful image statistics",
           SQL: whs.unindentWhitespace(`
-            USE DATABASE ${fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
+            USE DATABASE ${sqlShG.fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
             SELECT MIN(size), MAX{size}, AVG(size), SUM{size}, COUNT(*)
               FROM ~/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/content
              WHERE is_image and extension != 'svg'`),
           qualifiedName: qualifiedNamePlaceholder,
         },
         {
-          database: DB(fileSysSqlDatabaseID),
+          database: DB(sqlShG.fileSysSqlDatabaseID),
           name: "count-files-in-path",
           label: "Show total files in project path",
           SQL: whs.unindentWhitespace(`
-            USE DATABASE ${fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
+            USE DATABASE ${sqlShG.fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
             SELECT count(*)
               FROM ~/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com`),
           qualifiedName: qualifiedNamePlaceholder,
         },
         {
-          database: DB(fileSysSqlDatabaseID),
+          database: DB(sqlShG.fileSysSqlDatabaseID),
           name: "markdown-files-and-sizes",
           label: "Show markdown files in content path",
           SQL: whs.unindentWhitespace(`
-            USE DATABASE ${fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
+            USE DATABASE ${sqlShG.fileSysSqlDatabaseID}; -- https://github.com/jhspetersson/fselect\n
             SELECT size, path
               FROM ~/workspaces/gl.infra.medigy.com/medigy-digital-properties/gpm.medigy.com/content
              WHERE name = '*.md'
@@ -320,11 +316,11 @@ export function typicalSqlStmtsInventory(
       label: "osQuery (operating system)",
       sqlStmts: [
         {
-          database: DB(osQueryDatabaseID),
+          database: DB(sqlShG.osQueryDatabaseID),
           name: "system-info",
           label: "Show system information",
           SQL: whs.unindentWhitespace(`
-            USE DATABASE ${osQueryDatabaseID}; -- https://osquery.io/\n
+            USE DATABASE ${sqlShG.osQueryDatabaseID}; -- https://osquery.io/\n
             SELECT computer_name, hostname, cpu_brand, cpu_physical_cores, cpu_logical_cores, printf("%.2f", (physical_memory / 1024.0 / 1024.0 / 1024.0)) as memory_gb
             FROM system_info`),
           presentation: tableObjectProps,

@@ -47,7 +47,7 @@ GET {{serverURL}}/error
 
 # ----------------------------------------------------------------------------
 # /SQL/publ/DQL publication-db routes which can run arbitrary SQL DQL (select)
-# statements onpubctl.sqlite.db and return results as either rows or records.
+# statements on pubctl.sqlite.db and return results as either rows or records.
 # ----------------------------------------------------------------------------
 @sqlPublDqlURL = {{serverURL}}/SQL/publ/DQL
 

@@ -5,32 +5,12 @@ import * as pDB from "../../publication-db.ts";
 import * as p from "../../publication.ts";
 import * as m from "../../../../lib/metrics/mod.ts";
 import * as sql from "../../../../lib/sql/mod.ts";
+import * as srg from "../../../../lib/sql/remote/governance.ts";
+import * as srgd from "../../../../lib/sql/remote/guard.ts";
+import * as srgp from "../../../../lib/sql/remote/proxy.ts";
+import * as sqlShG from "../../../../lib/sql/shell/governance.ts";
 import * as alaSQL from "../../../../lib/alasql/mod.ts";
-import * as gitSQL from "../../../../lib/sql/shell/git.ts";
-import * as fsSQL from "../../../../lib/sql/shell/fs.ts";
-import * as osQ from "../../../../lib/sql/shell/osquery.ts";
 import "../../../../lib/db/sql.ts"; // for window.globalSqlDbConns
-
-export const firstWordRegEx = /^\s*([a-zA-Z0-9]+)/;
-
-export const firstWord = (text: string) => {
-  const firstWordMatch = text.match(firstWordRegEx);
-  if (firstWordMatch && firstWordMatch.length > 1) {
-    return firstWordMatch[1].toUpperCase();
-  }
-  return false;
-};
-
-export const isSelectStatement = (candidateSQL: string) => {
-  const command = firstWord(candidateSQL);
-  return (command && command == "SELECT");
-};
-
-export interface SqlSupplier {
-  readonly SQL: string;
-}
-
-const isSqlSupplier = safety.typeGuard<SqlSupplier>("SQL");
 
 export interface ResultNatureSupplier {
   readonly resultNature: "records" | "model" | "no-decoration";
@@ -40,17 +20,8 @@ const isResultNatureSupplier = safety.typeGuard<ResultNatureSupplier>(
   "resultNature",
 );
 
-export interface SqlSelectRequest extends SqlSupplier {
+export interface SqlSelectRequest extends srg.ForeignSqlStmtSupplier {
   readonly contentType?: "JSON" | "CSV";
-}
-
-export function isDatabaseProxySqlSelectService(
-  o: unknown,
-): o is SqlSelectRequest {
-  if (isSqlSupplier(o)) {
-    if (isSelectStatement(o.SQL)) return true;
-  }
-  return false;
 }
 
 export function isUseDatabaseResult(result: unknown): boolean {
@@ -59,7 +30,8 @@ export function isUseDatabaseResult(result: unknown): boolean {
     : false;
 }
 
-export interface SqlPayload extends SqlSupplier, ResultNatureSupplier {
+export interface SqlPayload
+  extends srg.ForeignSqlStmtSupplier, ResultNatureSupplier {
   readonly isError: Error | false;
   // deno-lint-ignore no-explicit-any
   readonly parsed: any; // TODO: type this, it's result of AlaSQL's parse()
@@ -82,15 +54,9 @@ export interface SqlPayload extends SqlSupplier, ResultNatureSupplier {
  */
 export class ServerRuntimeSqlProxyMiddlewareSupplier {
   readonly pubCtlAlaSqlProxyDbName = "pubctl";
-  readonly gitSqlAlaSqlProxyDbName = "gitsql";
-  readonly fileSysSqlAlaSqlProxyDbName = "fssql";
-  readonly osQuerySqlAlaSqlProxyDbName = "osquery";
-  readonly osQueryClientPath = "/usr/local/bin/osqueryi";
   readonly customDatabaseIDs = [
     this.pubCtlAlaSqlProxyDbName,
-    this.gitSqlAlaSqlProxyDbName,
-    this.fileSysSqlAlaSqlProxyDbName,
-    this.osQuerySqlAlaSqlProxyDbName,
+    ...srgp.commonIdentifiableSqlProxies.keys(),
   ];
   readonly asp: alaSQL.AlaSqlProxy;
 
@@ -117,15 +83,9 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
               `CREATE DATABASE IF NOT EXISTS ${this.pubCtlAlaSqlProxyDbName}`,
             );
           }
-          asp.alaSqlEngine(
-            `CREATE DATABASE IF NOT EXISTS ${this.gitSqlAlaSqlProxyDbName}`,
-          );
-          asp.alaSqlEngine(
-            `CREATE DATABASE IF NOT EXISTS ${this.fileSysSqlAlaSqlProxyDbName}`,
-          );
-          asp.alaSqlEngine(
-            `CREATE DATABASE IF NOT EXISTS ${this.osQuerySqlAlaSqlProxyDbName}`,
-          );
+          srgp.commonIdentifiableSqlProxies.forEach((sp) => {
+            asp.alaSqlEngine(`CREATE DATABASE IF NOT EXISTS ${sp.identity}`);
+          });
           asp.createJsFlexibleTableFromUntypedObjectArray(
             "dbms_reflection_prepare_db_tx_log",
             asp.defnTxLog,
@@ -139,30 +99,34 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
             return this.database
               ? this.asp.sqliteDbInventory(this.database, databaseID)
               : undefined;
-          case this.gitSqlAlaSqlProxyDbName:
-            return gitSQL.gitSqlInventory(databaseID);
-          case this.fileSysSqlAlaSqlProxyDbName:
-            return fsSQL.fileSysSqlInventory(databaseID);
-          case this.osQuerySqlAlaSqlProxyDbName:
-            return await osQ.osQuerySqlInventory(databaseID);
-          default:
-            return undefined;
+          default: {
+            const foundProxy = srgp.commonIdentifiableSqlProxies.get(
+              databaseID as sqlShG.CommonDatabaseID,
+            );
+            return foundProxy
+              ? await foundProxy.inventorySupplier()
+              : undefined;
+          }
         }
       },
     });
 
     if (this.database) {
       router.post(`${this.htmlEndpointURL}/publ/DQL`, async (ctx) => {
-        const body = ctx.request.body();
-        const payload = await body.value;
-        if (isDatabaseProxySqlSelectService(payload)) {
-          const resultNature = isResultNatureSupplier(payload)
-            ? payload.resultNature
-            : "rows";
-          const result = resultNature == "rows"
-            ? this.database!.rowsDQL(payload.SQL)
-            : this.database!.recordsDQL(payload.SQL);
-          ctx.response.body = JSON.stringify(result);
+        try {
+          const body = ctx.request.body();
+          const payload = await body.value;
+          if (srgd.isForeignSqlSelectStmtSupplier(payload)) {
+            const resultNature = isResultNatureSupplier(payload)
+              ? payload.resultNature
+              : "rows";
+            const result = resultNature == "rows"
+              ? await this.database!.rowsDQL(payload.SQL)
+              : await this.database!.recordsDQL(payload.SQL);
+            ctx.response.body = JSON.stringify(result);
+          }
+        } catch (error) {
+          ctx.response.body = JSON.stringify({ error: Deno.inspect(error) });
         }
       });
     } else {
@@ -182,7 +146,7 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
         switch (body.type) {
           case "json":
             json = await body.value;
-            if (isSqlSupplier(json)) {
+            if (srgd.isForeignSqlStmtSupplier(json)) {
               await this.handleSqlPayload(this.payload(json, ctx));
             }
             break;
@@ -201,7 +165,7 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
   }
 
   protected payload(
-    ss: SqlSupplier | URLSearchParams,
+    ss: srg.ForeignSqlStmtSupplier | URLSearchParams,
     ctx: oak.Context,
   ): SqlPayload {
     let SQL: string;
@@ -209,7 +173,7 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
       | "model"
       | "records"
       | "no-decoration" = "model";
-    if (isSqlSupplier(ss)) {
+    if (srgd.isForeignSqlStmtSupplier(ss)) {
       SQL = ss.SQL;
       if (isResultNatureSupplier(ss)) {
         resultNature = ss.resultNature;
@@ -267,31 +231,28 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
                 data: await this.database!.recordsDQL<any>(SQL),
               };
 
-            case this.gitSqlAlaSqlProxyDbName:
-              return {
-                SQL,
-                // deno-lint-ignore no-explicit-any
-                data: await gitSQL.gitSqlCmdProxy.recordsDQL<any>(SQL),
-              };
-
-            case this.fileSysSqlAlaSqlProxyDbName:
-              return {
-                SQL,
-                // deno-lint-ignore no-explicit-any
-                data: await fsSQL.fileSysSqlCmdProxy.recordsDQL<any>(SQL),
-              };
-
-            case this.osQuerySqlAlaSqlProxyDbName:
-              return {
-                SQL,
-                // deno-lint-ignore no-explicit-any
-                data: await osQ.osQuerySqlCmdProxy.recordsDQL<any>(SQL),
-              };
-
-            default:
-              throw new Error(
-                `custom database ${foundCustomDB} has no handler`,
+            default: {
+              const foundProxy = srgp.commonIdentifiableSqlProxies.get(
+                foundCustomDB! as sqlShG.CommonDatabaseID,
               );
+              if (foundProxy) {
+                const result = await foundProxy.proxy({ executeSQL: SQL });
+                if (result.executedSQL && result.data) {
+                  return {
+                    SQL: result.executedSQL,
+                    data: result.data,
+                  };
+                } else {
+                  throw new Error(
+                    `custom database '${foundCustomDB}' could not execute SQL`,
+                    { cause: new Error(Deno.inspect(result)) },
+                  );
+                }
+              }
+              throw new Error(
+                `custom database '${foundCustomDB}' has no handler`,
+              );
+            }
           }
         })
         : // deno-lint-ignore require-await
