@@ -108,11 +108,11 @@
             // as decoupled from business logic as possible
 
             const sqlStmtsInventory = deps.typicalSqlStmtsInventory();
-            const sqlStmtInventorySource = sqlStmtsInventory.origin.moduleImportMetaURL.replace("file://", "");
+            const sqlStmtInventorySource = "/factory/executive/publ/server/middleware/workspace/inventory/server-runtime-sql-stmts.ts";
 
             const editSqlStmtInventorySourceElem = document.getElementById("editSqlStmtInventorySource");
-            editSqlStmtInventorySourceElem.href = `/workspace/editor-redirect/abs${sqlStmtInventorySource}`;
-            editSqlStmtInventorySourceElem.title = `Open /workspace/editor-redirect${sqlStmtInventorySource} in IDE`;
+            editSqlStmtInventorySourceElem.href = `/workspace/editor-redirect${sqlStmtInventorySource}`;
+            editSqlStmtInventorySourceElem.title = `Open ${sqlStmtInventorySource} in IDE`;
 
             const dbSelectElem = document.getElementById("database");
             const tableSelectElem = document.getElementById("table");

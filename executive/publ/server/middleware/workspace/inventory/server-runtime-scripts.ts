@@ -62,9 +62,6 @@ export function typicalScriptsInventory(
 
   const result: govn.ServerRuntimeScriptInventory = {
     identity,
-    origin: {
-      moduleImportMetaURL: import.meta.url,
-    },
     script: (identity: string) => {
       return scriptsIndex.get(identity);
     },

@@ -1,5 +1,6 @@
 // only import types because this is a user agent module
 import * as rm from "../../../../../../lib/module/remote/governance.ts";
+import * as rs from "../../../../../../lib/sql/remote/governance.ts";
 
 export type ScriptResultPresentationNature =
   | "JSON-explorer"
@@ -30,10 +31,6 @@ export interface ServerRuntimeScript extends rm.ServerRuntimeScript {
 export interface ServerRuntimeScriptInventory
   extends rm.ServerRuntimeScriptInventory<ServerRuntimeScript> {
   readonly identity: string;
-  // should match governance/module.ts LocationSupplier interface
-  readonly origin: {
-    readonly moduleImportMetaURL: string;
-  };
   readonly defaultScript?: ServerRuntimeScript;
 }
 
@@ -48,10 +45,6 @@ export interface SqlStmtResultPresentationStrategy {
   readonly nature: SqlStmtResultPresentationNature;
 }
 
-export interface SqlDatabase<DatabaseID extends string> {
-  readonly identity: DatabaseID;
-}
-
 export interface SqlStmtResultTableRecordsPresentation
   extends SqlStmtResultPresentationStrategy {
   readonly nature: "table-records";
@@ -62,42 +55,14 @@ export interface SqlStmtResultTableObjectPropsPresentation
   readonly nature: "table-object-properties";
 }
 
-export interface ServerRuntimeSqlStmt<DatabaseID extends string> {
-  readonly database: SqlDatabase<DatabaseID>;
-  readonly qualifiedName: string;
-  readonly name: string;
-  readonly label: string;
-  readonly SQL: string;
+export interface ServerRuntimeSqlStmt<DatabaseID extends string>
+  extends rs.ServerRuntimeSqlStmt<DatabaseID> {
   readonly help?: string;
   readonly presentation?: SqlStmtResultPresentationStrategy;
 }
 
-export interface ServerRuntimeSqlStmtLibrary<DatabaseID extends string> {
-  readonly qualifiedName: string;
-  readonly name: string;
-  readonly label: string;
-  readonly sqlStmts: Iterable<ServerRuntimeSqlStmt<DatabaseID>>;
-}
-
-export interface ServerRuntimeSqlStmtInventory<DatabaseID extends string> {
+export interface ServerRuntimeSqlStmtInventory<DatabaseID extends string>
+  extends rs.ServerRuntimeSqlStmtInventory<DatabaseID> {
   readonly identity: string;
-  // should match governance/module.ts LocationSupplier interface
-  readonly origin: {
-    readonly moduleImportMetaURL: string;
-  };
-  readonly libraries: Iterable<ServerRuntimeSqlStmtLibrary<DatabaseID>>;
-  readonly sqlStmt: (
-    identity: string,
-  ) => ServerRuntimeSqlStmt<DatabaseID> | undefined;
   readonly defaultSqlStmt?: ServerRuntimeSqlStmt<DatabaseID>;
-}
-
-// deno-lint-ignore no-empty-interface
-export interface ServerRuntimeSqlStmtAccessCtx {
-}
-
-export interface SqlStmtInventorySupplier<DatabaseID extends string> {
-  (
-    ctx: ServerRuntimeSqlStmtAccessCtx,
-  ): ServerRuntimeSqlStmtInventory<DatabaseID>;
 }

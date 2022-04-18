@@ -86,11 +86,11 @@
             // const or let for anything not used by the DOM.
 
             const scriptsInventory = deps.typicalScriptsInventory();
-            const scriptSource = scriptsInventory.origin.moduleImportMetaURL.replace("file://", "");
+            const scriptSource = "/factory/executive/publ/server/middleware/workspace/inventory/server-runtime-scripts.ts";
 
             const editScriptsInventorySourceElem = document.getElementById("editScriptsInventorySource");
-            editScriptsInventorySourceElem.href = `/workspace/editor-redirect/abs${scriptSource}`;
-            editScriptsInventorySourceElem.title = `Open /workspace/editor-redirect${scriptSource} in IDE`;
+            editScriptsInventorySourceElem.href = `/workspace/editor-redirect${scriptSource}`;
+            editScriptsInventorySourceElem.title = `Open ${scriptSource} in IDE`;
 
             const diagnosticsCheckboxElem = document.getElementById("diagnose");
             const diagnosticsElem = document.getElementById("diagnostics");

@@ -16,10 +16,6 @@ function unindentWhitespace(text, removeInitialNewLine = true) {
 const fileSysSqlDatabaseID = "fssql";
 const gitSqlDatabaseID = "gitsql";
 const osQueryDatabaseID = "osquery";
-const importMeta = {
-    url: "file:///home/snshah/workspaces/github.com/resFactory/factory/executive/publ/server/middleware/workspace/inventory/server-runtime-sql-stmts.ts",
-    main: false
-};
 const defaultDatabaseID = `prime`;
 const configDatabaseID = `config`;
 const observabilityDatabaseID = `observability`;
@@ -50,12 +46,11 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
     };
     const result = {
         identity: identity1,
-        origin: {
-            moduleImportMetaURL: importMeta.url
-        },
         sqlStmt: (identity)=>{
             return sqlStmtsIndex.get(identity);
         },
+        sqlStmtIdentities: ()=>sqlStmtsIndex.keys()
+        ,
         defaultSqlStmt,
         libraries: [
             {
@@ -335,12 +330,9 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
     indexLibraries(result.libraries);
     return result;
 }
-const defaultSqlStmtSupplier = ()=>typicalSqlStmtsInventory()
-;
 export { defaultDatabaseID as defaultDatabaseID };
 export { configDatabaseID as configDatabaseID };
 export { observabilityDatabaseID as observabilityDatabaseID };
 export { pubctlDatabaseID as pubctlDatabaseID };
 export { defaultSqlStmtID as defaultSqlStmtID };
 export { typicalSqlStmtsInventory as typicalSqlStmtsInventory };
-export { defaultSqlStmtSupplier as defaultSqlStmtSupplier };

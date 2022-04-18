@@ -1,3 +1,4 @@
+import * as rs from "../../../../../../lib/sql/remote/governance.ts";
 import * as govn from "./governance.ts";
 import * as whs from "../../../../../../lib/text/whitespace.ts";
 import * as sqlShG from "../../../../../../lib/sql/shell/governance.ts";
@@ -32,7 +33,7 @@ export function typicalSqlStmtsInventory(
 
   const DB = (
     identity: TypicalSqlStmtDatabaseID,
-  ): govn.SqlDatabase<TypicalSqlStmtDatabaseID> => {
+  ): rs.SqlDatabase<TypicalSqlStmtDatabaseID> => {
     return {
       identity,
     };
@@ -69,12 +70,10 @@ export function typicalSqlStmtsInventory(
 
   const result: govn.ServerRuntimeSqlStmtInventory<TypicalSqlStmtDatabaseID> = {
     identity,
-    origin: {
-      moduleImportMetaURL: import.meta.url,
-    },
     sqlStmt: (identity: string) => {
       return sqlStmtsIndex.get(identity);
     },
+    sqlStmtIdentities: () => sqlStmtsIndex.keys(),
     defaultSqlStmt,
     libraries: [{
       name: "housekeeping",
@@ -333,12 +332,12 @@ export function typicalSqlStmtsInventory(
 
   const indexLibraries = (
     libraries: Iterable<
-      govn.ServerRuntimeSqlStmtLibrary<TypicalSqlStmtDatabaseID>
+      rs.ServerRuntimeSqlStmtLibrary<TypicalSqlStmtDatabaseID>
     >,
   ) => {
     const indexSqlStmt = (
       sqlstmt: govn.ServerRuntimeSqlStmt<TypicalSqlStmtDatabaseID>,
-      library: govn.ServerRuntimeSqlStmtLibrary<TypicalSqlStmtDatabaseID>,
+      library: rs.ServerRuntimeSqlStmtLibrary<TypicalSqlStmtDatabaseID>,
     ) => {
       if (sqlstmt.qualifiedName == qualifiedNamePlaceholder) {
         // special cast required since sqlstmt.qualifiedName is read-only
@@ -362,9 +361,3 @@ export function typicalSqlStmtsInventory(
   indexLibraries(result.libraries);
   return result;
 }
-
-export const defaultSqlStmtSupplier: govn.SqlStmtInventorySupplier<
-  TypicalSqlStmtDatabaseID
-> = () => typicalSqlStmtsInventory();
-
-export default defaultSqlStmtSupplier;

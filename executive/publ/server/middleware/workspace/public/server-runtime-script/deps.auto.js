@@ -13,10 +13,6 @@ function unindentWhitespace(text, removeInitialNewLine = true) {
     const result = text.replace(regex, "");
     return removeInitialNewLine ? result.replace(/^\n/, "") : result;
 }
-const importMeta = {
-    url: "file:///home/snshah/workspaces/github.com/resFactory/factory/executive/publ/server/middleware/workspace/inventory/server-runtime-scripts.ts",
-    main: false
-};
 function jsModule(code, ...args1) {
     return {
         foreignCodeLanguage: "js",
@@ -60,9 +56,6 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
     };
     const result = {
         identity: identity1,
-        origin: {
-            moduleImportMetaURL: importMeta.url
-        },
         script: (identity)=>{
             return scriptsIndex.get(identity);
         },
