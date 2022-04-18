@@ -34,6 +34,7 @@ export interface ServerRuntimeScriptInventory
   readonly origin: {
     readonly moduleImportMetaURL: string;
   };
+  readonly defaultScript?: ServerRuntimeScript;
 }
 
 export type SqlStmtResultPresentationNature =
