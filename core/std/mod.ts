@@ -1,6 +1,5 @@
 export * from "./content.ts";
 export * from "./frontmatter.ts";
-export * from "./fsm.ts";
 export * from "./markdown-tags.ts";
 export * from "./model.ts";
 export * from "./nature.ts";

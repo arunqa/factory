@@ -1,39 +1,79 @@
-import { events } from "../deps.ts";
+import * as events from "https://raw.githubusercontent.com/ihack2712/eventemitter/1.2.4/mod.ts";
 import * as safety from "../../lib/safety/mod.ts";
-import * as govn from "../../governance/mod.ts";
+
+export interface StateTransition<Event, State> {
+  readonly event: Event;
+  readonly fromState: State;
+  readonly toState: State;
+}
+
+export interface StateEventListener {
+  readonly onEvent: (...args: unknown[]) => void | Promise<void>;
+}
+
+export interface StateEventListenerCustom<Event, State> {
+  readonly onAnyEvent: (
+    event: Event,
+    fsm: FiniteStateMachine<Event, State>,
+    ...args: unknown[]
+  ) => Promise<void>;
+}
+
+export interface StateTransitionListener {
+  readonly onTransition: (...args: unknown[]) => Promise<void>;
+}
+
+export interface StateTransitionListenerCustom<Event, State> {
+  readonly onAnyTransition: (
+    transition: StateTransition<Event, State>,
+    fsm: FiniteStateMachine<Event, State>,
+    ...args: unknown[]
+  ) => Promise<void>;
+}
+
+export interface FiniteStateMachine<Event, State> {
+  readonly state: State;
+  readonly isTerminal: boolean;
+  readonly isTransitionable: (event: Event) => boolean;
+  readonly transition: (event: Event, ...args: unknown[]) => Promise<void>;
+  readonly transitionSync: (
+    event: Event,
+    ...args: unknown[]
+  ) => State | undefined;
+}
 
 export function event<Event, State>(
   fromState: State,
   event: Event,
   toState: State,
-): govn.StateTransition<Event, State> {
+): StateTransition<Event, State> {
   return { fromState, event, toState };
 }
 
-export const isStateEventListener = safety.typeGuard<govn.StateEventListener>(
+export const isStateEventListener = safety.typeGuard<StateEventListener>(
   "onEvent",
 );
 
 export function isStateEventListenerCustom<Event, State>(
   o: unknown,
-): o is govn.StateEventListenerCustom<Event, State> {
-  const isType = safety.typeGuard<govn.StateEventListenerCustom<Event, State>>(
+): o is StateEventListenerCustom<Event, State> {
+  const isType = safety.typeGuard<StateEventListenerCustom<Event, State>>(
     "onAnyEvent",
   );
   return isType(o);
 }
 
 export const isStateTransitionListener = safety.typeGuard<
-  govn.StateTransitionListener
+  StateTransitionListener
 >(
   "onTransition",
 );
 
 export function isStateTransitionListenerCustom<Event, State>(
   o: unknown,
-): o is govn.StateTransitionListenerCustom<Event, State> {
+): o is StateTransitionListenerCustom<Event, State> {
   const isType = safety.typeGuard<
-    govn.StateTransitionListenerCustom<Event, State>
+    StateTransitionListenerCustom<Event, State>
   >(
     "onAnyTransition",
   );
@@ -48,7 +88,7 @@ export class TypicalStateMachineEventsEmitter<Event, State>
       ...args: unknown[]
     ): void;
     transition(
-      st: govn.StateTransition<Event, State>,
+      st: StateTransition<Event, State>,
       fsm: TypicalStateMachine<Event, State>,
       ...args: unknown[]
     ): void;
@@ -65,13 +105,13 @@ export interface TypicalStateMachineOptions<Event, State> {
 }
 
 export class TypicalStateMachine<Event, State>
-  implements govn.FiniteStateMachine<Event, State> {
+  implements FiniteStateMachine<Event, State> {
   protected ee?: TypicalStateMachineEventsEmitter<Event, State>;
   protected throwOnReject?: (event: Event, ...args: unknown[]) => Error;
   protected active: State;
 
   constructor(
-    readonly allowed: govn.StateTransition<Event, State>[],
+    readonly allowed: StateTransition<Event, State>[],
     active: State,
     options?: TypicalStateMachineOptions<Event, State>,
   ) {

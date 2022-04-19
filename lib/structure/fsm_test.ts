@@ -1,5 +1,4 @@
-import { testingAsserts as ta } from "../deps-test.ts";
-import * as govn from "../../governance/mod.ts";
+import * as ta from "https://deno.land/std@0.123.0/testing/asserts.ts";
 import * as mod from "./fsm.ts";
 
 // these are the states and events for the door
@@ -25,7 +24,7 @@ enum PublishEvent {
   conclude,
 }
 
-const transitions: govn.StateTransition<PublishEvent, PublishState>[] = [
+const transitions: mod.StateTransition<PublishEvent, PublishState>[] = [
   mod.event(
     PublishState.idle,
     PublishEvent.initialize,

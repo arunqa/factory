@@ -1,7 +1,6 @@
 export * from "./content.ts";
 export * from "./directive.ts";
 export * from "./frontmatter.ts";
-export * from "./fsm.ts";
 export * from "./model.ts";
 export * from "./module.ts";
 export * from "./namespace.ts";
