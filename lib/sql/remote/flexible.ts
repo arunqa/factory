@@ -10,6 +10,18 @@ export type ForeignSqlStmtPayload =
   )
   & Partial<rGovn.ForeigSqlStmtBindParamsSupplier>;
 
+export function isForeignSqlStmtPayload(
+  o: unknown,
+): o is ForeignSqlStmtPayload {
+  if (
+    guard.isForeignSqlStmtIdentitySupplier(o) ||
+    guard.isForeignSqlStmtSupplier(o)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export interface ExecuteForeignSqlStmtResultArgsSupplier<
   Data,
   Payload extends ForeignSqlStmtPayload = ForeignSqlStmtPayload,

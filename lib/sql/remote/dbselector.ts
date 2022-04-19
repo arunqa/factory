@@ -18,7 +18,11 @@ export interface UseDatabaseIdDetector {
  *
  * @returns
  */
-export function useDatabaseIdInFirstLineOfSqlDetector() {
+export function useDatabaseIdInFirstLineOfSqlDetector(
+  { removeUseDbIdStmt }: { removeUseDbIdStmt: boolean } = {
+    removeUseDbIdStmt: true,
+  },
+) {
   const result: UseDatabaseIdDetector = {
     detectedUseDbIdInSQL: (SQL: string) => {
       const useDatabaseRegEx = /^\s*USE\s*DATABASE\s*(\w+).*$/gmi;
@@ -26,7 +30,9 @@ export function useDatabaseIdInFirstLineOfSqlDetector() {
       return useDatabaseMatch ? useDatabaseMatch[1] : undefined;
     },
     rewriteSqlRemoveUseDbId: (SQL) =>
-      SQL.replace(/^\s*USE\s*DATABASE.*$/mi, "").trim(),
+      removeUseDbIdStmt
+        ? SQL.replace(/^\s*USE\s*DATABASE.*$/mi, "").trim()
+        : SQL,
     detectedUseDB: (SQL) => {
       const databaseID = result.detectedUseDbIdInSQL(SQL);
       if (databaseID) {

@@ -79,11 +79,12 @@
             Use <code>ctrl+space</code> to autocomplete ${db?.tables?.length ?? 0} tables and their
             columns in <code style="color:#889988">${db?.identity}</code> database. Use <ahref="http: //alasql.org/">
                 AlaSQL</a> SQL syntax for all databases except <code>pubctl</code>,
-                <code>gitsql</code>, and <code>fssql</code>.<br>
-                <code>pubctl</code> SQL is passed to a physical SQLite database, <code>gitsql</code> SQL is passed to <a
+                <code>gitsql</code>, <code>osquery</code>, and <code>fssql</code>.<br>
+                <code>pubctl</code> SQL is passed to a physical SQLite database, <code>osquery</code> is passed to <a
+                    href="https://osquery.io">osQuery</a>, <code>gitsql</code> SQL is passed to <a
                     href="https://github.com/mergestat/mergestat"><code>mergestat</code></a> subshell,
-                and <code>fssql</code> SQL
-                is passed to a <a href="https://github.com/jhspetersson/fselect"><code>fselect</code></a> subshell.
+                and <code>fssql</code> SQL is passed to a <a
+                    href="https://github.com/jhspetersson/fselect"><code>fselect</code></a> subshell.
         </div>
     </div>
 
@@ -223,7 +224,7 @@
             });
 
             const dbQueryDbmsInventoryFx = path.siteDomain.createEffect(async (params) => await path.pageFetchJsonFx({
-                ...path.fetchFxInitAlaSqlProxyDQL(dbmsInventoryQuery, "dbmsInventoryQuery", "records"),
+                ...path.fetchFxInitAlaSqlProxyDQL(dbmsInventoryQuery, "dbmsInventoryQuery", "no-decoration"),
                 ...params,
                 cache: false
             }));
@@ -310,7 +311,8 @@
                 }
             });
             dbQueryFormSubmitFx.done.watch(({ params, result }) => {
-                if (diagnosticsCheckboxElem.checked || result.nature.indexOf("error") >= 0) {
+                console.log({ result })
+                if (diagnosticsCheckboxElem.checked || result.error || result.nature?.indexOf("error") >= 0) {
                     path.populateObjectJSON({ params, result }, diagnosticsElem, 2);
                 } else {
                     diagnosticsElem.innerHTML = "";
@@ -318,7 +320,7 @@
 
                 const dest = document.querySelector('#SQL-result-aggrid');
                 dest.innerHTML = '';
-                if (result.nature?.indexOf("error") >= 0) return;
+                if (result.error || result.nature?.indexOf("error") >= 0) return;
 
                 const columnDefs = result.valueModels.map((vm) => ({
                     field: vm.suppliedName, sortable: true,

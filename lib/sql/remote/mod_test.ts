@@ -131,8 +131,16 @@ export function testInventory(
 Deno.test("SQL proxy", async (tc) => {
   const inventory = testInventory();
   //console.log(Array.from(inventory.sqlStmtIdentities()));
-
   ta.assert(inventory);
+
+  // this is a single convenience SqlProxy which will figure out the proper Proxy
+  // via the `USE DATABASE dbID;` database selector as the first line of SQL;
+  const commonProxies = p.commonIdentifiableSqlProxies({
+    allowAttemptWithoutUseDB: true,
+  });
+  const commonSqlAutoProxy = p.multiSqlProxy(
+    ...Array.from(commonProxies.values()).map((v) => v.proxy),
+  );
 
   await tc.step("total-commit-counts-by-author from inventory", async () => {
     const result = await mod.executeSqlProxy({
@@ -143,7 +151,7 @@ Deno.test("SQL proxy", async (tc) => {
           "typicalSqlStmts_revision-control-git_total-commit-counts-by-author",
       },
       executeSQL: async (args) => {
-        return await p.commonSqlAutoProxy(args);
+        return await commonSqlAutoProxy(args);
       },
     });
     ta.assert(result.proxyResult);

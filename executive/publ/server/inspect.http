@@ -113,10 +113,11 @@ Accept: application/json
 }
 
 ###
+# use ?diagnose=true for diagnostics
 
 @alaSqlProxyURL = {{serverURL}}/SQL/asp
 
-POST {{alaSqlProxyURL}}
+POST {{alaSqlProxyURL}}?diagnose=true
 Content-Type: application/json
 Accept: application/json
 
@@ -133,7 +134,7 @@ Accept: application/json
 
 {
   "SQL": "SHOW COLUMNS from dbms_reflection_inventory from prime",
-  "resultNature": "models"
+  "resultNature": "model"
 }
 
 ###
@@ -155,7 +156,7 @@ Accept: application/json
 
 {
   "SQL": "SHOW COLUMNS from dbmsInventory from prime",
-  "resultNature": "records"
+  "resultNature": "no-decoration"
 }
 
 ###
@@ -169,8 +170,19 @@ Accept: application/json
 
 {
   "SQL": "select value [databases] from prime.dbmsInventory",
-  "resultNature": "records"
+  "resultNature": "no-decoration"
 }
+
+###
+
+POST {{alaSqlProxyURL}}
+Content-Type: application/json
+
+{
+  "SQL": "USE DATABASE observability;\nSELECT * FROM health_check",
+  "resultNature": "model"
+}
+
 
 ###
 
@@ -223,14 +235,14 @@ Accept: application/json
 
 {
   "SQL": "select * from config.environment",
-  "resultNature": "records"
+  "resultNature": "model"
 }
 
 ###
+# pubctl is a "virtual" database so SHOW TABLES will return no records
 
 POST {{alaSqlProxyURL}}
 Content-Type: application/json
-Accept: application/json
 
 {
   "SQL": "SHOW TABLES from pubctl",
@@ -238,15 +250,33 @@ Accept: application/json
 }
 
 ###
+# pubctl is a "proxied" database for AlaSQL so SHOW TABLES will return no records
+# so you will need to USE DATABASE to access the database;
+# if content-type is text/plain then the entire body is treated as SQL;
+# use ?diagnose for additional diagnostics beyond the returned records
 
 POST {{alaSqlProxyURL}}
-Content-Type: application/json
-Accept: application/json
+Content-Type: text/plain
 
-{
-  "SQL": "select * from pubctl.publ_host",
-  "resultNature": "records"
-}
+USE DATABASE pubctl;
+
+SELECT name
+  from sqlite_master
+ where type = 'table'
+   and name != 'sqlite_sequence'
+
+###
+
+POST {{alaSqlProxyURL}}
+Content-Type: text/plain
+
+USE DATABASE pubctl;
+select * from publ_host
+
+###
+# you can use GET to ask for an inventory-defined SQL statement
+
+GET {{alaSqlProxyURL}}/typicalSqlStmts_osquery_system-info
 
 ###
 
@@ -306,14 +336,13 @@ Accept: application/json
 ###
 
 POST {{alaSqlProxyURL}}
-Content-Type: application/json
-Accept: application/json
+Content-Type: text/plain
 
-{
-  "SQL": "SELECT created_at, asset_nature, status, location_href, filesys_target_path, filesys_target_symlink FROM pubctl.publ_server_static_access_log ORDER BY created_at DESC LIMIT 100",
-  "resultNature": "records"
-}
-
+USE DATABASE pubctl;
+SELECT created_at, asset_nature, status, location_href, filesys_target_path, filesys_target_symlink
+  FROM publ_server_static_access_log
+ ORDER BY created_at DESC
+ LIMIT 100
 
 # -----------------------------------
 # /unsafe-server-runtime-proxy routes

@@ -34,6 +34,7 @@ export interface SqlProxySupplier<
 
 export function attemptExec(
   SQL: string,
+  allowAttemptWithoutUseDB = true,
   isDbID: ((dbID: string) => boolean) | undefined,
   databaseIdSelector: dbs.UseDatabaseIdDetector,
 ): SqlProxyExecAttempted {
@@ -60,6 +61,13 @@ export function attemptExec(
     }
   }
 
+  if (!allowAttemptWithoutUseDB) {
+    return {
+      attempted: false,
+      whyNot: "no-database-id-match",
+      reason: `databaseID required but no database selected or selectable`,
+    };
+  }
   return {
     attempted: true,
     reason: `database is not selectable, forcing use ${
@@ -68,82 +76,77 @@ export function attemptExec(
   };
 }
 
+export function proxySQL(
+  handler: {
+    readonly recordsDQL: <Object extends sql.SqlRecord>(
+      SQL: string,
+      params?: sql.SqlQueryParameterSet | undefined,
+    ) => Promise<sql.QueryExecutionRecordsSupplier<Object>>;
+  },
+  allowAttemptWithoutUseDB = true,
+  isDbID?: (dbID: string) => boolean,
+  defaultDatabaseIdSelector = dbs.typicalUseDatabaseIdDetector,
+): SqlProxySupplier<sql.QueryExecutionRecordsSupplier<sql.SqlRecord>> {
+  return async (args) => {
+    const execAttempted = attemptExec(
+      args.executeSQL,
+      allowAttemptWithoutUseDB,
+      isDbID,
+      defaultDatabaseIdSelector,
+    );
+    if (execAttempted.attempted) {
+      const executedSQL = execAttempted.detectedUseDB
+        ? execAttempted.detectedUseDB.SQL
+        : args.executeSQL;
+      return {
+        execAttempted,
+        executedSQL,
+        data: await handler.recordsDQL(executedSQL),
+      };
+    }
+    return {
+      execAttempted,
+    };
+  };
+}
+
 export function gitSQL(
+  allowAttemptWithoutUseDB = true,
   isGitDbID?: (dbID: string) => boolean,
   defaultDatabaseIdSelector = dbs.typicalUseDatabaseIdDetector,
 ): SqlProxySupplier<sql.QueryExecutionRecordsSupplier<sql.SqlRecord>> {
-  return async (args) => {
-    const execAttempted = attemptExec(
-      args.executeSQL,
-      isGitDbID,
-      defaultDatabaseIdSelector,
-    );
-    if (execAttempted.attempted) {
-      const executedSQL = execAttempted.detectedUseDB
-        ? execAttempted.detectedUseDB.SQL
-        : args.executeSQL;
-      return {
-        execAttempted,
-        executedSQL,
-        data: await git.gitSqlCmdProxy.recordsDQL(executedSQL),
-      };
-    }
-    return {
-      execAttempted,
-    };
-  };
+  return proxySQL(
+    git.gitSqlCmdProxy,
+    allowAttemptWithoutUseDB,
+    isGitDbID,
+    defaultDatabaseIdSelector,
+  );
 }
 
 export function fsSQL(
+  allowAttemptWithoutUseDB = true,
   isFsDbID?: (dbID: string) => boolean,
   defaultDatabaseIdSelector = dbs.typicalUseDatabaseIdDetector,
 ): SqlProxySupplier<sql.QueryExecutionRecordsSupplier<sql.SqlRecord>> {
-  return async (args) => {
-    const execAttempted = attemptExec(
-      args.executeSQL,
-      isFsDbID,
-      defaultDatabaseIdSelector,
-    );
-    if (execAttempted.attempted) {
-      const executedSQL = execAttempted.detectedUseDB
-        ? execAttempted.detectedUseDB.SQL
-        : args.executeSQL;
-      return {
-        execAttempted,
-        executedSQL,
-        data: await fs.fileSysSqlCmdProxy.recordsDQL(executedSQL),
-      };
-    }
-    return {
-      execAttempted,
-    };
-  };
+  return proxySQL(
+    fs.fileSysSqlCmdProxy,
+    allowAttemptWithoutUseDB,
+    isFsDbID,
+    defaultDatabaseIdSelector,
+  );
 }
 
 export function osQuerySQL(
+  allowAttemptWithoutUseDB = true,
   isOsQueryDbID?: (dbID: string) => boolean,
   defaultDatabaseIdSelector = dbs.typicalUseDatabaseIdDetector,
 ): SqlProxySupplier<sql.QueryExecutionRecordsSupplier<sql.SqlRecord>> {
-  return async (args) => {
-    const execAttempted = attemptExec(
-      args.executeSQL,
-      isOsQueryDbID,
-      defaultDatabaseIdSelector,
-    );
-    if (execAttempted.attempted) {
-      const executedSQL = execAttempted.detectedUseDB
-        ? execAttempted.detectedUseDB.SQL
-        : args.executeSQL;
-      return {
-        execAttempted,
-        executedSQL,
-        data: await osQ.osQuerySqlCmdProxy.recordsDQL(executedSQL),
-      };
-    }
-    return {
-      execAttempted,
-    };
-  };
+  return proxySQL(
+    osQ.osQuerySqlCmdProxy,
+    allowAttemptWithoutUseDB,
+    isOsQueryDbID,
+    defaultDatabaseIdSelector,
+  );
 }
 
 export function multiSqlProxy(
@@ -174,35 +177,48 @@ export function multiSqlProxy(
   };
 }
 
-export const commonIdentifiableSqlProxies = new Map<shG.CommonDatabaseID, {
+export function commonIdentifiableSqlProxies(
+  { allowAttemptWithoutUseDB }: { allowAttemptWithoutUseDB: boolean } = {
+    allowAttemptWithoutUseDB: true,
+  },
+): Map<shG.CommonDatabaseID, {
   identity: shG.CommonDatabaseID;
   proxy: SqlProxySupplier<sql.QueryExecutionRecordsSupplier<sql.SqlRecord>>;
   inventorySupplier: () => Promise<sql.DbmsEngineDatabase>;
-}>();
-commonIdentifiableSqlProxies.set(shG.gitSqlDatabaseID, {
-  identity: shG.gitSqlDatabaseID,
-  proxy: gitSQL((dbID) => dbID == shG.gitSqlDatabaseID),
-  // deno-lint-ignore require-await
-  inventorySupplier: async () => git.gitSqlInventory(shG.gitSqlDatabaseID),
-});
-commonIdentifiableSqlProxies.set(shG.fileSysSqlDatabaseID, {
-  identity: shG.fileSysSqlDatabaseID,
-  proxy: fsSQL((dbID) => dbID == shG.fileSysSqlDatabaseID),
-  // deno-lint-ignore require-await
-  inventorySupplier: async () =>
-    fs.fileSysSqlInventory(shG.fileSysSqlDatabaseID),
-});
-commonIdentifiableSqlProxies.set(shG.osQueryDatabaseID, {
-  identity: shG.osQueryDatabaseID,
-  proxy: osQuerySQL((dbID) => dbID == shG.osQueryDatabaseID),
-  // deno-lint-ignore require-await
-  inventorySupplier: async () => osQ.osQuerySqlInventory(shG.osQueryDatabaseID),
-});
-
-// this is a single convenience SqlProxy which will figure out the proper Proxy
-// via the `USE DATABASE dbID;` database selector as the first line of SQL;
-export const commonSqlAutoProxy = multiSqlProxy(
-  ...Array.from(
-    commonIdentifiableSqlProxies.values(),
-  ).map((v) => v.proxy),
-);
+}> {
+  const result = new Map<shG.CommonDatabaseID, {
+    identity: shG.CommonDatabaseID;
+    proxy: SqlProxySupplier<sql.QueryExecutionRecordsSupplier<sql.SqlRecord>>;
+    inventorySupplier: () => Promise<sql.DbmsEngineDatabase>;
+  }>();
+  result.set(shG.gitSqlDatabaseID, {
+    identity: shG.gitSqlDatabaseID,
+    proxy: gitSQL(
+      allowAttemptWithoutUseDB,
+      (dbID) => dbID == shG.gitSqlDatabaseID,
+    ),
+    // deno-lint-ignore require-await
+    inventorySupplier: async () => git.gitSqlInventory(shG.gitSqlDatabaseID),
+  });
+  result.set(shG.fileSysSqlDatabaseID, {
+    identity: shG.fileSysSqlDatabaseID,
+    proxy: fsSQL(
+      allowAttemptWithoutUseDB,
+      (dbID) => dbID == shG.fileSysSqlDatabaseID,
+    ),
+    // deno-lint-ignore require-await
+    inventorySupplier: async () =>
+      fs.fileSysSqlInventory(shG.fileSysSqlDatabaseID),
+  });
+  result.set(shG.osQueryDatabaseID, {
+    identity: shG.osQueryDatabaseID,
+    proxy: osQuerySQL(
+      allowAttemptWithoutUseDB,
+      (dbID) => dbID == shG.osQueryDatabaseID,
+    ),
+    // deno-lint-ignore require-await
+    inventorySupplier: async () =>
+      osQ.osQuerySqlInventory(shG.osQueryDatabaseID),
+  });
+  return result;
+}
