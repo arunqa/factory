@@ -168,6 +168,11 @@ export class PublicationSqlProxy extends alaSQL.AlaSqlProxy {
     });
   }
 
+  sqlToken(token: string) {
+    // only keep characters that SQL can use as a token for table, column names
+    return token.replace(/[^a-z0-9_]/gi, "").toLowerCase();
+  }
+
   // deno-lint-ignore require-await
   async prepareConfigDB() {
     const configDB = new this.alaSqlEngine.Database("config");
@@ -212,6 +217,27 @@ export class PublicationSqlProxy extends alaSQL.AlaSqlProxy {
       "resource",
       // deno-lint-ignore ban-types
       this.publication.state.resourcesIndex.resourcesIndex as object[],
+      pomDB,
+    );
+    const resourceIndexes: { namespace: string; index: string }[] = [];
+    for (
+      const kr of this.publication.state.resourcesIndex.keyedResources.entries()
+    ) {
+      const [namespace, nsKeysIndex] = kr;
+      for (const nsk of nsKeysIndex.entries()) {
+        const [index, resources] = nsk;
+        resourceIndexes.push({ namespace, index });
+        this.createJsFlexibleTableFromUntypedObjectArray(
+          `resource_${this.sqlToken(namespace)}_${this.sqlToken(index)}`,
+          // deno-lint-ignore ban-types
+          resources as object[],
+          pomDB,
+        );
+      }
+    }
+    this.createJsFlexibleTableFromUntypedObjectArray(
+      "resource_index",
+      resourceIndexes,
       pomDB,
     );
     this.createJsObjectsTable(
