@@ -111,6 +111,7 @@ export class ServerRuntimeJsTsProxyMiddlewareSupplier<
           oakCtx.response.body = this.serializer.serializedJSON(
             efcResult.value,
             {
+              // TODO: only decycle if requested (read from Payload or inventory)
               decycle: true,
             },
           );
@@ -120,7 +121,7 @@ export class ServerRuntimeJsTsProxyMiddlewareSupplier<
       oakCtx.response.body = JSON.stringify({
         payload: payload,
         inventory: this.inventory.scriptIdentities(),
-        error: JSON.stringify(error),
+        error: Deno.inspect(error),
         message: error.toString(),
       });
     }
