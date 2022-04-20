@@ -250,8 +250,13 @@ export interface PublicationHomePathSupplier {
   (relative: string, abs?: boolean): fsg.FileSysPathText;
 }
 
+export interface ResFactoryHomePathSupplier {
+  (relative: string, abs?: boolean): fsg.FileSysPathText;
+}
+
 export interface PublicationOperationalContext {
   readonly projectRootPath: PublicationHomePathSupplier;
+  readonly resFactoryRootPath?: ResFactoryHomePathSupplier;
   readonly processStartTimestamp: Date;
   readonly isExperimentalOperationalCtx?: boolean;
   readonly isLiveReloadRequest?: boolean;
@@ -267,6 +272,7 @@ export interface Preferences<
   readonly operationalCtx: OperationalContext;
   readonly contentRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
+  readonly resFactoryRootPath?: fsg.FileSysPathText;
   readonly observability?: rfStd.Observability;
   readonly appName?: string;
   readonly envVarNamesPrefix?: string;
@@ -299,6 +305,7 @@ export class Configuration<
   readonly envVarNamesPrefix?: string;
   readonly assetsMetricsWalkers: fsT.FileSysAssetWalker[];
   readonly contentGit?: git.GitExecutive;
+  readonly resFactoryGit?: git.GitExecutive;
   readonly fsRouteFactory: rfStd.FileSysRouteFactory;
   readonly routeLocationResolver?: rfStd.RouteLocationResolver;
   readonly extensionsManager: extn.ExtensionsManager;
@@ -307,6 +314,7 @@ export class Configuration<
   readonly diagnosticsRoute: rfGovn.Route;
   readonly contentRootPath: fsg.FileSysPathText;
   readonly destRootPath: fsg.FileSysPathText;
+  readonly resFactoryRootPath?: fsg.FileSysPathText;
   readonly appName?: string;
   readonly mGitResolvers?: git.ManagedGitResolvers<string>;
   readonly routeGitRemoteResolver?: rfGovn.RouteGitRemoteResolver<
@@ -329,9 +337,18 @@ export class Configuration<
         (gp) => new git.TypicalGit(gp, this.mGitResolvers!),
       )
       : undefined;
+    this.resFactoryGit = prefs.resFactoryRootPath
+      ? (this.mGitResolvers
+        ? git.discoverGitWorktreeExecutiveSync(
+          prefs.resFactoryRootPath,
+          (gp) => new git.TypicalGit(gp, this.mGitResolvers!),
+        )
+        : undefined)
+      : undefined;
     this.contentRootPath = prefs.contentRootPath;
     this.persistClientCargo = prefs.persistClientCargo;
     this.destRootPath = prefs.destRootPath;
+    this.resFactoryRootPath = prefs.resFactoryRootPath;
     this.appName = prefs.appName;
     this.routeGitRemoteResolver = prefs.routeGitRemoteResolver;
     this.wsEditorResolver = prefs.wsEditorResolver;

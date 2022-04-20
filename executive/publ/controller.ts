@@ -141,6 +141,15 @@ export class Executive<
           );
           // deno-fmt-ignore
           console.info(`   Database: ${colors.yellow(this.publication.config.operationalCtx.publStateDbLocation?.(true) || "none")}`);
+          console.info(
+            ` resFactory: ${
+              colors.blue(
+                this.publication.config.operationalCtx.resFactoryRootPath?.(
+                  "",
+                ) || "unable to determine, use RF_HOME env var",
+              )
+            }`,
+          );
           const serviceStartedAt = new Date();
           console.info(
             `    ======== Ready to serve [${serviceStartedAt}] ========`,
@@ -214,6 +223,7 @@ export function typicalPublicationCtlSupplier<
     modulePath: ExecutiveControllerHomePathSupplier,
   ) => OperationalCtx,
   options?: {
+    resFactoryPath?: ExecutiveControllerHomePathSupplier;
     readonly events?: ExecutiveControllerEventsEmitter<
       OperationalCtx
     >;
@@ -309,6 +319,7 @@ export function typicalPublicationCtlSupplier<
 
     const ocGuess: publ.PublicationOperationalContext = {
       projectRootPath: modulePath,
+      resFactoryRootPath: options?.resFactoryPath,
       processStartTimestamp,
       isExperimentalOperationalCtx,
       isLiveReloadRequest,
