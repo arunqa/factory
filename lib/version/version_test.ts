@@ -1,3 +1,4 @@
+import { path } from "./deps.ts";
 import * as ta from "https://deno.land/std@0.123.0/testing/asserts.ts";
 import * as mod from "./version.ts";
 
@@ -19,7 +20,7 @@ Deno.test("remote version with repoIdentity detector", async () => {
 Deno.test("local version detector", async () => {
   let isLocal: boolean | undefined;
   const version = await mod.determineVersionFromRepoTag(
-    "file:///home/snshah/workspaces/github.com/gov-suite/governed-text-template/toctl.ts",
+    import.meta.url,
     {
       onIsLocalFile: () => {
         isLocal = true;

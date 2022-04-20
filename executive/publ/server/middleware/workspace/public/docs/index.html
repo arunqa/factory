@@ -18,8 +18,6 @@
       - show bundling status in rfExplorer (which files are newer than their `*.auto.js` counterparts)
       - show dependency graphs for `*.auto.js` counterparts
       - perform auto-bundling through rfExplorer
-    * `import.meta.url` references in `deps.js.ts` will be "frozen" in `deps.auto.js` and not portable. Search for '/snshah' to see what I mean.
-      - On the server side `import.meta.url` will be portable but we need another way to do that in user agent (client) side.
     * Accelerate native Windows support to make it easier for non-engineers to use RF.
       - Since we have a robust dev mode server we can move away from symlinks and other Linux-specific functionality so
     that the rfExplorer-based sites can be run on Windows with WSL.
@@ -54,6 +52,7 @@
 
     ## Next
 
+    * Think about whether we want both an rfConsole for managing server and rfExplorer for inspections?
     * Add `publ_server_access_log` table along side `publ_server_static_access_log` to see if we're seeing `404`s, etc.
     * Learn from https://github.com/koskimas/kysely#deno about how to make our SQLite integration friendlier.
     * Integrate [docsql](https://github.com/peterbe/docsql) functionality into rfExplorer.
