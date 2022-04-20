@@ -12,6 +12,12 @@
     <pre data-transformable="markdown" class="md">
     ## Essential
 
+    * Add `git log HEAD..origin/master` to header of rfExplorer to show updates in site as well as factory
+      - allow Git updates through rfExplorer
+    * Add `Taskfile.ts` execution, especially for bundling
+      - show bundling status in rfExplorer (which files are newer than their `*.auto.js` counterparts)
+      - show dependency graphs for `*.auto.js` counterparts
+      - perform auto-bundling through rfExplorer
     * `import.meta.url` references in `deps.js.ts` will be "frozen" in `deps.auto.js` and not portable. Search for '/snshah' to see what I mean.
       - On the server side `import.meta.url` will be portable but we need another way to do that in user agent (client) side.
     * Accelerate native Windows support to make it easier for non-engineers to use RF.
