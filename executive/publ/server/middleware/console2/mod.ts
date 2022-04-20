@@ -69,7 +69,7 @@ export class ConsoleDesignSystem implements lds.LightningDesignSystemFactory {
       "/universal-cc",
     );
     this.contentStrategy = {
-      git: config.git,
+      git: config.contentGit,
       layoutText: new lds.LightingDesignSystemText(),
       navigation: new lds.LightingDesignSystemNavigation(
         true,

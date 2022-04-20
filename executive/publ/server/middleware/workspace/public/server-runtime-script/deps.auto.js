@@ -4,8 +4,8 @@
 
 function minWhitespaceIndent(text) {
     const match = text.match(/^[ \t]*(?=\S)/gm);
-    return match ? match.reduce((r, a)=>Math.min(r, a.length)
-    , Infinity) : 0;
+    return match ? match.reduce((r, a) => Math.min(r, a.length)
+        , Infinity) : 0;
 }
 function unindentWhitespace(text, removeInitialNewLine = true) {
     const indent = minWhitespaceIndent(text);
@@ -17,7 +17,7 @@ function jsModule(code, ...args1) {
     return {
         foreignCodeLanguage: "js",
         foreignCode: unindentWhitespace(code),
-        foreignCodeArgsExpected: args1.length > 0 ? args1.reduce((args, arg)=>{
+        foreignCodeArgsExpected: args1.length > 0 ? args1.reduce((args, arg) => {
             args[arg.identity] = arg;
             return args;
         }, {}) : undefined
@@ -56,10 +56,10 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
     };
     const result = {
         identity: identity1,
-        script: (identity)=>{
+        script: (identity) => {
             return scriptsIndex.get(identity);
         },
-        scriptIdentities: ()=>scriptsIndex.keys()
+        scriptIdentities: () => scriptsIndex.keys()
         ,
         defaultScript,
         libraries: [
@@ -73,7 +73,7 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                         foreignModule: jsModule(`export default () => Deno.memoryUsage();`),
                         foreignCodeIdentity: qualifiedNamePlaceholder,
                         presentation: tableObjectProps
-                    }, 
+                    },
                 ],
                 qualifiedName: qualifiedNamePlaceholder
             },
@@ -110,7 +110,7 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
             );`),
                         foreignCodeIdentity: qualifiedNamePlaceholder,
                         presentation: jsonExplorer
-                    }, 
+                    },
                 ],
                 qualifiedName: qualifiedNamePlaceholder
             },
@@ -150,7 +150,7 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
             }
             export default ({ publication }) => layouts(publication);`),
                         foreignCodeIdentity: qualifiedNamePlaceholder
-                    }, 
+                    },
                 ],
                 qualifiedName: qualifiedNamePlaceholder
             },
@@ -213,7 +213,7 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                         foreignModule: jsModule(`export default ({ publication }) => publication.routes.resourcesTree.items`),
                         retrocyleJsonOnUserAgent: true,
                         foreignCodeIdentity: qualifiedNamePlaceholder
-                    }, 
+                    },
                 ],
                 qualifiedName: qualifiedNamePlaceholder
             },
@@ -224,26 +224,32 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                     {
                         name: "git-log-active-route.js.json",
                         label: "Show revision history of the active route",
-                        foreignModule: jsModule(`export default async ({ publication, args }) => await publication.config.git.log({ file: args.get("routeUnitFileSysPath") })`, ...routeUnitModuleArgs()),
+                        foreignModule: jsModule(`export default async ({ publication, args }) => await publication.config.contentGit.log({ file: args.get("routeUnitFileSysPath") })`, ...routeUnitModuleArgs()),
                         foreignCodeIdentity: qualifiedNamePlaceholder
-                    }, 
+                    },
+                    {
+                        name: "git-log-active-route.js.json",
+                        label: "Show what's different between local and remote",
+                        foreignModule: jsModule(`export default async ({ publication, args }) => await publication.config.contentGit.log({ branch: "HEAD..origin/master" })`, ...routeUnitModuleArgs()),
+                        foreignCodeIdentity: qualifiedNamePlaceholder
+                    },
                 ],
                 qualifiedName: qualifiedNamePlaceholder
             }
         ]
     };
-    const indexLibraries = (libraries)=>{
-        const indexScript = (script, library)=>{
+    const indexLibraries = (libraries) => {
+        const indexScript = (script, library) => {
             if (script.foreignCodeIdentity == qualifiedNamePlaceholder) {
                 script.foreignCodeIdentity = `${identity1}_${library.name}_${script.name}`;
             }
             scriptsIndex.set(script.foreignCodeIdentity, script);
         };
-        for (const library1 of libraries){
+        for (const library1 of libraries) {
             if (library1.qualifiedName == qualifiedNamePlaceholder) {
                 library1.qualifiedName = library1.name;
             }
-            for (const script of library1.scripts){
+            for (const script of library1.scripts) {
                 indexScript(script, library1);
             }
         }

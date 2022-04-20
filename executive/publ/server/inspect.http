@@ -440,21 +440,28 @@ export default ({ publicationDB }) => ({ sqliteFileName: publicationDB ? publica
 POST {{srJsTsModuleEndpoint}}/git-log-file.js.json
 Content-Type: text/plain
 
-export default ({ publication }) => publication.config.git;
+export default ({ publication }) => publication.config.contentGit;
 
 ###
 
 POST {{srJsTsModuleEndpoint}}/git-log-file.js.json
 Content-Type: text/plain
 
-export default async ({ publication }) => await publication.config.git.currentBranch();
+export default async ({ publication }) => await publication.config.contentGit.currentBranch();
 
 ###
 
 POST {{srJsTsModuleEndpoint}}/git-log-file.js.json
 Content-Type: text/plain
 
-export default async ({ publication }) => await publication.config.git.status();
+export default async ({ publication }) => await publication.config.contentGit.status();
+
+###
+
+POST {{srJsTsModuleEndpoint}}/git-log-branch-updates.js.json
+Content-Type: text/plain
+
+export default async ({ publication, args }) => await publication.config.contentGit.log({ branch: "HEAD..origin/master" })
 
 ###
 
@@ -464,7 +471,7 @@ export default async ({ publication }) => await publication.config.git.status();
 POST {{srJsTsModuleEndpoint}}/git-log-file.js.json?number=5
 Content-Type: text/plain
 
-export default async ({ publication, args }) => await publication.config.git.log({ number: args.get("number") ?? 1 });
+export default async ({ publication, args }) => await publication.config.contentGit.log({ number: args.get("number") ?? 1 });
 
 ###
 # in /unsafe-server-runtime-proxy/module we need to pass in either a typescript

@@ -298,7 +298,7 @@ export class Configuration<
   readonly metrics = new metrics.TypicalMetrics();
   readonly envVarNamesPrefix?: string;
   readonly assetsMetricsWalkers: fsT.FileSysAssetWalker[];
-  readonly git?: git.GitExecutive;
+  readonly contentGit?: git.GitExecutive;
   readonly fsRouteFactory: rfStd.FileSysRouteFactory;
   readonly routeLocationResolver?: rfStd.RouteLocationResolver;
   readonly extensionsManager: extn.ExtensionsManager;
@@ -323,7 +323,7 @@ export class Configuration<
     this.operationalCtx = prefs.operationalCtx;
     this.observability = prefs.observability;
     this.mGitResolvers = prefs.mGitResolvers;
-    this.git = this.mGitResolvers
+    this.contentGit = this.mGitResolvers
       ? git.discoverGitWorktreeExecutiveSync(
         prefs.contentRootPath,
         (gp) => new git.TypicalGit(gp, this.mGitResolvers!),

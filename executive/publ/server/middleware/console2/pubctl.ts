@@ -4,6 +4,7 @@ import * as rfStd from "../../../../../core/std/mod.ts";
 import * as publ from "../../../mod.ts";
 
 import * as safety from "../../../../../lib/safety/mod.ts";
+import * as module from "../../../../../lib/module/mod.ts";
 
 import * as ds from "../../../../../core/render/html/mod.ts";
 import * as lds from "../../../../../core/design-system/lightning/mod.ts";
@@ -32,7 +33,7 @@ export class SiteConfiguration
       operationalCtx,
       contentRootPath: pubCtl.modulePath("content"),
       destRootPath: pubCtl.modulePath("public"),
-      extensionsManager: new rfStd.ReloadableCachedExtensions(),
+      extensionsManager: new module.ReloadableCachedExtensions(),
     });
   }
 }
@@ -60,10 +61,9 @@ export class SiteDesignSystem implements lds.LightningDesignSystemFactory {
     this.designSystem = new lds.LightingDesignSystem(
       config.extensionsManager,
       "/universal-cc",
-      "/operational-context", // TODO: replace with variable, hard-coding is bad!
     );
     this.contentStrategy = {
-      git: config.git,
+      git: config.contentGit,
       layoutText: new lds.LightingDesignSystemText(),
       navigation: new lds.LightingDesignSystemNavigation(
         true,
@@ -94,6 +94,10 @@ export class SiteDesignSystem implements lds.LightningDesignSystemFactory {
         return suggested;
       },
       termsManager: config.termsManager,
+      operationalCtxClientCargo: {
+        acquireFromURL: "/operational-context/index.json",
+        assetsBaseAbsURL: "/operational-context",
+      },
     };
   }
 
@@ -158,7 +162,6 @@ export class GpmRoutes extends publ.PublicationRoutes {
           ? true
           : false;
       },
-      { order: orderByWeight },
     );
   }
 }

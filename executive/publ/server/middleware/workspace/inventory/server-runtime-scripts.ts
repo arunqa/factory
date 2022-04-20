@@ -234,7 +234,16 @@ export function typicalScriptsInventory(
           name: "git-log-active-route.js.json",
           label: "Show revision history of the active route",
           foreignModule: jsModule(
-            `export default async ({ publication, args }) => await publication.config.git.log({ file: args.get("routeUnitFileSysPath") })`,
+            `export default async ({ publication, args }) => await publication.config.contentGit.log({ file: args.get("routeUnitFileSysPath") })`,
+            ...routeUnitModuleArgs(),
+          ),
+          foreignCodeIdentity: qualifiedNamePlaceholder,
+        },
+        {
+          name: "git-log-active-route.js.json",
+          label: "Show what's different between local and remote",
+          foreignModule: jsModule(
+            `export default async ({ publication, args }) => await publication.config.contentGit.log({ branch: "HEAD..origin/master" })`,
             ...routeUnitModuleArgs(),
           ),
           foreignCodeIdentity: qualifiedNamePlaceholder,
