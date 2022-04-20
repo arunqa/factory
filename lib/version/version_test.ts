@@ -1,4 +1,3 @@
-import { path } from "./deps.ts";
 import * as ta from "https://deno.land/std@0.123.0/testing/asserts.ts";
 import * as mod from "./version.ts";
 
