@@ -98,3 +98,6 @@ We do not want to encourage the use of anything other than HTML, Web Components,
 JavaScript (with strong type-safety using Typescript or other governance tools).
 This means staying away from all templating tools and using plain Typescript and
 JavaScript is best. 
+
+Instead of building templates in custom languages, we'll just rely on Javascript
+and `v8`.
