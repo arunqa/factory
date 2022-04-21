@@ -282,6 +282,15 @@ export const pageFetchRetrocycledJsonJFx = siteDomain.createEffect(async (params
     fetchValue: sb.fetchRespRetrocycledJsonValue, ...params,
 }));
 
+export function prepareServerRuntimeJsScript(foreignCode) {
+    return {
+        foreignModule: {
+            foreignCodeLanguage: "js",
+            foreignCode,
+        }
+    }
+}
+
 // create an effect for a specific script with given arguments
 export function prepareFetchServerRuntimeScriptJsonEffect(srScript, srScriptArgs) {
     const fetchFxArgs = {
@@ -697,6 +706,72 @@ export const activateFooter = () => {
     document.body.appendChild(footer);
 }
 
+export const prepareContextBar = () => {
+    const gitWorkTreeStatusFx = (args) => {
+        const {
+            foreignCode, gitWorkTreeLabel, gitWorkTreeIconID, statusElemID, // required
+            tippyPlacement = "bottom"
+        } = args;
+        const srScript = prepareServerRuntimeJsScript(foreignCode);
+        const statusFx = prepareFetchServerRuntimeScriptJsonEffect(srScript);
+        console.log({ args, srScript, gitWorkTreeLabel, statusFx });
+        statusFx.done.watch(({ result }) => {
+            const statusElem = document.getElementById(statusElemID);
+            if (result?.length > 0) {
+                statusElem.title = ""; // tippy will provide the tooltip
+                statusElem.style.color = "yellow";
+                statusElem.innerHTML = `<i class="fa-solid ${gitWorkTreeIconID}"></i> <i class="fa-solid fa-download"></i>`;
+                withTippyJsDeps((tippy) => tippy(statusElem, {
+                    content: `Local ${gitWorkTreeLabel} Git repo is ${result?.length} commits (${result.reduce((mods, gc) => mods + gc.status.length, 0)} modifications) behind`,
+                    placement: tippyPlacement
+                }));
+            } else {
+                statusElem.title = "";
+                statusElem.style.color = "#AAFF00";
+                statusElem.innerHTML = `<i class="fa-solid ${gitWorkTreeIconID}"></i> <i class="fa-solid fa-check">`;
+                withTippyJsDeps((tippy) => tippy(statusElem, {
+                    content: `Local ${gitWorkTreeLabel} Git repo is up to date`,
+                    placement: tippyPlacement
+                }));
+            }
+        });
+        // gitStatusFx.fail.watch(({ error, result }) => { console.error('gitWorkTreeStatusFx', error, result); });
+        return statusFx;
+    }
+
+    let contextBarHTML = "";
+    if (isClientLayoutInspectable()) {
+        const eclTarget = editableClientLayoutTarget(
+            inspectableClientLayout(), (route) => ({
+                href: "#", narrative: `route not editable: ${JSON.stringify(route)}`
+            }));
+        contextBarHTML = `<a href="${eclTarget.href}" title="${eclTarget.narrative}">Edit <code class="rf-resource-inspectable-active">${eclTarget.fileName}</code> in IDE</a>`
+    }
+    // TODO: Use <i class="fa-solid fa-file-circle-question"></i> or similar to provide Git status of active file (update to date or behind)
+    contextBarHTML += `&nbsp;&nbsp;&nbsp;
+        <i class="fa-brands fa-git" style="color:#A0E6FF"></i></i>
+        <span id="gitContentStatusFx" title="Project state unknown" style="color:silver"><i class="fa-solid fa-sitemap"></i> <i class="fa-solid fa-circle-question"></i></span>
+        &nbsp;&nbsp;&nbsp;
+        <span id="gitResFactoryStatusFx" title="Resource Factory state unknown" style="color:silver"><i class="fa-solid fa-industry"></i> <i class="fa-solid fa-circle-question"></i></span>`;
+
+    return {
+        contextBarHTML, executeFXs: [
+            gitWorkTreeStatusFx({
+                gitWorkTreeLabel: "Project",
+                gitWorkTreeIconID: "fa-sitemap",
+                foreignCode: `export default async ({ publication, args }) => await publication.config.contentGit?.log({ branch: "HEAD..origin/master" })`,
+                statusElemID: "gitContentStatusFx",
+            }),
+            gitWorkTreeStatusFx({
+                gitWorkTreeLabel: "Resource Factory",
+                gitWorkTreeIconID: "fa-industry",
+                foreignCode: `export default async ({ publication, args }) => await publication.config.resFactoryGit?.log({ branch: "HEAD..origin/master" })`,
+                statusElemID: "gitResFactoryStatusFx",
+            })
+        ]
+    };
+}
+
 /**
  * Activate all site-wide functionality such as navigation and footers. We use
  * as much modern HTML5, "vanilla" HTML, and as little JS as possible. When JS
@@ -708,14 +783,7 @@ export const activateSite = () => {
     const navPrime = document.createElement("nav");
     navPrime.className = "prime";
 
-    let contextBarHTML;
-    if (isClientLayoutInspectable()) {
-        const eclTarget = editableClientLayoutTarget(
-            inspectableClientLayout(), (route) => ({
-                href: "#", narrative: `route not editable: ${JSON.stringify(route)}`
-            }));
-        contextBarHTML = `<a href="${eclTarget.href}" title="${eclTarget.narrative}">Edit <code class="rf-resource-inspectable-active">${eclTarget.fileName}</code> in IDE</a>`
-    }
+    const { contextBarHTML, executeFXs } = prepareContextBar();
 
     // <!-- --> are there in between <a> tags to allow easier readability here but render with no spacing in DOM
     navPrime.innerHTML = `
@@ -744,6 +812,8 @@ export const activateSite = () => {
             navigator.sendBeacon('/server/beacon', "TODO");
         }
     });
+
+    executeFXs.forEach(fx => fx());
 }
 
 export const objectJsonHtmlElem = (inspect, open, options) => {
