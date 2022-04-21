@@ -245,7 +245,6 @@ export function typicalScriptsInventory(
             "Show what's different between local and remote project (site)",
           foreignModule: jsModule(
             `export default async ({ publication, args }) => await publication.config.contentGit?.log({ branch: "HEAD..origin/master" })`,
-            ...routeUnitModuleArgs(),
           ),
           foreignCodeIdentity: qualifiedNamePlaceholder,
         },
@@ -255,7 +254,6 @@ export function typicalScriptsInventory(
             "Show what's different between local and remote Resource Factory",
           foreignModule: jsModule(
             `export default async ({ publication, args }) => await publication.config.resFactoryGit?.log({ branch: "HEAD..origin/main" })`,
-            ...routeUnitModuleArgs(),
           ),
           foreignCodeIdentity: qualifiedNamePlaceholder,
         },
