@@ -725,7 +725,7 @@ export const prepareContextBar = () => {
                 statusElem.style.color = "yellow";
                 statusElem.innerHTML = `<i class="fa-solid ${gitWorkTreeIconID}"></i> <i class="fa-solid fa-download"></i>`;
                 withTippyJsDeps((tippy) => tippy(statusElem, {
-                    content: `Local ${gitWorkTreeLabel} Git repo is ${result?.length} commits (${result.reduce((mods, gc) => mods + gc.status.length, 0)} modifications) behind`,
+                    content: `Local ${gitWorkTreeLabel} Git repo is ${result?.length} commits (${result.reduce((mods, gc) => mods + gc.status.length, 0)} modifications by ${new Set(result.map(c => c.authorName)).size} authors) behind`,
                     placement: tippyPlacement
                 }));
             } else {
