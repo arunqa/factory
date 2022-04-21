@@ -18,11 +18,11 @@ export const fetchRespRetrocycledJsonValue = async (resp, _fetchFxCtx) => JSON.r
 let fetchFxIdentity = 0;
 
 /**
- * fetchFx is our specialized user agent (UA or client-side) hydration bus.
+ * fetchFx is our specialized user agent (UA or client-side) resumability bus.
  * Whenever any content/value (e.g JSON, CSV, HTML) server fetch is required
- * by the page, use this so elements can listen in and react to hydration in
+ * by the page, use this so elements can listen in and react to resumability in
  * case they need it. Don't use custom fetches because those cannot be easily
- * observed by others. This is the central UA "hydration service bus" (HSB).
+ * observed by others. This is the central UA "resumability service bus" (RSB).
  *
  * This function makes calls to servers and returns arbitrary content/values but
  * also, by default (which can be disabled), dispatch a DOM event when fetch

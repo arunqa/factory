@@ -1,21 +1,21 @@
-// User agent (client side) hydration is managed by Effector events, stores,
+// User agent (client side) resumability[1][2] is managed by Effector events, stores,
 // and effects. Learn from Svelte components which extracts state from components
 // into a hoisted scope and sort all expressions into Effector "business logic".
 // Unless we're talking about simple, truly local, state stored in components,
 // perform all state management outside of components as Effect "business logic"
-// and allow components to observe those events and stores ("watched hydration").
+// and allow components to observe those events and stores ("watched resumability").
 //
-// A good example of watched hydration is pageFetchJsonFx, which acts as a server-
+// A good example of watched resumability is pageFetchJsonFx, which acts as a server-
 // fetch "service bus" Effector effect. All functions that need server side JSON
 // should use the pageFetchJsonFx directly or wrap pageFetchJsonFx into a custom
-// effect. Then, any page content that needs hydration can use either a wrapped,
+// effect. Then, any page content that needs resumability can use either a wrapped,
 // or "composed", or direct call to pageFetchJsonFx. This means that all server
 // fetches for arbitrary JSON can be observed and reacted upon by each component
-// without needing any special hydration at the component level.
+// without needing any special resumability at the component level.
 //
 // Observability should be Effector-independent, too. This means that each effect
 // such as pageFetchJsonFx should implement normal DOM-based events whenever
-// possible so that *.addEventListener can be used for listening to hydration
+// possible so that *.addEventListener can be used for listening to resumability
 // messages.
 //
 // Philosopy:
@@ -30,6 +30,9 @@
 //   requests should never prevent rendering (load them after first paint). HTML,
 //   assets, and images must be loaded as soon as possible with asynchronous
 //   data loading in as it completes.
+//
+// [1] https://www.builder.io/blog/from-static-to-interactive-why-resumability-is-the-best-alternative-to-hydration
+// [2] https://www.builder.io/blog/hydration-is-pure-overhead
 
 import { createDomain } from "https://unpkg.com/effector@22.3.0/effector.mjs";
 import JSONFormatter from "https://cdn.jsdelivr.net/npm/json-formatter-js@2.3.4/dist/json-formatter.esm.js";
