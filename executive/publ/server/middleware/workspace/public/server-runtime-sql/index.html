@@ -311,7 +311,6 @@
                 }
             });
             dbQueryFormSubmitFx.done.watch(({ params, result }) => {
-                console.log({ result })
                 if (diagnosticsCheckboxElem.checked || result.error || result.nature?.indexOf("error") >= 0) {
                     path.populateObjectJSON({ params, result }, diagnosticsElem, 2);
                 } else {
