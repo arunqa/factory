@@ -135,7 +135,7 @@ export type ServiceHealthObservedValue =
   | Array<unknown>;
 export type ServiceHealthObservedUnit = string;
 
-export interface ServiceHealtObservation {
+export interface ServiceHealthObservation {
   metricName: TypicalServiceHealthMetricName | string;
   observedValue: ServiceHealthObservedValue;
   observedUnit: ServiceHealthObservedUnit;
@@ -153,7 +153,7 @@ export interface HealthyServiceHealthComponentStatus
   extends
     ServiceHealthStatusable,
     ServiceHealthComponent,
-    Partial<ServiceHealtObservation>,
+    Partial<ServiceHealthObservation>,
     ServiceHealthLinkable {
   time: Date;
   node?: string;
@@ -163,7 +163,7 @@ export interface UnhealthyServiceHealthComponentStatus
   extends
     ServiceHealthStatusable,
     ServiceHealthComponent,
-    Partial<ServiceHealtObservation>,
+    Partial<ServiceHealthObservation>,
     ServiceHealthDiagnosable,
     ServiceHealthLinkable {
   time: Date;
