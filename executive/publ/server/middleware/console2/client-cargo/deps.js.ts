@@ -13,7 +13,6 @@
  *           if it doesn't exist just create a empty file named deps.auto.js
  */
 
-export * from "../../../../../../lib/reflect/mod.ts";
 export * from "../../../../../../lib/text/human.ts";
 export * from "https://unpkg.com/effector@22.3.0/effector.mjs";
 export * from "../../workspace/ua-editable.ts";
