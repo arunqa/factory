@@ -51,7 +51,7 @@ export class PublicationSqlProxy extends alaSQL.AlaSqlProxy {
       events: (asp) => {
         const ee = new sql.SqlEventEmitter();
         ee.on("constructStorage", async () => {
-          await this.prepareObservabilityDB();
+          await this.prepareObservabilitySqlViews();
           await this.prepareConfigDB();
           await this.prepareResourcesDB();
           if (this.pubCtlDbSqlProxy) {
@@ -168,6 +168,30 @@ export class PublicationSqlProxy extends alaSQL.AlaSqlProxy {
     });
   }
 
+  async prepareObservabilitySqlViews() {
+    if (this.publication.config.observability) {
+      for await (
+        const osv of this.publication.config.observability.allSqlViews()
+      ) {
+        const { identity: tableName, columns, namespace: databaseID } =
+          osv.tabularRecordDefn;
+        const db = databaseID
+          ? (this.alaSqlEngine.databases[databaseID] ||
+            new this.alaSqlEngine.Database(databaseID))
+          : this.alaSqlPrimeDB;
+        // TODO: should this be CREATE VIEW instead?
+        db.exec(`CREATE TABLE [${tableName}] (\n ${
+          // use [colName] so that reserved SQL keywords can be used as column name
+          Array.from(columns).map((col) => `[${String(col.identity)}]`).join(
+            ",\n ", // TODO: columns are untyped for now, should they be typed?
+          )
+        })`);
+        const viewData = await osv.dataRows();
+        db.tables[tableName].data = viewData;
+      }
+    }
+  }
+
   sqlToken(token: string) {
     // only keep characters that SQL can use as a token for table, column names
     return token.replace(/[^a-z0-9_]/gi, "").toLowerCase();
@@ -249,58 +273,58 @@ export class PublicationSqlProxy extends alaSQL.AlaSqlProxy {
     );
   }
 
-  async prepareObservabilityDB() {
-    const observabilityDB = new this.alaSqlEngine.Database(
-      "observability",
-    );
-    const healthChecks = await this.publication.config.observability
-      ?.serviceHealthComponentsChecks();
-    if (healthChecks) {
-      const records: Record<string, unknown>[] = [];
-      for (const hc of Object.entries(healthChecks)) {
-        const [category, checks] = hc;
-        for (const check of checks) {
-          records.push({ category, ...check });
-        }
-      }
-      this.createJsObjectsTable(
-        "health_check",
-        records,
-        observabilityDB,
-      );
-    }
+  // async prepareObservabilityDB() {
+  //   const observabilityDB = new this.alaSqlEngine.Database(
+  //     "observability",
+  //   );
+  //   const healthChecks = await this.publication.config.observability
+  //     ?.serviceHealthComponentsChecks();
+  //   if (healthChecks) {
+  //     const records: Record<string, unknown>[] = [];
+  //     for (const hc of Object.entries(healthChecks)) {
+  //       const [category, checks] = hc;
+  //       for (const check of checks) {
+  //         records.push({ category, ...check });
+  //       }
+  //     }
+  //     this.createJsObjectsTable(
+  //       "health_check",
+  //       records,
+  //       observabilityDB,
+  //     );
+  //   }
 
-    const pomUniversalMetrics = m.tabularMetrics(
-      this.publication.config.metrics.instances,
-    );
-    this.createJsObjectsTable(
-      "universal_metric",
-      pomUniversalMetrics.metrics,
-      observabilityDB,
-    );
-    this.createJsObjectsTable(
-      "universal_metric_instance",
-      pomUniversalMetrics.metricInstances,
-      observabilityDB,
-    );
-    this.createJsObjectsTable(
-      "universal_metric_label",
-      pomUniversalMetrics.metricLabels,
-      observabilityDB,
-    );
-    this.createJsObjectsTable(
-      "universal_metric_instance_label",
-      pomUniversalMetrics.metricInstanceLabels,
-      observabilityDB,
-    );
+  //   const pomUniversalMetrics = m.tabularMetrics(
+  //     this.publication.config.metrics.instances,
+  //   );
+  //   this.createJsObjectsTable(
+  //     "universal_metric",
+  //     pomUniversalMetrics.metrics,
+  //     observabilityDB,
+  //   );
+  //   this.createJsObjectsTable(
+  //     "universal_metric_instance",
+  //     pomUniversalMetrics.metricInstances,
+  //     observabilityDB,
+  //   );
+  //   this.createJsObjectsTable(
+  //     "universal_metric_label",
+  //     pomUniversalMetrics.metricLabels,
+  //     observabilityDB,
+  //   );
+  //   this.createJsObjectsTable(
+  //     "universal_metric_instance_label",
+  //     pomUniversalMetrics.metricInstanceLabels,
+  //     observabilityDB,
+  //   );
 
-    if (this.publication.state.assetsMetrics) {
-      this.createJsFlexibleTableFromUntypedArray(
-        "fs_asset_metric",
-        this.publication.state.assetsMetrics.pathExtnsColumns,
-        this.publication.state.assetsMetrics.pathExtnsColumnHeaders,
-        observabilityDB,
-      );
-    }
-  }
+  //   if (this.publication.state.assetsMetrics) {
+  //     this.createJsFlexibleTableFromUntypedArray(
+  //       "fs_asset_metric",
+  //       this.publication.state.assetsMetrics.pathExtnsColumns,
+  //       this.publication.state.assetsMetrics.pathExtnsColumnHeaders,
+  //       observabilityDB,
+  //     );
+  //   }
+  // }
 }

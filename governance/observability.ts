@@ -1,5 +1,6 @@
 import { events } from "./deps.ts";
 import * as health from "../lib/health/mod.ts";
+import * as tab from "../lib/tabular/mod.ts";
 
 export interface ObservabilityHealthComponentCategorySupplier {
   readonly category: string | string[];
@@ -16,8 +17,16 @@ export interface ObservabilityHealthComponentStatusSupplier {
   >;
 }
 
+export interface ObservableSqlViewsSupplier {
+  readonly observableSqlViews: () => AsyncGenerator<
+    // deno-lint-ignore no-explicit-any
+    tab.DefinedTabularRecordsProxy<any>
+  >;
+}
+
 export class ObservabilityEventsEmitter extends events.EventEmitter<{
   healthStatusSupplier(ohcss: ObservabilityHealthComponentStatusSupplier): void;
+  sqlViewsSupplier(sps: ObservableSqlViewsSupplier): void;
 }> {}
 
 export interface ObservabilityEventsEmitterSupplier {
