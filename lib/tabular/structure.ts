@@ -3,7 +3,43 @@ import * as r from "../reflect/reflect.ts";
 import { camelToSnakeCase } from "./case.ts";
 
 /**
+ * mirrorColumnDefnsFromExemplar detect's an object's "tabular" definition
+ * without mutating the column names (taking them as-is).
+ * @param inspect the object(s) used as an example to detect the tabular structure
+ * @param defaultValues in case defaults should be provided for column type detection
+ * @returns column definitions detected from an object instance
+ */
+export function mirrorColumnDefnsFromExemplar<
+  Object extends govn.UntypedTabularRecordObject,
+>(
+  inspect: Object | Object[],
+  defaultValues?: Object,
+): govn.TabularProxyColumnsSupplier<Object> {
+  const exemplar = Array.isArray(inspect)
+    ? (inspect.length > 0 ? inspect[0] : undefined)
+    : inspect;
+  const columns: govn.TabularRecordColumnDefn<Object>[] = [];
+  if (exemplar) {
+    for (const kv of Object.entries(exemplar)) {
+      const [propName, value] = kv;
+      const colName = camelToSnakeCase(propName);
+      let dataType = r.reflect(value);
+      if (dataType.type === "undefined" && defaultValues) {
+        dataType = r.reflect(
+          (defaultValues as Record<string, unknown>)[propName],
+        );
+      }
+      columns.push({ identity: colName as keyof Object, dataType });
+    }
+  }
+  return { columns };
+}
+
+/**
  * allColumnDefnsFromExemplar detect's an object's "tabular" definition.
+ * It uses snake_case names from the first generic parameter and attempts
+ * to match them against the camelCase property names in the first argument
+ * to the function.
  * @param inspect the object(s) used as an example to detect the tabular structure
  * @param defaultValues in case defaults should be provided for column type detection
  * @returns column definitions detected from an object instance
@@ -41,7 +77,10 @@ export function allColumnDefnsFromExemplar<
 
 /**
  * columnDefnsFromExemplar detect's an object's "tabular" definition for a
- * constrained list of specific "columns" (object properties)
+ * constrained list of specific "columns" (object properties). It uses
+ * snake_case names from the first generic parameter and attempts to
+ * match them against the camelCase property names in the first argument
+ * to the function.
  * @param inspect the object(s) used as an example to detect the tabular structure
  * @param defaultValues in case defaults should be provided for column type detection
  * @param columns the list of columns to include in the defn
