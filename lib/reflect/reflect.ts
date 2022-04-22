@@ -76,7 +76,7 @@ export type ExcludeBasicType<OmittedType extends BasicType> =
   // deno-lint-ignore ban-types
   | Exclude<Function | object, OmittedType>;
 
-interface PrimitiveTypeInfo {
+export interface PrimitiveTypeInfo {
   key?: string | number | symbol;
   // deno-lint-ignore no-explicit-any
   value: any;
@@ -84,19 +84,19 @@ interface PrimitiveTypeInfo {
   description?: string;
 }
 
-interface FunctionTypeInfo extends PrimitiveTypeInfo {
+export interface FunctionTypeInfo extends PrimitiveTypeInfo {
   name: string;
   stringify: string;
 }
 
-interface ObjectTypeInfo extends PrimitiveTypeInfo {
+export interface ObjectTypeInfo extends PrimitiveTypeInfo {
   properties: Array<PrimitiveTypeInfo | FunctionTypeInfo | ObjectTypeInfo>;
   symbols: PrimitiveTypeInfo[];
   stringify: string;
   propertyDescription: PropertyDescriptor;
 }
 
-type TypeInfo = PrimitiveTypeInfo | FunctionTypeInfo | ObjectTypeInfo;
+export type TypeInfo = PrimitiveTypeInfo | FunctionTypeInfo | ObjectTypeInfo;
 
 // deno-lint-ignore no-explicit-any
 export function reflect(any: any, ancestors?: any[], options?: {
