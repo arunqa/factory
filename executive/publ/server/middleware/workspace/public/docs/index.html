@@ -12,9 +12,11 @@
     <pre data-transformable="markdown" class="md">
     ## Essential
 
+    * Integrate [HyperFormula](https://handsontable.github.io/hyperformula/) for post-SQL snippts and srScript transformations
+    * Use `/// <reference types="https://raw.githubusercontent.com/effector/effector/master/packages/effector/index.d.ts" />` with
+      `import * as eff from "https://unpkg.com/effector@22.3.0/effector.mjs"` to get proper typing of Effector in Deno.
     * Use `JsRealm` API in [Deno 1.21](https://github.com/denoland/deno/releases/tag/v1.21.0) to help isolate server runtime script executions for security.
-    * Add `git log HEAD..origin/master` to header of rfExplorer to show updates in site as well as factory
-      - allow Git updates through rfExplorer
+    * Allow Git updates through rfExplorer by running Taskfile.ts or VS Code tasks?
     * Add `Taskfile.ts` execution, especially for bundling
       - show bundling status in rfExplorer (which files are newer than their `*.auto.js` counterparts)
       - show dependency graphs for `*.auto.js` counterparts
@@ -53,6 +55,10 @@
 
     ## Next
 
+    * Surface `lib/sql/rdbms-schema-ts.ts` as an RF Originator so that those can be consumed as Resources and
+      generate code as part of production process. (see `telosys.org` code generator as inspiration).
+    * Surface SQL snippets and JS runtime scripts' inventories as Originators so that they can be considered
+      Resources and used in production process.
     * Think about whether we want both an rfConsole for managing server and rfExplorer for inspections?
     * Add `publ_server_access_log` table along side `publ_server_static_access_log` to see if we're seeing `404`s, etc.
     * Learn from https://github.com/koskimas/kysely#deno about how to make our SQLite integration friendlier.
