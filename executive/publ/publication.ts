@@ -3,7 +3,7 @@ import * as rfGovn from "../../governance/mod.ts";
 import * as rfStd from "../../core/std/mod.ts";
 
 import * as safety from "../../lib/safety/mod.ts";
-import * as metrics from "../../lib/metrics/mod.ts";
+import * as st from "../../lib/statistics/stream.ts";
 import * as telem from "../../lib/telemetry/mod.ts";
 import * as health from "../../lib/health/mod.ts";
 import * as conf from "../../lib/conf/mod.ts";
@@ -58,7 +58,7 @@ export class PublicationResourcesIndex<Resource>
       readonly replay: () => Promise<any>;
     }
   >();
-  readonly constructionDurationStats = new m.RankedStatistics<
+  readonly constructionDurationStats = new st.RankedStatistics<
     { resource: unknown; statistic: number; provenance: string }
   >();
 
@@ -139,14 +139,16 @@ export class PublicationResourcesIndex<Resource>
         "Count of total resources originated",
       ).instance(this.resourcesIndex.length, baggage),
     );
-    this.constructionDurationStats.populateMetrics(
+    m.populateStreamMetrics(
+      this.constructionDurationStats,
       metrics,
       baggage,
       "publ_resources_origination_duration",
       "resource origination duration",
       "milliseconds",
     );
-    this.constructionDurationStats.populateRankMetrics(
+    m.populateRankMetrics(
+      this.constructionDurationStats,
       metrics,
       baggage,
       "publ_resources_origination_duration",
@@ -171,12 +173,12 @@ export class PublicationResourcesIndex<Resource>
 }
 
 export class PublicationProducersStatistics {
-  readonly producers = new Map<string, m.ScalarStatistics>();
+  readonly producers = new Map<string, st.StreamStatistics>();
 
   encounter(identity: string, value: number) {
     let stats = this.producers.get(identity);
     if (!stats) {
-      stats = new m.ScalarStatistics();
+      stats = new st.StreamStatistics();
       this.producers.set(identity, stats);
     }
     stats.encounter(value);
@@ -185,7 +187,8 @@ export class PublicationProducersStatistics {
   // deno-lint-ignore no-explicit-any
   populateMetrics(metrics: m.Metrics, baggage: any) {
     this.producers.forEach((stats, identity) => {
-      stats.populateMetrics(
+      m.populateStreamMetrics(
+        stats,
         metrics,
         baggage,
         `publ_producer_${identity}_duration`,
@@ -201,7 +204,7 @@ export class PublicationPersistedIndex {
     string, // the filename written (e.g. public/**/*.html, etc.)
     rfGovn.FileSysAfterPersistEventElaboration<unknown>
   >();
-  readonly persistDurationStats = new m.RankedStatistics<
+  readonly persistDurationStats = new st.RankedStatistics<
     { destFileName: string; statistic: number }
   >();
 
@@ -228,14 +231,16 @@ export class PublicationPersistedIndex {
         "Count of total resources persisted",
       ).instance(this.persistedDestFiles.size, baggage),
     );
-    this.persistDurationStats.populateMetrics(
+    m.populateStreamMetrics(
+      this.persistDurationStats,
       metrics,
       baggage,
       "publ_resources_persist_duration",
       "resource persist duration",
       "milliseconds",
     );
-    this.persistDurationStats.populateRankMetrics(
+    m.populateRankMetrics(
+      this.persistDurationStats,
       metrics,
       baggage,
       "publ_resources_persist_duration",
@@ -301,7 +306,7 @@ export class Configuration<
   readonly observability?: rfStd.Observability;
   readonly telemetry: telem.Instrumentation<telem.UntypedBaggage> = new telem
     .Telemetry();
-  readonly metrics = new metrics.TypicalMetrics();
+  readonly metrics = new m.TypicalMetrics();
   readonly envVarNamesPrefix?: string;
   readonly assetsMetricsWalkers: fsT.FileSysAssetWalker[];
   readonly contentGit?: git.GitExecutive;
@@ -1069,6 +1074,15 @@ export abstract class TypicalPublication<
       ) {
         this.state.observability.events.emitSync(
           "healthStatusSupplier",
+          originator,
+        );
+      }
+      if (
+        this.state.observability &&
+        rfStd.isObservabilitySqlViewsSupplier(originator)
+      ) {
+        this.state.observability.events.emitSync(
+          "sqlViewsSupplier",
           originator,
         );
       }
