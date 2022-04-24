@@ -9,7 +9,7 @@ import * as health from "../../lib/health/mod.ts";
 import * as conf from "../../lib/conf/mod.ts";
 import * as k from "../../lib/knowledge/mod.ts";
 import * as fsA from "../../lib/fs/fs-analytics.ts";
-import * as fsT from "../../lib/fs/fs-tree.ts";
+import * as fsT from "../../lib/fs/fs-tabular.ts";
 import * as fsLink from "../../lib/fs/link.ts";
 import * as fsInspect from "../../lib/fs/inspect.ts";
 import * as git from "../../lib/git/mod.ts";
@@ -292,9 +292,9 @@ export interface Preferences<
     ws.WorkspaceEditorTarget
   >;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
-  readonly assetsMetricsWalkers?: (
+  readonly fsAssetsWalkers?: (
     config: Configuration<OperationalContext>,
-  ) => fsT.FileSysAssetWalker[];
+  ) => fsT.FileSystemTabularRecordsWalker[];
   readonly extensionsManager: extn.ExtensionsManager;
   readonly termsManager?: k.TermsManager;
   readonly memoizeProducers?: boolean;
@@ -302,14 +302,14 @@ export interface Preferences<
 
 export class Configuration<
   OperationalContext extends PublicationOperationalContext,
-> implements Omit<Preferences<OperationalContext>, "assetsMetricsWalkers"> {
+> implements Omit<Preferences<OperationalContext>, "fsAssetsWalkers"> {
   readonly operationalCtx: OperationalContext;
   readonly observability?: rfStd.Observability;
   readonly telemetry: telem.Instrumentation<telem.UntypedBaggage> = new telem
     .Telemetry();
   readonly metrics = new m.TypicalMetrics();
   readonly envVarNamesPrefix?: string;
-  readonly assetsMetricsWalkers: fsT.FileSysAssetWalker[];
+  readonly fsAssetsWalkers: fsT.FileSystemTabularRecordsWalker[];
   readonly contentGit?: git.GitExecutive;
   readonly resFactoryGit?: git.GitExecutive;
   readonly fsRouteFactory: rfStd.FileSysRouteFactory;
@@ -368,17 +368,15 @@ export class Configuration<
     this.observabilityRoute = ocC.observabilityRoute(this.fsRouteFactory);
     this.diagnosticsRoute = ocC.diagnosticsRoute(this.fsRouteFactory);
     this.envVarNamesPrefix = prefs.envVarNamesPrefix;
-    this.assetsMetricsWalkers = prefs.assetsMetricsWalkers
-      ? prefs.assetsMetricsWalkers(this)
+    this.fsAssetsWalkers = prefs.fsAssetsWalkers
+      ? prefs.fsAssetsWalkers(this)
       : [{
-        identity: "origin",
-        root: this.contentRootPath,
-        rootIsAbsolute: path.isAbsolute(this.contentRootPath),
+        namespace: "origin",
+        rootAbsPath: path.resolve(this.contentRootPath),
         options: assetMetricsWalkOptions,
       }, {
-        identity: "destination",
-        root: this.destRootPath,
-        rootIsAbsolute: path.isAbsolute(this.destRootPath),
+        namespace: "destination",
+        rootAbsPath: path.resolve(this.destRootPath),
         options: assetMetricsWalkOptions,
       }];
     this.rewriteMarkdownLink = prefs.rewriteMarkdownLink;
@@ -743,6 +741,7 @@ export abstract class TypicalPublication<
     tab.DefinedTabularRecordsProxy<any>
   > {
     yield* m.tabularMetrics(this.config.metrics.instances);
+    yield* fsT.fileSystemTabularRecords(this.config.fsAssetsWalkers);
   }
 
   abstract constructDesignSystem(
@@ -1101,10 +1100,11 @@ export abstract class TypicalPublication<
   }
 
   async produceMetrics(measures: PublicationMeasures) {
-    const assetsTree = new fsT.FileSysAssetsTree();
-    for (const walker of this.config.assetsMetricsWalkers) {
-      await assetsTree.consumeAssets(walker);
-    }
+    // TODO: generate fs stats and put them here
+    // const assetsTree = new fsT.FileSysAssetsTree();
+    // for (const walker of this.config.assetsMetricsWalkers) {
+    //   await assetsTree.consumeAssets(walker);
+    // }
     const commonMetricsBaggage = {
       txID: "transactionID",
       txHost: Deno.hostname(),
@@ -1157,19 +1157,20 @@ export abstract class TypicalPublication<
       this.state.persistedIndex.populateMetrics(metrics, commonMetricsBaggage);
     }
     if (metricsOp.assetsPEF || metricsOp.assetsCSV) {
-      const beforeFSA = Date.now();
-      this.state.assetsMetrics = await fsA.fileSysAnalytics({
-        assetsTree,
-        metrics,
-        metricsNamePrefix: "publ_asset_name_extension_analytics_",
-        ...commonMetricsBaggage,
-      });
-      metrics.record(
-        metrics.gaugeMetric(
-          "publ_lc_asset_name_extension_analytics_compute_duration_milliseconds",
-          "Time it took to compute file system assets analytics",
-        ).instance(Date.now() - beforeFSA, commonMetricsBaggage),
-      );
+      // TODO: put fs assets into CSV / etc.
+      // const beforeFSA = Date.now();
+      // this.state.assetsMetrics = await fsA.fileSysAnalytics({
+      //   assetsTree,
+      //   metrics,
+      //   metricsNamePrefix: "publ_asset_name_extension_analytics_",
+      //   ...commonMetricsBaggage,
+      // });
+      // metrics.record(
+      //   metrics.gaugeMetric(
+      //     "publ_lc_asset_name_extension_analytics_compute_duration_milliseconds",
+      //     "Time it took to compute file system assets analytics",
+      //   ).instance(Date.now() - beforeFSA, commonMetricsBaggage),
+      // );
     }
     metrics.record(
       metrics.gaugeMetric(
@@ -1212,14 +1213,15 @@ export abstract class TypicalPublication<
               universal: metrics,
               renderUniversalJSON: metricsOp.universalJSON,
               renderUniversalPEF: metricsOp.universalPEF,
-              assets: metricsOp.assetsPEF ||
-                  metricsOp.assetsCSV
-                ? {
-                  results: this.state.assetsMetrics!,
-                  renderPEF: metricsOp.assetsPEF,
-                  renderCSV: metricsOp.assetsCSV,
-                }
-                : undefined,
+              assets: undefined, // TODO: use fs assets tables to store in CSV
+              // assets: metricsOp.assetsPEF ||
+              //     metricsOp.assetsCSV
+              //   ? {
+              //     results: this.state.assetsMetrics!,
+              //     renderPEF: metricsOp.assetsPEF,
+              //     renderCSV: metricsOp.assetsCSV,
+              //   }
+              //   : undefined,
             },
             observability: this.state.observability,
             serverContext: () => {
