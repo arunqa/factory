@@ -142,12 +142,13 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
                     {
                         database: DB(observabilityDatabaseID),
                         name: "fs-asset-metrics",
-                        label: "Show all file system asset metrics (<mark>TODO</mark>: figure out why 'public' is not showing all counts, issue with symlinks not being followed?)",
+                        label: "Show all file system paths outside of content and public (<mark>TODO</mark>: improve symlink follows)",
                         SQL: unindentWhitespace(`
             USE DATABASE ${observabilityDatabaseID};\n
-            SELECT *
-                FROM fs_asset_metric fsam
-            WHERE fsam.[Files Path] in ('content', 'public');`),
+            SELECT w.namespace, wp.dir
+              FROM fs_walk w, fs_walk_path wp
+             WHERE w.id = wp.walker_id
+               AND not(wp.dir->startsWith('content')) and not(wp.dir->startsWith('public'));`),
                         qualifiedName: qualifiedNamePlaceholder
                     }, 
                 ],
