@@ -90,6 +90,14 @@ export function sensitiveEnvVarValueMutator(
   };
 }
 
+/**
+ * Produces the list of environment variables suitable for including in
+ * health.json. This is different from Deno.env.toObject() because it does not
+ * include all environments, it filters out potentially "sensitive" env var
+ * values based on env var name conventions (see typicalNameRegExps above).
+ * @param options
+ * @returns
+ */
 export function envHealthCheck(
   options?: {
     readonly mutate?: (
