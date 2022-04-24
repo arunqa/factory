@@ -79,7 +79,7 @@ export function infoMetric<T extends govn.TypedObject>(
             instanceLabels.stringify(options)
           }} 1`;
         },
-        tablify: () => ({ metric_value: undefined }), // info nature has no value
+        tablify: () => ({ metricValue: undefined }), // info nature has no value
       };
       return instance;
     },
@@ -117,7 +117,7 @@ export function gaugeMetric<T extends govn.TypedObject>(
             instanceLabels.stringify(options)
           }} ${value}`;
         },
-        tablify: () => ({ metric_value: value }),
+        tablify: () => ({ metricValue: value }),
       };
       return instance;
     },

@@ -14,7 +14,7 @@ export interface Metric {
 export interface MetricInstance<M extends Metric> {
   readonly metric: M;
   readonly stringify: (options: MetricsDialect) => string;
-  readonly tablify: () => { metric_value?: number };
+  readonly tablify: () => { metricValue?: number };
 }
 
 export interface MetricsDialect {

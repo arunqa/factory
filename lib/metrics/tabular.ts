@@ -27,16 +27,14 @@ export function* tabularMetrics(
     },
   });
   const metricLabelRB = tab.tabularRecordsAutoRowIdBuilder<{
-    readonly metricId: tab.TabularRecordIdRef;
-    readonly metricName: govn.MetricName;
     readonly label: govn.MetricLabelName;
   }, "metricIdLabel">({
     upsertStrategy: {
       exists: (ml, _rowID, index) => {
-        return index("metricIdLabel")?.get(`${ml.metricId}_${ml.label}`);
+        return index("metricIdLabel")?.get(ml.label);
       },
       index: (ml, index) => {
-        index("metricIdLabel").set(`${ml.metricId}_${ml.label}`, ml);
+        index("metricIdLabel").set(ml.label, ml);
       },
     },
   });
@@ -64,16 +62,12 @@ export function* tabularMetrics(
     const metricInstance = metricInstanceRB.upsert({
       metricId,
       metricName,
-      metricValue: instance.tablify().metric_value,
+      ...instance.tablify(),
     });
     if (core.isLabeledMetricInstance(instance)) {
       for (const entry of Object.entries(instance.labels.object)) {
         const [label, labelValue] = entry;
-        const metricLabel = metricLabelRB.upsert({
-          metricId,
-          metricName,
-          label,
-        });
+        const metricLabel = metricLabelRB.upsert({ label });
         metricInstanceLabelRB.upsert({
           metricId,
           metricName,
