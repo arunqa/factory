@@ -49,9 +49,10 @@ export function untypedTabularRecordProxy(
 
 export function tabularRecordProxy<
   TableRecord extends govn.UntypedTabularRecordObject,
-  TableObject extends govn.TableToObject<TableRecord> = govn.TableToObject<
-    TableRecord
-  >,
+  TableObject extends govn.TabularRecordToObject<TableRecord> =
+    govn.TabularRecordToObject<
+      TableRecord
+    >,
 >(record: TableObject, options?: TabularRecordProxyOptions): TableRecord {
   return untypedTabularRecordProxy(record, options) as unknown as TableRecord;
 }
@@ -146,9 +147,10 @@ export function untypedTabularAutoRowIdRecordsProxy(
 
 export function tabularRecordsProxy<
   TableRecord extends govn.UntypedTabularRecordObject,
-  TableObject extends govn.TableToObject<TableRecord> = govn.TableToObject<
-    TableRecord
-  >,
+  TableObject extends govn.TabularRecordToObject<TableRecord> =
+    govn.TabularRecordToObject<
+      TableRecord
+    >,
 >(
   records: TableObject[],
   tableishName?: govn.TabularRecordsIdentity,
@@ -165,9 +167,10 @@ export function tabularAutoRowIdRecordsProxy<
   TableRecord extends govn.UntypedTabularRecordObject & {
     id: govn.TabularRecordID;
   },
-  TableObject extends govn.TableToObject<TableRecord> = govn.TableToObject<
-    TableRecord
-  >,
+  TableObject extends govn.TabularRecordToObject<TableRecord> =
+    govn.TabularRecordToObject<
+      TableRecord
+    >,
 >(
   records: TableObject[],
   tableishName?: govn.TabularRecordsIdentity,
@@ -182,9 +185,10 @@ export function tabularAutoRowIdRecordsProxy<
 
 export function definedTabularRecordsProxy<
   TableRecord extends govn.UntypedTabularRecordObject,
-  TableObject extends govn.TableToObject<TableRecord> = govn.TableToObject<
-    TableRecord
-  >,
+  TableObject extends govn.TabularRecordToObject<TableRecord> =
+    govn.TabularRecordToObject<
+      TableRecord
+    >,
   ColumnName extends keyof TableRecord = keyof TableRecord,
 >(
   defn: Omit<govn.TabularRecordDefn<TableRecord>, "columns">,
@@ -213,12 +217,13 @@ export function definedTabularRecordsProxy<
 }
 
 export function definedTabularAutoRowIdRecordsProxy<
-  TableRecord extends govn.UntypedTabularRecordObject & {
-    id: govn.TabularRecordID;
-  },
-  TableObject extends govn.TableToObject<TableRecord> = govn.TableToObject<
-    TableRecord
-  >,
+  TableRecord extends
+    & govn.UntypedTabularRecordObject
+    & govn.MutatableTabularRecordIdSupplier,
+  TableObject extends govn.TabularRecordToObject<TableRecord> =
+    govn.TabularRecordToObject<
+      TableRecord
+    >,
   ColumnName extends keyof TableRecord = keyof TableRecord,
 >(
   defn: Omit<govn.TabularRecordDefn<TableRecord>, "columns">,

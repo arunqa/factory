@@ -179,7 +179,7 @@ POST {{alaSqlProxyURL}}
 Content-Type: application/json
 
 {
-  "SQL": "USE DATABASE observability;\nSELECT * FROM health_check",
+  "SQL": "USE DATABASE observability;\nSELECT * FROM service_health_component_status",
   "resultNature": "model"
 }
 

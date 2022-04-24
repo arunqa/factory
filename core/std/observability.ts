@@ -13,8 +13,8 @@ export const isObservabilityHealthComponentSupplier = safety.typeGuard<
 >("obsHealthStatus");
 
 export const isObservabilitySqlViewsSupplier = safety.typeGuard<
-  govn.ObservableSqlViewsSupplier
->("observableSqlViews");
+  govn.ObservableTabularRecordsSupplier
+>("observableTabularRecords");
 
 export interface ServiceHealthComponentsChecksOptions {
   readonly includeEnv?: boolean;
@@ -36,93 +36,72 @@ export const environmentSqlView = tab.definedTabularRecordsProxy<{
   })),
 );
 
-export interface HealthCheckRecord {
-  readonly id: tab.TabularRecordID;
-  readonly category: string;
-  readonly status: string;
-  readonly component_id: string;
-  readonly component_type: string;
-  readonly metric_name?: string;
-  readonly node?: string;
-  readonly observed_unit?: string;
-  readonly observed_value?: health.ServiceHealthObservedValue;
-  readonly time: Date;
-}
-
-export interface HealthCheckLinkRecord {
-  readonly health_check_id: tab.TabularRecordIdRef;
-  readonly link_key: string;
-  readonly link_value: unknown;
-}
-
-export async function* healthCheckSqlViews(
+export function* healthCheckSqlViews(
   statuses: Iterable<govn.ObservabilityHealthComponentStatus>,
 ) {
-  const hcRecords: HealthCheckRecord[] = [];
-  const hclRecords: HealthCheckLinkRecord[] = [];
+  const shcsCategoryRB = tab.tabularRecordsAutoRowIdBuilder<
+    { category: string },
+    "category"
+  >({
+    upsertStrategy: {
+      exists: (record, _rowID, index) => {
+        return index("category")?.get(record.category);
+      },
+      index: (record, index) => {
+        index("category").set(record.category, record);
+      },
+    },
+  });
+  const shcsRB = tab.tabularRecordsAutoRowIdBuilder<
+    Omit<health.ServiceHealthComponentStatus, "links"> & { category: string }
+  >();
+  const shcsLinkRB = tab.tabularRecordsAutoRowIdBuilder<{
+    readonly shcsId: tab.TabularRecordIdRef;
+    readonly linkKey: string;
+    readonly linkValue: unknown;
+  }>();
+
+  //const builders = tab.relatedTabularRecordsBuilders(statusCategoryRB);
 
   for (const ohcs of statuses) {
     const { category, status } = ohcs;
     const categories = Array.isArray(category) ? category : [category];
     for (const category of categories) {
-      const hcr: HealthCheckRecord = {
-        id: hcRecords.length,
-        category,
-        status: status.status,
-        component_id: status.componentId,
-        component_type: status.componentType,
-        metric_name: status.metricName,
-        node: status.node,
-        observed_unit: status.observedUnit,
-        observed_value: status.observedValue,
-        time: status.time,
-      };
-      hcRecords.push(hcr);
+      shcsCategoryRB.upsert({ category });
+      const { links: _linksRemoved, ...statusWithoutLinks } = status;
+      const shcsRecord = shcsRB.upsert({ ...statusWithoutLinks, category });
       for (const link of Object.entries(status.links)) {
-        const [link_key, link_value] = link;
-        hclRecords.push({
-          health_check_id: hcr.id,
-          link_key,
-          link_value,
+        const [linkKey, linkValue] = link;
+        shcsLinkRB.upsert({
+          shcsId: shcsRecord.id,
+          linkKey,
+          linkValue,
         });
       }
     }
   }
 
-  if (hclRecords.length > 0) {
-    const hcTable: tab.DefinedTabularRecordsProxy<HealthCheckRecord> = {
-      tabularRecordDefn: {
-        identity: "health_check",
-        namespace: "observability",
-        ...tab.mirrorColumnDefnsFromExemplar(hcRecords),
-      },
-      // deno-lint-ignore require-await
-      dataRows: async () => hcRecords,
-    };
-    yield hcTable;
-  }
-
-  if (hclRecords.length > 0) {
-    const hclTable: tab.DefinedTabularRecordsProxy<HealthCheckLinkRecord> = {
-      tabularRecordDefn: {
-        identity: "health_check_link",
-        namespace: "observability",
-        ...tab.mirrorColumnDefnsFromExemplar(hclRecords),
-      },
-      // deno-lint-ignore require-await
-      dataRows: async () => hclRecords,
-    };
-
-    yield hclTable;
-  }
+  const namespace = "observability";
+  yield tab.definedTabularRecordsProxy(
+    { identity: "service_health_component_status_category", namespace },
+    shcsCategoryRB.records,
+  );
+  yield tab.definedTabularRecordsProxy(
+    { identity: "service_health_component_status", namespace },
+    shcsRB.records,
+  );
+  yield tab.definedTabularRecordsProxy(
+    { identity: "service_health_component_status_link", namespace },
+    shcsLinkRB.records,
+  );
 }
 
 export class Observability
   implements
     govn.ObservabilityEventsEmitterSupplier,
-    govn.ObservableSqlViewsSupplier {
+    govn.ObservableTabularRecordsSupplier {
   readonly hsSuppliers: govn.ObservabilityHealthComponentStatusSupplier[] = [];
-  readonly sqlViewsSuppliers: govn.ObservableSqlViewsSupplier[] = [];
+  readonly sqlViewsSuppliers: govn.ObservableTabularRecordsSupplier[] = [];
 
   constructor(readonly events: govn.ObservabilityEventsEmitter) {
     events.on("healthStatusSupplier", (rf) => this.hsSuppliers.push(rf));
@@ -179,8 +158,9 @@ export class Observability
     });
   }
 
-  // implementation of ObservableSqlViewsSupplier for this specific instance
-  async *observableSqlViews() {
+  // implementation of ObservableTabularRecordsSupplier for this class instance
+  // which supplies its own sqlViews
+  async *observableTabularRecords() {
     yield environmentSqlView;
 
     const statuses = [];
@@ -193,13 +173,13 @@ export class Observability
     yield* healthCheckSqlViews(statuses);
   }
 
-  // all SQL views by any registered ObservableSqlViewsSupplier instances
-  async *allSqlViews(): AsyncGenerator<
+  // all SQL views by any registered ObservableTabularRecordsSupplier instances
+  async *systemObservableTabularRecords(): AsyncGenerator<
     // deno-lint-ignore no-explicit-any
     tab.DefinedTabularRecordsProxy<any>
   > {
     for (const sv of this.sqlViewsSuppliers) {
-      yield* sv.observableSqlViews();
+      yield* sv.observableTabularRecords();
     }
   }
 }

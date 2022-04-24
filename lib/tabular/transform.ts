@@ -1,129 +1,181 @@
 import * as govn from "./governance.ts";
 import * as c from "./case.ts";
+import * as s from "./structure.ts";
 
-/**
- * tableColumnsFromObject transforms an object to its "tabular" representation,
- * basically converting each camelCase name to snake_case and copying the
- * data over for requested column names.
- * @param o the object to convert to a table-like structure
- * @param defaultValues in case defaults should be provided
- * @param columns list of column names or column name+value tranformation pair
- * @returns a clone of o with property names converted to snake case
- */
-export function tableColumnsFromObject<
+export interface TransformTabularRecordsRowState<
   TableRecord extends govn.UntypedTabularRecordObject,
-  Object extends govn.TableToObject<TableRecord> = govn.TableToObject<
-    TableRecord
-  >,
-  ColumnName extends keyof TableRecord = keyof TableRecord,
->(
-  o: Object,
-  defaultValues?: TableRecord,
-  ...columns:
-    // supply the list of columns either as name or name+value transformation pair
-    (ColumnName | [name: ColumnName, value: (v: unknown) => unknown])[]
-): TableRecord {
-  return Object.entries(o).reduce((row, kv) => {
-    const [propName, value] = kv;
-    const colName = c.camelToSnakeCase(propName);
-    const matched = columns.find((c) =>
-      Array.isArray(c) ? (c[0] == colName) : (c == colName)
-    );
-    if (matched) {
-      row[colName] = Array.isArray(matched) ? matched[1](value) : value;
-    }
-    return row;
-  }, (defaultValues ?? {}) as Record<string, unknown>) as TableRecord;
+> {
+  rowIndex: number;
+  rowID: (rowIndex: number) => govn.TabularRecordID;
+  readonly records: TableRecord[];
 }
 
-/**
- * tableColumnsFromObjectProperties transforms an object to its "tabular"
- * representation, converting each camelCase name to snake_case and copying
- * the data over for requested property names.
- * @param o the object to convert to a table-like structure
- * @param defaultValues in case defaults should be provided
- * @param properties list of property names or prop name+value tranformation pair
- * @returns a clone of o with property names converted to snake case
- */
-export function tableColumnsFromObjectProperties<
+export interface TransformTabularRecordsRowStateSupplier<
   TableRecord extends govn.UntypedTabularRecordObject,
-  Object extends govn.TableToObject<TableRecord> = govn.TableToObject<
-    TableRecord
-  >,
-  PropertyName extends keyof Object = keyof Object,
->(
-  o: Object,
-  defaultValues?: TableRecord,
-  ...properties:
-    (PropertyName | [name: PropertyName, value: (v: unknown) => unknown])[]
-): TableRecord {
-  return Object.entries(o).reduce((row, kv) => {
-    const [propName, value] = kv;
-    const matched = properties.find((p) =>
-      Array.isArray(p) ? (p[0] == propName) : (p == propName)
-    );
-    if (matched) {
-      row[c.camelToSnakeCase(propName)] = Array.isArray(matched)
-        ? matched[1](value) // transform the value
-        : value;
-    }
-    return row;
-  }, (defaultValues ?? {}) as Record<string, unknown>) as TableRecord;
+> {
+  readonly rowState: TransformTabularRecordsRowState<TableRecord>;
+}
+
+export type FilterOrTransform<
+  TableRecord extends govn.UntypedTabularRecordObject,
+  Safe,
+  Unsafe,
+> = (
+  value: Safe,
+  rowState?: TransformTabularRecordsRowState<TableRecord>,
+) => Unsafe | false;
+
+export type FilterOrTransformText<
+  TableRecord extends govn.UntypedTabularRecordObject,
+> = FilterOrTransform<TableRecord, string, string>;
+
+export interface TransformTabularRecordOptions<
+  TableRecord extends govn.UntypedTabularRecordObject,
+  TableObject extends govn.TabularRecordToObject<TableRecord> =
+    govn.TabularRecordToObject<
+      TableRecord
+    >,
+  PropertyName extends keyof TableObject = keyof TableObject,
+  ColumnName extends keyof TableRecord = keyof TableRecord,
+> {
+  readonly defaultValues?: (
+    o: TableObject,
+    rowState?: TransformTabularRecordsRowState<TableRecord>,
+  ) => TableRecord;
+  readonly filterPropUnsafe?: FilterOrTransform<
+    TableRecord,
+    PropertyName | string,
+    string
+  >;
+  readonly filterProp?: FilterOrTransform<TableRecord, PropertyName, string>;
+  readonly filterColumn?: FilterOrTransform<TableRecord, ColumnName, string>;
+  readonly transformColumn?: Partial<govn.ObjectTransformer<TableRecord>>;
+  readonly transformRecord?: (constructed: TableRecord) => TableRecord;
 }
 
 /**
  * transformTabularRecord transforms an object to its "tabular" representation,
- * converting each camelCase name to snake_case and copying the data over.
- * Every property on o will be copied into the result.
+ * basically converting each camelCase name to snake_case and copying the
+ * data over for requested snake_cased column names with flexible per-property
+ * transformation options.
  * @param o the object to convert to a table-like structure
- * @param defaultValues in case defaults should be provided
+ * @param options in case defaults should be provided or denormalization is required
  * @returns a clone of o with property names converted to snake case
  */
 export function transformTabularRecord<
   TableRecord extends govn.UntypedTabularRecordObject,
-  Object extends govn.TableToObject<TableRecord> = govn.TableToObject<
-    TableRecord
-  >,
+  TableObject extends govn.TabularRecordToObject<TableRecord> =
+    govn.TabularRecordToObject<
+      TableRecord
+    >,
 >(
-  o: Object,
-  defaultValues?: TableRecord,
+  o: TableObject,
+  rowState?: TransformTabularRecordsRowState<TableRecord>,
+  options?: TransformTabularRecordOptions<TableRecord>,
 ): TableRecord {
-  return Object.entries(o).reduce((row, kv) => {
-    row[c.camelToSnakeCase(kv[0])] = kv[1];
-    return row;
-  }, (defaultValues ?? {}) as Record<string, unknown>) as TableRecord;
+  const {
+    filterColumn,
+    filterProp,
+    filterPropUnsafe,
+    transformColumn,
+  } = options ?? {};
+  const filterPropertyName =
+    (filterProp || filterPropUnsafe) as FilterOrTransformText<TableRecord>;
+  const columnTV = transformColumn
+    ? (transformColumn as {
+      [key: string]: (value: unknown) => unknown;
+    })
+    : undefined;
+  const result = Object.entries(o).reduce(
+    (row, kv) => {
+      const propName = filterPropertyName
+        ? (filterPropertyName(kv[0], rowState))
+        : kv[0];
+      if (propName) {
+        const snakeCasePropName = c.camelToSnakeCase(propName);
+        const colName = filterColumn
+          ? ((filterColumn as FilterOrTransformText<TableRecord>)(
+            snakeCasePropName,
+          ))
+          : snakeCasePropName;
+        if (colName) {
+          const value = kv[1];
+          if (columnTV && colName in columnTV) {
+            row[colName] = columnTV[colName](value);
+          } else {
+            row[colName] = value;
+          }
+        }
+      }
+      return row;
+    },
+    (options?.defaultValues?.(o, rowState) ?? {}) as Record<
+      string,
+      unknown
+    >,
+  ) as TableRecord;
+  return options?.transformRecord ? options?.transformRecord(result) : result;
 }
 
 /**
  * transformTabularRecords transforms a list of object to its "tabular" representation,
  * converting each camelCase name to snake_case and copying the data over for
- * requested property names.
- * @param objects the object instances to convert to a table-like structure
- * @param defaultValues in case defaults should be provided
- * @param properties list of property names or prop name+value tranformation pair
+ * requested camelCase property names.
+ * @param records the object instances to convert to a table-like structure
+ * @param options in case defaults should be provided or denormalization is required
  * @returns a clone of objects with property names converted to snake case
  */
 export function transformTabularRecords<
   // deno-lint-ignore ban-types
   TableRecord extends object,
-  Object extends govn.TableToObject<TableRecord> = govn.TableToObject<
-    TableRecord
-  >,
-  PropertyName extends keyof Object = keyof Object,
+  TableObject extends govn.TabularRecordToObject<TableRecord> =
+    govn.TabularRecordToObject<
+      TableRecord
+    >,
 >(
-  objects: Iterable<Object>,
-  defaultValues?: TableRecord,
-  ...properties:
-    (PropertyName | [name: PropertyName, value: (v: unknown) => unknown])[]
+  records: Iterable<TableObject>,
+  options?: TransformTabularRecordOptions<TableRecord>,
 ): TableRecord[] {
   const result: TableRecord[] = [];
-  for (const o of objects) {
-    // TODO: add nextID() to create identity relationships / denormalization / etc.
-    result.push(tableColumnsFromObjectProperties(
-      o,
-      defaultValues,
-      ...properties,
-    ));
+  const rowState: TransformTabularRecordsRowState<TableRecord> = {
+    rowID: (rowIndex) => rowIndex,
+    rowIndex: 0,
+    records: result,
+  };
+  for (const r of records) {
+    result.push(transformTabularRecord(r, rowState, options));
+    rowState.rowIndex++;
   }
   return result;
+}
+
+export function definedTabularRecords<
+  TableRecord extends govn.UntypedTabularRecordObject,
+  TableObject extends govn.TabularRecordToObject<TableRecord> =
+    govn.TabularRecordToObject<
+      TableRecord
+    >,
+  ColumnName extends keyof TableRecord = keyof TableRecord,
+>(
+  defn: Omit<govn.TabularRecordDefn<TableRecord>, "columns">,
+  records: Iterable<TableObject>,
+  options: TransformTabularRecordOptions<TableRecord> & {
+    inspectForDefn: TableRecord;
+  },
+  ...columns:
+    // supply the list of columns either as name or name+value transformation pair
+    (ColumnName | [name: ColumnName, value: (v: unknown) => unknown])[]
+): govn.DefinedTabularRecordsProxy<TableRecord> {
+  return {
+    tabularRecordDefn: {
+      ...defn,
+      ...s.propertyDefnsFromExemplar<TableRecord>(
+        options.inspectForDefn,
+        undefined,
+        ...columns,
+      ),
+    },
+    // deno-lint-ignore require-await
+    dataRows: async () => transformTabularRecords(records),
+  };
 }

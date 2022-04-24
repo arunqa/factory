@@ -186,14 +186,13 @@ Deno.test(`env vars defined proxy`, async () => {
   ta.assert(env);
 });
 
-Deno.test(`transform object to tabular record as-is`, () => {
+Deno.test(`transform object to tabular record with no filters`, () => {
   const o = {
     propertyOne: "one",
     propertyTwo: 100,
     dateInObj: new Date(),
     propertyThree3: 250,
   };
-  const oArray = [o];
   const row = mod.transformTabularRecord<{
     property_one: string;
     property_two: number;
@@ -204,32 +203,27 @@ Deno.test(`transform object to tabular record as-is`, () => {
   ta.assertEquals(row.property_three3, o.propertyThree3);
 
   // date will be copied even though it's not in the table row definition
+  // because we did not filter the property or column
   // deno-lint-ignore no-explicit-any
   ta.assert((row as any).date_in_obj);
-
-  const rows = mod.transformTabularRecords<{
-    property_one: string;
-    property_two: number;
-    property_three3?: number;
-  }>(oArray, undefined, "propertyOne", "propertyTwo", "propertyThree3");
-  ta.assert(rows.length = 1);
-  ta.assertEquals(rows[0].property_one, o.propertyOne);
-  ta.assertEquals(rows[0].property_two, o.propertyTwo);
-  ta.assertEquals(rows[0].property_three3, o.propertyThree3);
+  ta.assertEquals(4, Object.keys(row).length);
 });
 
-Deno.test(`transform object to tabular record without Date using column names`, () => {
+Deno.test(`transform object to tabular record with filter`, () => {
   const o = {
     propertyOne: "one",
     propertyTwo: 100,
     dateInObj: new Date(),
     propertyThree3: 250,
   };
-  const row = mod.tableColumnsFromObject<{
+  const row = mod.transformTabularRecord<{
     property_one: string;
     property_two: number;
     property_three3?: number;
-  }>(o, undefined, "property_one", "property_two", "property_three3");
+  }>(o, undefined, {
+    filterPropUnsafe: (propName) => propName !== "dateInObj" ? propName : false,
+  });
+  ta.assertEquals(3, Object.keys(row).length);
   ta.assertEquals(row.property_one, o.propertyOne);
   ta.assertEquals(row.property_two, o.propertyTwo);
   ta.assertEquals(row.property_three3, o.propertyThree3);
@@ -237,29 +231,53 @@ Deno.test(`transform object to tabular record without Date using column names`, 
   // date will not be copied
   // deno-lint-ignore no-explicit-any
   ta.assert((row as any).date_in_obj === undefined);
+
+  const oArray = [o];
+  const rows = mod.transformTabularRecords<{
+    property_one: string;
+    property_two: number;
+    property_three3?: number;
+  }>(oArray, {
+    filterProp: (propName) =>
+      (propName == "propertyOne" || propName == "propertyTwo" ||
+          propName == "propertyThree3")
+        ? propName
+        : false,
+  });
+  ta.assert(rows.length = 1);
+  ta.assertEquals(3, Object.keys(rows[0]).length);
+  ta.assertEquals(rows[0].property_one, o.propertyOne);
+  ta.assertEquals(rows[0].property_two, o.propertyTwo);
+  ta.assertEquals(rows[0].property_three3, o.propertyThree3);
 });
 
-Deno.test(`transform object to tabular record with transformed Date using prop names`, () => {
+Deno.test(`transform object to tabular record with transformed Date using column name`, () => {
   const o = {
     propertyOne: "one",
     propertyTwo: 100,
     dateInObj: new Date(),
     propertyThree3: 250,
   };
-  const row = mod.tableColumnsFromObjectProperties<{
+  const row = mod.transformTabularRecord<{
     property_one: string;
     property_two: number;
     property_three3?: number;
-    // deno-lint-ignore no-explicit-any
-    date_in_obj: any; // set this to any or unknown so that we can do transformation
-  }>(o, undefined, "propertyOne", "propertyTwo", "propertyThree3", [
-    "dateInObj",
-    (d) => `${d}`,
-  ]);
+    date_in_obj: string | Date; // TODO: figure out to type so only "string" is possible
+  }>(o, undefined, {
+    transformColumn: {
+      date_in_obj: (date) => `${date}_transformColumn`,
+    },
+    // transformColumn: {
+
+    //   // columns are transformed after property transform
+    //   date_in_obj: (date) => `${date}_transformColumn`,
+    // },
+  });
   ta.assertEquals(row.property_one, o.propertyOne);
   ta.assertEquals(row.property_two, o.propertyTwo);
   ta.assertEquals(row.property_three3, o.propertyThree3);
   ta.assert(row.date_in_obj);
   ta.assert(o.dateInObj instanceof Date);
   ta.assert(typeof row.date_in_obj === "string");
+  ta.assert(row.date_in_obj.endsWith("_transformColumn"));
 });

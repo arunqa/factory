@@ -17,8 +17,8 @@ export interface ObservabilityHealthComponentStatusSupplier {
   >;
 }
 
-export interface ObservableSqlViewsSupplier {
-  readonly observableSqlViews: () => AsyncGenerator<
+export interface ObservableTabularRecordsSupplier {
+  readonly observableTabularRecords: () => AsyncGenerator<
     // deno-lint-ignore no-explicit-any
     tab.DefinedTabularRecordsProxy<any>
   >;
@@ -26,7 +26,7 @@ export interface ObservableSqlViewsSupplier {
 
 export class ObservabilityEventsEmitter extends events.EventEmitter<{
   healthStatusSupplier(ohcss: ObservabilityHealthComponentStatusSupplier): void;
-  sqlViewsSupplier(sps: ObservableSqlViewsSupplier): void;
+  sqlViewsSupplier(sps: ObservableTabularRecordsSupplier): void;
 }> {}
 
 export interface ObservabilityEventsEmitterSupplier {

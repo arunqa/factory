@@ -39,8 +39,8 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
         SQL: unindentWhitespace(`
         USE DATABASE ${observabilityDatabaseID};\n
         SELECT *
-        FROM health_check hc
-        WHERE hc.status = 'fail';`),
+        FROM service_health_component_status shcs
+        WHERE shcs.status = 'fail';`),
         help: `These are the health checks performed by pubctl.ts and stored in health.json`,
         qualifiedName: qualifiedNamePlaceholder
     };
@@ -135,7 +135,7 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
                         SQL: unindentWhitespace(`
             USE DATABASE ${observabilityDatabaseID};\n
             SELECT *
-            FROM health_check hc;`),
+            FROM service_health_component_status shcs;`),
                         help: `These are the health checks performed by pubctl.ts and stored in health.json`,
                         qualifiedName: qualifiedNamePlaceholder
                     },

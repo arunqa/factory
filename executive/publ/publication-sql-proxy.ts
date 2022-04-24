@@ -51,7 +51,7 @@ export class PublicationSqlProxy extends alaSQL.AlaSqlProxy {
       events: (asp) => {
         const ee = new sql.SqlEventEmitter();
         ee.on("constructStorage", async () => {
-          await this.prepareObservabilitySqlViews();
+          await this.prepareSystemSqlViews();
           await this.prepareConfigDB();
           await this.prepareResourcesDB();
           if (this.pubCtlDbSqlProxy) {
@@ -168,10 +168,11 @@ export class PublicationSqlProxy extends alaSQL.AlaSqlProxy {
     });
   }
 
-  async prepareObservabilitySqlViews() {
+  async prepareSystemSqlViews() {
     if (this.publication.config.observability) {
       for await (
-        const osv of this.publication.config.observability.allSqlViews()
+        const osv of this.publication.config.observability
+          .systemObservableTabularRecords()
       ) {
         const { identity: tableName, columns, namespace: databaseID } =
           osv.tabularRecordDefn;
