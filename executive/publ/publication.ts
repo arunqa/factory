@@ -302,7 +302,9 @@ export interface Preferences<
 
 export class Configuration<
   OperationalContext extends PublicationOperationalContext,
-> implements Omit<Preferences<OperationalContext>, "fsAssetsWalkers"> {
+> implements
+  Omit<Preferences<OperationalContext>, "fsAssetsWalkers">,
+  rfGovn.ObservableTabularRecordsSupplier {
   readonly operationalCtx: OperationalContext;
   readonly observability?: rfStd.Observability;
   readonly telemetry: telem.Instrumentation<telem.UntypedBaggage> = new telem
@@ -383,6 +385,98 @@ export class Configuration<
     this.extensionsManager = prefs.extensionsManager;
     this.termsManager = prefs.termsManager;
     this.memoizeProducers = prefs.memoizeProducers;
+    this.observability?.events.emitSync("sqlViewsSupplier", this);
+  }
+
+  async *observableTabularRecords(
+    viewNamesStrategy = (name: "publication_config") => name,
+  ) {
+    const configRB = tab.tabularRecordsAutoRowIdBuilder<
+      {
+        property: string;
+        value: unknown;
+        // this should be optional, but if it's marked optional and the value is undefined in the first row then the sqlDefn generator will not pick it up
+        elaboration: "" | string;
+      }
+    >();
+
+    for (const entry of Object.entries(this)) {
+      const [property, value] = entry;
+      switch (property) {
+        case "appName":
+        case "envVarNamesPrefix":
+          configRB.upsert({ property, value, elaboration: "" });
+          break;
+
+        case "contentRootPath":
+        case "destRootPath":
+          configRB.upsert({
+            property,
+            value,
+            elaboration: path.resolve(value),
+          });
+          break;
+      }
+    }
+
+    const oc = this.operationalCtx;
+    configRB.upsert({
+      property: `oc.projectRootPath`,
+      value: oc.projectRootPath("", true),
+      elaboration: oc.projectRootPath("", false) || Deno.cwd(),
+    });
+    configRB.upsert({
+      property: `oc.resFactoryRootPath`,
+      value: oc.resFactoryRootPath?.("", true) ?? "(not supplied)",
+      elaboration: oc.resFactoryRootPath?.("", false) ?? "(not supplied)",
+    });
+    configRB.upsert({
+      property: `oc.processStartTimestamp`,
+      value: oc.processStartTimestamp,
+      elaboration: "",
+    });
+    configRB.upsert({
+      property: `oc.isExperimentalOperationalCtx`,
+      value: oc.isExperimentalOperationalCtx,
+      elaboration: "",
+    });
+    configRB.upsert({
+      property: `oc.isLiveReloadRequest`,
+      value: oc.isLiveReloadRequest,
+      elaboration: "",
+    });
+    configRB.upsert({
+      property: `oc.iterationCount`,
+      value: oc.iterationCount,
+      elaboration: "",
+    });
+    configRB.upsert({
+      property: `oc.publStateDbLocation`,
+      value: path.resolve(oc.publStateDbLocation?.()),
+      elaboration: path.resolve(oc.publStateDbLocation?.(true)),
+    });
+
+    // TODO: implement this if server runtime script version is not good enough for debugging
+    // this.createJsFlexibleTableFromUntypedObjectArray(
+    //   "globalSqlDbConns",
+    //   window.globalSqlDbConns
+    //     ? Array.from(window.globalSqlDbConns.entries()).map((e) => {
+    //       const [connection_name, conn] = e;
+    //       return { connection_name, conn_pool: conn.dbConnPool };
+    //     })
+    //     : [{
+    //       isLiveReloadRequest:
+    //         this.publication.config.operationalCtx.isLiveReloadRequest,
+    //       help: "PostgreSQL Globals being ignored during reload request",
+    //     }],
+    //   configDB,
+    // );
+
+    const namespace = "config";
+    yield tab.definedTabularRecordsProxy(
+      { identity: viewNamesStrategy("publication_config"), namespace },
+      configRB.records,
+    );
   }
 
   produceOperationalCtxContent(): boolean {

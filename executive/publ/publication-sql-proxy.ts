@@ -51,7 +51,6 @@ export class PublicationSqlProxy extends alaSQL.AlaSqlProxy {
         const ee = new sql.SqlEventEmitter();
         ee.on("constructStorage", async () => {
           await this.prepareSystemSqlViews();
-          await this.prepareConfigDB();
           await this.prepareResourcesDB();
           if (this.pubCtlDbSqlProxy) {
             // this is a special "proxy" database that we handle special
@@ -198,38 +197,6 @@ export class PublicationSqlProxy extends alaSQL.AlaSqlProxy {
   }
 
   // deno-lint-ignore require-await
-  async prepareConfigDB() {
-    const configDB = new this.alaSqlEngine.Database("config");
-    this.createJsObjectSingleRowTable(
-      "prime",
-      this.publication.config,
-      configDB,
-    );
-    this.createJsObjectsTable(
-      "environment",
-      Array.from(Object.entries(Deno.env.toObject())).map((envEntry) => ({
-        var_name: envEntry[0],
-        var_value: envEntry[1],
-      })),
-      configDB,
-    );
-    this.createJsFlexibleTableFromUntypedObjectArray(
-      "globalSqlDbConns",
-      window.globalSqlDbConns
-        ? Array.from(window.globalSqlDbConns.entries()).map((e) => {
-          const [connection_name, conn] = e;
-          return { connection_name, conn_pool: conn.dbConnPool };
-        })
-        : [{
-          isLiveReloadRequest:
-            this.publication.config.operationalCtx.isLiveReloadRequest,
-          help: "PostgreSQL Globals being ignored during reload request",
-        }],
-      configDB,
-    );
-  }
-
-  // deno-lint-ignore require-await
   async prepareResourcesDB() {
     const pomDB = new this.alaSqlEngine.Database("resource");
     this.createJsObjectSingleRowTable(
@@ -272,59 +239,4 @@ export class PublicationSqlProxy extends alaSQL.AlaSqlProxy {
       pomDB,
     );
   }
-
-  // async prepareObservabilityDB() {
-  //   const observabilityDB = new this.alaSqlEngine.Database(
-  //     "observability",
-  //   );
-  //   const healthChecks = await this.publication.config.observability
-  //     ?.serviceHealthComponentsChecks();
-  //   if (healthChecks) {
-  //     const records: Record<string, unknown>[] = [];
-  //     for (const hc of Object.entries(healthChecks)) {
-  //       const [category, checks] = hc;
-  //       for (const check of checks) {
-  //         records.push({ category, ...check });
-  //       }
-  //     }
-  //     this.createJsObjectsTable(
-  //       "health_check",
-  //       records,
-  //       observabilityDB,
-  //     );
-  //   }
-
-  //   const pomUniversalMetrics = m.tabularMetrics(
-  //     this.publication.config.metrics.instances,
-  //   );
-  //   this.createJsObjectsTable(
-  //     "universal_metric",
-  //     pomUniversalMetrics.metrics,
-  //     observabilityDB,
-  //   );
-  //   this.createJsObjectsTable(
-  //     "universal_metric_instance",
-  //     pomUniversalMetrics.metricInstances,
-  //     observabilityDB,
-  //   );
-  //   this.createJsObjectsTable(
-  //     "universal_metric_label",
-  //     pomUniversalMetrics.metricLabels,
-  //     observabilityDB,
-  //   );
-  //   this.createJsObjectsTable(
-  //     "universal_metric_instance_label",
-  //     pomUniversalMetrics.metricInstanceLabels,
-  //     observabilityDB,
-  //   );
-
-  //   if (this.publication.state.assetsMetrics) {
-  //     this.createJsFlexibleTableFromUntypedArray(
-  //       "fs_asset_metric",
-  //       this.publication.state.assetsMetrics.pathExtnsColumns,
-  //       this.publication.state.assetsMetrics.pathExtnsColumnHeaders,
-  //       observabilityDB,
-  //     );
-  //   }
-  // }
 }
