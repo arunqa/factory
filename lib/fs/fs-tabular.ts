@@ -12,7 +12,9 @@ export interface TabularFsPathRecord
   extends Pick<path.ParsedPath, "root" | "dir"> {
   readonly walkerId: tab.TabularRecordIdRef;
   readonly isSymlink: boolean;
-  readonly outsideRoot?: string;
+
+  // this should be optional, but if it's marked optional and the value is undefined in the first row then the sqlDefn generator will not pick it up
+  readonly outsideRoot: false | string;
 }
 
 export interface TabularFsFileRecord extends path.ParsedPath {
@@ -115,6 +117,7 @@ export async function* fileSystemTabularRecords(
         root: fileRecord.root,
         dir: ancestorPath,
         isSymlink: we.isSymlink,
+        outsideRoot: false,
       });
       fileAncestorRB.upsert({
         pathId: pathRecord.id,
