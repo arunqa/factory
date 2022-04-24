@@ -38,6 +38,12 @@ export const environmentSqlView = tab.definedTabularRecordsProxy<{
 
 export function* healthCheckSqlViews(
   statuses: Iterable<govn.ObservabilityHealthComponentStatus>,
+  viewNamesStrategy = (
+    name:
+      | "category"
+      | "status"
+      | "status_link",
+  ) => `service_health_component_status${name == "status" ? "" : `_${name}`}`,
 ) {
   const shcsCategoryRB = tab.tabularRecordsAutoRowIdBuilder<
     { category: string },
@@ -61,8 +67,6 @@ export function* healthCheckSqlViews(
     readonly linkValue: unknown;
   }>();
 
-  //const builders = tab.relatedTabularRecordsBuilders(statusCategoryRB);
-
   for (const ohcs of statuses) {
     const { category, status } = ohcs;
     const categories = Array.isArray(category) ? category : [category];
@@ -83,15 +87,15 @@ export function* healthCheckSqlViews(
 
   const namespace = "observability";
   yield tab.definedTabularRecordsProxy(
-    { identity: "service_health_component_status_category", namespace },
+    { identity: viewNamesStrategy("category"), namespace },
     shcsCategoryRB.records,
   );
   yield tab.definedTabularRecordsProxy(
-    { identity: "service_health_component_status", namespace },
+    { identity: viewNamesStrategy("status"), namespace },
     shcsRB.records,
   );
   yield tab.definedTabularRecordsProxy(
-    { identity: "service_health_component_status_link", namespace },
+    { identity: viewNamesStrategy("status_link"), namespace },
     shcsLinkRB.records,
   );
 }
