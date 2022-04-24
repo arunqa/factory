@@ -1,6 +1,5 @@
 import * as pDB from "./publication-db.ts";
 import * as p from "./publication.ts";
-import * as m from "../../lib/metrics/mod.ts";
 import * as sql from "../../lib/sql/mod.ts";
 import * as srg from "../../lib/sql/remote/governance.ts";
 import * as srp from "../../lib/sql/remote/proxy.ts";
