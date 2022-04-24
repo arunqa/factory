@@ -277,14 +277,14 @@
             selectAllColsFromActiveDB.watch(() => {
                 const allColumnDefns = Array.from(columnSelectElem.options);
                 const selectedColumns = allColumnDefns.filter(o => o.selected);
-                const potentialDateColNames = ['created_at'];
+                const potentialDateColNames = ['created_at', 'time'];
                 const orderByDateColumn = allColumnDefns.find(o => potentialDateColNames.find(c => c == o.value));
                 const SQL = path.unindentWhitespace(`
                     USE DATABASE ${dbSelectElem.value};\n
                     SELECT ${selectedColumns.length == 0 ? '*' : selectedColumns.map(o => o.value).join(", ")}
                       FROM ${tableSelectElem.value}
                      ${orderByDateColumn ? `ORDER BY ${orderByDateColumn.value} desc` : `-- no ${potentialDateColNames.join(', ')} column found, not ordering`}
-                     LIMIT 5`);
+                     LIMIT 25`);
                 sqlCodeEditorValue(SQL);
                 if (autoExecSqlStmtInventoryElem.checked && window.dbQueryFormSubmitFx) {
                     dbQueryFormSubmitFx({ sqlStmt: sqlStmtFromFromEditor() });
