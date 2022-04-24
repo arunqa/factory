@@ -18,6 +18,7 @@ import * as ws from "../../lib/workspace/mod.ts";
 import * as gi from "../../lib/structure/govn-index.ts";
 import * as m from "../../lib/metrics/mod.ts";
 import * as extn from "../../lib/module/mod.ts";
+import * as tab from "../../lib/tabular/mod.ts";
 
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
@@ -671,7 +672,8 @@ export abstract class TypicalPublication<
   OperationalContext extends PublicationOperationalContext,
 > implements
   Publication<OperationalContext>,
-  rfGovn.ObservabilityHealthComponentStatusSupplier {
+  rfGovn.ObservabilityHealthComponentStatusSupplier,
+  rfGovn.ObservableTabularRecordsSupplier {
   readonly namespaceURIs = ["TypicalPublication<Resource>"];
   readonly state: PublicationState;
   readonly consumedFileSysWalkPaths = new Set<string>();
@@ -733,6 +735,14 @@ export abstract class TypicalPublication<
         persistedIndex.index(destFileName, elaboration);
       },
     );
+    this.config.observability?.events.emitSync("sqlViewsSupplier", this);
+  }
+
+  async *observableTabularRecords(): AsyncGenerator<
+    // deno-lint-ignore no-explicit-any
+    tab.DefinedTabularRecordsProxy<any>
+  > {
+    yield* m.tabularMetrics(this.config.metrics.instances);
   }
 
   abstract constructDesignSystem(
