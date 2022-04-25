@@ -9,3 +9,7 @@ trusted or can allow arbitrary code execution in case user agents are trusted.
 It's important to keep governance of interfaces and types properly separated so
 that user agents can receive TS-emitted JS code that doesn't contain unsafe
 content.
+
+# TODO
+
+* Create cloudquery.io proxy to allow easy access to Cloud resources through SQL.
