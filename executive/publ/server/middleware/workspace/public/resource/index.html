@@ -48,6 +48,12 @@
         <div render-fx="({ target, result: { resource = 'not found' } }) => path.populateObjectJSON(resource, target)"
             render-hook="({ target }) => routeResourceFx.done.watch(target.renderFx)">
         </div>
+        <details>
+            <summary><code>Deno.inspect</code></summary>
+            <div render-fx="({ target, result}) => target.innerHTML = `<pre>${path.escapeHTML(result)}</pre>`"
+                render-hook="({ target }) => routeResourceInspectRespFx.done.watch(target.renderFx)">
+            </div>
+        </details>
     </details>
 
     <details class="explore">
@@ -147,11 +153,15 @@
 
             const scriptsInventory = srScriptDeps.typicalScriptsInventory();
             const routUnitUrlParams = path.routeUnitUrlSearchParams(path.inspectableClientLayout().route.terminal);
-            window.routeResourceFx = path.prepareFetchServerRuntimeScriptJsonEffect(
+            window.routeResourceFx = path.prepareFetchServerRuntimeScriptResultEffect(
                 scriptsInventory.script('typicalScripts_site_resource-by-route.js.json'),
                 routUnitUrlParams
             );
-            const routeGitLogFx = path.prepareFetchServerRuntimeScriptJsonEffect(
+            window.routeResourceInspectRespFx = path.prepareFetchServerRuntimeScriptResultEffect(
+                scriptsInventory.script('typicalScripts_site_resource-by-route.js.di'),
+                routUnitUrlParams
+            );
+            const routeGitLogFx = path.prepareFetchServerRuntimeScriptResultEffect(
                 scriptsInventory.script('typicalScripts_version-control_git-log-active-route.js.json'),
                 routUnitUrlParams
             );
@@ -191,6 +201,7 @@
             // all listeners are ready so let's activate the page and trigger the watchers
             path.activatePageFx();
             window.routeResourceFx();
+            window.routeResourceInspectRespFx();
             routeGitLogFx();
         });
     </script>
