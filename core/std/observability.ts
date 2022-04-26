@@ -36,7 +36,7 @@ export const environmentSqlView = tab.definedTabularRecordsProxy<{
   })),
 );
 
-export function* healthCheckSqlViews(
+export async function* healthCheckSqlViews(
   statuses: Iterable<govn.ObservabilityHealthComponentStatus>,
   viewNamesStrategy = (
     name:
@@ -44,28 +44,30 @@ export function* healthCheckSqlViews(
       | "status"
       | "status_link",
   ) => `service_health_component_status${name == "status" ? "" : `_${name}`}`,
+  namespace = "observability",
 ) {
-  const shcsCategoryRB = tab.tabularRecordsAutoRowIdBuilder<
+  // Identity generic is set to string because we're controlling the names
+  // using viewNamesStrategy instead of TabularRecordDefn.identity
+  const builders = tab.definedTabularRecordsBuilders<string>();
+
+  const shcsCategoryRB = builders.autoRowIdProxyBuilder<
     { category: string },
     "category"
-  >({
+  >({ identity: viewNamesStrategy("category"), namespace }, {
     upsertStrategy: {
-      exists: (record, _rowID, index) => {
-        return index("category")?.get(record.category);
-      },
-      index: (record, index) => {
-        index("category").set(record.category, record);
-      },
+      exists: (record, _rowID, index) =>
+        index("category")?.get(record.category),
+      index: (record, index) => index("category").set(record.category, record),
     },
   });
-  const shcsRB = tab.tabularRecordsAutoRowIdBuilder<
+  const shcsRB = builders.autoRowIdProxyBuilder<
     Omit<health.ServiceHealthComponentStatus, "links"> & { category: string }
-  >();
-  const shcsLinkRB = tab.tabularRecordsAutoRowIdBuilder<{
+  >({ identity: viewNamesStrategy("status"), namespace });
+  const shcsLinkRB = builders.autoRowIdProxyBuilder<{
     readonly shcsId: tab.TabularRecordIdRef;
     readonly linkKey: string;
     readonly linkValue: unknown;
-  }>();
+  }>({ identity: viewNamesStrategy("status_link"), namespace });
 
   for (const ohcs of statuses) {
     const { category, status } = ohcs;
@@ -85,19 +87,7 @@ export function* healthCheckSqlViews(
     }
   }
 
-  const namespace = "observability";
-  yield tab.definedTabularRecordsProxy(
-    { identity: viewNamesStrategy("category"), namespace },
-    shcsCategoryRB.records,
-  );
-  yield tab.definedTabularRecordsProxy(
-    { identity: viewNamesStrategy("status"), namespace },
-    shcsRB.records,
-  );
-  yield tab.definedTabularRecordsProxy(
-    { identity: viewNamesStrategy("status_link"), namespace },
-    shcsLinkRB.records,
-  );
+  yield* builders.definedTabularRecords();
 }
 
 export class Observability
@@ -180,7 +170,7 @@ export class Observability
   // all SQL views by any registered ObservableTabularRecordsSupplier instances
   async *systemObservableTabularRecords(): AsyncGenerator<
     // deno-lint-ignore no-explicit-any
-    tab.DefinedTabularRecordsProxy<any>
+    tab.DefinedTabularRecords<any>
   > {
     for (const sv of this.sqlViewsSuppliers) {
       yield* sv.observableTabularRecords();
