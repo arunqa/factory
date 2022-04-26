@@ -43,6 +43,11 @@ import * as sb from "./service-bus.mjs";
 import * as d from "./deps.auto.js";
 export * from "./deps.auto.js"; // make symbols available to pages
 
+// escape a block of HTML so it can be safely assigned via innerHTML
+export const escapeHTML = (html) => {
+    return html.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+}
+
 // public/operational-context/server.auto.mjs sets window.parent.inspectableClientLayout
 // using executive/publ/server/middleware/workspace/public/inspect/index.html registerRfExplorerTarget
 export const inspectableClientLayout = () => window.parent.inspectableClientLayout;
@@ -73,10 +78,11 @@ export function fetchFxInitServerRuntimeScript(baseURL, srScript, srScriptArgs) 
     } else {
         // if an identity is not provided, we can supply our own code - the server will run it untrusted
         const { foreignModule: fm } = srScript;
+        const rsExtn = fm.foreignCodeResponseStrategy == "Deno.inspect" ? ".di" : ".json";
         return {
             // the server's POST looks at the request.url.pathname and if it ends with ".ts.json" it's treated as Typescript;
             // any other pathname is treated as Javascript
-            fetchURL: `${baseURL}/user-supplied.${fm.foreignCodeLanguage}.json${srScriptArgs ? `?${srScriptArgs.toString()}` : ''}`,
+            fetchURL: `${baseURL}/user-supplied.${fm.foreignCodeLanguage}${rsExtn}${srScriptArgs ? `?${srScriptArgs.toString()}` : ''}`,
             requestInit: (_fetchFxParams) => {
                 return {
                     method: "POST",
@@ -295,29 +301,25 @@ export function prepareServerRuntimeJsScript(foreignCode) {
 }
 
 // create an effect for a specific script with given arguments
-export function prepareFetchServerRuntimeScriptJsonEffect(srScript, srScriptArgs) {
+export function prepareFetchServerRuntimeScriptResultEffect(srScript, srScriptArgs) {
     const fetchFxArgs = {
         ...fetchFxInitServerRuntimeScript(`/unsafe-server-runtime-proxy/module`, srScript, srScriptArgs),
         srScript, srScriptArgs,
         cache: false,
-        fetchValue: srScript.retrocyleJsonOnUserAgent
-            ? sb.fetchRespRetrocycledJsonValue
-            : sb.fetchRespJsonValue,
+        fetchValue: sb.fetchRfSrcScriptRespHeadersValue,
     };
     return siteDomain.createEffect(async (params) => await sb.fetchFx({ ...fetchFxArgs, ...params }));
 }
 
 // create an effect for any script - where script is passed in when effect is launched
-export const pageFetchServerRuntimeScriptJsonFx = siteDomain.createEffect(async (params) => {
+export const pageFetchServerRuntimeScriptResultFx = siteDomain.createEffect(async (params) => {
     if (params.srScript) {
         // srScript must be provided in params
         const args = {
             ...fetchFxInitServerRuntimeScript(`/unsafe-server-runtime-proxy/module`, params.srScript, params.srScriptArgs),
             ...params,
             cache: false,
-            fetchValue: params.srScript.retrocyleJsonOnUserAgent
-                ? sb.fetchRespRetrocycledJsonValue
-                : sb.fetchRespJsonValue,
+            fetchValue: sb.fetchRfSrcScriptRespHeadersValue,
         };
         return await pageFetchJsonFx(args);
     } else {
@@ -326,8 +328,8 @@ export const pageFetchServerRuntimeScriptJsonFx = siteDomain.createEffect(async 
     }
 });
 
-pageFetchServerRuntimeScriptJsonFx.fail.watch((watchParams) => {
-    console.error('pageFetchServerRuntimeScriptJsonFx.fail', { watchParams });
+pageFetchServerRuntimeScriptResultFx.fail.watch((watchParams) => {
+    console.error('pageFetchServerRuntimeScriptResultFx.fail', { watchParams });
 })
 
 export function watchPageFetchServerRuntimeScriptJsonFxDone(watchSrScriptSupplier, watcher) {
@@ -353,14 +355,14 @@ export function watchPageFetchServerRuntimeScriptJsonFxDone(watchSrScriptSupplie
             console.warn('watchPageFetchServerRuntimeScriptJsonFxDone', "unknown watchSrScriptSupplier");
             return;
     }
-    pageFetchServerRuntimeScriptJsonFx.done.watch((watchParams) => {
+    pageFetchServerRuntimeScriptResultFx.done.watch((watchParams) => {
         if (isTargetScript(watchParams.params.srScript)) {
             watcher(watchParams);
         }
     });
     if (launchableFxParams && launchableFxParams.autoActivate) {
         activatePageFx.done.watch(() => {
-            pageFetchServerRuntimeScriptJsonFx(launchableFxParams);
+            pageFetchServerRuntimeScriptResultFx(launchableFxParams);
         });
     }
 }
@@ -716,8 +718,7 @@ export const prepareContextBar = () => {
             tippyPlacement = "bottom"
         } = args;
         const srScript = prepareServerRuntimeJsScript(foreignCode);
-        const statusFx = prepareFetchServerRuntimeScriptJsonEffect(srScript);
-        console.log({ args, srScript, gitWorkTreeLabel, statusFx });
+        const statusFx = prepareFetchServerRuntimeScriptResultEffect(srScript);
         statusFx.done.watch(({ result }) => {
             const statusElem = document.getElementById(statusElemID);
             if (result?.length > 0) {

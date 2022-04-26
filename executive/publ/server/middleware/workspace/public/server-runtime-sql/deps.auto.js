@@ -306,6 +306,30 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
             FROM system_info`),
                         presentation: tableObjectProps,
                         qualifiedName: qualifiedNamePlaceholder
+                    },
+                    {
+                        database: DB(osQueryDatabaseID),
+                        name: "config-files-info",
+                        label: "Show output of all configuration files available via Augeas",
+                        SQL: unindentWhitespace(`
+            USE DATABASE ${osQueryDatabaseID}; -- https://osquery.io/\n
+            SELECT *
+             FROM augeas
+            LIMIT 50`),
+                        presentation: tableObjectProps,
+                        qualifiedName: qualifiedNamePlaceholder
+                    },
+                    {
+                        database: DB(osQueryDatabaseID),
+                        name: "hosts-info",
+                        label: "Show output of /etc/hosts using Augeas wrapper",
+                        SQL: unindentWhitespace(`
+            USE DATABASE ${osQueryDatabaseID}; -- https://osquery.io/\n
+            SELECT *
+             FROM augeas
+            WHERE augeas.path = '/etc/hosts'`),
+                        presentation: tableObjectProps,
+                        qualifiedName: qualifiedNamePlaceholder
                     }, 
                 ],
                 qualifiedName: qualifiedNamePlaceholder
