@@ -4,13 +4,11 @@ import * as whs from "../../../../../../lib/text/whitespace.ts";
 import * as sqlShG from "../../../../../../lib/sql/shell/governance.ts";
 
 export const defaultDatabaseID = `prime` as const;
-export const configDatabaseID = `config` as const;
 export const observabilityDatabaseID = `observability` as const;
 export const pubctlDatabaseID = `pubctl` as const;
 
 export type TypicalSqlStmtDatabaseID =
   | typeof defaultDatabaseID
-  | typeof configDatabaseID
   | typeof observabilityDatabaseID
   | typeof pubctlDatabaseID
   | sqlShG.CommonDatabaseID;
@@ -104,48 +102,6 @@ export function typicalSqlStmtsInventory(
           SQL: whs.unindentWhitespace(`
             SELECT *
               FROM prime.dbms_reflection_inventory`),
-          qualifiedName: qualifiedNamePlaceholder,
-        },
-      ],
-      qualifiedName: qualifiedNamePlaceholder,
-    }, {
-      name: "config",
-      label: "Config",
-      sqlStmts: [
-        {
-          database: DB(configDatabaseID),
-          name: "server-runtime-environment",
-          label: "Show environment variables seen by the server runtime",
-          SQL: whs.unindentWhitespace(`
-            USE DATABASE ${configDatabaseID};\n
-              SELECT *
-                FROM environment env
-            ORDER BY env.var_name`),
-          qualifiedName: qualifiedNamePlaceholder,
-          help: whs.unindentWhitespace(
-            `These are all the environment variables known to the publication server (<code>pubctl.ts</code>) <mark>including sensitive values without masking</mark>.
-            <em>Be careful about copy/pasting this content</em>.
-            If you need a "sanitized" version of environment variables, there is a safer version in <code>health.json</code> as a health check.`,
-          ),
-        },
-        {
-          database: DB(configDatabaseID),
-          name: "content-database-connections",
-          label: "Show database connections used to generate content",
-          SQL: whs.unindentWhitespace(`
-            USE DATABASE ${configDatabaseID};\n
-            SELECT *
-            FROM globalSqlDbConns conns`),
-          qualifiedName: qualifiedNamePlaceholder,
-        },
-        {
-          database: DB(configDatabaseID),
-          name: "operationalCtx",
-          label: "Show pubctl.ts server operational context (live reload)",
-          SQL: whs.unindentWhitespace(`
-            USE DATABASE ${configDatabaseID};\n
-            SELECT operationalCtx
-            FROM prime;`),
           qualifiedName: qualifiedNamePlaceholder,
         },
       ],

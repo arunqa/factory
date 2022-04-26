@@ -17,7 +17,6 @@ const fileSysSqlDatabaseID = "fssql";
 const gitSqlDatabaseID = "gitsql";
 const osQueryDatabaseID = "osquery";
 const defaultDatabaseID = `prime`;
-const configDatabaseID = `config`;
 const observabilityDatabaseID = `observability`;
 const pubctlDatabaseID = `pubctl`;
 const defaultSqlStmtID = "health-check-failed";
@@ -81,47 +80,6 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
                         SQL: unindentWhitespace(`
             SELECT *
               FROM prime.dbms_reflection_inventory`),
-                        qualifiedName: qualifiedNamePlaceholder
-                    }, 
-                ],
-                qualifiedName: qualifiedNamePlaceholder
-            },
-            {
-                name: "config",
-                label: "Config",
-                sqlStmts: [
-                    {
-                        database: DB(configDatabaseID),
-                        name: "server-runtime-environment",
-                        label: "Show environment variables seen by the server runtime",
-                        SQL: unindentWhitespace(`
-            USE DATABASE ${configDatabaseID};\n
-              SELECT *
-                FROM environment env
-            ORDER BY env.var_name`),
-                        qualifiedName: qualifiedNamePlaceholder,
-                        help: unindentWhitespace(`These are all the environment variables known to the publication server (<code>pubctl.ts</code>) <mark>including sensitive values without masking</mark>.
-            <em>Be careful about copy/pasting this content</em>.
-            If you need a "sanitized" version of environment variables, there is a safer version in <code>health.json</code> as a health check.`)
-                    },
-                    {
-                        database: DB(configDatabaseID),
-                        name: "content-database-connections",
-                        label: "Show database connections used to generate content",
-                        SQL: unindentWhitespace(`
-            USE DATABASE ${configDatabaseID};\n
-            SELECT *
-            FROM globalSqlDbConns conns`),
-                        qualifiedName: qualifiedNamePlaceholder
-                    },
-                    {
-                        database: DB(configDatabaseID),
-                        name: "operationalCtx",
-                        label: "Show pubctl.ts server operational context (live reload)",
-                        SQL: unindentWhitespace(`
-            USE DATABASE ${configDatabaseID};\n
-            SELECT operationalCtx
-            FROM prime;`),
                         qualifiedName: qualifiedNamePlaceholder
                     }, 
                 ],
@@ -360,7 +318,6 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
     return result;
 }
 export { defaultDatabaseID as defaultDatabaseID };
-export { configDatabaseID as configDatabaseID };
 export { observabilityDatabaseID as observabilityDatabaseID };
 export { pubctlDatabaseID as pubctlDatabaseID };
 export { defaultSqlStmtID as defaultSqlStmtID };
