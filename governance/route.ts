@@ -1,6 +1,5 @@
 import * as r from "./resource.ts";
 import * as n from "./nature.ts";
-import * as m from "./module.ts";
 import * as e from "../lib/module/mod.ts";
 import * as render from "./render.ts";
 import * as fm from "./frontmatter.ts";
