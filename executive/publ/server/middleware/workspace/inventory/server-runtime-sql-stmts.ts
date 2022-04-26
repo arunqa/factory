@@ -81,24 +81,29 @@ export function typicalSqlStmtsInventory(
       sqlStmts: [
         {
           database: DB(defaultDatabaseID),
-          name: "alaSQL-DDL",
-          label: "Show all the server runtime proxy tables defined",
-          SQL: whs.unindentWhitespace(`
-            USE DATABASE ${defaultDatabaseID};\n
-            SELECT *
-              FROM dbms_reflection_prepare_db_tx_log txLog
-             WHERE txLog.error is NULL`),
+          name: "alaSQL-databases",
+          label: "Show all the server runtime proxy databases defined",
+          SQL: whs.unindentWhitespace(`SHOW DATABASES`),
           qualifiedName: qualifiedNamePlaceholder,
         },
         {
           database: DB(defaultDatabaseID),
-          name: "alaSQL-DDL-errors",
-          label: "Show all the server runtime proxy tables definition errors",
+          name: "alaSQL-tables",
+          label: "Show all tables in all proxyable databases",
           SQL: whs.unindentWhitespace(`
-            USE DATABASE ${defaultDatabaseID};\n
+            SELECT db_name, table_name
+              FROM prime.dbms_reflection_inventory
+            GROUP BY db_name, table_name`),
+          qualifiedName: qualifiedNamePlaceholder,
+        },
+        {
+          database: DB(defaultDatabaseID),
+          name: "alaSQL-columns",
+          label:
+            "Show all columns across all tables in all proxyable databases",
+          SQL: whs.unindentWhitespace(`
             SELECT *
-              FROM dbms_reflection_prepare_db_tx_log txLog
-             WHERE txLog.error is not NULL`),
+              FROM prime.dbms_reflection_inventory`),
           qualifiedName: qualifiedNamePlaceholder,
         },
       ],
