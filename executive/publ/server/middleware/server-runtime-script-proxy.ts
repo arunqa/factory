@@ -64,7 +64,16 @@ export class ServerRuntimeJsTsProxyMiddlewareSupplier<
       await this.executeForeignCode({
         foreignModule: {
           foreignCode: await body.value,
-          foreignCodeLanguage: pathInfo.endsWith(".ts.json") ? "ts" : "js",
+          foreignCodeLanguage:
+            (pathInfo.endsWith(".ts.json") || pathInfo.endsWith(".ts.di"))
+              ? "ts"
+              : "js",
+          foreignCodeResponseStrategy: pathInfo.endsWith(".di")
+            ? "Deno.inspect"
+            : "JSON",
+          foreignCodeResponseStrategyOptions: pathInfo.endsWith(".di")
+            ? { isDenoInspectResponseOptions: true, denoIO: {} }
+            : { isJsonResponseOptions: true, decycle: true },
         },
         foreignCodeExecArgs: ctx.request.url.searchParams,
       }, ctx);
@@ -104,17 +113,53 @@ export class ServerRuntimeJsTsProxyMiddlewareSupplier<
       } else {
         if (typeof efcResult.value === "string") {
           // the default function evaluated to a string so we'll just return it as the body;
-          // this is a special feature which allows modules to compute their own JSON;
+          // this is a special feature which allows modules to compute their own response strategy;
           oakCtx.response.body = efcResult.value;
         } else if (efcResult.value) {
-          // the default function evaluated to something else so let's serialize it
-          oakCtx.response.body = this.serializer.serializedJSON(
-            efcResult.value,
-            {
-              // TODO: only decycle if requested (read from Payload or inventory)
-              decycle: true,
-            },
+          oakCtx.response.headers.set(
+            "rf-srscript-resp-strategy",
+            efcResult.fcSupplier?.foreignCodeResponseStrategy ?? "JSON",
           );
+          if (
+            efcResult.fcSupplier?.foreignCodeResponseStrategy == "Deno.inspect"
+          ) {
+            const denoIO = rme.isForeignCodeDenoInspectResponseOptions(
+                efcResult.fcSupplier.foreignCodeResponseStrategyOptions,
+              )
+              ? efcResult.fcSupplier.foreignCodeResponseStrategyOptions.denoIO
+              : {};
+            if (denoIO) {
+              oakCtx.response.headers.set(
+                "rf-srscript-resp-strategy-options",
+                JSON.stringify(denoIO),
+              );
+            }
+            oakCtx.response.body = Deno.inspect(efcResult.value, denoIO);
+          } else {
+            const jsonRO = rme.isForeignCodeJsonResponseOptions(
+                efcResult.fcSupplier?.foreignCodeResponseStrategyOptions,
+              )
+              ? efcResult.fcSupplier?.foreignCodeResponseStrategyOptions
+              : undefined;
+            const decycle = jsonRO?.decycle ? true : false;
+            if (jsonRO) {
+              oakCtx.response.headers.set(
+                "rf-srscript-resp-strategy-options",
+                JSON.stringify(jsonRO),
+              );
+            }
+            // this is in rf-srscript-resp-strategy-options but separated for convenience
+            oakCtx.response.headers.set(
+              "rf-srscript-resp-json-decycled",
+              JSON.stringify(decycle),
+            );
+            oakCtx.response.body = this.serializer.serializedJSON(
+              efcResult.value,
+              {
+                decycle,
+              },
+            );
+          }
         }
       }
     } catch (error) {

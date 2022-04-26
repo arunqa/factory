@@ -13,14 +13,36 @@ function unindentWhitespace(text, removeInitialNewLine = true) {
     const result = text.replace(regex, "");
     return removeInitialNewLine ? result.replace(/^\n/, "") : result;
 }
-function jsModule(code, ...args1) {
+const jsonDecycleResponse = {
+    foreignCodeResponseStrategy: "JSON",
+    foreignCodeResponseStrategyOptions: {
+        isJsonResponseOptions: true,
+        decycle: true
+    }
+};
+function denoInspectResponse(denoIO = {
+    depth: 9,
+    showHidden: true,
+    sorted: true,
+    showProxy: true
+}) {
+    return {
+        foreignCodeResponseStrategy: "Deno.inspect",
+        foreignCodeResponseStrategyOptions: {
+            isDenoInspectResponseOptions: true,
+            denoIO
+        }
+    };
+}
+function jsModule(code, rs, ...args1) {
     return {
         foreignCodeLanguage: "js",
         foreignCode: unindentWhitespace(code),
         foreignCodeArgsExpected: args1.length > 0 ? args1.reduce((args, arg)=>{
             args[arg.identity] = arg;
             return args;
-        }, {}) : undefined
+        }, {}) : undefined,
+        ...rs
     };
 }
 function routeUnitModuleArgs() {
@@ -162,26 +184,24 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                         name: "rf-site-build.js.json",
                         label: "Show site's active build and server properties",
                         foreignModule: jsModule(`
-          export default ({ publicationDB }) => {
-            // always return objects, not strings
-            if(!publicationDB) return { warning: "no publicationDB available" };
-            const {
-              dbStoreFsPath: publicationDbFsPath,
-              activeHost: buildHost,
-              activeBuildEvent: buildEvent,
-              activeServerService: serverService
-            } = publicationDB;
-            return { publicationDbFsPath, buildHost, buildEvent, serverService };
-          }`),
-                        retrocyleJsonOnUserAgent: true,
-                        presentation: tableObjectProps,
-                        foreignCodeIdentity: qualifiedNamePlaceholder
+            export default ({ publicationDB }) => {
+              // always return objects, not strings
+              if(!publicationDB) return { warning: "no publicationDB available" };
+              const {
+                dbStoreFsPath: publicationDbFsPath,
+                activeHost: buildHost,
+                activeBuildEvent: buildEvent,
+                activeServerService: serverService
+              } = publicationDB;
+              return { publicationDbFsPath, buildHost, buildEvent, serverService };
+            }`, jsonDecycleResponse),
+                        foreignCodeIdentity: qualifiedNamePlaceholder,
+                        presentation: tableObjectProps
                     },
                     {
                         name: "navigation-tree-items.js.json",
                         label: "Show all navigation tree items",
-                        foreignModule: jsModule(`export default ({ publication }) => publication.routes.navigationTree.items`),
-                        retrocyleJsonOnUserAgent: true,
+                        foreignModule: jsModule(`export default ({ publication }) => publication.routes.navigationTree.items`, jsonDecycleResponse),
                         presentation: tableObjectProps,
                         foreignCodeIdentity: qualifiedNamePlaceholder
                     },
@@ -203,15 +223,34 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                 }
               }
               return { routeUnitFileSysPath, resource, resources };
-            }`, ...routeUnitModuleArgs()),
-                        retrocyleJsonOnUserAgent: true,
+            }`, jsonDecycleResponse, ...routeUnitModuleArgs()),
+                        foreignCodeIdentity: qualifiedNamePlaceholder
+                    },
+                    {
+                        name: "resource-by-route.js.di",
+                        label: "Get resource by args.fileSysPath or args.location in Deno.inspect format",
+                        foreignModule: jsModule(`
+            export default ({ publication, args }) => {
+              let resource = undefined;
+              let resources = undefined;
+              const routeUnitFileSysPath = args.get("routeUnitFileSysPath");
+              if(routeUnitFileSysPath) {
+                const filtered = Array.from(publication.state.resourcesIndex.filterSync((r) => r.route?.terminal?.fileSysPath == routeUnitFileSysPath ? true : false));
+                if(filtered && filtered.length > 0) {
+                  if(filtered.length == 1)
+                    resource = filtered[0];
+                  else
+                    resources = filtered;
+                }
+              }
+              return { routeUnitFileSysPath, resource, resources };
+            }`, denoInspectResponse(), ...routeUnitModuleArgs()),
                         foreignCodeIdentity: qualifiedNamePlaceholder
                     },
                     {
                         name: "resources-tree-items.js.json",
                         label: "Show all resources in a tree",
-                        foreignModule: jsModule(`export default ({ publication }) => publication.routes.resourcesTree.items`),
-                        retrocyleJsonOnUserAgent: true,
+                        foreignModule: jsModule(`export default ({ publication }) => publication.routes.resourcesTree.items`, jsonDecycleResponse),
                         foreignCodeIdentity: qualifiedNamePlaceholder
                     }, 
                 ],
@@ -224,19 +263,19 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
                     {
                         name: "git-log-active-route.js.json",
                         label: "Show revision history of the active route",
-                        foreignModule: jsModule(`export default async ({ publication, args }) => await publication.config.contentGit?.log({ file: args.get("routeUnitFileSysPath") })`, ...routeUnitModuleArgs()),
+                        foreignModule: jsModule(`export default async ({ publication, args }) => await publication.config.contentGit?.log({ file: args.get("routeUnitFileSysPath") })`, jsonDecycleResponse, ...routeUnitModuleArgs()),
                         foreignCodeIdentity: qualifiedNamePlaceholder
                     },
                     {
                         name: "git-log-site-updates.js.json",
                         label: "Show what's different between local and remote project (site)",
-                        foreignModule: jsModule(`export default async ({ publication, args }) => await publication.config.contentGit?.log({ branch: "HEAD..origin/master" })`, ...routeUnitModuleArgs()),
+                        foreignModule: jsModule(`export default async ({ publication, args }) => await publication.config.contentGit?.log({ branch: "HEAD..origin/master" })`),
                         foreignCodeIdentity: qualifiedNamePlaceholder
                     },
                     {
                         name: "git-log-rf-updates.js.json",
                         label: "Show what's different between local and remote Resource Factory",
-                        foreignModule: jsModule(`export default async ({ publication, args }) => await publication.config.resFactoryGit?.log({ branch: "HEAD..origin/main" })`, ...routeUnitModuleArgs()),
+                        foreignModule: jsModule(`export default async ({ publication, args }) => await publication.config.resFactoryGit?.log({ branch: "HEAD..origin/main" })`),
                         foreignCodeIdentity: qualifiedNamePlaceholder
                     }, 
                 ],
@@ -264,6 +303,8 @@ function typicalScriptsInventory(identity1 = "typicalScripts") {
     return result;
 }
 typicalScriptsInventory();
+export { jsonDecycleResponse as jsonDecycleResponse };
+export { denoInspectResponse as denoInspectResponse };
 export { jsModule as jsModule };
 export { routeUnitModuleArgs as routeUnitModuleArgs };
 export { typicalScriptsInventory as typicalScriptsInventory };

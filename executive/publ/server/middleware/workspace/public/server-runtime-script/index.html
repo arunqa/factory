@@ -65,13 +65,16 @@
         <button class="btn-success" href="#"
             onclick="execServerRuntimeScriptFx({ srScript: srScriptFromFromEditor()})">Execute</button>
         <input type="checkbox" id="diagnose" value="diagnose">
-        <label for="diagnose"> with Diagnostics</label>
+        <label for="diagnose"> with Diagnostics</label>&nbsp;&nbsp;&nbsp;
+        <input type="checkbox" id="deno-inspect" value="deno-inspect">
+        <label for="deno-inspect"> as <code>Deno.inspect(result)</code></label>
     </div>
 
     <div id="diagnostics"></div>
     <div id="reveal-effector-fx"></div>
     <div id="script-eval-results-json"></div>
     <div id="script-eval-results-grid" class="ag-theme-balham"></div>
+    <div id="script-eval-results-deno-inspect"></div>
 
     <script type="module">
         import * as path from "../path.actuate.mjs";
@@ -93,6 +96,7 @@
             editScriptsInventorySourceElem.title = `Open ${scriptSource} in IDE`;
 
             const diagnosticsCheckboxElem = document.getElementById("diagnose");
+            const denoInspectCheckboxElem = document.getElementById("deno-inspect");
             const diagnosticsElem = document.getElementById("diagnostics");
             const scriptsInventoryElem = document.getElementById("scriptsInventory");
             const autoExecSeverRuntimeScriptElem = document.getElementById("autoExecute");
@@ -140,7 +144,7 @@
                     &lt${tag} render-fx ${renderHookAttrAuto}>
                         &lt;script type="render-fx">({ target, result }) => target.innerHTML = 'something'&lt;/script>
                     &lt/${tag}>
-                    &lt;script>path.pageFetchServerRuntimeScriptJsonFx({ srScript: scriptsInventory.script('${srScript.foreignCodeIdentity}') });&lt;/script></code></pre>`);
+                    &lt;script>path.pageFetchServerRuntimeScriptResultFx({ srScript: scriptsInventory.script('${srScript.foreignCodeIdentity}') });&lt;/script></code></pre>`);
             }
 
             for (const library of scriptsInventory.libraries) {
@@ -186,12 +190,16 @@
             });
 
             window.srScriptFromFromEditor = () => ({
-                foreignModule: { foreignCodeLanguage: "js", foreignCode: scriptCodeEditorValue() },
+                foreignModule: {
+                    foreignCodeLanguage: "js",
+                    foreignCode: scriptCodeEditorValue(),
+                    foreignCodeResponseStrategy: denoInspectCheckboxElem.checked ? "Deno.inspect" : "JSON",
+                },
                 isUserSupplied: true,
             });
 
             // setup alias for easier access in this module
-            window.execServerRuntimeScriptFx = path.pageFetchServerRuntimeScriptJsonFx;
+            window.execServerRuntimeScriptFx = path.pageFetchServerRuntimeScriptResultFx;
 
             execServerRuntimeScriptFx.done.watch(({ params, result }) => {
                 const isErrorResult = typeof result === "object" && "error" in result ? true : false;
@@ -203,11 +211,18 @@
 
                 const destJSON = document.querySelector('#script-eval-results-json');
                 const destGrid = document.querySelector('#script-eval-results-grid');
+                const destDI = document.querySelector('#script-eval-results-deno-inspect');
                 destJSON.innerHTML = '';
                 destGrid.innerHTML = '';
+                destDI.innerHTML = '';
 
                 if (isErrorResult) {
                     path.populateObjectJSON(result, destJSON, 2);
+                }
+
+                if (denoInspectCheckboxElem.checked) {
+                    destDI.innerHTML = `<pre>${result}</pre>`;
+                    return;
                 }
 
                 const presentation = result?.presentation ?? params?.srScript?.presentation ?? {

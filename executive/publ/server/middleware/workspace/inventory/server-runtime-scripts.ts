@@ -2,8 +2,34 @@ import * as rm from "../../../../../../lib/module/remote/governance.ts";
 import * as govn from "./governance.ts";
 import * as whs from "../../../../../../lib/text/whitespace.ts";
 
+export const jsonDecycleResponse: rm.ForeignCodeResponseSupplier = {
+  foreignCodeResponseStrategy: "JSON",
+  foreignCodeResponseStrategyOptions: {
+    isJsonResponseOptions: true,
+    decycle: true,
+  },
+};
+
+export function denoInspectResponse(
+  denoIO: Deno.InspectOptions = {
+    depth: 9,
+    showHidden: true,
+    sorted: true,
+    showProxy: true,
+  },
+): rm.ForeignCodeResponseSupplier {
+  return {
+    foreignCodeResponseStrategy: "Deno.inspect",
+    foreignCodeResponseStrategyOptions: {
+      isDenoInspectResponseOptions: true,
+      denoIO,
+    },
+  };
+}
+
 export function jsModule(
   code: string,
+  rs?: rm.ForeignCodeResponseSupplier,
   ...args: rm.ForeignCodeExpectedArgument[]
 ): rm.ForeignCodeSupplier {
   return {
@@ -15,6 +41,7 @@ export function jsModule(
         return args;
       }, {} as Record<string, rm.ForeignCodeExpectedArgument>)
       : undefined,
+    ...rs,
   };
 }
 
@@ -164,37 +191,37 @@ export function typicalScriptsInventory(
         {
           name: "rf-site-build.js.json",
           label: "Show site's active build and server properties",
+          // deno-fmt-ignore
           foreignModule: jsModule(`
-          export default ({ publicationDB }) => {
-            // always return objects, not strings
-            if(!publicationDB) return { warning: "no publicationDB available" };
-            const {
-              dbStoreFsPath: publicationDbFsPath,
-              activeHost: buildHost,
-              activeBuildEvent: buildEvent,
-              activeServerService: serverService
-            } = publicationDB;
-            return { publicationDbFsPath, buildHost, buildEvent, serverService };
-          }`),
-          retrocyleJsonOnUserAgent: true,
-          presentation: tableObjectProps,
+            export default ({ publicationDB }) => {
+              // always return objects, not strings
+              if(!publicationDB) return { warning: "no publicationDB available" };
+              const {
+                dbStoreFsPath: publicationDbFsPath,
+                activeHost: buildHost,
+                activeBuildEvent: buildEvent,
+                activeServerService: serverService
+              } = publicationDB;
+              return { publicationDbFsPath, buildHost, buildEvent, serverService };
+            }`, jsonDecycleResponse),
           foreignCodeIdentity: qualifiedNamePlaceholder,
+          presentation: tableObjectProps,
         },
         {
           name: "navigation-tree-items.js.json",
           label: "Show all navigation tree items",
           foreignModule: jsModule(
             `export default ({ publication }) => publication.routes.navigationTree.items`,
+            jsonDecycleResponse,
           ),
-          retrocyleJsonOnUserAgent: true,
           presentation: tableObjectProps,
           foreignCodeIdentity: qualifiedNamePlaceholder,
         },
         {
           name: "resource-by-route.js.json",
           label: "Get resource by args.fileSysPath or args.location",
-          foreignModule: jsModule(
-            `
+          // deno-fmt-ignore
+          foreignModule: jsModule(`
             export default ({ publication, args }) => {
               let resource = undefined;
               let resources = undefined;
@@ -209,10 +236,34 @@ export function typicalScriptsInventory(
                 }
               }
               return { routeUnitFileSysPath, resource, resources };
-            }`,
+            }`,jsonDecycleResponse,
             ...routeUnitModuleArgs(),
           ),
-          retrocyleJsonOnUserAgent: true,
+          foreignCodeIdentity: qualifiedNamePlaceholder,
+        },
+        {
+          name: "resource-by-route.js.di",
+          label:
+            "Get resource by args.fileSysPath or args.location in Deno.inspect format",
+          // deno-fmt-ignore
+          foreignModule: jsModule(`
+            export default ({ publication, args }) => {
+              let resource = undefined;
+              let resources = undefined;
+              const routeUnitFileSysPath = args.get("routeUnitFileSysPath");
+              if(routeUnitFileSysPath) {
+                const filtered = Array.from(publication.state.resourcesIndex.filterSync((r) => r.route?.terminal?.fileSysPath == routeUnitFileSysPath ? true : false));
+                if(filtered && filtered.length > 0) {
+                  if(filtered.length == 1)
+                    resource = filtered[0];
+                  else
+                    resources = filtered;
+                }
+              }
+              return { routeUnitFileSysPath, resource, resources };
+            }`,denoInspectResponse(),
+            ...routeUnitModuleArgs(),
+          ),
           foreignCodeIdentity: qualifiedNamePlaceholder,
         },
         {
@@ -220,8 +271,8 @@ export function typicalScriptsInventory(
           label: "Show all resources in a tree",
           foreignModule: jsModule(
             `export default ({ publication }) => publication.routes.resourcesTree.items`,
+            jsonDecycleResponse,
           ),
-          retrocyleJsonOnUserAgent: true,
           foreignCodeIdentity: qualifiedNamePlaceholder,
         },
       ],
@@ -235,6 +286,7 @@ export function typicalScriptsInventory(
           label: "Show revision history of the active route",
           foreignModule: jsModule(
             `export default async ({ publication, args }) => await publication.config.contentGit?.log({ file: args.get("routeUnitFileSysPath") })`,
+            jsonDecycleResponse,
             ...routeUnitModuleArgs(),
           ),
           foreignCodeIdentity: qualifiedNamePlaceholder,
