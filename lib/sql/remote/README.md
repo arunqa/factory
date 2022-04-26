@@ -13,3 +13,4 @@ content.
 # TODO
 
 * Create cloudquery.io proxy to allow easy access to Cloud resources through SQL.
+* Use techniques like [this](https://www.techrepublic.com/article/run-a-single-command-on-multiple-linux-machines/amp/) to run SQL proxies like `osqueryi` across mutliple machines and collect results. We could treat any SQL proxy as multi-machine executable through SSH.
