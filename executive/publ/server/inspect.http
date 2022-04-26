@@ -393,6 +393,26 @@ export default ({ publication }) => {
 };
 
 ###
+## in /unsafe-server-runtime-proxy/module we need to pass in either a typescript or javascript module;
+## use *.js or *.ts as the extension (path or name can be anything), text/plain as content-type and POST the source
+## use *.js.di for output as Deno.inspect or *.js.json for JSON output; "RF_SRSCRIPT_RESP*" headers will have
+## formatting details.
+
+POST {{srJsTsModuleEndpoint}}/project.js.di
+Content-Type: text/plain
+
+// any Javascript you want can be passed in POST body; you can return a string
+// which will be passed as-is to the browser or an object/JSON which will be
+// intelligently serialized
+export default ({ publication }) => {
+    const projectRootPath = publication.config.operationalCtx.projectRootPath;
+    return {
+      projectHome: projectRootPath("/", true),
+      envrc: projectRootPath("/.envrc", true),
+    };
+};
+
+###
 
 POST {{srJsTsModuleEndpoint}}/design-system.js.json
 Content-Type: text/plain
