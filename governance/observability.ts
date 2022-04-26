@@ -20,7 +20,7 @@ export interface ObservabilityHealthComponentStatusSupplier {
 export interface ObservableTabularRecordsSupplier {
   readonly observableTabularRecords: () => AsyncGenerator<
     // deno-lint-ignore no-explicit-any
-    tab.DefinedTabularRecordsProxy<any>
+    tab.DefinedTabularRecords<any>
   >;
 }
 
