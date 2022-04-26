@@ -30,29 +30,43 @@ export interface ForeignCodeIdentitySupplier {
   readonly foreignCodeIdentity: string;
 }
 
-export interface ForeignCodeSupplier {
+export type ForeignCodeResponseStrategy = "JSON" | "Deno.inspect";
+export type ForeignCodeJsonResponseOptions = {
+  readonly isJsonResponseOptions: true;
+  readonly decycle: boolean; // "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js"
+  readonly indent?: string;
+};
+export type ForeignCodeDenoInspectResponseOptions = {
+  readonly isDenoInspectResponseOptions: true;
+  readonly denoIO: Deno.InspectOptions;
+};
+export type ForeignCodeResponseOptions =
+  | ForeignCodeJsonResponseOptions
+  | ForeignCodeDenoInspectResponseOptions;
+
+export interface ForeignCodeResponseSupplier {
+  readonly foreignCodeResponseStrategy?: ForeignCodeResponseStrategy;
+  readonly foreignCodeResponseStrategyOptions?: ForeignCodeResponseOptions;
+}
+
+export interface ForeignCodeSupplier extends ForeignCodeResponseSupplier {
   readonly foreignCodeLanguage: "js" | "ts";
   readonly foreignCode: string;
   readonly foreignCodeArgsExpected?: ForeignCodeExpectedArguments;
+  readonly foreignCodeResponseStrategy?: ForeignCodeResponseStrategy;
+  readonly foreignCodeResponseStrategyOptions?: ForeignCodeResponseOptions;
 }
 
 export interface ForeignCodeExecutArgsSupplier {
   readonly foreignCodeExecArgs: URLSearchParams;
 }
 
-export interface ForeignCodeResultRetrocyclable {
-  readonly retrocyleJsonOnUserAgent?: boolean; // "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js"
-}
-
 export interface ForeignJsTsModuleSupplier {
-  readonly foreignModule: ForeignCodeSupplier; // TODO: add tsModule for Typescript
+  readonly foreignModule: ForeignCodeSupplier;
 }
 
 export interface ServerRuntimeScript
-  extends
-    ForeignCodeIdentitySupplier,
-    ForeignJsTsModuleSupplier,
-    ForeignCodeResultRetrocyclable {
+  extends ForeignCodeIdentitySupplier, ForeignJsTsModuleSupplier {
   readonly name: string;
   readonly label: string;
   readonly transformResult?: ServerRuntimeScriptResultTransformer;
@@ -66,7 +80,7 @@ export interface ServerRuntimeScriptLibrary {
 }
 
 export interface ServerRuntimeScriptInventory<
-  Script extends ServerRuntimeScript = ServerRuntimeScript,
+  Script extends ServerRuntimeScript,
   Library extends ServerRuntimeScriptLibrary = ServerRuntimeScriptLibrary,
 > {
   readonly libraries: Iterable<Library>;

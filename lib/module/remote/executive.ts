@@ -1,6 +1,7 @@
 import * as mGovn from "../governance.ts";
 import * as rGovn from "./governance.ts";
 import * as guard from "./guard.ts";
+import * as safety from "../../safety/mod.ts";
 
 export type ForeignCodePayload =
   & (
@@ -16,6 +17,13 @@ export interface ForeignJavascriptSupplier extends rGovn.ForeignCodeSupplier {
 export interface ForeignTypescriptSupplier extends rGovn.ForeignCodeSupplier {
   readonly language: "ts";
 }
+
+export const isForeignCodeJsonResponseOptions = safety.typeGuard<
+  rGovn.ForeignCodeJsonResponseOptions
+>("isJsonResponseOptions");
+export const isForeignCodeDenoInspectResponseOptions = safety.typeGuard<
+  rGovn.ForeignCodeDenoInspectResponseOptions
+>("isDenoInspectResponseOptions", "denoIO");
 
 export function isPayloadForeignJsTsModuleSupplier(
   o: ForeignCodePayload,
@@ -37,13 +45,14 @@ export function isTypescriptForeignCodeSupplier(
 
 export interface ExecuteForeignCodeArgsSupplier<
   Payload extends ForeignCodePayload = ForeignCodePayload,
+  Script extends rGovn.ServerRuntimeScript = rGovn.ServerRuntimeScript,
 > {
   readonly payload: Payload;
   readonly extensions: mGovn.ExtensionsManager;
   readonly callModuleDefaultFn: (
     fn: (...args: unknown[]) => Promise<unknown>,
   ) => Promise<unknown>;
-  readonly inventory?: rGovn.ServerRuntimeScriptInventory;
+  readonly inventory?: rGovn.ServerRuntimeScriptInventory<Script>;
 }
 
 export interface ExecuteForeignCodeResult<

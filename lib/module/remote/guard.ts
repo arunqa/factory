@@ -17,7 +17,3 @@ export const isForeignCodeSupplier = safety.typeGuard<govn.ForeignCodeSupplier>(
 export const isForeignJsTsModuleSupplier = safety.typeGuard<
   govn.ForeignJsTsModuleSupplier
 >("foreignModule");
-
-export const isForeignCodeResultRetrocyclable = safety.typeGuard<
-  govn.ForeignCodeResultRetrocyclable
->("retrocyleJsonOnUserAgent");
