@@ -15,6 +15,23 @@ export const fetchRespTextValue = async (resp, _fetchFxCtx) => await resp.text()
  */
 export const fetchRespRetrocycledJsonValue = async (resp, _fetchFxCtx) => JSON.retrocycle(await resp.json());
 
+/**
+ * fetchRespAutoHeadersValue returns the content based on response headers;
+ * "RF_SRSCRIPT_RESP_STRATEGY" is created by executive/publ/server/middleware/server-runtime-script-proxy.ts
+ * @param {*} resp
+ * @param {*} fetchFxCtx
+ * @returns
+ */
+export const fetchRfSrcScriptRespHeadersValue = async (resp, fetchFxCtx) => {
+    const strategy = resp.headers.get("rf-srscript-resp-strategy");
+    const optionsJSON = resp.headers.get("rf-srscript-resp-strategy-options");
+    const options = optionsJSON ? JSON.parse(optionsJSON) : undefined;
+    if (strategy && strategy === "Deno.inspect") return await fetchRespTextValue(resp, fetchFxCtx);
+    // if we get to here the strategy is "JSON"
+    if (options?.decycle) return await fetchRespRetrocycledJsonValue(resp, fetchFxCtx);
+    return await fetchRespJsonValue(resp, fetchFxCtx);
+};
+
 let fetchFxIdentity = 0;
 
 /**
