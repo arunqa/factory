@@ -12,8 +12,6 @@ export interface TabularFsPathRecord
   extends Pick<path.ParsedPath, "root" | "dir"> {
   readonly walkerId: tab.TabularRecordIdRef;
   readonly isSymlink: boolean;
-
-  // this should be optional, but if it's marked optional and the value is undefined in the first row then the sqlDefn generator will not pick it up
   readonly outsideRoot: false | string;
 }
 
@@ -36,33 +34,23 @@ export function tabularFsBuilders() {
     walker: tab.tabularRecordsAutoRowIdBuilder<TabularFsWalkerRecord, "walker">(
       {
         upsertStrategy: {
-          exists: (w, _rowID, index) => {
-            return index("walker")?.get(`${w.namespace}->${w.root}`);
-          },
-          index: (w, index) => {
-            index("walker").set(`${w.namespace}->${w.root}`, w);
-          },
+          exists: (w, _rowID, index) =>
+            index("walker")?.get(`${w.namespace}->${w.root}`),
+          index: (w, index) =>
+            index("walker").set(`${w.namespace}->${w.root}`, w),
         },
       },
     ),
     path: tab.tabularRecordsAutoRowIdBuilder<TabularFsPathRecord, "path">({
       upsertStrategy: {
-        exists: (p, _rowID, index) => {
-          return index("path")?.get(`${p.root}->${p.dir}`);
-        },
-        index: (p, index) => {
-          index("path").set(`${p.root}->${p.dir}`, p);
-        },
+        exists: (p, _rowID, index) => index("path")?.get(`${p.root}->${p.dir}`),
+        index: (p, index) => index("path").set(`${p.root}->${p.dir}`, p),
       },
     }),
     file: tab.tabularRecordsAutoRowIdBuilder<TabularFsFileRecord, "file">({
       upsertStrategy: {
-        exists: (f, _rowID, index) => {
-          return index("file")?.get(`${f.root}->${f.dir}`);
-        },
-        index: (f, index) => {
-          index("file").set(`${f.root}->${f.dir}`, f);
-        },
+        exists: (f, _rowID, index) => index("file")?.get(`${f.root}->${f.dir}`),
+        index: (f, index) => index("file").set(`${f.root}->${f.dir}`, f),
       },
     }),
     fileAncestor: tab.tabularRecordsAutoRowIdBuilder<
