@@ -51,8 +51,7 @@ export interface PublicationMeasures {
 }
 
 export class PublicationResourcesIndex<Resource>
-  extends gi.UniversalIndex<Resource>
-  implements rfGovn.ObservableTabularRecordsSupplier {
+  extends gi.UniversalIndex<Resource> {
   readonly memoizedProducers = new Map<
     rfGovn.RouteLocation,
     {
@@ -65,122 +64,6 @@ export class PublicationResourcesIndex<Resource>
   readonly constructionDurationStats = new st.RankedStatistics<
     { resource: unknown; statistic: number; provenance: string }
   >();
-
-  constructor(observability?: rfStd.Observability) {
-    super();
-    observability?.events.emitSync("sqlViewsSupplier", this);
-  }
-
-  async *observableTabularRecords() {
-    const builders = tab.definedTabularRecordsBuilders<
-      | "resource_nature"
-      | "resource"
-      | "resource_route_terminal"
-      | "resource_frontmatter"
-      | "resource_model"
-    >();
-    const resNatureRB = builders.autoRowIdProxyBuilder<{
-      mediaType: rfGovn.MediaTypeIdentity;
-    }, "mime">({
-      identity: "resource_nature",
-      namespace: defaultSqlViewsNamespace,
-    }, {
-      upsertStrategy: {
-        exists: (r, _rowID, index) => index("mime")?.get(r.mediaType),
-        index: (r, index) => index("mime").set(r.mediaType, r),
-      },
-    });
-    const resourceRB = builders.autoRowIdProxyBuilder<{
-      mediaType: rfGovn.MediaTypeIdentity;
-      isTextAsync: boolean;
-      isTextSync: boolean;
-      isHtml: boolean;
-      isStructured: boolean;
-      isContentModel: boolean;
-      hasFrontmatter: boolean;
-    }>({
-      identity: "resource",
-      namespace: defaultSqlViewsNamespace,
-    });
-    const resTerminalRouteRB = builders.autoRowIdProxyBuilder<
-      {
-        resourceId: tab.TabularRecordIdRef;
-      } & rfGovn.RouteNode
-    >({
-      identity: "resource_route_terminal",
-      namespace: defaultSqlViewsNamespace,
-    });
-    const resFrontmatterRB = builders.autoRowIdProxyBuilder<{
-      resourceId: tab.TabularRecordIdRef;
-      key: string;
-      value: unknown;
-    }>({
-      identity: "resource_frontmatter",
-      namespace: defaultSqlViewsNamespace,
-    });
-    const resModelRB = builders.autoRowIdProxyBuilder<{
-      resourceId: tab.TabularRecordIdRef;
-      key: string;
-      value: unknown;
-    }>({
-      identity: "resource_model",
-      namespace: defaultSqlViewsNamespace,
-    });
-
-    for (const resource of this.resourcesIndex) {
-      // deno-lint-ignore no-explicit-any
-      let nature: rfGovn.MediaTypeNature<any> | undefined = undefined;
-      if (rfStd.isNatureSupplier(resource)) {
-        if (rfStd.isMediaTypeNature(resource.nature)) {
-          nature = resource.nature;
-          resNatureRB.upsert({ mediaType: nature.mediaType });
-        }
-      }
-
-      const resourceRecord = resourceRB.upsert({
-        mediaType: nature?.mediaType ?? "RF/uknown",
-        isTextAsync: rfStd.isTextSupplier(resource),
-        isTextSync: rfStd.isTextSyncSupplier(resource),
-        isHtml: rfStd.isHtmlSupplier(resource),
-        isStructured: rfStd.isStructuredDataInstanceSupplier(resource),
-        isContentModel: rfStd.isContentModelSupplier(resource),
-        hasFrontmatter: rfStd.isFrontmatterSupplier(resource),
-      });
-      const resourceId = resourceRecord.id;
-
-      if (rfStd.isRouteSupplier(resource)) {
-        if (resource.route.terminal) {
-          // this will add all terminal unit properties
-          resTerminalRouteRB.upsert({
-            resourceId,
-            ...resource.route.terminal,
-          });
-        }
-      }
-
-      if (rfStd.isFrontmatterSupplier(resource) && resource.frontmatter) {
-        const flattened = tab.flattenObject(resource.frontmatter);
-        Object.entries(flattened).forEach((kv) =>
-          resFrontmatterRB.upsert({ resourceId, key: kv[0], value: kv[1] })
-        );
-      }
-
-      if (rfStd.isModelSupplier(resource) && resource.model) {
-        const flattened = tab.flattenObject(resource.model);
-        Object.entries(flattened).filter((kv) => {
-          const [key] = kv;
-          return ["isContentModel", "isContentAvailable", "isMarkdownModel"]
-              .find((f) => key === f)
-            ? false
-            : true;
-        }).forEach((kv) =>
-          resModelRB.upsert({ resourceId, key: kv[0], value: kv[1] })
-        );
-      }
-    }
-
-    yield* builders.definedTabularRecords();
-  }
 
   onConstructResource<Resource>(
     resource: Resource,
@@ -627,50 +510,6 @@ export class Configuration<
   }
 }
 
-// // deno-lint-ignore require-await
-// async prepareResourcesDB() {
-//   const pomDB = new this.alaSqlEngine.Database("resource");
-//   this.createJsObjectSingleRowTable(
-//     "prime",
-//     this.publication,
-//     pomDB,
-//   );
-//   this.createJsFlexibleTableFromUntypedObjectArray(
-//     "resource",
-//     // deno-lint-ignore ban-types
-//     this.publication.state.resourcesIndex.resourcesIndex as object[],
-//     pomDB,
-//   );
-//   const resourceIndexes: { namespace: string; index: string }[] = [];
-//   for (
-//     const kr of this.publication.state.resourcesIndex.keyedResources.entries()
-//   ) {
-//     const [namespace, nsKeysIndex] = kr;
-//     for (const nsk of nsKeysIndex.entries()) {
-//       const [index, resources] = nsk;
-//       resourceIndexes.push({ namespace, index });
-//       this.createJsFlexibleTableFromUntypedObjectArray(
-//         `resource_${this.sqlToken(namespace)}_${this.sqlToken(index)}`,
-//         // deno-lint-ignore ban-types
-//         resources as object[],
-//         pomDB,
-//       );
-//     }
-//   }
-//   this.createJsFlexibleTableFromUntypedObjectArray(
-//     "resource_index",
-//     resourceIndexes,
-//     pomDB,
-//   );
-//   this.createJsObjectsTable(
-//     "resource_persisted",
-//     Array.from(this.publication.state.persistedIndex.persistedDestFiles).map(
-//       (entry) => ({ destFileName: entry[0], ...entry[1] }),
-//     ),
-//     pomDB,
-//   );
-// }
-
 /**
  * Implement this interface in RouteUnit terminals when you want to do special
  * handling of routes when they are consumed and inserted into resourcesTree.
@@ -958,7 +797,7 @@ export abstract class TypicalPublication<
     this.config.mGitResolvers?.registerResolver(routes.gitAssetPublUrlResolver);
     this.diagsOptions = diagsConfig.configureSync();
     const persistedIndex = new PublicationPersistedIndex();
-    const resourcesIndex = new PublicationResourcesIndex(config.observability);
+    const resourcesIndex = new PublicationResourcesIndex();
     this.state = {
       observability: config.observability,
       routes,
@@ -986,12 +825,175 @@ export abstract class TypicalPublication<
     this.config.observability?.events.emitSync("sqlViewsSupplier", this);
   }
 
+  async *observableResourcesTabularRecords() {
+    const builders = tab.definedTabularRecordsBuilders<
+      | "resource_nature"
+      | "resource"
+      | "resource_route_terminal"
+      | "resource_frontmatter"
+      | "resource_model"
+      | "resource_persisted"
+      | "resource_index"
+    >();
+    const resNatureRB = builders.autoRowIdProxyBuilder<{
+      mediaType: rfGovn.MediaTypeIdentity;
+    }, "mime">({
+      identity: "resource_nature",
+      namespace: defaultSqlViewsNamespace,
+    }, {
+      upsertStrategy: {
+        exists: (r, _rowID, index) => index("mime")?.get(r.mediaType),
+        index: (r, index) => index("mime").set(r.mediaType, r),
+      },
+    });
+    const resourceRB = builders.autoRowIdProxyBuilder<{
+      mediaType: rfGovn.MediaTypeIdentity;
+      isMemoized: boolean;
+      isTextAsync: boolean;
+      isTextSync: boolean;
+      isHtml: boolean;
+      isStructured: boolean;
+      isContentModel: boolean;
+      hasFrontmatter: boolean;
+    }>({
+      identity: "resource",
+      namespace: defaultSqlViewsNamespace,
+    });
+    const resTerminalRouteRB = builders.autoRowIdProxyBuilder<
+      {
+        resourceId: tab.TabularRecordIdRef;
+      } & rfGovn.RouteNode
+    >({
+      identity: "resource_route_terminal",
+      namespace: defaultSqlViewsNamespace,
+    });
+    const resFrontmatterRB = builders.autoRowIdProxyBuilder<{
+      resourceId: tab.TabularRecordIdRef;
+      key: string;
+      value: unknown;
+    }>({
+      identity: "resource_frontmatter",
+      namespace: defaultSqlViewsNamespace,
+    });
+    const resModelRB = builders.autoRowIdProxyBuilder<{
+      resourceId: tab.TabularRecordIdRef;
+      key: string;
+      value: unknown;
+    }>({
+      identity: "resource_model",
+      namespace: defaultSqlViewsNamespace,
+    });
+
+    for (const resource of this.state.resourcesIndex.resourcesIndex) {
+      // deno-lint-ignore no-explicit-any
+      let nature: rfGovn.MediaTypeNature<any> | undefined = undefined;
+      if (rfStd.isNatureSupplier(resource)) {
+        if (rfStd.isMediaTypeNature(resource.nature)) {
+          nature = resource.nature;
+          resNatureRB.upsert({ mediaType: nature.mediaType });
+        }
+      }
+
+      let resTerminalRouteNode: rfGovn.RouteNode | undefined = undefined;
+      if (rfStd.isRouteSupplier(resource)) {
+        if (resource.route.terminal) {
+          resTerminalRouteNode = resource.route.terminal;
+        }
+      }
+
+      const resourceRecord = resourceRB.upsert({
+        mediaType: nature?.mediaType ?? "RF/uknown",
+        isMemoized: resTerminalRouteNode
+          ? (this.state.resourcesIndex.memoizedProducers.get(
+              this.ds.contentStrategy.navigation.location(resTerminalRouteNode),
+            )
+            ? true
+            : false)
+          : false,
+        isTextAsync: rfStd.isTextSupplier(resource),
+        isTextSync: rfStd.isTextSyncSupplier(resource),
+        isHtml: rfStd.isHtmlSupplier(resource),
+        isStructured: rfStd.isStructuredDataInstanceSupplier(resource),
+        isContentModel: rfStd.isContentModelSupplier(resource),
+        hasFrontmatter: rfStd.isFrontmatterSupplier(resource),
+      });
+      const resourceId = resourceRecord.id;
+
+      if (resTerminalRouteNode) {
+        // this will add all terminal unit properties
+        resTerminalRouteRB.upsert({ resourceId, ...resTerminalRouteNode });
+      }
+
+      if (rfStd.isFrontmatterSupplier(resource) && resource.frontmatter) {
+        const flattened = tab.flattenObject(resource.frontmatter);
+        Object.entries(flattened).forEach((kv) =>
+          resFrontmatterRB.upsert({ resourceId, key: kv[0], value: kv[1] })
+        );
+      }
+
+      if (rfStd.isModelSupplier(resource) && resource.model) {
+        const flattened = tab.flattenObject(resource.model);
+        Object.entries(flattened).filter((kv) => {
+          const [key] = kv;
+          return ["isContentModel", "isContentAvailable", "isMarkdownModel"]
+              .find((f) => key === f)
+            ? false
+            : true;
+        }).forEach((kv) =>
+          resModelRB.upsert({ resourceId, key: kv[0], value: kv[1] })
+        );
+      }
+    }
+
+    const resPersistedRB = builders.autoRowIdProxyBuilder<{
+      destFileName: string;
+      persistDurationMS: number;
+    }>({
+      identity: "resource_persisted",
+      namespace: defaultSqlViewsNamespace,
+    });
+
+    for (const pf of this.state.persistedIndex.persistedDestFiles.entries()) {
+      const destFileName = pf[0];
+      // deno-lint-ignore no-explicit-any
+      const props = pf[1] as any;
+      resPersistedRB.upsert({
+        destFileName,
+        persistDurationMS: props.persistDurationMS,
+        // TODO: add props.resource location, etc.
+        // TODO: add foreign key to upserted resources above
+      });
+    }
+
+    const resIndexesRB = builders.autoRowIdProxyBuilder<
+      { namespace: string; index: string }
+    >({
+      identity: "resource_index",
+      namespace: defaultSqlViewsNamespace,
+    });
+
+    for (
+      const kr of this.state.resourcesIndex.keyedResources.entries()
+    ) {
+      const [namespace, nsKeysIndex] = kr;
+      for (const nsk of nsKeysIndex.entries()) {
+        const [index, resources] = nsk;
+        resIndexesRB.upsert({ namespace, index });
+        // TODO: add list of resources location, etc.
+        // TODO: add foreign key to upserted resources above
+      }
+    }
+
+    yield* builders.definedTabularRecords();
+  }
+
   async *observableTabularRecords(): AsyncGenerator<
     // deno-lint-ignore no-explicit-any
     tab.DefinedTabularRecords<any>
   > {
     yield* m.tabularMetrics(this.config.metrics.instances);
     yield* fsT.fileSystemTabularRecords(this.config.fsAssetsWalkers);
+    yield* this.observableResourcesTabularRecords();
   }
 
   abstract constructDesignSystem(
