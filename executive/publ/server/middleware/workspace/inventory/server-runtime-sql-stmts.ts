@@ -326,6 +326,30 @@ export function typicalSqlStmtsInventory(
           presentation: tableObjectProps,
           qualifiedName: qualifiedNamePlaceholder,
         },
+        {
+          database: DB(sqlShG.osQueryDatabaseID),
+          name: "config-files-info",
+          label: "Show output of all configuration files available via Augeas",
+          SQL: whs.unindentWhitespace(`
+            USE DATABASE ${sqlShG.osQueryDatabaseID}; -- https://osquery.io/\n
+            SELECT *
+             FROM augeas
+            LIMIT 50`),
+          presentation: tableObjectProps,
+          qualifiedName: qualifiedNamePlaceholder,
+        },
+        {
+          database: DB(sqlShG.osQueryDatabaseID),
+          name: "hosts-info",
+          label: "Show output of /etc/hosts using Augeas wrapper",
+          SQL: whs.unindentWhitespace(`
+            USE DATABASE ${sqlShG.osQueryDatabaseID}; -- https://osquery.io/\n
+            SELECT *
+             FROM augeas
+            WHERE augeas.path = '/etc/hosts'`),
+          presentation: tableObjectProps,
+          qualifiedName: qualifiedNamePlaceholder,
+        },
       ],
       qualifiedName: qualifiedNamePlaceholder,
     }],
