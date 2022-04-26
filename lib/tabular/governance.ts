@@ -91,8 +91,9 @@ export interface TabularProxyColumnsSupplier<
 
 export interface TabularRecordDefn<
   TabularRecord extends UntypedTabularRecordObject,
+  Identity extends TabularRecordsIdentity = TabularRecordsIdentity,
 > extends TabularProxyColumnsSupplier<TabularRecord> {
-  readonly identity: TabularRecordsIdentity;
+  readonly identity: Identity;
   readonly namespace?: string;
   readonly help?: string;
 }
@@ -103,7 +104,7 @@ export interface TabularRecordsDefnSupplier<
   readonly tabularRecordDefn: TabularRecordDefn<TableRecord>;
 }
 
-export interface DefinedTabularRecordsProxy<
+export interface DefinedTabularRecords<
   TableRecord extends UntypedTabularRecordObject,
 > extends TabularRecordsDefnSupplier<TableRecord> {
   readonly dataRows: () => Promise<TableRecord[]>;
@@ -113,18 +114,8 @@ export interface MutatableTabularRecordIdSupplier {
   id: TabularRecordID;
 }
 
-// deno-lint-ignore no-empty-interface
-export interface DefinedTabularAutoRowIdRecordsProxy<
-  TableRecord extends
-    & UntypedTabularRecordObject
-    & MutatableTabularRecordIdSupplier,
-> extends DefinedTabularRecordsProxy<TableRecord> {
-}
-
-export interface DefinedTabularRecordsProxiesSupplier {
+export interface DefinedTabularRecordsSupplier {
   readonly definedTabularRecords: <
     TableRecord extends UntypedTabularRecordObject = UntypedTabularRecordObject,
-  >() => AsyncGenerator<
-    DefinedTabularRecordsProxy<TableRecord>
-  >;
+  >() => AsyncGenerator<DefinedTabularRecords<TableRecord>>;
 }

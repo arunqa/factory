@@ -165,7 +165,7 @@ export function definedTabularRecords<
   ...columns:
     // supply the list of columns either as name or name+value transformation pair
     (ColumnName | [name: ColumnName, value: (v: unknown) => unknown])[]
-): govn.DefinedTabularRecordsProxy<TableRecord> {
+): govn.DefinedTabularRecords<TableRecord> {
   return {
     tabularRecordDefn: {
       ...defn,

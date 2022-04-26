@@ -1,4 +1,5 @@
 import * as govn from "./governance.ts";
+import * as p from "./proxy.ts";
 
 export type TabularRecordsBuilderIndexName = string;
 
@@ -115,3 +116,119 @@ export function tabularRecordsAutoRowIdBuilder<
   };
   return result;
 }
+
+export interface TabularRecordsBuilders<
+  Identity extends govn.TabularRecordsIdentity,
+> {
+  readonly autoRowIdProxyBuilder: <
+    TableObject extends govn.UntypedObject,
+    IndexName = unknown,
+    InsertableTableObject extends
+      & govn.UntypedObject
+      & Partial<govn.MutatableTabularRecordIdSupplier> =
+        & TableObject
+        & Partial<govn.MutatableTabularRecordIdSupplier>,
+    InsertedTableObject extends
+      & govn.UntypedObject
+      & Readonly<govn.MutatableTabularRecordIdSupplier> =
+        & TableObject
+        & Readonly<govn.MutatableTabularRecordIdSupplier>,
+  >(
+    defn:
+      & Omit<govn.TabularRecordDefn<TableObject, Identity>, "columns">
+      & Partial<Pick<govn.TabularRecordDefn<TableObject, Identity>, "columns">>,
+    options?: {
+      upsertStrategy?: {
+        readonly exists: (
+          record: InsertableTableObject,
+          rowID: govn.TabularRecordID,
+          index: (name: IndexName) => Map<unknown, InsertedTableObject>,
+        ) => InsertedTableObject | undefined;
+        readonly index?: (
+          record: InsertedTableObject,
+          index: (name: IndexName) => Map<unknown, InsertedTableObject>,
+        ) => void;
+      };
+    },
+  ) => TabularRecordsBuilder<
+    InsertableTableObject,
+    InsertedTableObject,
+    IndexName
+  >;
+
+  readonly builder: <
+    InsertableTableObject extends
+      & govn.UntypedObject
+      & Partial<govn.MutatableTabularRecordIdSupplier>,
+    InsertedTableObject extends
+      & govn.UntypedObject
+      & Readonly<govn.MutatableTabularRecordIdSupplier>,
+  >(identity: Identity) =>
+    | TabularRecordsBuilder<
+      InsertableTableObject,
+      InsertedTableObject,
+      // deno-lint-ignore no-explicit-any
+      any
+    >
+    | undefined;
+
+  readonly definedTabularRecords: () => AsyncGenerator<
+    // deno-lint-ignore no-explicit-any
+    govn.DefinedTabularRecords<any>
+  >;
+}
+
+export function definedTabularRecordsBuilders<
+  Identity extends govn.TabularRecordsIdentity,
+>(): TabularRecordsBuilders<Identity> {
+  const proxied = new Map<string, {
+    defn:
+      // deno-lint-ignore no-explicit-any
+      & Omit<govn.TabularRecordDefn<any, Identity>, "columns">
+      // deno-lint-ignore no-explicit-any
+      & Partial<Pick<govn.TabularRecordDefn<any, Identity>, "columns">>;
+    // deno-lint-ignore no-explicit-any
+    builder: TabularRecordsBuilder<any, any, any>;
+  }>();
+  return {
+    autoRowIdProxyBuilder: (defn, options) => {
+      const builder = tabularRecordsAutoRowIdBuilder(options);
+      if (proxied.get(defn.identity)) {
+        throw new Error(
+          `Duplicate builder defined: ${defn.identity} in typicalTabularRecordsBuilders()`,
+        );
+      }
+      proxied.set(defn.identity, { defn, builder });
+      return builder;
+    },
+
+    builder: (identity: Identity) => {
+      return proxied.get(identity)?.builder;
+    },
+
+    definedTabularRecords: async function* () {
+      for (const proxy of proxied) {
+        const [_identity, builderDefn] = proxy;
+        yield p.definedTabularRecordsProxy(
+          builderDefn.defn,
+          builderDefn.builder.records,
+        );
+      }
+    },
+  };
+}
+
+// deno-lint-ignore no-explicit-any
+export const flattenObject = (obj: any, parent?: any, res: any = {}) => {
+  if (obj == undefined || obj == null) return undefined;
+
+  for (const key of Object.keys(obj)) {
+    const propName = parent ? parent + "." + key : key;
+    if (typeof obj[key] === "object") {
+      flattenObject(obj[key], propName, res);
+    } else {
+      res[propName] = obj[key];
+    }
+  }
+  return res;
+};

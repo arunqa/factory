@@ -191,13 +191,25 @@ export function definedTabularRecordsProxy<
     >,
   ColumnName extends keyof TableRecord = keyof TableRecord,
 >(
-  defn: Omit<govn.TabularRecordDefn<TableRecord>, "columns">,
+  defn:
+    & Omit<govn.TabularRecordDefn<TableRecord>, "columns">
+    & Partial<Pick<govn.TabularRecordDefn<TableRecord>, "columns">>,
   records: TableObject[],
   ...columns:
     // supply the list of columns either as name or name+value transformation pair
     (ColumnName | [name: ColumnName, value: (v: unknown) => unknown])[]
-): govn.DefinedTabularRecordsProxy<TableRecord> {
+): govn.DefinedTabularRecords<TableRecord> {
+  if (defn.columns) {
+    // we don't want to "detect" the columns, they're provided
+    return {
+      tabularRecordDefn: defn as govn.TabularRecordDefn<TableRecord>,
+      // deno-lint-ignore require-await
+      dataRows: async () => tabularRecordsProxy(records),
+    };
+  }
+
   return {
+    // we want to inspect and "detect" the columns defn.columns is not provided
     tabularRecordDefn: columns && columns.length > 0
       ? ({
         ...defn,
@@ -226,13 +238,25 @@ export function definedTabularAutoRowIdRecordsProxy<
     >,
   ColumnName extends keyof TableRecord = keyof TableRecord,
 >(
-  defn: Omit<govn.TabularRecordDefn<TableRecord>, "columns">,
+  defn:
+    & Omit<govn.TabularRecordDefn<TableRecord>, "columns">
+    & Partial<Pick<govn.TabularRecordDefn<TableRecord>, "columns">>,
   records: TableObject[],
   ...columns:
     // supply the list of columns either as name or name+value transformation pair
     (ColumnName | [name: ColumnName, value: (v: unknown) => unknown])[]
-): govn.DefinedTabularRecordsProxy<TableRecord> {
+): govn.DefinedTabularRecords<TableRecord> {
+  if (defn.columns) {
+    // we don't want to "detect" the columns, they're provided
+    return {
+      tabularRecordDefn: defn as govn.TabularRecordDefn<TableRecord>,
+      // deno-lint-ignore require-await
+      dataRows: async () => tabularRecordsProxy(records),
+    };
+  }
+
   return {
+    // we want to inspect and "detect" the columns defn.columns is not provided
     tabularRecordDefn: columns && columns.length > 0
       ? ({
         ...defn,
