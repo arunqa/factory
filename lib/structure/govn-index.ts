@@ -125,13 +125,16 @@ export class UniversalIndex<Resource>
   // deno-lint-ignore require-await
   async reindex(
     original: Resource,
-    entry: number,
+    entryIdx: number,
     enriched: Resource,
   ): Promise<void> {
     if (this.isIndexable(original)) {
-      this.resourcesIndex[entry] = enriched;
+      this.resourcesIndex[entryIdx] = enriched;
       if (isGovnIndexKeysSupplier(original)) {
         this.unregisterKeys(original);
+      }
+      if (isGovnIndexKeysSupplier(enriched)) {
+        this.registerKeys(enriched);
       }
     }
   }
