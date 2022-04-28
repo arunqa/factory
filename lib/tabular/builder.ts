@@ -217,18 +217,3 @@ export function definedTabularRecordsBuilders<
     },
   };
 }
-
-// deno-lint-ignore no-explicit-any
-export const flattenObject = (obj: any, parent?: any, res: any = {}) => {
-  if (obj == undefined || obj == null) return undefined;
-
-  for (const key of Object.keys(obj)) {
-    const propName = parent ? parent + "." + key : key;
-    if (typeof obj[key] === "object") {
-      flattenObject(obj[key], propName, res);
-    } else {
-      res[propName] = obj[key];
-    }
-  }
-  return res;
-};
