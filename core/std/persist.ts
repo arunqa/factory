@@ -3,19 +3,21 @@ import * as safety from "../../lib/safety/mod.ts";
 import * as govn from "../../governance/mod.ts";
 import * as c from "../../core/std/content.ts";
 
-export type LocalFileSystemDestinationRootPath = string;
-export type LocalFileSystemDestination = string;
+export const isLocalFileSystemDestsListener = safety.typeGuard<
+  govn.LocalFileSystemDestsListener<unknown>
+>("persistedLocalFileSysDest");
 
-export interface PersistOptions {
+export interface PersistOptions<Context> {
   readonly ensureDirSync?: (destFileName: string) => void;
   readonly unhandledSync?: govn.FlexibleContentSync;
   readonly unhandled?: govn.FlexibleContent;
   readonly functionArgs?: unknown[];
-  readonly eventsEmitter?: govn.FileSysPersistEventsEmitterSupplier;
+  readonly eventsEmitter?: govn.FileSysPersistenceEventsEmitter;
+  readonly context?: Context;
 }
 
 export interface LocalFileSystemNamingStrategy<Resource> {
-  (product: Resource, destPath: string): LocalFileSystemDestination;
+  (product: Resource, destPath: string): govn.LocalFileSystemDestination;
 }
 
 export function isFileSysPersistenceSupplier<Resource>(
@@ -64,32 +66,35 @@ export function routePersistPrettyUrlHtmlNamingStrategy(
   };
 }
 
-export async function persistFlexibleFileCustom(
+export async function persistContributionFile<Context>(
   contributor: govn.FlexibleContent | govn.FlexibleContentSync | string,
-  destFileName: LocalFileSystemDestination,
-  options?: PersistOptions,
-): Promise<false | "string" | "text" | "uint8array" | "writer"> {
+  destFileName: govn.LocalFileSystemDestination,
+  options?: PersistOptions<Context>,
+): Promise<false | govn.FileSysPersistResult<Context>> {
   const beforePersist = Date.now();
-  const ees = options?.eventsEmitter;
+  const ee = options?.eventsEmitter;
+  const defaults = {
+    destFileName,
+    contributor,
+    context: options?.context,
+  };
+  let result: govn.FileSysPersistResult<Context>;
   // always ensure in sync mode, never async
   if (options?.ensureDirSync) {
     options?.ensureDirSync(path.dirname(destFileName));
   }
   if (typeof contributor === "string") {
     await Deno.writeTextFile(destFileName, contributor);
-    if (ees) {
-      await ees.fspEE.emit(
-        "afterPersistFlexibleFile",
-        destFileName,
-        {
-          ...ees,
-          contributor,
-          contribution: "string",
-          persistDurationMS: Date.now() - beforePersist,
-        },
-      );
-    }
-    return "string";
+    result = {
+      ...defaults,
+      contribution: "string",
+      persistDurationMS: Date.now() - beforePersist,
+    };
+    await ee?.emit(
+      "afterPersistContributionFile",
+      result,
+    );
+    return result;
   }
   if (c.isTextSupplier(contributor)) {
     await Deno.writeTextFile(
@@ -98,19 +103,13 @@ export async function persistFlexibleFileCustom(
         ? contributor.text
         : await contributor.text(...(options?.functionArgs || [])),
     );
-    if (ees) {
-      await ees.fspEE.emit(
-        "afterPersistFlexibleFile",
-        destFileName,
-        {
-          ...ees,
-          contributor,
-          contribution: "text",
-          persistDurationMS: Date.now() - beforePersist,
-        },
-      );
-    }
-    return "text";
+    result = {
+      ...defaults,
+      contribution: "text",
+      persistDurationMS: Date.now() - beforePersist,
+    };
+    await ee?.emit("afterPersistContributionFile", result);
+    return result;
   }
   if (c.isUint8ArraySupplier(contributor)) {
     await Deno.writeFile(
@@ -119,46 +118,34 @@ export async function persistFlexibleFileCustom(
         ? await contributor.uint8Array(...(options?.functionArgs || []))
         : contributor.uint8Array,
     );
-    if (ees) {
-      await ees.fspEE.emit(
-        "afterPersistFlexibleFile",
-        destFileName,
-        {
-          ...ees,
-          contributor,
-          contribution: "uint8array",
-          persistDurationMS: Date.now() - beforePersist,
-        },
-      );
-    }
-    return "uint8array";
+    result = {
+      ...defaults,
+      contribution: "uint8array",
+      persistDurationMS: Date.now() - beforePersist,
+    };
+    await ee?.emit("afterPersistContributionFile", result);
+    return result;
   }
   if (c.isContentSupplier(contributor)) {
     const file = await Deno.open(destFileName, { write: true, create: true });
     await contributor.content(file);
     file.close();
-    if (ees) {
-      await ees.fspEE.emit(
-        "afterPersistFlexibleFile",
-        destFileName,
-        {
-          ...ees,
-          contributor,
-          contribution: "writer",
-          persistDurationMS: Date.now() - beforePersist,
-        },
-      );
-    }
-    return "writer";
+    result = {
+      ...defaults,
+      contribution: "writer",
+      persistDurationMS: Date.now() - beforePersist,
+    };
+    await ee?.emit("afterPersistContributionFile", result);
+    return result;
   }
-  const syncResult = persistFlexibleFileSyncCustom(
+  const syncResult = persistContributionFileSync(
     contributor,
     destFileName,
     options,
   );
   if (syncResult) return syncResult;
   if (options?.unhandled) {
-    const recursed = await persistFlexibleFileCustom(
+    const recursed = await persistContributionFile(
       options?.unhandled,
       destFileName,
       {
@@ -166,15 +153,15 @@ export async function persistFlexibleFileCustom(
         unhandled: undefined,
       },
     );
-    if (recursed && ees) {
-      await ees.fspEE.emit(
-        "afterPersistFlexibleFile",
-        destFileName,
+    if (recursed && ee) {
+      await ee.emit(
+        "afterPersistContributionFile",
         {
-          ...ees,
+          destFileName,
+          context: options?.context,
           unhandled: true,
           contributor,
-          contribution: recursed,
+          contribution: recursed.contribution,
           persistDurationMS: Date.now() - beforePersist,
         },
       );
@@ -184,31 +171,31 @@ export async function persistFlexibleFileCustom(
   return false;
 }
 
-export function persistFlexibleFileSyncCustom(
+export function persistContributionFileSync<Context>(
   contributor: govn.FlexibleContentSync | govn.FlexibleContent | string,
-  destFileName: LocalFileSystemDestination,
-  options?: PersistOptions,
-): false | "string" | "text" | "uint8array" | "writer" {
+  destFileName: govn.LocalFileSystemDestination,
+  options?: PersistOptions<Context>,
+): false | govn.FileSysPersistResult<Context> {
   const beforePersist = Date.now();
-  const ees = options?.eventsEmitter;
+  const ee = options?.eventsEmitter;
+  const defaults = {
+    destFileName,
+    contributor,
+    context: options?.context,
+  };
+  let result: govn.FileSysPersistResult<Context>;
   if (options?.ensureDirSync) {
     options?.ensureDirSync(path.dirname(destFileName));
   }
   if (typeof contributor === "string") {
     Deno.writeTextFileSync(destFileName, contributor);
-    if (ees) {
-      ees.fspEE.emitSync(
-        "afterPersistFlexibleFileSync",
-        destFileName,
-        {
-          ...ees,
-          contributor,
-          contribution: "string",
-          persistDurationMS: Date.now() - beforePersist,
-        },
-      );
-    }
-    return "string";
+    result = {
+      ...defaults,
+      contribution: "string",
+      persistDurationMS: Date.now() - beforePersist,
+    };
+    ee?.emitSync("afterPersistContributionFileSync", result);
+    return result;
   }
   if (c.isTextSyncSupplier(contributor)) {
     Deno.writeTextFileSync(
@@ -217,19 +204,13 @@ export function persistFlexibleFileSyncCustom(
         ? contributor.textSync
         : contributor.textSync(...(options?.functionArgs || [])),
     );
-    if (ees) {
-      ees.fspEE.emitSync(
-        "afterPersistFlexibleFileSync",
-        destFileName,
-        {
-          ...ees,
-          contributor,
-          contribution: "text",
-          persistDurationMS: Date.now() - beforePersist,
-        },
-      );
-    }
-    return "text";
+    result = {
+      ...defaults,
+      contribution: "text",
+      persistDurationMS: Date.now() - beforePersist,
+    };
+    ee?.emitSync("afterPersistContributionFileSync", result);
+    return result;
   }
   if (c.isUint8ArraySyncSupplier(contributor)) {
     Deno.writeFileSync(
@@ -238,40 +219,28 @@ export function persistFlexibleFileSyncCustom(
         ? contributor.uint8ArraySync(...(options?.functionArgs || []))
         : contributor.uint8ArraySync,
     );
-    if (ees) {
-      ees.fspEE.emitSync(
-        "afterPersistFlexibleFileSync",
-        destFileName,
-        {
-          ...ees,
-          contributor,
-          contribution: "uint8array",
-          persistDurationMS: Date.now() - beforePersist,
-        },
-      );
-    }
-    return "uint8array";
+    result = {
+      ...defaults,
+      contribution: "uint8array",
+      persistDurationMS: Date.now() - beforePersist,
+    };
+    ee?.emitSync("afterPersistContributionFileSync", result);
+    return result;
   }
   if (c.isContentSyncSupplier(contributor)) {
     const file = Deno.openSync(destFileName, { write: true, create: true });
     contributor.contentSync(file);
     file.close();
-    if (ees) {
-      ees.fspEE.emitSync(
-        "afterPersistFlexibleFileSync",
-        destFileName,
-        {
-          ...ees,
-          contributor,
-          contribution: "writer",
-          persistDurationMS: Date.now() - beforePersist,
-        },
-      );
-    }
-    return "writer";
+    result = {
+      ...defaults,
+      contribution: "writer",
+      persistDurationMS: Date.now() - beforePersist,
+    };
+    ee?.emitSync("afterPersistContributionFileSync", result);
+    return result;
   }
   if (options?.unhandledSync) {
-    const recursed = persistFlexibleFileSyncCustom(
+    const recursed = persistContributionFileSync(
       options.unhandledSync,
       destFileName,
       {
@@ -279,15 +248,15 @@ export function persistFlexibleFileSyncCustom(
         unhandledSync: undefined,
       },
     );
-    if (recursed && ees) {
-      ees.fspEE.emitSync(
-        "afterPersistFlexibleFileSync",
-        destFileName,
+    if (recursed && ee) {
+      ee.emitSync(
+        "afterPersistContributionFileSync",
         {
-          ...ees,
+          destFileName,
+          context: options?.context,
           unhandled: true,
           contributor,
-          contribution: recursed,
+          contribution: recursed.contribution,
           persistDurationMS: Date.now() - beforePersist,
         },
       );
@@ -295,4 +264,58 @@ export function persistFlexibleFileSyncCustom(
     return recursed;
   }
   return false;
+}
+
+/**
+ * persistResourceFile is used to store the output of a resource when the
+ * resource and the file output have a 1:1 relationship (meaning the resource
+ * is known). When the data being written is not tied 1:1 to a resource, then
+ * persistContributionFile or persistContributionFileSync are more useful.
+ * @param resource The resource providing the contribution
+ * @param contributor The part of the source doing the contribution
+ * @param destFileName The file to write
+ * @param options Optional arguments
+ * @returns
+ */
+export async function persistResourceFile<
+  Resource,
+  Context extends govn.ResourceSupplier<Resource>,
+>(
+  resource: Resource,
+  contributor: govn.FlexibleContent | govn.FlexibleContentSync | string,
+  destFileName: govn.LocalFileSystemDestination,
+  options?: PersistOptions<Context>,
+): Promise<false | govn.FileSysPersistResult<Context>> {
+  let pcfPO = options;
+  if (pcfPO) {
+    if (pcfPO.context && !("resource" in pcfPO.context)) {
+      pcfPO = { ...pcfPO, context: { ...pcfPO.context, resource } };
+    } else {
+      pcfPO = { ...pcfPO };
+      // deno-lint-ignore no-explicit-any
+      (pcfPO as any).context = { resource } as PersistOptions<Context>;
+    }
+  }
+  const result = await persistContributionFile<Context>(
+    contributor,
+    destFileName,
+    pcfPO ?? ({ context: { resource } } as PersistOptions<Context>),
+  );
+
+  // if a resource implements LocalFileSystemDestsSupplier it means that it
+  // would like to track its locally generated files; if the interface is not
+  // implemented, no tracking occurs but the event emitter would still fire.
+  // If the resource handles persistedLocalFileSysDest event then it's
+  // responsible for calling proper eventsEmitter.afterPersistResourceFile or
+  // other events that would be otherwise automatically called.
+  if (result && isLocalFileSystemDestsListener(resource)) {
+    resource.persistedLocalFileSysDest({
+      persistedLocalFileSysResult: result,
+      persistedLocalFileSysDest: destFileName,
+      resource,
+    }, options?.eventsEmitter);
+  } else if (result) {
+    options?.eventsEmitter?.emit("afterPersistResourceFile", resource, result);
+  }
+  return result;
 }

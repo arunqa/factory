@@ -16,7 +16,8 @@ export interface FileSysPersistenceNamingStrategySupplier {
   >;
 }
 
-export interface FileSysAfterPersistEventElaboration<Resource> {
+export interface FileSysPersistResult<Context = unknown> {
+  readonly destFileName: string;
   readonly contributor: c.FlexibleContent | c.FlexibleContentSync | string;
   readonly contribution:
     | "string"
@@ -25,22 +26,36 @@ export interface FileSysAfterPersistEventElaboration<Resource> {
     | "writer";
   readonly persistDurationMS: number;
   readonly unhandled?: boolean;
-  readonly resource?: Resource;
+  readonly context?: Context;
 }
 
-export interface FileSysPersistEventsEmitterSupplier<Resource = unknown> {
-  readonly fspEE: FileSysPersistenceEventsEmitter;
-  readonly resource?: Resource;
+export interface LocalFileSystemPersistDestSupplier<Context> {
+  readonly persistedLocalFileSysResult: FileSysPersistResult<Context>;
+  readonly persistedLocalFileSysDest: LocalFileSystemDestination;
+}
+
+/**
+ * Resources can implement this interface if they would like to be notified when
+ * their content is being written to a local file system. If the resource handles
+ * persistedLocalFileSysDest event then it's responsible for calling proper
+ * eventsEmitter.afterPersistResourceFile or other events that would be otherwise
+ * automatically called.
+ */
+export interface LocalFileSystemDestsListener<Context> {
+  readonly persistedLocalFileSysDest: (
+    lfsds:
+      & LocalFileSystemPersistDestSupplier<Context>
+      & r.ResourceSupplier<unknown>,
+    eventsEmitter?: FileSysPersistenceEventsEmitter,
+  ) => FileSysPersistResult<Context>;
 }
 
 export class FileSysPersistenceEventsEmitter extends events.EventEmitter<{
-  afterPersistFlexibleFile(
-    destFileName: string,
-    elaboration: FileSysAfterPersistEventElaboration<unknown>,
-  ): void;
-  afterPersistFlexibleFileSync(
-    destFileName: string,
-    elaboration: FileSysAfterPersistEventElaboration<unknown>,
+  afterPersistContributionFile(fspr: FileSysPersistResult): void;
+  afterPersistContributionFileSync(fspr: FileSysPersistResult): void;
+  afterPersistResourceFile<Resource>(
+    resource: Resource,
+    fspr: FileSysPersistResult,
   ): void;
 }> {}
 
@@ -48,14 +63,14 @@ export interface FileSysPersistenceSupplier<Resource> {
   readonly persistFileSysRefinery: (
     rootPath: LocalFileSystemDestinationRootPath,
     namingStrategy: LocalFileSystemNamingStrategy<route.RouteSupplier>,
-    fspEES?: FileSysPersistEventsEmitterSupplier,
+    fspEE?: FileSysPersistenceEventsEmitter,
     ...functionArgs: unknown[]
   ) => r.ResourceRefinery<Resource>;
   readonly persistFileSys: (
     resource: Resource,
     rootPath: LocalFileSystemDestinationRootPath,
     namingStrategy: LocalFileSystemNamingStrategy<route.RouteSupplier>,
-    fspEES?: FileSysPersistEventsEmitterSupplier,
+    fspEE?: FileSysPersistenceEventsEmitter,
     ...functionArgs: unknown[]
   ) => Promise<void>;
 }

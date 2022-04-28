@@ -40,7 +40,7 @@ export function structuredDataTextProducer(
     govn.RouteSupplier<govn.RouteNode>
   >,
   context: StructureDataRenderContext,
-  fspEE?: govn.FileSysPersistEventsEmitterSupplier,
+  fspEE?: govn.FileSysPersistenceEventsEmitter,
 ): govn.ResourceRefinery<govn.SerializedDataSupplier> {
   const producer = r.pipelineUnitsRefineryUntyped(
     async (resource) => {
@@ -92,7 +92,8 @@ export function structuredDataTextProducer(
         resource,
       };
       if (c.isSerializedDataSupplier(resource)) {
-        await persist.persistFlexibleFileCustom(
+        await persist.persistResourceFile(
+          resource,
           resource.serializedData,
           namingStrategy(
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,
@@ -126,7 +127,7 @@ export function structuredDataTextProducer(
 export function jsonTextProducer(
   destRootPath: string,
   context: StructureDataRenderContext,
-  fspEE?: govn.FileSysPersistEventsEmitterSupplier,
+  fspEE?: govn.FileSysPersistenceEventsEmitter,
 ): govn.ResourceRefinery<govn.SerializedDataSupplier> {
   return structuredDataTextProducer(
     n.jsonMediaTypeNature,

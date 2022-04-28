@@ -646,7 +646,7 @@ export abstract class DesignSystem<Layout extends html.HtmlLayout>
     destRootPath: string,
     contentStrategy: UntypedDesignSystemContentStrategy,
     options?: {
-      readonly fspEE?: govn.FileSysPersistEventsEmitterSupplier;
+      readonly fspEE?: govn.FileSysPersistenceEventsEmitter;
       readonly memoize?: (
         resource: govn.HtmlSupplier,
         producer: (replay: govn.HtmlSupplier) => Promise<govn.HtmlSupplier>,

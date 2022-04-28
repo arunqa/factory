@@ -21,7 +21,7 @@ export function sqlFileProducer<State>(
     readonly namingStrategy?: persist.LocalFileSystemNamingStrategy<
       govn.RouteSupplier<govn.RouteNode>
     >;
-    readonly eventsEmitter?: govn.FileSysPersistEventsEmitterSupplier;
+    readonly eventsEmitter?: govn.FileSysPersistenceEventsEmitter;
   },
   // deno-lint-ignore no-explicit-any
 ): govn.ResourceRefinery<any> {
@@ -29,7 +29,8 @@ export function sqlFileProducer<State>(
     persist.routePersistForceExtnNamingStrategy(".sql");
   return async (resource) => {
     if (isSqlFileResource(resource)) {
-      await persist.persistFlexibleFileCustom(
+      await persist.persistResourceFile(
+        resource,
         resource,
         namingStrategy(
           resource as unknown as govn.RouteSupplier<govn.RouteNode>,

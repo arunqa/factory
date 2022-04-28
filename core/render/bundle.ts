@@ -10,7 +10,7 @@ export function bundleProducer<State>(
     readonly namingStrategy?: p.LocalFileSystemNamingStrategy<
       govn.RouteSupplier<govn.RouteNode>
     >;
-    readonly eventsEmitter?: govn.FileSysPersistEventsEmitterSupplier;
+    readonly eventsEmitter?: govn.FileSysPersistenceEventsEmitter;
   },
   // deno-lint-ignore no-explicit-any
 ): govn.ResourceRefinery<any> {
@@ -18,7 +18,8 @@ export function bundleProducer<State>(
     p.routePersistForceExtnNamingStrategy(".js");
   return async (resource) => {
     if (br.isBundleResource(resource)) {
-      await p.persistFlexibleFileCustom(
+      await p.persistResourceFile(
+        resource,
         resource,
         namingStrategy(
           resource as unknown as govn.RouteSupplier<govn.RouteNode>,

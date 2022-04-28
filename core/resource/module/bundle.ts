@@ -71,7 +71,8 @@ export const bundleContentNature:
     persistFileSysRefinery: (rootPath, namingStrategy, eventsEmitter) => {
       return async (resource) => {
         if (c.isTextSupplier(resource)) {
-          await p.persistFlexibleFileCustom(
+          await p.persistResourceFile(
+            resource,
             resource,
             namingStrategy(resource, rootPath),
             { ensureDirSync: fs.ensureDirSync, eventsEmitter },
@@ -87,7 +88,8 @@ export const bundleContentNature:
       eventsEmitter,
     ) => {
       if (c.isTextSupplier(resource)) {
-        await p.persistFlexibleFileCustom(
+        await p.persistResourceFile(
+          resource,
           resource,
           namingStrategy(resource, rootPath),
           { ensureDirSync: fs.ensureDirSync, eventsEmitter },

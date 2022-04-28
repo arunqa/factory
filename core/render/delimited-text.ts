@@ -44,7 +44,7 @@ export interface DelimitedTextProducerArguments<State> {
   readonly rowRenderer: (row: string[], state: State) => string;
   readonly headerRenderer?: (header: string[], state: State) => string;
   readonly rowsDelim: string;
-  readonly eventsEmitter?: govn.FileSysPersistEventsEmitterSupplier;
+  readonly eventsEmitter?: govn.FileSysPersistenceEventsEmitter;
 }
 
 export function delimitedTextProducer<State>(
@@ -91,7 +91,8 @@ export function delimitedTextProducer<State>(
       };
     }
     if (csvResource) {
-      await persist.persistFlexibleFileCustom(
+      await persist.persistResourceFile(
+        csvResource,
         csvResource,
         ns(
           csvResource as unknown as govn.RouteSupplier<govn.RouteNode>,
@@ -141,7 +142,8 @@ export const csvContentNature:
     ) => {
       return async (resource) => {
         if (c.isTextSupplier(resource)) {
-          await persist.persistFlexibleFileCustom(
+          await persist.persistResourceFile(
+            resource,
             resource,
             namingStrategy(
               resource as unknown as govn.RouteSupplier<govn.RouteNode>,
@@ -161,7 +163,8 @@ export const csvContentNature:
       ...functionArgs
     ) => {
       if (c.isTextSupplier(resource)) {
-        await persist.persistFlexibleFileCustom(
+        await persist.persistResourceFile(
+          resource,
           resource,
           namingStrategy(
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,
@@ -176,7 +179,7 @@ export const csvContentNature:
 export function csvProducer<State>(
   destRootPath: string,
   state: State,
-  eventsEmitter?: govn.FileSysPersistEventsEmitterSupplier,
+  eventsEmitter?: govn.FileSysPersistenceEventsEmitter,
 ): govn.ResourceRefinery<DelimitedTextResource<State>> {
   return delimitedTextProducer({
     destRootPath,

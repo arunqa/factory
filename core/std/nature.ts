@@ -166,7 +166,8 @@ export const textContentNature:
     ) => {
       return async (resource) => {
         if (c.isTextSupplier(resource)) {
-          await p.persistFlexibleFileCustom(
+          await p.persistResourceFile(
+            resource,
             resource,
             namingStrategy(
               resource as unknown as govn.RouteSupplier<govn.RouteNode>,
@@ -190,7 +191,8 @@ export const textContentNature:
       ...functionArgs
     ) => {
       if (c.isTextSupplier(resource)) {
-        await p.persistFlexibleFileCustom(
+        await p.persistResourceFile(
+          resource,
           resource,
           namingStrategy(
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,
@@ -217,7 +219,8 @@ export const htmlContentNature:
     ) => {
       return async (resource) => {
         if (c.isHtmlSupplier(resource)) {
-          await p.persistFlexibleFileCustom(
+          await p.persistResourceFile(
+            resource,
             resource.html,
             namingStrategy(
               resource as unknown as govn.RouteSupplier<govn.RouteNode>,
@@ -226,9 +229,7 @@ export const htmlContentNature:
             {
               ensureDirSync: fs.ensureDirSync,
               functionArgs,
-              eventsEmitter: eventsEmitter
-                ? { ...eventsEmitter, resource }
-                : undefined,
+              eventsEmitter,
             },
           );
         }
@@ -243,7 +244,8 @@ export const htmlContentNature:
       ...functionArgs
     ) => {
       if (c.isHtmlSupplier(resource)) {
-        await p.persistFlexibleFileCustom(
+        await p.persistResourceFile(
+          resource,
           resource.html,
           namingStrategy(
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,
@@ -270,7 +272,8 @@ export const sqlContentNature:
     ) => {
       return async (resource) => {
         if (c.isTextSupplier(resource)) {
-          await p.persistFlexibleFileCustom(
+          await p.persistResourceFile(
+            resource,
             resource,
             namingStrategy(
               resource as unknown as govn.RouteSupplier<govn.RouteNode>,
@@ -294,7 +297,8 @@ export const sqlContentNature:
       ...functionArgs
     ) => {
       if (c.isTextSupplier(resource)) {
-        await p.persistFlexibleFileCustom(
+        await p.persistResourceFile(
+          resource,
           resource,
           namingStrategy(
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,
@@ -325,7 +329,8 @@ export function structuredDataContentNature(
     ) => {
       return async (resource) => {
         if (c.isSerializedDataSupplier(resource)) {
-          await p.persistFlexibleFileCustom(
+          await p.persistResourceFile(
+            resource,
             resource.serializedData,
             namingStrategy(
               resource as unknown as govn.RouteSupplier<govn.RouteNode>,
@@ -345,7 +350,8 @@ export function structuredDataContentNature(
       ...functionArgs
     ) => {
       if (c.isSerializedDataSupplier(resource)) {
-        await p.persistFlexibleFileCustom(
+        await p.persistResourceFile(
+          resource,
           resource.serializedData,
           namingStrategy(
             resource as unknown as govn.RouteSupplier<govn.RouteNode>,

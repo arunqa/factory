@@ -55,7 +55,8 @@ export const markdownContentNature:
     persistFileSysRefinery: (rootPath, namingStrategy, eventsEmitter) => {
       return async (resource) => {
         if (c.isHtmlSupplier(resource)) {
-          await p.persistFlexibleFileCustom(
+          await p.persistResourceFile(
+            resource,
             resource.html,
             namingStrategy(resource, rootPath),
             { ensureDirSync: fs.ensureDirSync, eventsEmitter },
@@ -71,7 +72,8 @@ export const markdownContentNature:
       eventsEmitter,
     ) => {
       if (c.isHtmlSupplier(resource)) {
-        await p.persistFlexibleFileCustom(
+        await p.persistResourceFile(
+          resource,
           resource.html,
           namingStrategy(resource, rootPath),
           { ensureDirSync: fs.ensureDirSync, eventsEmitter },

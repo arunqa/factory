@@ -61,7 +61,7 @@ function typicalProxyableFileSysModelArguments<Model, OriginContext>(
       }
     },
     cacheProxied: async (model, fsmpsr) => {
-      await rfStd.persistFlexibleFileCustom(
+      await rfStd.persistContributionFile(
         {
           text: JSON.stringify(model, undefined, "  "),
         },

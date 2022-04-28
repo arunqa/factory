@@ -21,7 +21,7 @@ export function textFileProducer<State>(
     readonly namingStrategy?: persist.LocalFileSystemNamingStrategy<
       govn.RouteSupplier<govn.RouteNode>
     >;
-    readonly eventsEmitter?: govn.FileSysPersistEventsEmitterSupplier;
+    readonly eventsEmitter?: govn.FileSysPersistenceEventsEmitter;
   },
   // deno-lint-ignore no-explicit-any
 ): govn.ResourceRefinery<any> {
@@ -29,7 +29,8 @@ export function textFileProducer<State>(
     persist.routePersistForceExtnNamingStrategy(".txt");
   return async (resource) => {
     if (isTextFileResource(resource)) {
-      await persist.persistFlexibleFileCustom(
+      await persist.persistResourceFile(
+        resource,
         resource,
         namingStrategy(
           resource as unknown as govn.RouteSupplier<govn.RouteNode>,
