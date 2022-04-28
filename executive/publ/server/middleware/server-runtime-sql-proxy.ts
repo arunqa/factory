@@ -7,8 +7,16 @@ import * as sql from "../../../../lib/sql/mod.ts";
 import * as srgd from "../../../../lib/sql/remote/guard.ts";
 import * as srf from "../../../../lib/sql/remote/flexible.ts";
 import * as ssi from "./workspace/inventory/server-runtime-sql-stmts.ts";
-
+import "https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js";
 import "../../../../lib/db/sql.ts"; // for window.globalSqlDbConns
+
+declare global {
+  // https://raw.githubusercontent.com/douglascrockford/JSON-js/master/cycle.js
+  interface JSON {
+    decycle: (o: unknown) => unknown;
+    retrocycle: (o: unknown) => unknown;
+  }
+}
 
 /**
  * Registers an endpoint (usually /SQL) which accepts arbitrary SQL and
@@ -115,7 +123,7 @@ export class ServerRuntimeSqlProxyMiddlewareSupplier {
     sqlResultNature: string,
   ) {
     ctx.response.headers.set("sql-result-nature", sqlResultNature);
-    ctx.response.body = JSON.stringify(value);
+    ctx.response.body = JSON.stringify(JSON.decycle(value));
   }
 
   async executeForeignSQL(
