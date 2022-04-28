@@ -1,3 +1,8 @@
+import * as i from "../lib/identity/governance.ts";
+
+export type ResourceIdentity = i.UUID;
+export type ResourceIdentitySupplier = i.UniversallyUniqueIdentitySupplier;
+
 export interface ResourceSupplier<Resource> {
   readonly resource: Resource;
 }

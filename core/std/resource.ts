@@ -1,5 +1,37 @@
 import * as safety from "../../lib/safety/mod.ts";
 import * as govn from "../../governance/mod.ts";
+import * as i from "../../lib/identity/mod.ts";
+
+export const defaultIdentityFactory = i.typicalUuidFactory();
+
+export const isResourceIdentitySupplier = i.isUniversallyUniqueIdentitySupplier;
+
+export function autoResourceIdentity<Resource>(
+  r: Resource,
+  idf: i.IdentityFactory<govn.ResourceIdentity> = defaultIdentityFactory,
+): govn.ResourceIdentity {
+  if (isResourceIdentitySupplier(r)) return r.identity;
+  const mutatedUuidSupplier =
+    r as unknown as i.MutatableUniversallyUniqueIdentitySupplier;
+  mutatedUuidSupplier.identity = idf.randomID();
+  return mutatedUuidSupplier.identity;
+}
+
+export const isResourceSupplierUntyped = safety.typeGuard<
+  govn.ResourceSupplier<unknown>
+>("resource");
+
+export function isIdentifiableResourceSupplier<Resource>(
+  o: unknown,
+): o is govn.ResourceSupplier<Resource & govn.ResourceIdentitySupplier> {
+  return isResourceSupplierUntyped(o) && isResourceIdentitySupplier(o.resource);
+}
+
+export function isResourceSupplier<Resource>(
+  o: unknown,
+): o is govn.ResourceSupplier<Resource> {
+  return isResourceSupplierUntyped(o);
+}
 
 export const isResourceFactorySupplierUntyped = safety.typeGuard<
   govn.ResourceFactorySupplier<unknown>
