@@ -8,6 +8,7 @@ import * as sqlShG from "../../lib/sql/shell/governance.ts";
 import * as alaSQL from "../../lib/alasql/mod.ts";
 import * as srf from "../../lib/sql/remote/flexible.ts";
 import * as safety from "../../lib/safety/mod.ts";
+import * as tab from "../../lib/tabular/mod.ts";
 
 import "../../lib/db/sql.ts"; // for window.globalSqlDbConns
 
@@ -165,27 +166,56 @@ export class PublicationSqlProxy extends alaSQL.AlaSqlProxy {
     });
   }
 
-  async prepareSystemSqlViews() {
+  async prepareSystemSqlViews(
+    onEmptyTableDefn?: (
+      // deno-lint-ignore no-explicit-any
+      otr: tab.DefinedTabularRecords<any>,
+      // deno-lint-ignore no-explicit-any
+    ) => tab.DefinedTabularRecords<any> | undefined,
+  ) {
     if (this.publication.config.observability) {
       for await (
-        const osv of this.publication.config.observability
+        const systemOTR of this.publication.config.observability
           .systemObservableTabularRecords()
       ) {
-        const { identity: tableName, columns, namespace: databaseID } =
-          osv.tabularRecordDefn;
-        const db = databaseID
-          ? (this.alaSqlEngine.databases[databaseID] ||
-            new this.alaSqlEngine.Database(databaseID))
-          : this.alaSqlPrimeDB;
-        // TODO: should this be CREATE VIEW instead?
-        db.exec(`CREATE TABLE [${tableName}] (\n ${
-          // use [colName] so that reserved SQL keywords can be used as column name
-          Array.from(columns).map((col) => `[${String(col.identity)}]`).join(
-            ",\n ", // TODO: columns are untyped for now, should they be typed?
-          )
-        })`);
-        const viewData = await osv.dataRows();
-        db.tables[tableName].data = viewData;
+        // deno-lint-ignore no-explicit-any
+        let otr: tab.DefinedTabularRecords<any> | undefined = systemOTR;
+        if (!otr || otr.tabularRecordDefn.columns.length <= 0) {
+          if (onEmptyTableDefn) {
+            otr = onEmptyTableDefn(otr);
+            if (!otr) return;
+          }
+        }
+
+        if (otr) {
+          const { identity: tableName, columns, namespace: databaseID } =
+            otr.tabularRecordDefn;
+          const db = databaseID
+            ? (this.alaSqlEngine.databases[databaseID] ||
+              new this.alaSqlEngine.Database(databaseID))
+            : this.alaSqlPrimeDB;
+          if (columns.length > 0) {
+            // TODO: should this be CREATE VIEW instead?
+            db.exec(`CREATE TABLE [${tableName}] (\n ${
+              // use [colName] so that reserved SQL keywords can be used as column name
+              columns.map((col) => `[${String(col.identity)}]`).join(
+                ",\n ", // TODO: columns are untyped for now, should they be typed?
+              )
+            })`);
+            const viewData = await otr.dataRows();
+            db.tables[tableName].data = viewData;
+          } else {
+            console.warn(
+              `No columns in definition, unable to generate SQL view for '${systemOTR.tabularRecordDefn.identity}'`,
+              Deno.inspect(systemOTR.tabularRecordDefn),
+            );
+          }
+        } else if (!onEmptyTableDefn) {
+          console.warn(
+            `Unable to generate SQL view for '${systemOTR.tabularRecordDefn.identity}'`,
+            Deno.inspect(systemOTR.tabularRecordDefn),
+          );
+        }
       }
     }
   }
