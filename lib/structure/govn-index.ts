@@ -43,6 +43,11 @@ export interface GovnIndexKeysSupplier extends MutatableGovnIndexKeysSupplier {
 
 export interface GovnIndexStrategy<Resource, IndexResult> {
   readonly index: (r: Resource) => Promise<IndexResult>;
+  readonly reindex: (
+    original: Resource,
+    entry: number,
+    enriched: Resource,
+  ) => Promise<IndexResult>;
   readonly indexSync: (r: Resource) => IndexResult;
   readonly resources: () => Iterable<Resource>;
   readonly filter: (
@@ -117,6 +122,20 @@ export class UniversalIndex<Resource>
     }
   }
 
+  // deno-lint-ignore require-await
+  async reindex(
+    original: Resource,
+    entry: number,
+    enriched: Resource,
+  ): Promise<void> {
+    if (this.isIndexable(original)) {
+      this.resourcesIndex[entry] = enriched;
+      if (isGovnIndexKeysSupplier(original)) {
+        this.unregisterKeys(original);
+      }
+    }
+  }
+
   indexSync(r: Resource | unknown): void {
     if (this.isIndexable(r)) {
       this.resourcesIndex.push(r);
@@ -146,6 +165,22 @@ export class UniversalIndex<Resource>
         ns.set(key.literal, resources);
       }
       resources.push(r);
+    }
+  }
+
+  unregisterKeys(r: Resource & GovnIndexKeysSupplier) {
+    for (const key of r.indexKeys) {
+      const ns = key.namespace
+        ? (this.keyedResources.get(key.namespace) ||
+          this.prepareNamespaceIndex(key.namespace))
+        : this.globalNamespaceKeysIndex;
+      const resources = ns.get(key.literal);
+      if (resources) {
+        const itemIdx = resources.indexOf(r);
+        if (itemIdx > -1) {
+          resources.splice(itemIdx, 1); // 2nd parameter means remove one item only
+        }
+      }
     }
   }
 
