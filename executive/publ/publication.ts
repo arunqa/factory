@@ -881,7 +881,7 @@ export abstract class TypicalPublication<
       isStructured: boolean;
       isContentModel: boolean;
       hasFrontmatter: boolean;
-      keys: string[];
+      properties: string[];
     }, "resourceUUID">({
       identity: "resource",
       namespace: defaultSqlViewsNamespace,
@@ -904,6 +904,7 @@ export abstract class TypicalPublication<
       resourceId: tab.TabularRecordIdRef;
       key: string;
       value: unknown;
+      valueType: string;
     }>({
       identity: "resource_frontmatter",
       namespace: defaultSqlViewsNamespace,
@@ -912,6 +913,7 @@ export abstract class TypicalPublication<
       resourceId: tab.TabularRecordIdRef;
       key: string;
       value: unknown;
+      valueType: string;
     }>({
       identity: "resource_model",
       namespace: defaultSqlViewsNamespace,
@@ -950,7 +952,7 @@ export abstract class TypicalPublication<
         isStructured: rfStd.isStructuredDataInstanceSupplier(resource),
         isContentModel: rfStd.isContentModelSupplier(resource),
         hasFrontmatter: rfStd.isFrontmatterSupplier(resource),
-        keys: Object.keys(resource as Record<string, unknown>),
+        properties: Object.keys(resource as Record<string, unknown>),
       });
       const resourceId = resourceRecord.id;
 
@@ -962,7 +964,12 @@ export abstract class TypicalPublication<
       if (rfStd.isFrontmatterSupplier(resource) && resource.frontmatter) {
         const flattened = tab.flattenObject(resource.frontmatter);
         Object.entries(flattened).forEach((kv) =>
-          resFrontmatterRB.upsert({ resourceId, key: kv[0], value: kv[1] })
+          resFrontmatterRB.upsert({
+            resourceId,
+            key: kv[0],
+            value: kv[1],
+            valueType: typeof kv[1],
+          })
         );
       }
 
@@ -975,7 +982,12 @@ export abstract class TypicalPublication<
             ? false
             : true;
         }).forEach((kv) =>
-          resModelRB.upsert({ resourceId, key: kv[0], value: kv[1] })
+          resModelRB.upsert({
+            resourceId,
+            key: kv[0],
+            value: kv[1],
+            valueType: typeof kv[1],
+          })
         );
       }
     }
@@ -997,7 +1009,7 @@ export abstract class TypicalPublication<
           fspr.context.resource.identity,
         );
         persistedRB.upsert({
-          resourceId: resourceRec ? resourceRec.id : -1,
+          resourceId: resourceRec ? resourceRec.id : -2,
           destFileName: fspr.destFileName,
           contribution: fspr.contribution,
           persistDurationMs: fspr.persistDurationMS,
@@ -1013,7 +1025,7 @@ export abstract class TypicalPublication<
     }
 
     const resIndexesRB = builders.autoRowIdProxyBuilder<
-      { namespace: string; index: string }
+      { namespace: string; index: string; resourceId: tab.TabularRecordIdRef }
     >({
       identity: "resource_index",
       namespace: defaultSqlViewsNamespace,
@@ -1025,9 +1037,18 @@ export abstract class TypicalPublication<
       const [namespace, nsKeysIndex] = kr;
       for (const nsk of nsKeysIndex.entries()) {
         const [index, resources] = nsk;
-        resIndexesRB.upsert({ namespace, index });
-        // TODO: add list of resources location, etc.
-        // TODO: add foreign key to upserted resources above
+        for (const resource of resources) {
+          if (rfStd.isResourceIdentitySupplier(resource)) {
+            const resourceRec = resourceRB.findByIndex(
+              "resourceUUID",
+              resource.identity,
+            );
+            const resourceId = resourceRec ? resourceRec.id : -1;
+            resIndexesRB.upsert({ namespace, index, resourceId });
+          } else {
+            resIndexesRB.upsert({ namespace, index, resourceId: "-1" });
+          }
+        }
       }
     }
 
