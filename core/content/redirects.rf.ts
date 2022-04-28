@@ -14,13 +14,13 @@ export function redirectResources(
 ): govn.ResourcesFactoriesSupplier<govn.HtmlResource> {
   return {
     resourcesFactories: async function* () {
-      for (const alias of resourcesTree.redirects) {
+      for (const aliasFor of resourcesTree.redirects) {
         const htmlFS: govn.ResourceFactorySupplier<govn.HtmlResource> = {
           // deno-lint-ignore require-await
           resourceFactory: async () => {
             const redirectHTML: ds.HtmlLayoutBodySupplier = (layout) => {
               const targetURL = layout.contentStrategy.navigation.redirectUrl(
-                alias,
+                aliasFor,
               );
               return `<!DOCTYPE HTML>
               <html lang="en-US">
@@ -28,10 +28,10 @@ export function redirectResources(
                       <meta charset="UTF-8">
                       <meta http-equiv="refresh" content="0; url=${targetURL}">
                       <script type="text/javascript">window.location.href = "${targetURL}"</script>
-                      <title>Redirect to ${alias.label}</title>
+                      <title>Redirect to ${aliasFor.label}</title>
                   </head>
                   <body>
-                      If you are not redirected automatically, follow <a href='${targetURL}'>${alias.label}</a>.
+                      If you are not redirected automatically, follow <a href='${targetURL}'>${aliasFor.label}</a>.
                   </body>
               </html>`;
             };
@@ -39,17 +39,19 @@ export function redirectResources(
             const redirectResource:
               & govn.PersistableHtmlResource
               & govn.FrontmatterSupplier<govn.UntypedFrontmatter>
-              & govn.RouteSupplier = {
+              & govn.RouteSupplier
+              & govn.ModelSupplier<{ aliasFor: govn.RedirectSupplier }> = {
                 nature: n.htmlContentNature,
                 frontmatter: {
                   layout: {
                     identity: "lds/page/no-decoration",
                   },
                 },
+                model: { aliasFor },
                 route: {
                   ...resourcesTree.routeFactory.childRoute(
                     { unit: ds.indexUnitName, label: "Routes" },
-                    alias.route!, // the route for aliases is created in rtree.TypicalRouteTree
+                    aliasFor.route!, // the route for aliases is created in rtree.TypicalRouteTree
                     false,
                   ),
                   nature: n.htmlContentNature,
