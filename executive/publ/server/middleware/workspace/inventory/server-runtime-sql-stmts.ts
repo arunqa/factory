@@ -5,11 +5,13 @@ import * as sqlShG from "../../../../../../lib/sql/shell/governance.ts";
 
 export const defaultDatabaseID = `prime` as const;
 export const observabilityDatabaseID = `observability` as const;
+export const publicationDatabaseID = `publication` as const;
 export const pubctlDatabaseID = `pubctl` as const;
 
 export type TypicalSqlStmtDatabaseID =
   | typeof defaultDatabaseID
   | typeof observabilityDatabaseID
+  | typeof publicationDatabaseID
   | typeof pubctlDatabaseID
   | sqlShG.CommonDatabaseID;
 
@@ -74,37 +76,80 @@ export function typicalSqlStmtsInventory(
     sqlStmtIdentities: () => sqlStmtsIndex.keys(),
     defaultSqlStmt,
     libraries: [{
+      name: "publication",
+      label: "Publication",
+      sqlStmts: [{
+        database: DB(publicationDatabaseID),
+        name: "resources-indexed",
+        label: "Show all indexed resources",
+        SQL: whs.unindentWhitespace(`
+          USE DATABASE ${publicationDatabaseID};\n
+          SELECT resource.media_type, resource_index.namespace, resource_index.[index], resource_route_terminal.qualified_path, resource_route_terminal.label
+            FROM resource_index
+           INNER JOIN resource ON resource.id = resource_index.resource_id
+           INNER JOIN resource_route_terminal ON resource_route_terminal.resource_id = resource_index.resource_id
+           LIMIT 25`),
+        qualifiedName: qualifiedNamePlaceholder,
+      }, {
+        database: DB(publicationDatabaseID),
+        name: "resources-frontmatter-top-level-keys",
+        label: "Show the top level untyped frontmatter keys",
+        SQL: whs.unindentWhitespace(`
+          USE DATABASE ${publicationDatabaseID};\n
+          SELECT distinct key->split('.')->[0] as key
+            FROM resource_frontmatter
+           ORDER BY key`),
+        qualifiedName: qualifiedNamePlaceholder,
+      }, {
+        database: DB(publicationDatabaseID),
+        name: "resources-model-top-level-keys",
+        label: "Show the top level typed model keys",
+        SQL: whs.unindentWhitespace(`
+          USE DATABASE ${publicationDatabaseID};\n
+          SELECT distinct key->split('.')->[0] as key
+            FROM resource_model
+           ORDER BY key`),
+        qualifiedName: qualifiedNamePlaceholder,
+      }, {
+        database: DB(publicationDatabaseID),
+        name: "persisted-without-originators",
+        label: "Show persisted files not tied to originated resource",
+        SQL: whs.unindentWhitespace(`
+          USE DATABASE ${publicationDatabaseID};\n
+          SELECT *
+           FROM persisted
+          WHERE resource_id < 0
+          LIMIT 25`),
+        qualifiedName: qualifiedNamePlaceholder,
+      }],
+      qualifiedName: qualifiedNamePlaceholder,
+    }, {
       name: "housekeeping",
       label: "Housekeeping",
-      sqlStmts: [
-        {
-          database: DB(defaultDatabaseID),
-          name: "alaSQL-databases",
-          label: "Show all the server runtime proxy databases defined",
-          SQL: whs.unindentWhitespace(`SHOW DATABASES`),
-          qualifiedName: qualifiedNamePlaceholder,
-        },
-        {
-          database: DB(defaultDatabaseID),
-          name: "alaSQL-tables",
-          label: "Show all tables in all proxyable databases",
-          SQL: whs.unindentWhitespace(`
+      sqlStmts: [{
+        database: DB(defaultDatabaseID),
+        name: "alaSQL-databases",
+        label: "Show all the server runtime proxy databases defined",
+        SQL: whs.unindentWhitespace(`SHOW DATABASES`),
+        qualifiedName: qualifiedNamePlaceholder,
+      }, {
+        database: DB(defaultDatabaseID),
+        name: "alaSQL-tables",
+        label: "Show all tables in all proxyable databases",
+        SQL: whs.unindentWhitespace(`
             SELECT db_name, table_name
               FROM prime.dbms_reflection_inventory
             GROUP BY db_name, table_name`),
-          qualifiedName: qualifiedNamePlaceholder,
-        },
-        {
-          database: DB(defaultDatabaseID),
-          name: "alaSQL-columns",
-          label:
-            "Show all columns across all tables in all proxyable databases",
-          SQL: whs.unindentWhitespace(`
+        qualifiedName: qualifiedNamePlaceholder,
+      }, {
+        database: DB(defaultDatabaseID),
+        name: "alaSQL-columns",
+        label: "Show all columns across all tables in all proxyable databases",
+        SQL: whs.unindentWhitespace(`
             SELECT *
               FROM prime.dbms_reflection_inventory`),
-          qualifiedName: qualifiedNamePlaceholder,
-        },
-      ],
+        qualifiedName: qualifiedNamePlaceholder,
+      }],
       qualifiedName: qualifiedNamePlaceholder,
     }, {
       name: "observability",

@@ -18,6 +18,7 @@ const gitSqlDatabaseID = "gitsql";
 const osQueryDatabaseID = "osquery";
 const defaultDatabaseID = `prime`;
 const observabilityDatabaseID = `observability`;
+const publicationDatabaseID = `publication`;
 const pubctlDatabaseID = `pubctl`;
 const defaultSqlStmtID = "health-check-failed";
 function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
@@ -53,6 +54,60 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
         defaultSqlStmt,
         libraries: [
             {
+                name: "publication",
+                label: "Publication",
+                sqlStmts: [
+                    {
+                        database: DB(publicationDatabaseID),
+                        name: "resources-indexed",
+                        label: "Show all indexed resources",
+                        SQL: unindentWhitespace(`
+          USE DATABASE ${publicationDatabaseID};\n
+          SELECT resource.media_type, resource_index.namespace, resource_index.[index], resource_route_terminal.qualified_path, resource_route_terminal.label
+            FROM resource_index
+           INNER JOIN resource ON resource.id = resource_index.resource_id
+           INNER JOIN resource_route_terminal ON resource_route_terminal.resource_id = resource_index.resource_id
+           LIMIT 25`),
+                        qualifiedName: qualifiedNamePlaceholder
+                    },
+                    {
+                        database: DB(publicationDatabaseID),
+                        name: "resources-frontmatter-top-level-keys",
+                        label: "Show the top level untyped frontmatter keys",
+                        SQL: unindentWhitespace(`
+          USE DATABASE ${publicationDatabaseID};\n
+          SELECT distinct key->split('.')->[0] as key
+            FROM resource_frontmatter
+           ORDER BY key`),
+                        qualifiedName: qualifiedNamePlaceholder
+                    },
+                    {
+                        database: DB(publicationDatabaseID),
+                        name: "resources-model-top-level-keys",
+                        label: "Show the top level typed model keys",
+                        SQL: unindentWhitespace(`
+          USE DATABASE ${publicationDatabaseID};\n
+          SELECT distinct key->split('.')->[0] as key
+            FROM resource_model
+           ORDER BY key`),
+                        qualifiedName: qualifiedNamePlaceholder
+                    },
+                    {
+                        database: DB(publicationDatabaseID),
+                        name: "persisted-without-originators",
+                        label: "Show persisted files not tied to originated resource",
+                        SQL: unindentWhitespace(`
+          USE DATABASE ${publicationDatabaseID};\n
+          SELECT *
+           FROM persisted
+          WHERE resource_id < 0
+          LIMIT 25`),
+                        qualifiedName: qualifiedNamePlaceholder
+                    }
+                ],
+                qualifiedName: qualifiedNamePlaceholder
+            },
+            {
                 name: "housekeeping",
                 label: "Housekeeping",
                 sqlStmts: [
@@ -81,7 +136,7 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
             SELECT *
               FROM prime.dbms_reflection_inventory`),
                         qualifiedName: qualifiedNamePlaceholder
-                    }, 
+                    }
                 ],
                 qualifiedName: qualifiedNamePlaceholder
             },
@@ -319,6 +374,7 @@ function typicalSqlStmtsInventory(identity1 = "typicalSqlStmts") {
 }
 export { defaultDatabaseID as defaultDatabaseID };
 export { observabilityDatabaseID as observabilityDatabaseID };
+export { publicationDatabaseID as publicationDatabaseID };
 export { pubctlDatabaseID as pubctlDatabaseID };
 export { defaultSqlStmtID as defaultSqlStmtID };
 export { typicalSqlStmtsInventory as typicalSqlStmtsInventory };
