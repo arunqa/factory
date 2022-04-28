@@ -42,6 +42,31 @@ export const assetMetricsWalkOptions: fs.WalkOptions = {
 
 export const defaultSqlViewsNamespace = "publication" as const;
 
+export interface MutatableEnrichedResource<Resource> {
+  enrichesResource: Resource;
+}
+
+export type EnrichedResource<Resource> = Readonly<
+  MutatableEnrichedResource<Resource>
+>;
+
+export const isEnrichedResource = safety.typeGuard<EnrichedResource<unknown>>(
+  "enrichesResource",
+);
+
+export function enrichResource<Resource>(
+  original: Resource,
+  enriched: Resource,
+): Resource {
+  if (isEnrichedResource(original)) {
+    if (enriched === original.enrichesResource) return enriched;
+    throw new Error(`Duplicate enrichment request`);
+  }
+  (original as unknown as MutatableEnrichedResource<Resource>)
+    .enrichesResource = enriched;
+  return enriched;
+}
+
 export interface PublicationMeasures {
   readonly initProduceStartMS: number;
   readonly originateStartMS: number;
@@ -205,7 +230,7 @@ export class PublicationProducersStatistics {
 export class PublicationPersistedIndex {
   readonly persistedDestFiles = new Map<
     string, // the filename written (e.g. public/**/*.html, etc.)
-    rfGovn.FileSysAfterPersistEventElaboration<unknown>
+    rfGovn.FileSysPersistResult
   >();
   readonly persistDurationStats = new st.RankedStatistics<
     { destFileName: string; statistic: number }
@@ -213,7 +238,7 @@ export class PublicationPersistedIndex {
 
   index(
     destFileName: string,
-    fsapee: rfGovn.FileSysAfterPersistEventElaboration<unknown>,
+    fsapee: rfGovn.FileSysPersistResult,
   ): void {
     this.persistedDestFiles.set(destFileName, fsapee);
     const duration = fsapee.persistDurationMS;
@@ -808,32 +833,32 @@ export abstract class TypicalPublication<
     this.config.observability?.events.emit("healthStatusSupplier", this);
     this.config.observability?.events.emit("healthStatusSupplier", this);
     this.fspEventsEmitter.on(
-      "afterPersistFlexibleFile",
+      "afterPersistContributionFile",
       // deno-lint-ignore require-await
-      async (destFileName, elaboration) => {
+      async (result) => {
         // TODO: warn if file written more than once either here or directly in persist
-        persistedIndex.index(destFileName, elaboration);
+        persistedIndex.index(result.destFileName, result);
       },
     );
     this.fspEventsEmitter.on(
-      "afterPersistFlexibleFileSync",
-      (destFileName, elaboration) => {
+      "afterPersistContributionFileSync",
+      (result) => {
         // TODO: warn if file written more than once either here or directly in persist
-        persistedIndex.index(destFileName, elaboration);
+        persistedIndex.index(result.destFileName, result);
       },
     );
     this.config.observability?.events.emitSync("sqlViewsSupplier", this);
   }
 
-  async *observableResourcesTabularRecords() {
+  async *resourcesTabularRecords() {
     const builders = tab.definedTabularRecordsBuilders<
       | "resource_nature"
       | "resource"
       | "resource_route_terminal"
       | "resource_frontmatter"
       | "resource_model"
-      | "resource_persisted"
       | "resource_index"
+      | "persisted"
     >();
     const resNatureRB = builders.autoRowIdProxyBuilder<{
       mediaType: rfGovn.MediaTypeIdentity;
@@ -848,6 +873,7 @@ export abstract class TypicalPublication<
     });
     const resourceRB = builders.autoRowIdProxyBuilder<{
       mediaType: rfGovn.MediaTypeIdentity;
+      resourceUuid: rfGovn.ResourceIdentity;
       isMemoized: boolean;
       isTextAsync: boolean;
       isTextSync: boolean;
@@ -855,9 +881,16 @@ export abstract class TypicalPublication<
       isStructured: boolean;
       isContentModel: boolean;
       hasFrontmatter: boolean;
-    }>({
+      keys: string[];
+    }, "resourceUUID">({
       identity: "resource",
       namespace: defaultSqlViewsNamespace,
+    }, {
+      upsertStrategy: {
+        exists: (r, _rowID, index) =>
+          index("resourceUUID")?.get(r.resourceUuid),
+        index: (r, index) => index("resourceUUID").set(r.resourceUuid, r),
+      },
     });
     const resTerminalRouteRB = builders.autoRowIdProxyBuilder<
       {
@@ -902,7 +935,8 @@ export abstract class TypicalPublication<
       }
 
       const resourceRecord = resourceRB.upsert({
-        mediaType: nature?.mediaType ?? "RF/uknown",
+        mediaType: nature?.mediaType ?? "RF/unknown",
+        resourceUuid: rfStd.autoResourceIdentity(resource),
         isMemoized: resTerminalRouteNode
           ? (this.state.resourcesIndex.memoizedProducers.get(
               this.ds.contentStrategy.navigation.location(resTerminalRouteNode),
@@ -916,6 +950,7 @@ export abstract class TypicalPublication<
         isStructured: rfStd.isStructuredDataInstanceSupplier(resource),
         isContentModel: rfStd.isContentModelSupplier(resource),
         hasFrontmatter: rfStd.isFrontmatterSupplier(resource),
+        keys: Object.keys(resource as Record<string, unknown>),
       });
       const resourceId = resourceRecord.id;
 
@@ -945,24 +980,36 @@ export abstract class TypicalPublication<
       }
     }
 
-    const resPersistedRB = builders.autoRowIdProxyBuilder<{
+    const persistedRB = builders.autoRowIdProxyBuilder<{
+      resourceId: tab.TabularRecordIdRef;
       destFileName: string;
-      persistDurationMS: number;
+      persistDurationMs: number;
+      contribution: string;
     }>({
-      identity: "resource_persisted",
+      identity: "persisted",
       namespace: defaultSqlViewsNamespace,
     });
 
-    for (const pf of this.state.persistedIndex.persistedDestFiles.entries()) {
-      const destFileName = pf[0];
-      // deno-lint-ignore no-explicit-any
-      const props = pf[1] as any;
-      resPersistedRB.upsert({
-        destFileName,
-        persistDurationMS: props.persistDurationMS,
-        // TODO: add props.resource location, etc.
-        // TODO: add foreign key to upserted resources above
-      });
+    for (const fspr of this.state.persistedIndex.persistedDestFiles.values()) {
+      if (rfStd.isIdentifiableResourceSupplier(fspr.context)) {
+        const resourceRec = resourceRB.findByIndex(
+          "resourceUUID",
+          fspr.context.resource.identity,
+        );
+        persistedRB.upsert({
+          resourceId: resourceRec ? resourceRec.id : -1,
+          destFileName: fspr.destFileName,
+          contribution: fspr.contribution,
+          persistDurationMs: fspr.persistDurationMS,
+        });
+      } else {
+        persistedRB.upsert({
+          resourceId: -1,
+          destFileName: fspr.destFileName,
+          contribution: fspr.contribution,
+          persistDurationMs: fspr.persistDurationMS,
+        });
+      }
     }
 
     const resIndexesRB = builders.autoRowIdProxyBuilder<
@@ -993,7 +1040,7 @@ export abstract class TypicalPublication<
   > {
     yield* m.tabularMetrics(this.config.metrics.instances);
     yield* fsT.fileSystemTabularRecords(this.config.fsAssetsWalkers);
-    yield* this.observableResourcesTabularRecords();
+    yield* this.resourcesTabularRecords();
   }
 
   abstract constructDesignSystem(
@@ -1202,9 +1249,7 @@ export abstract class TypicalPublication<
   }
 
   persistersRefinery() {
-    const ees: rfGovn.FileSysPersistEventsEmitterSupplier = {
-      fspEE: this.fspEventsEmitter,
-    };
+    const fspEE = this.fspEventsEmitter;
     const memoize = this.config.memoizeProducers;
     return rfStd.pipelineUnitsRefineryUntypedObservable<
       { readonly startMS: number },
@@ -1243,7 +1288,7 @@ export abstract class TypicalPublication<
           this.config.destRootPath,
           this.ds.contentStrategy,
           {
-            fspEE: ees,
+            fspEE,
             memoize: memoize
               // deno-lint-ignore require-await
               ? (async (resource, producer) => {
@@ -1261,14 +1306,14 @@ export abstract class TypicalPublication<
         identity: "jsonTextProducer",
         refinery: jrs.jsonTextProducer(this.config.destRootPath, {
           routeTree: this.routes.resourcesTree,
-        }, ees),
+        }, fspEE),
       },
       {
         identity: "csvProducer",
         refinery: dtr.csvProducer<PublicationState>(
           this.config.destRootPath,
           this.state,
-          ees,
+          fspEE,
         ),
       },
       {
@@ -1277,7 +1322,7 @@ export abstract class TypicalPublication<
           this.config.destRootPath,
           this.state,
           {
-            eventsEmitter: ees,
+            eventsEmitter: fspEE,
           },
         ),
       },
@@ -1287,7 +1332,7 @@ export abstract class TypicalPublication<
           this.config.destRootPath,
           this.state,
           {
-            eventsEmitter: ees,
+            eventsEmitter: fspEE,
           },
         ),
       },
@@ -1486,7 +1531,7 @@ export abstract class TypicalPublication<
     ) {
       // we need to persist these ourselves because by the time produceMetrics()
       // is called, all other resources have already been persisted
-      resourcesIndex.index(await persist(resource));
+      await resourcesIndex.index(await persist(resource));
     }
 
     const ocCtxRoute = ocC.operationalCtxRoute(this.config.fsRouteFactory);
@@ -1537,7 +1582,7 @@ export abstract class TypicalPublication<
         originationRefinery,
       )
     ) {
-      resourcesIndex.index(resource);
+      await resourcesIndex.index(resource);
     }
   }
 
@@ -1551,7 +1596,7 @@ export abstract class TypicalPublication<
       ) {
         // we need to persist these ourselves because by the time finalizeProduce()
         // is called, all other resources have already been persisted
-        resourcesIndex.index(await persist(resource));
+        await resourcesIndex.index(await persist(resource));
       }
     }
 
@@ -1569,7 +1614,7 @@ export abstract class TypicalPublication<
     await this.initProduce();
 
     // we store all our resources in this index, as they are produced;
-    // ultimately the index contains every generated resource
+    // ultimately the index contains every originated resource
     const resourcesIndex = this.state.resourcesIndex;
 
     // find and construct every orginatable resource from file system and other
@@ -1579,7 +1624,7 @@ export abstract class TypicalPublication<
     const originateStartMS = Date.now();
     const originationRefinery = this.originationRefinery();
     for await (const resource of this.resources(originationRefinery)) {
-      resourcesIndex.index(resource);
+      await resourcesIndex.index(resource);
     }
 
     // the first found of all resources are now available, but haven't yet been
@@ -1592,8 +1637,17 @@ export abstract class TypicalPublication<
     // created so we can persist all pages that are in our index
     const persistStartMS = Date.now();
     const persist = this.persistersRefinery();
-    for (const resource of resourcesIndex.resources()) {
-      await persist(resource);
+    const ri = resourcesIndex.resourcesIndex;
+    for (let i = 0; i < ri.length; i++) {
+      const resource = ri[i];
+      const persisted = await persist(resource);
+
+      // it's possible the persistence middleware may replace the resource so
+      // let's make sure we're tracking the right one in the index
+      if (resource !== persisted) {
+        const enriched = enrichResource(resource, persisted);
+        resourcesIndex.reindex(resource, i, enriched);
+      }
     }
 
     // give opportunity for subclasses to finalize the production pipeline
