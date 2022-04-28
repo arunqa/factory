@@ -911,9 +911,8 @@ export abstract class TypicalPublication<
     });
     const resModelRB = builders.autoRowIdProxyBuilder<{
       resourceId: tab.TabularRecordIdRef;
-      key: string;
-      value: unknown;
-      valueType: string;
+      model: unknown;
+      properties: string[];
     }>({
       identity: "resource_model",
       namespace: defaultSqlViewsNamespace,
@@ -974,21 +973,11 @@ export abstract class TypicalPublication<
       }
 
       if (rfStd.isModelSupplier(resource) && resource.model) {
-        const flattened = tab.flattenObject(resource.model);
-        Object.entries(flattened).filter((kv) => {
-          const [key] = kv;
-          return ["isContentModel", "isContentAvailable", "isMarkdownModel"]
-              .find((f) => key === f)
-            ? false
-            : true;
-        }).forEach((kv) =>
-          resModelRB.upsert({
-            resourceId,
-            key: kv[0],
-            value: kv[1],
-            valueType: typeof kv[1],
-          })
-        );
+        resModelRB.upsert({
+          resourceId,
+          model: resource.model,
+          properties: Object.keys(resource.model as Record<string, unknown>),
+        });
       }
     }
 
