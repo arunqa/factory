@@ -8,9 +8,39 @@
     <link rel="stylesheet" href="../path.actuate.css">
 </head>
 
+<!-- to regenerate list of tickets use GitHub CLI:
+gh issue list --state open --label "❗ Essential" --json "number,title,body" --jq '.[] | "* [#" + (.number|tostring) + "](https://github.com/resFactory/factory/issues/" + (.number|tostring) +  ") " + .title' > issues.csv
+-->
+
 <body>
     <pre data-transformable="markdown" class="md">
-    ## Essential
+    ## Essential (GitHub)
+
+    * [#10](https://github.com/resFactory/factory/issues/10) Insert template, layout, and partial stacks into DOM for help finding where generated HTML originated
+    * [#12](https://github.com/resFactory/factory/issues/12) Create multiple smartNavigationPage variations
+    * [#15](https://github.com/resFactory/factory/issues/15) Allow frontmatter properties to be filtered for client cargo
+    * [#19](https://github.com/resFactory/factory/issues/19) Decouple publications from design-system
+    * [#20](https://github.com/resFactory/factory/issues/20) Refactor reusable Lighting DS functionality
+    * [#31](https://github.com/resFactory/factory/issues/31) Implement model search engine for content/tag selection
+    * [#39](https://github.com/resFactory/factory/issues/39) Migrate common client-cargo (e.g. web components) into universal DS
+    * [#40](https://github.com/resFactory/factory/issues/40) Implement Proxied Content (dynamic variables)
+    * [#47](https://github.com/resFactory/factory/issues/47) Implement resource index renderers for Typesense, ES, Solr, etc.
+    * [#48](https://github.com/resFactory/factory/issues/48) Integrate deep link fragments
+    * [#49](https://github.com/resFactory/factory/issues/49) Enable typed and untyped tags (terms) with namespace and label support
+    * [#50](https://github.com/resFactory/factory/issues/50) Create PHP-style *.dr.rf.ts which would be served using FastCGI
+    * [#56](https://github.com/resFactory/factory/issues/56) Add content governance directives
+    * [#58](https://github.com/resFactory/factory/issues/58) Create `*.json.ts` resources to allow type-safe JSON to be generated
+    * [#59](https://github.com/resFactory/factory/issues/59) Create `pass`-based configuration type (similar to env-based)
+    * [#62](https://github.com/resFactory/factory/issues/62) Add QueryLogs-like tracking to SQL execution
+    * [#65](https://github.com/resFactory/factory/issues/65) Add error event listener to all pages which records client-side issues
+    * [#67](https://github.com/resFactory/factory/issues/67) Switch from custom / simple-http-server web serving to Caddy
+    * [#69](https://github.com/resFactory/factory/issues/69) Switch from Justfile to Taskfile
+    * [#72](https://github.com/resFactory/factory/issues/72) Memoize producers and originators for improved hot reload speeds
+    * [#73](https://github.com/resFactory/factory/issues/73) Implement RF Console with SSE or WebSocket tunnels
+    * [#84](https://github.com/resFactory/factory/issues/84) Embed Biscuit authorization into RF infrastructure
+    * [#85](https://github.com/resFactory/factory/issues/85) Switch Publication Server to be TLS and HTTP/2 by default
+
+    ## Essential (notes)
 
     * Integrate [command palette for the web](https://github.com/benwinding/command-pal) or [ninja-keys](https://github.com/ssleptsov/ninja-keys) for easier navigation of directives, searching, etc.
       [Boop](https://github.com/IvanMathy/Boop) is a good example of functionality we can incorporate by running scripts from JS or SQL inventories.
@@ -25,6 +55,7 @@
       - show dependency graphs for `*.auto.js` counterparts
       - perform auto-bundling through rfExplorer
     * Accelerate native Windows support to make it easier for non-engineers to use RF.
+      - Migrate away from `Justfile` to `Taskfile.ts` so we can remain platform-neutral.
       - Since we have a robust dev mode server we can move away from symlinks and other Linux-specific functionality so
     that the rfExplorer-based sites can be run on Windows with WSL.
         - We use symlinks to prevent all assets/graphics being being _copied_ during builds (for performance); with rfExplorer
@@ -51,7 +82,6 @@
         };
         export default pathCtx;
         ```
-
     * Continuously run Lighthouse in Edge/Chrome DevTools to make sure performance is maintained. This is not
     necessarily for rfExplorer but because we're experimenting with HTML+JS(lightweight) to see if we can get
     enough performance from client-side rendering (instead of only SSR).
