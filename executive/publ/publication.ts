@@ -22,6 +22,7 @@ import * as tab from "../../lib/tabular/mod.ts";
 
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
+import * as oTab from "../../core/originate/tabular.ts";
 
 import * as html from "../../core/render/html/mod.ts";
 import * as jrs from "../../core/render/json.ts";
@@ -361,6 +362,7 @@ export class Configuration<
   readonly persistClientCargo?: html.HtmlLayoutClientCargoPersister;
   readonly rewriteMarkdownLink?: mdr.MarkdownLinkUrlRewriter;
   readonly memoizeProducers?: boolean;
+  readonly originatorSqlViewsFactory: oTab.OriginatorTabularRecordsFactory;
 
   constructor(prefs: Preferences<OperationalContext>) {
     this.operationalCtx = prefs.operationalCtx;
@@ -412,6 +414,7 @@ export class Configuration<
     this.extensionsManager = prefs.extensionsManager;
     this.termsManager = prefs.termsManager;
     this.memoizeProducers = prefs.memoizeProducers;
+    this.originatorSqlViewsFactory = new oTab.OriginatorTabularRecordsFactory();
 
     this.observability?.events.emitSync("sqlViewsSupplier", this);
   }
@@ -1050,6 +1053,7 @@ export abstract class TypicalPublication<
   > {
     yield* m.tabularMetrics(this.config.metrics.instances);
     yield* fsT.fileSystemTabularRecords(this.config.fsAssetsWalkers);
+    yield* this.config.originatorSqlViewsFactory.defined();
     yield* this.resourcesTabularRecords();
   }
 
@@ -1233,6 +1237,7 @@ export abstract class TypicalPublication<
         this.config.extensionsManager,
         {
           eventEmitter: () => watcher,
+          sqlViewsFactory: this.config.originatorSqlViewsFactory,
         },
       ),
       ...this.operationalCtxOriginators(),

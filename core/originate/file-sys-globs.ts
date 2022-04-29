@@ -6,6 +6,8 @@ import * as govn from "../../governance/mod.ts";
 import * as g from "../../lib/git/mod.ts";
 import * as r from "../std/route.ts";
 import * as extn from "../../lib/module/mod.ts";
+import * as tab from "../../lib/tabular/mod.ts";
+import * as oTab from "./tabular.ts";
 
 export type FileSysPathText = string;
 export type FileSysFileNameOnly = string;
@@ -57,6 +59,10 @@ export interface FileSysGlobWalkEntry<Resource>
   readonly ownerFileSysPath: FileSysPathText;
   readonly lfsPath: FileSysPath<Resource>;
   readonly glob: FileSysPathGlob<Resource>;
+  readonly sqlViewsFactory?: FileSysGlobsOriginatorTabularRecordsFactory;
+  readonly fileSysGlobTR?: tab.InsertedRecord<
+    FileSysGlobOriginatorTabularRecord
+  >;
 }
 
 export interface MutableFileSysGlobWalkProvenanceSupplier<Resource> {
@@ -100,6 +106,45 @@ export interface FileSysGlobsOriginatorOptions<Resource> {
   >;
   readonly obsHealthStatusIdentity?:
     govn.ObservabilityHealthComponentCategorySupplier;
+  readonly sqlViewsFactory?: oTab.OriginatorTabularRecordsFactory;
+}
+
+export interface FileSysGlobOriginatorTabularRecord {
+  readonly originatorId: tab.TabularRecordIdRef;
+  readonly glob: FileSysGlobText;
+  readonly exclude: string;
+  readonly friendlyName: string;
+  readonly construct: string;
+  readonly refine: string;
+  readonly routeFactory: string;
+  readonly routeParser: string;
+  readonly gitWorkTree: string;
+}
+
+export class FileSysGlobsOriginatorTabularRecordsFactory
+  extends oTab.OriginatorTabularRecordsFactory<
+    "originator" | "file_sys_glob_originator"
+  > {
+  readonly fileSysGlobRB: tab.TabularRecordsBuilder<
+    tab.InsertableRecord<FileSysGlobOriginatorTabularRecord>,
+    tab.InsertedRecord<FileSysGlobOriginatorTabularRecord>
+  >;
+  readonly originatorTR: oTab.OriginatorTabularRecord;
+
+  constructor(
+    // deno-lint-ignore no-explicit-any
+    readonly otrFactory: oTab.OriginatorTabularRecordsFactory<any>,
+  ) {
+    super();
+    this.originatorTR = otrFactory.originatorRB.upsert({
+      originator: `FileSysGlobsOriginator`,
+      provenance: import.meta.url,
+    });
+    this.fileSysGlobRB = otrFactory.define(
+      "file_sys_glob_originator",
+      tab.tabularRecordsAutoRowIdBuilder(),
+    );
+  }
 }
 
 export class FileSysGlobsOriginator<Resource>
@@ -111,6 +156,7 @@ export class FileSysGlobsOriginator<Resource>
   readonly obsHealthIdentity: govn.ObservabilityHealthComponentCategorySupplier;
   readonly fsee?: FileSysGlobsOriginatorEventEmitter<Resource>;
   readonly oee?: govn.ObservabilityEventsEmitter;
+  readonly sqlViewsFactory?: FileSysGlobsOriginatorTabularRecordsFactory;
   constructor(
     readonly topLevelLfsPaths: FileSysPaths<Resource>[],
     readonly extensionsManager: extn.ExtensionsManager,
@@ -119,6 +165,11 @@ export class FileSysGlobsOriginator<Resource>
     if (options?.eventEmitter) {
       this.fsee = options?.eventEmitter(this);
     }
+    this.sqlViewsFactory = options?.sqlViewsFactory
+      ? new FileSysGlobsOriginatorTabularRecordsFactory(
+        options?.sqlViewsFactory,
+      )
+      : undefined;
     this.obsHealthIdentity = options?.obsHealthStatusIdentity || {
       category: `FileSysGlobsOriginator`,
     };
@@ -177,6 +228,28 @@ export class FileSysGlobsOriginator<Resource>
               tllfsPath.log || logger,
           };
 
+          let fileSysGlobTR:
+            | tab.InsertedRecord<FileSysGlobOriginatorTabularRecord>
+            | undefined;
+          if (this.sqlViewsFactory) {
+            fileSysGlobTR = this.sqlViewsFactory.fileSysGlobRB.upsert({
+              originatorId: this.sqlViewsFactory.originatorTR.id,
+              glob: glob.glob,
+              friendlyName: glob.humanFriendlyName || "",
+              exclude: glob.exclude ? glob.exclude.join(", ") : "",
+              construct: construct ? Deno.inspect(construct, { depth: 1 }) : "",
+              refine: refine ? Deno.inspect(refine, { depth: 1 }) : "",
+              routeFactory: Deno.inspect(
+                fsrOptions.fsRouteFactory,
+                { depth: 1 },
+              ),
+              routeParser: Deno.inspect(fsrOptions.routeParser, { depth: 1 }),
+              gitWorkTree: lfsPath.fileSysGitPaths
+                ? lfsPath.fileSysGitPaths.workTreePath
+                : "",
+            });
+          }
+
           const rootPath = path.resolve(lfsPath.fileSysPath);
           for await (
             const we of fs.expandGlob(glob.glob, {
@@ -197,6 +270,8 @@ export class FileSysGlobsOriginator<Resource>
               ownerFileSysPath: tllfsPath.ownerFileSysPath,
               lfsPath,
               glob,
+              sqlViewsFactory: this.sqlViewsFactory,
+              fileSysGlobTR,
               route: await fsrOptions.fsRouteFactory.fsRoute(
                 we.path,
                 rootPath,
