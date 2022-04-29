@@ -3,79 +3,72 @@ import * as p from "./proxy.ts";
 
 export type TabularRecordsBuilderIndexName = string;
 
+export type InsertableRecord<
+  T extends govn.UntypedObject = govn.UntypedObject,
+> =
+  & T
+  & Partial<govn.MutatableTabularRecordIdSupplier>;
+export type InsertedRecord<T extends govn.UntypedObject = govn.UntypedObject> =
+  & T
+  & govn.TabularRecordIdSupplier;
+
 export interface TabularRecordsBuilder<
-  InsertableTableObject extends
-    & govn.UntypedObject
-    & Partial<govn.MutatableTabularRecordIdSupplier>,
-  InsertedTableObject extends
-    & govn.UntypedObject
-    & Readonly<govn.MutatableTabularRecordIdSupplier>,
+  Insertable extends InsertableRecord,
+  Inserted extends InsertedRecord,
   IndexName = unknown,
 > {
-  readonly upsert: (record: InsertableTableObject) => InsertedTableObject;
+  readonly upsert: (record: Insertable) => Inserted;
   readonly findByID: (
     id: govn.TabularRecordID,
-  ) => InsertedTableObject | undefined;
+  ) => Inserted | undefined;
   readonly findByIndex: <Value>(
     indexName: IndexName,
     value: Value,
-  ) => InsertedTableObject | undefined;
-  readonly inspectForDefn: () => InsertedTableObject | undefined;
-  readonly records: InsertedTableObject[];
+  ) => Inserted | undefined;
+  readonly inspectForDefn: () => Inserted | undefined;
+  readonly records: Inserted[];
 }
 
 export function tabularRecordsAutoRowIdBuilder<
-  TableObject extends govn.UntypedObject,
+  RecordProps extends govn.UntypedObject,
   IndexName = unknown,
-  InsertableTableObject extends
-    & govn.UntypedObject
-    & Partial<govn.MutatableTabularRecordIdSupplier> =
-      & TableObject
-      & Partial<govn.MutatableTabularRecordIdSupplier>,
-  InsertedTableObject extends
-    & govn.UntypedObject
-    & Readonly<govn.MutatableTabularRecordIdSupplier> =
-      & TableObject
-      & Readonly<govn.MutatableTabularRecordIdSupplier>,
+  Insertable extends InsertableRecord = InsertableRecord<RecordProps>,
+  Inserted extends InsertedRecord = InsertedRecord<RecordProps>,
 >(
   options?: {
     upsertStrategy?: {
       readonly exists: (
-        record: InsertableTableObject,
+        record: Insertable,
         rowID: govn.TabularRecordID,
-        index: (name: IndexName) => Map<unknown, InsertedTableObject>,
-      ) => InsertedTableObject | undefined;
+        index: (name: IndexName) => Map<unknown, Inserted>,
+      ) => Inserted | undefined;
       readonly index?: (
-        record: InsertedTableObject,
-        index: (name: IndexName) => Map<unknown, InsertedTableObject>,
+        record: Inserted,
+        index: (name: IndexName) => Map<unknown, Inserted>,
       ) => void;
     };
   },
-): TabularRecordsBuilder<
-  InsertableTableObject,
-  InsertedTableObject,
-  IndexName
-> {
+): TabularRecordsBuilder<Insertable, Inserted, IndexName> {
   const rowIdTextIndexName = "rowID" as unknown as IndexName;
-  const records: InsertedTableObject[] = [];
+  const records: Inserted[] = [];
   let indexes:
-    | Map<IndexName, Map<unknown, InsertedTableObject>>
+    | Map<IndexName, Map<unknown, Inserted>>
     | undefined;
   const prepareIndex = <Value>(name: IndexName) => {
     if (!indexes) indexes = new Map();
     let index = indexes.get(name);
     if (!index) {
-      index = new Map<Value, InsertedTableObject>();
+      index = new Map<Value, Inserted>();
       indexes.set(name, index);
     }
     return index;
   };
 
-  let inspectForDefn: InsertedTableObject | undefined = undefined;
+  let inspectForDefn: Inserted | undefined = undefined;
   const { upsertStrategy } = options ?? {};
   const result: TabularRecordsBuilder<
-    InsertableTableObject,
-    InsertedTableObject,
+    Insertable,
+    Inserted,
     IndexName
   > = {
     upsert: (record) => {
@@ -92,7 +85,7 @@ export function tabularRecordsAutoRowIdBuilder<
       if (exists) return exists;
 
       (record as govn.MutatableTabularRecordIdSupplier).id = insertRowID;
-      const inserted = record as InsertedTableObject;
+      const inserted = record as Inserted;
       if (!inspectForDefn) inspectForDefn = inserted;
       records.push(inserted);
       if (typeof insertRowID == "string") {
@@ -121,52 +114,40 @@ export interface TabularRecordsBuilders<
   Identity extends govn.TabularRecordsIdentity,
 > {
   readonly autoRowIdProxyBuilder: <
-    TableObject extends govn.UntypedObject,
+    RecordProps extends govn.UntypedObject,
     IndexName = unknown,
-    InsertableTableObject extends
-      & govn.UntypedObject
-      & Partial<govn.MutatableTabularRecordIdSupplier> =
-        & TableObject
-        & Partial<govn.MutatableTabularRecordIdSupplier>,
-    InsertedTableObject extends
-      & govn.UntypedObject
-      & Readonly<govn.MutatableTabularRecordIdSupplier> =
-        & TableObject
-        & Readonly<govn.MutatableTabularRecordIdSupplier>,
+    Insertable extends InsertableRecord = InsertableRecord<RecordProps>,
+    Inserted extends InsertedRecord = InsertedRecord<RecordProps>,
   >(
     defn:
-      & Omit<govn.TabularRecordDefn<TableObject, Identity>, "columns">
-      & Partial<Pick<govn.TabularRecordDefn<TableObject, Identity>, "columns">>,
+      & Omit<govn.TabularRecordDefn<RecordProps, Identity>, "columns">
+      & Partial<Pick<govn.TabularRecordDefn<RecordProps, Identity>, "columns">>,
     options?: {
       upsertStrategy?: {
         readonly exists: (
-          record: InsertableTableObject,
+          record: Insertable,
           rowID: govn.TabularRecordID,
-          index: (name: IndexName) => Map<unknown, InsertedTableObject>,
-        ) => InsertedTableObject | undefined;
+          index: (name: IndexName) => Map<unknown, Inserted>,
+        ) => Inserted | undefined;
         readonly index?: (
-          record: InsertedTableObject,
-          index: (name: IndexName) => Map<unknown, InsertedTableObject>,
+          record: Inserted,
+          index: (name: IndexName) => Map<unknown, Inserted>,
         ) => void;
       };
     },
   ) => TabularRecordsBuilder<
-    InsertableTableObject,
-    InsertedTableObject,
+    Insertable,
+    Inserted,
     IndexName
   >;
 
   readonly builder: <
-    InsertableTableObject extends
-      & govn.UntypedObject
-      & Partial<govn.MutatableTabularRecordIdSupplier>,
-    InsertedTableObject extends
-      & govn.UntypedObject
-      & Readonly<govn.MutatableTabularRecordIdSupplier>,
+    Insertable extends InsertableRecord,
+    Inserted extends InsertedRecord,
   >(identity: Identity) =>
     | TabularRecordsBuilder<
-      InsertableTableObject,
-      InsertedTableObject,
+      Insertable,
+      Inserted,
       // deno-lint-ignore no-explicit-any
       any
     >
@@ -181,7 +162,7 @@ export interface TabularRecordsBuilders<
 export function definedTabularRecordsBuilders<
   Identity extends govn.TabularRecordsIdentity,
 >(): TabularRecordsBuilders<Identity> {
-  const proxied = new Map<string, {
+  const proxied = new Map<Identity, {
     defn:
       // deno-lint-ignore no-explicit-any
       & Omit<govn.TabularRecordDefn<any, Identity>, "columns">
@@ -216,4 +197,56 @@ export function definedTabularRecordsBuilders<
       }
     },
   };
+}
+
+export abstract class TabularRecordsFactory<
+  Identity extends govn.TabularRecordsIdentity,
+> {
+  #defined = new Map<Identity, {
+    defn:
+      // deno-lint-ignore no-explicit-any
+      & Omit<govn.TabularRecordDefn<any, Identity>, "columns">
+      // deno-lint-ignore no-explicit-any
+      & Partial<Pick<govn.TabularRecordDefn<any, Identity>, "columns">>;
+    // deno-lint-ignore no-explicit-any
+    builder: TabularRecordsBuilder<any, any, any>;
+  }>();
+
+  constructor(readonly namespace: (trID: Identity) => string) {
+  }
+
+  define<Record extends govn.UntypedObject, IndexName = unknown>(
+    identity: Identity,
+    builder: TabularRecordsBuilder<
+      InsertableRecord<Record>,
+      InsertedRecord<Record>,
+      IndexName
+    >,
+  ) {
+    const existing = this.#defined.get(identity);
+    if (existing) {
+      console.warn(
+        `Duplicate builder defined: ${identity} in TabularRecordsFactory, using existing`,
+      );
+      return existing.builder;
+    }
+    this.#defined.set(identity, {
+      defn: {
+        identity,
+        namespace: this.namespace(identity),
+      },
+      builder,
+    });
+    return builder;
+  }
+
+  async *defined() {
+    for (const b of this.#defined) {
+      const [_, builderDefn] = b;
+      yield p.definedTabularRecordsProxy(
+        builderDefn.defn,
+        builderDefn.builder.records,
+      );
+    }
+  }
 }

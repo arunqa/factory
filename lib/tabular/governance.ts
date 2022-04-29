@@ -114,6 +114,10 @@ export interface MutatableTabularRecordIdSupplier {
   id: TabularRecordID;
 }
 
+export type TabularRecordIdSupplier = Readonly<
+  MutatableTabularRecordIdSupplier
+>;
+
 export interface DefinedTabularRecordsSupplier {
   readonly definedTabularRecords: <
     TableRecord extends UntypedTabularRecordObject = UntypedTabularRecordObject,
