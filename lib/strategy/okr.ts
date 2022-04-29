@@ -4,7 +4,8 @@ import * as govn from "./governance.ts";
 
 export type OkrNamespace = typeof okrNamespaceText;
 export const okrNamespaceText = "OKR" as const;
-export const okrNamespaceUUIDv5 = "7cd56c20-1743-4b4f-93aa-4921e42d91e9";
+export const okrNamespaceUUIDv5: id.UUID =
+  "7cd56c20-1743-4b4f-93aa-4921e42d91e9";
 
 export interface KeyResultText extends String {
   // see [nominal typing](https://basarat.gitbook.io/typescript/main-1/nominaltyping#using-interfaces)
@@ -42,8 +43,8 @@ export const isObjectivesAndKeyResults = safety.typeGuard<
 >("objectives");
 
 export function okrsIdentitySupplier(
-  uuidV5NS: id.Identity = okrNamespaceUUIDv5,
-): id.NamespacedIdentityFactory<OkrNamespace> {
+  uuidV5NS = okrNamespaceUUIDv5,
+): id.NamespacedIdentityFactory<OkrNamespace, id.UUID> {
   return id.typicalNamespacedUuidFactory<OkrNamespace>(
     okrNamespaceText,
     uuidV5NS,

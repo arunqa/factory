@@ -1,7 +1,7 @@
 import * as id from "../identity/mod.ts";
 
 export interface StrategyIdentitySupplier<Namespace extends string> {
-  readonly UUID: id.NamespacedIdentity<Namespace>;
+  readonly UUID: id.NamespacedIdentity<id.UUID, Namespace>;
   readonly humanFriendlyID?: id.HumanFriendlyIdentity;
 }
 
