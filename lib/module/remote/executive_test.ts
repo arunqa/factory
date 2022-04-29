@@ -31,7 +31,7 @@ export function flexibleModuleArgs(
 // the script and uses what is in the catalog. By letting clients see the
 export function testInventory(
   identity = "testInventory",
-): govn.ServerRuntimeScriptInventory {
+): govn.ServerRuntimeScriptInventory<govn.ServerRuntimeScript> {
   const scriptsIndex = new Map<string, govn.ServerRuntimeScript>();
 
   const fcIdentityPlaceholder = "[TBD]";
@@ -43,7 +43,7 @@ export function testInventory(
     foreignCodeIdentity: fcIdentityPlaceholder,
   };
 
-  const result: govn.ServerRuntimeScriptInventory = {
+  const result: govn.ServerRuntimeScriptInventory<govn.ServerRuntimeScript> = {
     script: (identity: string) => {
       return scriptsIndex.get(identity);
     },
