@@ -95,7 +95,7 @@ export class PublicationResourcesIndex<Resource>
     resource: Resource,
     lcMetrics: fsg.FileSysGlobWalkEntryLifecycleMetrics<Resource>,
   ): void {
-    const duration = lcMetrics.originateDurationMS;
+    const duration = lcMetrics.originDurationMS;
     if (duration) {
       this.constructionDurationStats.rank({
         resource,
@@ -859,9 +859,11 @@ export abstract class TypicalPublication<
       | "resource_nature"
       | "resource"
       | "resource_route_terminal"
+      | "resource_measures"
       | "resource_frontmatter"
       | "resource_model"
       | "resource_index"
+      | "resource_fs_origin"
       | "persisted"
     >();
     const resNatureRB = builders.autoRowIdProxyBuilder<{
@@ -878,6 +880,7 @@ export abstract class TypicalPublication<
     const resourceRB = builders.autoRowIdProxyBuilder<{
       mediaType: rfGovn.MediaTypeIdentity;
       resourceUuid: rfGovn.ResourceIdentity;
+      originatorId: tab.TabularRecordIdRef;
       isMemoized: boolean;
       isTextAsync: boolean;
       isTextSync: boolean;
@@ -902,6 +905,22 @@ export abstract class TypicalPublication<
       } & rfGovn.RouteNode
     >({
       identity: "resource_route_terminal",
+      namespace: defaultSqlViewsNamespace,
+    });
+    const resMeasuresRB = builders.autoRowIdProxyBuilder<{
+      resourceId: tab.TabularRecordIdRef;
+    }>({
+      identity: "resource_measures",
+      namespace: defaultSqlViewsNamespace,
+    });
+    const resFileSysOriginRB = builders.autoRowIdProxyBuilder<{
+      resourceId: tab.TabularRecordIdRef;
+      fsGlobOriginId: tab.TabularRecordIdRef;
+      fsGlob: string;
+      name: string;
+      path: string;
+    }>({
+      identity: "resource_fs_origin",
       namespace: defaultSqlViewsNamespace,
     });
     const resFrontmatterRB = builders.autoRowIdProxyBuilder<{
@@ -942,6 +961,10 @@ export abstract class TypicalPublication<
       const resourceRecord = resourceRB.upsert({
         mediaType: nature?.mediaType ?? "RF/unknown",
         resourceUuid: rfStd.autoResourceIdentity(resource),
+        originatorId:
+          oGovn.isOriginatorSupplier(resource) && resource.originatorTR
+            ? resource.originatorTR.id
+            : -1,
         isMemoized: resTerminalRouteNode
           ? (this.state.resourcesIndex.memoizedProducers.get(
               this.ds.contentStrategy.navigation.location(resTerminalRouteNode),
@@ -958,6 +981,10 @@ export abstract class TypicalPublication<
         properties: Object.keys(resource as Record<string, unknown>),
       });
       const resourceId = resourceRecord.id;
+
+      if (oGovn.isOriginMeasuresSupplier(resource)) {
+        resMeasuresRB.upsert({ resourceId, ...resource.originMeasures });
+      }
 
       if (resTerminalRouteNode) {
         // this will add all terminal unit properties
@@ -981,6 +1008,16 @@ export abstract class TypicalPublication<
           resourceId,
           model: resource.model,
           properties: Object.keys(resource.model as Record<string, unknown>),
+        });
+      }
+
+      if (fsg.isFileSysGlobOriginSupplier(resource)) {
+        resFileSysOriginRB.upsert({
+          resourceId,
+          fsGlobOriginId: resource.originTR ? resource.originTR.id : -1,
+          name: resource.origin.name,
+          path: resource.origin.path,
+          fsGlob: resource.origin.glob.glob,
         });
       }
     }
