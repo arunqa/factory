@@ -15,11 +15,13 @@ export type FileSysPathText = string;
 export type FileSysFileNameOnly = string;
 export type FileSysGlobText = string;
 
-export interface FileSysGlobWalkEntryLifecycleMetrics<Resource> {
+export type FileSysGlobWalkOriginLifecycleMeasures = oGovn.OriginMeasures<
+  typeof oGovn.TypicalOriginLifecycleMeasures[number]
+>;
+
+export interface FileSysGlobWalkEntryLifecycleMetrics<Resource>
+  extends FileSysGlobWalkOriginLifecycleMeasures {
   readonly fsgwe: FileSysGlobWalkEntry<Resource>;
-  readonly constructDurationMS: number;
-  readonly refineDurationMS?: number;
-  readonly originateDurationMS: number;
 }
 
 export interface FileSysGlobWalkEntryFactory<Resource> {
@@ -61,10 +63,6 @@ export interface FileSysGlobWalkEntry<Resource>
   readonly ownerFileSysPath: FileSysPathText;
   readonly lfsPath: FileSysPath<Resource>;
   readonly glob: FileSysPathGlob<Resource>;
-  readonly sqlViewsFactory?: FileSysGlobsOriginatorTabularRecordsFactory;
-  readonly fileSysGlobTR?: tab.InsertedRecord<
-    FileSysGlobOriginatorTabularRecord
-  >;
 }
 
 export const isPotentialFileSysGlobWalkEntry = safety.typeGuard<
@@ -81,7 +79,11 @@ export function isFileSysGlobWalkEntry<Resource>(
 
 export function isFileSysGlobOriginSupplier<Resource>(
   o: unknown,
-): o is oGovn.ResourceOriginSupplier<Resource, FileSysGlobWalkEntry<Resource>> {
+): o is oGovn.ResourceOriginSupplier<
+  Resource,
+  FileSysGlobWalkEntry<Resource>,
+  tab.InsertedRecord<FileSysGlobOriginatorTabularRecord>
+> {
   return oGovn.isResourceOriginSupplier(o) &&
     isFileSysGlobWalkEntry<Resource>(o.origin);
 }
@@ -235,11 +237,11 @@ export class FileSysGlobsOriginator<Resource>
               tllfsPath.log || logger,
           };
 
-          let fileSysGlobTR:
+          let fsGlobOriginTR:
             | tab.InsertedRecord<FileSysGlobOriginatorTabularRecord>
             | undefined;
           if (this.sqlViewsFactory) {
-            fileSysGlobTR = this.sqlViewsFactory.fileSysGlobRB.upsert({
+            fsGlobOriginTR = this.sqlViewsFactory.fileSysGlobRB.upsert({
               originatorId: this.sqlViewsFactory.originatorTR.id,
               glob: glob.glob,
               friendlyName: glob.humanFriendlyName || "",
@@ -277,18 +279,25 @@ export class FileSysGlobsOriginator<Resource>
               ownerFileSysPath: tllfsPath.ownerFileSysPath,
               lfsPath,
               glob,
-              sqlViewsFactory: this.sqlViewsFactory,
-              fileSysGlobTR,
               route: await fsrOptions.fsRouteFactory.fsRoute(
                 we.path,
                 rootPath,
                 fsrOptions,
               ),
               resourceFactory: async () => {
+                // performance.now() is higher resolution but Date.now() is faster
                 const beforeConstruct = Date.now();
                 let resource = await construct(fsgwe, fsrOptions);
                 const afterConstruct = Date.now();
                 if (refine) resource = await refine(resource);
+
+                const originMeasures: FileSysGlobWalkOriginLifecycleMeasures = {
+                  originConstructDurationMS: afterConstruct - beforeConstruct,
+                  originMiddlewareDurationMS: refine
+                    ? (Date.now() - afterConstruct)
+                    : undefined,
+                  originDurationMS: Date.now() - beforeConstruct,
+                };
 
                 // support memoization (rfExplorer server use cases); calling
                 // resource.origin.resourceFactory() will "replay" the memoized
@@ -299,22 +308,24 @@ export class FileSysGlobsOriginator<Resource>
                   >
                   & oGovn.MutatableResourceOriginSupplier<
                     Resource,
-                    FileSysGlobWalkEntry<Resource>
+                    FileSysGlobWalkEntry<Resource>,
+                    tab.InsertedRecord<FileSysGlobOriginatorTabularRecord>
+                  >
+                  & oGovn.MutatableOriginMeasuresSupplier<
+                    typeof oGovn.TypicalOriginLifecycleMeasures[number]
                   >
                 ));
                 mos.originator = this;
                 mos.originatorTR = this.sqlViewsFactory?.originatorTR;
                 mos.origin = fsgwe;
+                mos.originTR = fsGlobOriginTR;
+                mos.originMeasures = originMeasures;
 
                 if (this.fsee) {
                   // deno-lint-ignore no-explicit-any
                   const lcMetrics: FileSysGlobWalkEntryLifecycleMetrics<any> = {
                     fsgwe,
-                    constructDurationMS: afterConstruct - beforeConstruct,
-                    refineDurationMS: refine
-                      ? (Date.now() - afterConstruct)
-                      : undefined,
-                    originateDurationMS: Date.now() - beforeConstruct,
+                    ...originMeasures,
                   };
 
                   await this.fsee.emit(
