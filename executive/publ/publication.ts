@@ -414,7 +414,9 @@ export class Configuration<
     this.extensionsManager = prefs.extensionsManager;
     this.termsManager = prefs.termsManager;
     this.memoizeProducers = prefs.memoizeProducers;
-    this.originatorSqlViewsFactory = new oTab.OriginatorTabularRecordsFactory();
+    this.originatorSqlViewsFactory = new oTab.OriginatorTabularRecordsFactory(
+      () => defaultSqlViewsNamespace
+    );
 
     this.observability?.events.emitSync("sqlViewsSupplier", this);
   }

@@ -135,7 +135,7 @@ export class FileSysGlobsOriginatorTabularRecordsFactory
     // deno-lint-ignore no-explicit-any
     readonly otrFactory: oTab.OriginatorTabularRecordsFactory<any>,
   ) {
-    super();
+    super(otrFactory.namespace);
     this.originatorTR = otrFactory.originatorRB.upsert({
       originator: `FileSysGlobsOriginator`,
       provenance: import.meta.url,

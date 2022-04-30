@@ -18,8 +18,8 @@ export class OriginatorTabularRecordsFactory<
     "originator"
   >;
 
-  constructor() {
-    super(() => "origin");
+  constructor(namespace: (trID: Identity) => string) {
+    super(namespace);
     this.originatorRB = this.define(
       "originator" as Identity,
       this.constructOriginatorRB(),
