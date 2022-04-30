@@ -1,10 +1,12 @@
 import { events, fs, log, path } from "../deps.ts";
+import * as safety from "../../lib/safety/mod.ts";
 import * as health from "../../lib/health/mod.ts";
 import * as fsr from "../../lib/fs/fs-route.ts";
 import * as govn from "../../governance/mod.ts";
 import * as oGovn from "./governance.ts";
 import * as g from "../../lib/git/mod.ts";
-import * as r from "../std/route.ts";
+import * as res from "../std/resource.ts";
+import * as rt from "../std/route.ts";
 import * as extn from "../../lib/module/mod.ts";
 import * as tab from "../../lib/tabular/mod.ts";
 import * as oTab from "./tabular.ts";
@@ -23,7 +25,7 @@ export interface FileSysGlobWalkEntryLifecycleMetrics<Resource> {
 export interface FileSysGlobWalkEntryFactory<Resource> {
   readonly construct: (
     we: FileSysGlobWalkEntry<Resource>,
-    options: r.FileSysRouteOptions,
+    options: rt.FileSysRouteOptions,
   ) => Promise<Resource>;
   readonly refine?: govn.ResourceRefinery<Resource>;
 }
@@ -35,7 +37,7 @@ export interface FileSysGlobWalkEntryFactorySupplier<Resource> {
 export interface FileSysPathGlob<Resource>
   extends
     Partial<FileSysGlobWalkEntryFactorySupplier<Resource>>,
-    Partial<r.FileSysRouteOptions> {
+    Partial<rt.FileSysRouteOptions> {
   readonly humanFriendlyName?: string;
   readonly glob: FileSysGlobText;
   readonly exclude?: string[];
@@ -44,7 +46,7 @@ export interface FileSysPathGlob<Resource>
 export interface FileSysPath<Resource>
   extends
     Partial<FileSysGlobWalkEntryFactorySupplier<Resource>>,
-    Partial<r.FileSysRouteOptions> {
+    Partial<rt.FileSysRouteOptions> {
   readonly humanFriendlyName: string;
   readonly fileSysPath: FileSysPathText;
   readonly fileSysGitPaths: false | g.GitPathsSupplier;
@@ -65,14 +67,33 @@ export interface FileSysGlobWalkEntry<Resource>
   >;
 }
 
+export const isPotentialFileSysGlobWalkEntry = safety.typeGuard<
+  // deno-lint-ignore no-explicit-any
+  FileSysGlobWalkEntry<any>
+>("name", "path", "ownerFileSysPath", "lfsPath", "glob");
+
+export function isFileSysGlobWalkEntry<Resource>(
+  o: unknown,
+): o is FileSysGlobWalkEntry<Resource> {
+  return res.isResourceFactorySupplier<Resource>(o) && rt.isRouteSupplier(o) &&
+    isPotentialFileSysGlobWalkEntry(o);
+}
+
+export function isFileSysGlobOriginSupplier<Resource>(
+  o: unknown,
+): o is oGovn.ResourceOriginSupplier<Resource, FileSysGlobWalkEntry<Resource>> {
+  return oGovn.isResourceOriginSupplier(o) &&
+    isFileSysGlobWalkEntry<Resource>(o.origin);
+}
+
 export interface FileSysPaths<Resource>
   extends
     Partial<FileSysGlobWalkEntryFactorySupplier<Resource>>,
-    Partial<r.FileSysRouteOptions> {
+    Partial<rt.FileSysRouteOptions> {
   readonly humanFriendlyName: string;
   readonly ownerFileSysPath: FileSysPathText;
   readonly lfsPaths: Iterable<FileSysPath<Resource>>;
-  readonly fsRouteFactory: r.FileSysRouteFactory;
+  readonly fsRouteFactory: rt.FileSysRouteFactory;
 }
 
 export class FileSysGlobsOriginatorEventEmitter<Resource>
@@ -201,7 +222,7 @@ export class FileSysGlobsOriginator<Resource>
             lfsPath.factory?.construct || tllfsPath.factory?.construct;
           const refine = glob.factory?.refine ||
             lfsPath.factory?.refine || tllfsPath.factory?.refine;
-          const fsrOptions: r.FileSysRouteOptions = {
+          const fsrOptions: rt.FileSysRouteOptions = {
             fsRouteFactory: glob.fsRouteFactory || lfsPath.fsRouteFactory ||
               tllfsPath.fsRouteFactory,
             routeParser: glob.routeParser || lfsPath.routeParser ||
@@ -269,17 +290,21 @@ export class FileSysGlobsOriginator<Resource>
                 const afterConstruct = Date.now();
                 if (refine) resource = await refine(resource);
 
-                ((resource as unknown) as oGovn.MutatableOriginatorSupplier<
-                  FileSysGlobsOriginator<Resource>
-                >).originator = this;
-
-                // this is support memoization (rfExplorer server use cases);
-                // calling resource.reconstructFromOrigin() will "replay" the
-                // memoized resource and allow hot reloading in the client.
-                ((resource as unknown) as oGovn.MutatableReconstructOriginSupplier<
-                  Resource
-                >).reconstructFromOrigin = async () =>
-                  await fsgwe.resourceFactory();
+                // support memoization (rfExplorer server use cases); calling
+                // resource.origin.resourceFactory() will "replay" the memoized
+                // resource and allow hot reloading in the client.
+                const mos = ((resource as unknown) as (
+                  & oGovn.MutatableResourceOriginatorSupplier<
+                    FileSysGlobsOriginator<Resource>
+                  >
+                  & oGovn.MutatableResourceOriginSupplier<
+                    Resource,
+                    FileSysGlobWalkEntry<Resource>
+                  >
+                ));
+                mos.originator = this;
+                mos.originatorTR = this.sqlViewsFactory?.originatorTR;
+                mos.origin = fsgwe;
 
                 if (this.fsee) {
                   // deno-lint-ignore no-explicit-any

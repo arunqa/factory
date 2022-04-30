@@ -1,27 +1,40 @@
 import * as safety from "../../lib/safety/mod.ts";
+import * as govn from "../../governance/mod.ts";
+import * as tab from "./tabular.ts";
 
-export interface MutatableOriginatorSupplier<Originator> {
+export interface MutatableResourceOriginatorSupplier<Originator> {
   originator: Originator;
+  originatorTR?: tab.OriginatorTabularRecord;
 }
 
-export type OriginatorSupplier<Originator> = Readonly<
-  MutatableOriginatorSupplier<Originator>
+export type ResourceOriginatorSupplier<Originator> = Readonly<
+  MutatableResourceOriginatorSupplier<Originator>
 >;
 
-export interface MutatableReconstructOriginSupplier<Resource> {
-  reconstructFromOrigin: () => Promise<Resource>;
+export interface MutatableResourceOriginSupplier<
+  Resource,
+  Origin extends govn.ResourceFactorySupplier<Resource>,
+> {
+  origin: Origin;
 }
 
-export type ReconstructOriginSupplier<Resource> = Readonly<
-  MutatableReconstructOriginSupplier<Resource>
+export type ResourceOriginSupplier<
+  Resource,
+  Origin extends govn.ResourceFactorySupplier<Resource>,
+> = Readonly<
+  MutatableResourceOriginSupplier<Resource, Origin>
 >;
 
 export const isOriginatorSupplier = safety.typeGuard<
   // deno-lint-ignore no-explicit-any
-  OriginatorSupplier<any>
->("originator");
+  ResourceOriginatorSupplier<any>
+>(
+  "originator",
+);
 
-export const isReconstructOriginSupplier = safety.typeGuard<
+export const isResourceOriginSupplier = safety.typeGuard<
   // deno-lint-ignore no-explicit-any
-  ReconstructOriginSupplier<any>
->("reconstructFromOrigin");
+  ResourceOriginSupplier<any, any>
+>(
+  "origin",
+);

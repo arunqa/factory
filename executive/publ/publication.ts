@@ -19,7 +19,6 @@ import * as gi from "../../lib/structure/govn-index.ts";
 import * as m from "../../lib/metrics/mod.ts";
 import * as extn from "../../lib/module/mod.ts";
 import * as tab from "../../lib/tabular/mod.ts";
-
 import * as oGovn from "../../core/originate/governance.ts";
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
@@ -117,14 +116,14 @@ export class PublicationResourcesIndex<Resource>
         if (rfStd.isFileSysRouteUnit(resource.route.terminal)) {
           const unit = resource.route.terminal;
           if (unit.lastModifiedAt) {
-            if (oGovn.isReconstructOriginSupplier(resource)) {
+            if (oGovn.isResourceOriginSupplier(resource)) {
               this.memoizedProducers.set(
                 ds.contentStrategy.navigation.location(unit),
                 {
                   unit,
                   isReloadRequired: () => unit.isModifiedInFileSys(),
                   replay: async () => {
-                    const cloned = await resource.reconstructFromOrigin();
+                    const cloned = await resource.origin.resourceFactory();
                     return producer(cloned);
                   },
                 },
