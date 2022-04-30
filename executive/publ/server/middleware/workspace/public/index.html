@@ -13,6 +13,10 @@
         // in case children or siblings need to check if we're the framed RF explorer
         function isFramedExplorer() { return true; }
 
+        function framedExplorerInspectableWindow() {
+            return window.frames["prime"];
+        }
+
         function getUrlQueryParameterByName(name, url = window.location.href) {
             name = name.replace(/[\[\]]/g, "\\$&");
             const regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
@@ -57,6 +61,35 @@
                     // when the prime frame content changes, keep the current inspector view
                     inspector.location.reload();
                 }
+            }
+        }
+
+        // when onServerResourceImpact is called for clientLayout, this is also called;
+        // see ${RF_HOME}/core/design-system/universal/client-cargo/script/typical.js
+        function onServerResourceImpact(impact, state) {
+            switch (state.action) {
+                case "reload":
+                    // a reload has been requested and we want to have observable telemetry
+                    // so we add a couple of URL parameters that can be used after
+                    // refresh by rfExplorer
+                    const prime = framedExplorerInspectableWindow();
+                    const parser = new URL(prime.location);
+                    const { fsAbsPathAndFileNameImpacted } = state;
+                    parser.searchParams.set('serverResourceImpactAction', "reload");
+                    parser.searchParams.set('serverResourceImpacted', fsAbsPathAndFileNameImpacted);
+                    prime.location = parser.href;
+
+                    // returning true means we handled the refresh so the caller
+                    // should take no further action
+                    return true;
+
+                case "none":
+                    // TODO: update this in rfExplorer page somewhere to show impact
+                    console.log('onServerResourceImpact', { impact, state });
+                    break;
+
+                default:
+                    console.log('onServerResourceImpact', "this should never happen");
             }
         }
 

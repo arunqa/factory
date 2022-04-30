@@ -294,13 +294,32 @@ function rfUniversalLayout(prepareLayoutCtx) {
       if (nature && nature == serverResourceImpact.fsResourceModifiedNature && fsAbsPathAndFileNameImpacted) {
         const activePageFileSysPath = activeRoute?.terminal?.fileSysPath;
         if (activePageFileSysPath == fsAbsPathAndFileNameImpacted) {
+          // in case we have a parent that cares about our impact (rfExplorer frameset needs this)
+          if (window.parent && window.parent.onServerResourceImpact) {
+            // if we are running in an rfExplorer context and the parent onServerResourceImpact handled
+            // the event by returning true we don't take any further action; if the result is
+            // false then we do our normal activity
+            if (window.parent.onServerResourceImpact(impact, {
+              action: 'reload',
+              fsAbsPathAndFileNameImpacted,
+              activeRouteTerminal: activeRoute?.terminal
+            })) return;
+          }
           location.reload();
         } else {
+          // in case we have a parent that cares about our impact (rfExplorer frameset needs this)
+          if (window.parent && window.parent.onServerResourceImpact) {
+            window.parent.onServerResourceImpact(impact, { action: 'none', reason: 'active-route-not-impacted', fsAbsPathAndFileNameImpacted, activeRouteTerminal: activeRoute?.terminal });
+          }
           if (diagnose) {
             console.log(`rfLayout().onServerResourceImpact(${nature}) called but this resource was not impacted:`, fsAbsPathAndFileNameImpacted, activeRoute?.terminal);
           }
         }
       } else {
+        // in case we have a parent that cares about our impact (rfExplorer frameset needs this)
+        if (window.parent && window.parent.onServerResourceImpact) {
+          window.parent.onServerResourceImpact(impact, { action: 'none', reason: 'unable-to-handle' });
+        }
         if (diagnose) {
           console.log("rfLayout().onServerResourceImpact() called but this function was unable to handle the event", impact, this);
         }

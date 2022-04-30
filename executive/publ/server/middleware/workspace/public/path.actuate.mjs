@@ -53,6 +53,7 @@ export const escapeHTML = (html) => {
 export const inspectableClientLayout = () => window.parent.inspectableClientLayout;
 export const isClientLayoutInspectable = () => window.parent.inspectableClientLayout ? true : false;
 export const isFramedExplorer = () => window.parent.isFramedExplorer && window.parent.isFramedExplorer() ? true : false;
+export const inspectableWindow = () => isFramedExplorer() ? window.parent.framedExplorerInspectableWindow() : undefined;
 
 // if a URL needs to pass information about a route, use routeUnitUrlSearchParams
 export const routeUnitUrlSearchParams = (routeUnit) => {
@@ -751,6 +752,18 @@ export const prepareContextBar = () => {
             }));
         contextBarHTML = `<a href="${eclTarget.href}" title="${eclTarget.narrative}">Edit <code class="rf-resource-inspectable-active">${eclTarget.fileName}</code> in IDE</a>`
     }
+
+    const inspectable = inspectableWindow();
+    console.log({ inspectable });
+    if (inspectable) {
+        const parser = new URL(inspectable.location);
+        console.log({ inspectable, parser });
+        if (parser.searchParams.get('serverResourceImpactAction') == "reload") {
+            const fsAbsPathAndFileNameImpacted = parser.searchParams.get('serverResourceImpacted');
+            contextBarHTML += `&nbsp;&nbsp;&nbsp;<i class="fa-solid fa-repeat" title="reloaded due to ${fsAbsPathAndFileNameImpacted} impact"></i>`;
+        }
+    }
+
     // TODO: Use <i class="fa-solid fa-file-circle-question"></i> or similar to provide Git status of active file (update to date or behind)
     contextBarHTML += `&nbsp;&nbsp;&nbsp;
         <i class="fa-brands fa-git" style="color:#A0E6FF"></i></i>
