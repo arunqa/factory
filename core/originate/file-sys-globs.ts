@@ -1,8 +1,8 @@
 import { events, fs, log, path } from "../deps.ts";
-import * as safety from "../../lib/safety/mod.ts";
 import * as health from "../../lib/health/mod.ts";
 import * as fsr from "../../lib/fs/fs-route.ts";
 import * as govn from "../../governance/mod.ts";
+import * as oGovn from "./governance.ts";
 import * as g from "../../lib/git/mod.ts";
 import * as r from "../std/route.ts";
 import * as extn from "../../lib/module/mod.ts";
@@ -64,20 +64,6 @@ export interface FileSysGlobWalkEntry<Resource>
     FileSysGlobOriginatorTabularRecord
   >;
 }
-
-export interface MutableFileSysGlobWalkProvenanceSupplier<Resource> {
-  fileSysGlobWalkProvenance: FileSysGlobWalkEntry<Resource>;
-}
-
-// deno-lint-ignore no-empty-interface
-export interface FileSysGlobWalkProvenanceSupplier<Resource>
-  extends Readonly<MutableFileSysGlobWalkProvenanceSupplier<Resource>> {
-}
-
-export const isFileSysGlobWalkEntrySupplier = safety.typeGuard<
-  // deno-lint-ignore no-explicit-any
-  FileSysGlobWalkProvenanceSupplier<any>
->("fileSysGlobWalkProvenance");
 
 export interface FileSysPaths<Resource>
   extends
@@ -283,9 +269,17 @@ export class FileSysGlobsOriginator<Resource>
                 const afterConstruct = Date.now();
                 if (refine) resource = await refine(resource);
 
-                ((resource as unknown) as MutableFileSysGlobWalkProvenanceSupplier<
+                ((resource as unknown) as oGovn.MutatableOriginatorSupplier<
+                  FileSysGlobsOriginator<Resource>
+                >).originator = this;
+
+                // this is support memoization (rfExplorer server use cases);
+                // calling resource.reconstructFromOrigin() will "replay" the
+                // memoized resource and allow hot reloading in the client.
+                ((resource as unknown) as oGovn.MutatableReconstructOriginSupplier<
                   Resource
-                >).fileSysGlobWalkProvenance = fsgwe;
+                >).reconstructFromOrigin = async () =>
+                  await fsgwe.resourceFactory();
 
                 if (this.fsee) {
                   // deno-lint-ignore no-explicit-any

@@ -20,6 +20,7 @@ import * as m from "../../lib/metrics/mod.ts";
 import * as extn from "../../lib/module/mod.ts";
 import * as tab from "../../lib/tabular/mod.ts";
 
+import * as oGovn from "../../core/originate/governance.ts";
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
 import * as oTab from "../../core/originate/tabular.ts";
@@ -116,15 +117,14 @@ export class PublicationResourcesIndex<Resource>
         if (rfStd.isFileSysRouteUnit(resource.route.terminal)) {
           const unit = resource.route.terminal;
           if (unit.lastModifiedAt) {
-            if (fsg.isFileSysGlobWalkEntrySupplier(resource)) {
+            if (oGovn.isReconstructOriginSupplier(resource)) {
               this.memoizedProducers.set(
                 ds.contentStrategy.navigation.location(unit),
                 {
                   unit,
                   isReloadRequired: () => unit.isModifiedInFileSys(),
                   replay: async () => {
-                    const cloned = await resource.fileSysGlobWalkProvenance
-                      .resourceFactory();
+                    const cloned = await resource.reconstructFromOrigin();
                     return producer(cloned);
                   },
                 },
@@ -415,7 +415,7 @@ export class Configuration<
     this.termsManager = prefs.termsManager;
     this.memoizeProducers = prefs.memoizeProducers;
     this.originatorSqlViewsFactory = new oTab.OriginatorTabularRecordsFactory(
-      () => defaultSqlViewsNamespace
+      () => defaultSqlViewsNamespace,
     );
 
     this.observability?.events.emitSync("sqlViewsSupplier", this);
