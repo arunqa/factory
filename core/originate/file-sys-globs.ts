@@ -63,6 +63,10 @@ export interface FileSysGlobWalkEntry<Resource>
   readonly ownerFileSysPath: FileSysPathText;
   readonly lfsPath: FileSysPath<Resource>;
   readonly glob: FileSysPathGlob<Resource>;
+  readonly sqlViewsFactory?: FileSysGlobsOriginatorTabularRecordsFactory;
+  readonly fsGlobOriginTR?: tab.InsertedRecord<
+    FileSysGlobOriginatorTabularRecord
+  >;
 }
 
 export const isPotentialFileSysGlobWalkEntry = safety.typeGuard<
@@ -130,10 +134,10 @@ export interface FileSysGlobOriginatorTabularRecord {
   readonly gitWorkTree: string;
 }
 
-export class FileSysGlobsOriginatorTabularRecordsFactory
-  extends oTab.OriginatorTabularRecordsFactory<
+export class FileSysGlobsOriginatorTabularRecordsFactory {
+  readonly otrFactory: oTab.OriginatorTabularRecordsFactory<
     "originator" | "file_sys_glob_originator"
-  > {
+  >;
   readonly fileSysGlobRB: tab.TabularRecordsBuilder<
     tab.InsertableRecord<FileSysGlobOriginatorTabularRecord>,
     tab.InsertedRecord<FileSysGlobOriginatorTabularRecord>
@@ -141,15 +145,16 @@ export class FileSysGlobsOriginatorTabularRecordsFactory
   readonly originatorTR: oTab.OriginatorTabularRecord;
 
   constructor(
-    // deno-lint-ignore no-explicit-any
-    readonly otrFactory: oTab.OriginatorTabularRecordsFactory<any>,
+    otrFactory: oTab.OriginatorTabularRecordsFactory<"originator">,
   ) {
-    super(otrFactory.namespace);
+    this.otrFactory = otrFactory as oTab.OriginatorTabularRecordsFactory<
+      "originator" | "file_sys_glob_originator"
+    >;
     this.originatorTR = otrFactory.originatorRB.upsert({
       originator: `FileSysGlobsOriginator`,
       provenance: import.meta.url,
     });
-    this.fileSysGlobRB = otrFactory.define(
+    this.fileSysGlobRB = this.otrFactory.define(
       "file_sys_glob_originator",
       tab.tabularRecordsAutoRowIdBuilder(),
     );
@@ -284,6 +289,8 @@ export class FileSysGlobsOriginator<Resource>
                 rootPath,
                 fsrOptions,
               ),
+              sqlViewsFactory: this.sqlViewsFactory,
+              fsGlobOriginTR,
               resourceFactory: async () => {
                 // performance.now() is higher resolution but Date.now() is faster
                 const beforeConstruct = Date.now();
