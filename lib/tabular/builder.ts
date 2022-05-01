@@ -112,7 +112,7 @@ export function tabularRecordsAutoRowIdBuilder<
 
 export interface TabularRecordsBuilders<
   Identity extends govn.TabularRecordsIdentity,
-> {
+> extends govn.DefinedTabularRecordsSupplier {
   readonly autoRowIdProxyBuilder: <
     RecordProps extends govn.UntypedObject,
     IndexName = unknown,
@@ -152,13 +152,15 @@ export interface TabularRecordsBuilders<
       any
     >
     | undefined;
-
-  readonly definedTabularRecords: () => AsyncGenerator<
-    // deno-lint-ignore no-explicit-any
-    govn.DefinedTabularRecords<any>
-  >;
 }
 
+/**
+ * definedTabularRecordsBuilders is used when a group of table builders is used
+ * for relatively "simple" needs within a single function. Use this function to
+ * create a group of tables that are related to each other and know about the
+ * relationships with each other in advance.
+ * @returns TabularRecordsBuilders which can be used to create tables on demand
+ */
 export function definedTabularRecordsBuilders<
   Identity extends govn.TabularRecordsIdentity,
 >(): TabularRecordsBuilders<Identity> {
@@ -199,9 +201,52 @@ export function definedTabularRecordsBuilders<
   };
 }
 
-export abstract class TabularRecordsFactory<
+/**
+ * NamedTabularRecordsBuildersFactory and series of typical implementations
+ * are when tables may be related to each other but not necessarily known in
+ * advance or have unkonwn hierarchical (dependent) relationships.
+ */
+export interface NamedTabularRecordsBuildersFactory<Identity extends string>
+  extends govn.DefinedTabularRecordsSupplier {
+  readonly prepareBuilder: <
+    Record extends govn.UntypedObject,
+    IndexName = unknown,
+  >(
+    identity: Identity,
+    builder: TabularRecordsBuilder<
+      InsertableRecord<Record>,
+      InsertedRecord<Record>,
+      IndexName
+    >,
+    onDuplicate?: (
+      existing: TabularRecordsBuilder<
+        InsertableRecord<Record>,
+        InsertedRecord<Record>,
+        IndexName
+      >,
+    ) => TabularRecordsBuilder<
+      InsertableRecord<Record>,
+      InsertedRecord<Record>,
+      IndexName
+    >,
+  ) => TabularRecordsBuilder<
+    InsertableRecord<Record>,
+    InsertedRecord<Record>,
+    IndexName
+  >;
+}
+
+export interface DependentNamedTabularRecordsBuildersFactory<
+  Identity extends string,
+> extends NamedTabularRecordsBuildersFactory<Identity> {
+  // deno-lint-ignore no-explicit-any
+  readonly parentFactory: NamedTabularRecordsBuildersFactory<any>;
+}
+
+export abstract class TypicalNamedTabularRecordsBuildersFactory<
   Identity extends govn.TabularRecordsIdentity,
-> {
+> implements NamedTabularRecordsBuildersFactory<Identity> {
+  readonly duplicatePrepRequests = new Map<Identity, { count: number }>();
   #defined = new Map<Identity, {
     defn:
       // deno-lint-ignore no-explicit-any
@@ -215,9 +260,20 @@ export abstract class TabularRecordsFactory<
   constructor(readonly namespace: (trID: Identity) => string) {
   }
 
-  define<Record extends govn.UntypedObject, IndexName = unknown>(
+  prepareBuilder<Record extends govn.UntypedObject, IndexName = unknown>(
     identity: Identity,
     builder: TabularRecordsBuilder<
+      InsertableRecord<Record>,
+      InsertedRecord<Record>,
+      IndexName
+    >,
+    onDuplicate?: (
+      existing: TabularRecordsBuilder<
+        InsertableRecord<Record>,
+        InsertedRecord<Record>,
+        IndexName
+      >,
+    ) => TabularRecordsBuilder<
       InsertableRecord<Record>,
       InsertedRecord<Record>,
       IndexName
@@ -225,9 +281,13 @@ export abstract class TabularRecordsFactory<
   ) {
     const existing = this.#defined.get(identity);
     if (existing) {
-      console.warn(
-        `Duplicate builder defined: ${identity} in TabularRecordsFactory, using existing`,
-      );
+      if (onDuplicate) return onDuplicate(existing.builder);
+      const dupe = this.duplicatePrepRequests.get(identity);
+      if (!dupe) {
+        this.duplicatePrepRequests.set(identity, { count: 1 });
+      } else {
+        dupe.count++;
+      }
       return existing.builder;
     }
     this.#defined.set(identity, {
@@ -240,7 +300,7 @@ export abstract class TabularRecordsFactory<
     return builder;
   }
 
-  async *defined() {
+  async *definedTabularRecords() {
     for (const b of this.#defined) {
       const [_, builderDefn] = b;
       yield p.definedTabularRecordsProxy(
@@ -249,4 +309,52 @@ export abstract class TabularRecordsFactory<
       );
     }
   }
+}
+
+export class TypicalDependentNamedTabularRecordsBuildersFactory<
+  Identity extends govn.TabularRecordsIdentity,
+  // deno-lint-ignore no-explicit-any
+  Parent extends TypicalNamedTabularRecordsBuildersFactory<any>,
+> implements DependentNamedTabularRecordsBuildersFactory<Identity> {
+  constructor(readonly parentFactory: Parent) {
+  }
+
+  prepareBuilder<Record extends govn.UntypedObject, IndexName = unknown>(
+    identity: Identity,
+    builder: TabularRecordsBuilder<
+      InsertableRecord<Record>,
+      InsertedRecord<Record>,
+      IndexName
+    >,
+    onDuplicate?: (
+      existing: TabularRecordsBuilder<
+        InsertableRecord<Record>,
+        InsertedRecord<Record>,
+        IndexName
+      >,
+    ) => TabularRecordsBuilder<
+      InsertableRecord<Record>,
+      InsertedRecord<Record>,
+      IndexName
+    >,
+  ) {
+    return this.parentFactory.prepareBuilder(identity, builder, onDuplicate);
+  }
+
+  async *definedTabularRecords() {
+    yield* this.parentFactory.definedTabularRecords();
+  }
+}
+
+export function typicalDependentNamedTabularRecordsBuildersFactory<
+  Identity extends govn.TabularRecordsIdentity,
+>(
+  // deno-lint-ignore no-explicit-any
+  parentFactory: TypicalNamedTabularRecordsBuildersFactory<any>,
+): DependentNamedTabularRecordsBuildersFactory<Identity> {
+  return {
+    parentFactory,
+    prepareBuilder: parentFactory.prepareBuilder,
+    definedTabularRecords: parentFactory.definedTabularRecords,
+  };
 }

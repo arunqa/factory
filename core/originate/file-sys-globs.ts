@@ -122,8 +122,8 @@ export interface FileSysGlobsOriginatorOptions<Resource> {
   readonly sqlViewsFactory?: oTab.OriginatorTabularRecordsFactory;
 }
 
-export interface FileSysGlobOriginatorTabularRecord {
-  readonly originatorId: tab.TabularRecordIdRef;
+export interface FileSysGlobOriginatorTabularRecord
+  extends oTab.OriginatorTabularRecordRefSupplier {
   readonly glob: FileSysGlobText;
   readonly exclude: string;
   readonly friendlyName: string;
@@ -134,27 +134,30 @@ export interface FileSysGlobOriginatorTabularRecord {
   readonly gitWorkTree: string;
 }
 
-export class FileSysGlobsOriginatorTabularRecordsFactory {
-  readonly otrFactory: oTab.OriginatorTabularRecordsFactory<
-    "originator" | "file_sys_glob_originator"
-  >;
+export class FileSysGlobsOriginatorTabularRecordsFactory
+  extends oTab.DependentOriginatorTabularRecordsFactory<
+    "file_sys_glob_originator"
+  > {
+  #originatorTR: oTab.OriginatorTabularRecord;
   readonly fileSysGlobRB: tab.TabularRecordsBuilder<
     tab.InsertableRecord<FileSysGlobOriginatorTabularRecord>,
     tab.InsertedRecord<FileSysGlobOriginatorTabularRecord>
   >;
-  readonly originatorTR: oTab.OriginatorTabularRecord;
+
+  get originatorTR() {
+    return this.#originatorTR;
+  }
 
   constructor(
-    otrFactory: oTab.OriginatorTabularRecordsFactory<"originator">,
+    parent: oTab.OriginatorTabularRecordsFactory<"originator">,
   ) {
-    this.otrFactory = otrFactory as oTab.OriginatorTabularRecordsFactory<
-      "originator" | "file_sys_glob_originator"
-    >;
-    this.originatorTR = otrFactory.originatorRB.upsert({
+    super(parent);
+    this.#originatorTR = this.parentFactory.originatorRB.upsert({
       originator: `FileSysGlobsOriginator`,
       provenance: import.meta.url,
+      enabled: true,
     });
-    this.fileSysGlobRB = this.otrFactory.define(
+    this.fileSysGlobRB = this.parentFactory.prepareBuilder(
       "file_sys_glob_originator",
       tab.tabularRecordsAutoRowIdBuilder(),
     );

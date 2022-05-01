@@ -1091,7 +1091,7 @@ export abstract class TypicalPublication<
   > {
     yield* m.tabularMetrics(this.config.metrics.instances);
     yield* fsT.fileSystemTabularRecords(this.config.fsAssetsWalkers);
-    yield* this.config.originatorSqlViewsFactory.defined();
+    yield* this.config.originatorSqlViewsFactory.definedTabularRecords();
     yield* this.resourcesTabularRecords();
   }
 
