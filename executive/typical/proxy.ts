@@ -7,12 +7,56 @@ import * as s from "../../lib/singleton.ts";
 import * as h from "../../lib/health/mod.ts";
 import * as rfGovn from "../../governance/mod.ts";
 import * as rfStd from "../../core/std/mod.ts";
+import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as mr from "../../core/resource/module/module.ts";
 import * as pkg from "../../lib/package/mod.ts";
 import * as fsLink from "../../lib/fs/link.ts";
 import * as task from "../../lib/task/fetch.ts";
 import * as r from "../../lib/text/readability.ts";
+import * as tab from "../../lib/tabular/mod.ts";
+import * as oTab from "../../core/originate/tabular.ts";
 import "./observability.ts"; // for window.observability global variable
+
+export interface ProxyableFileSysOriginatorTabularRecord
+  extends oTab.OriginatorTabularRecordRefSupplier {
+  readonly healthState: "pass" | "warn" | "fail";
+  readonly healthStateElaboration: string;
+  readonly envVarNamesPrefix: string;
+}
+
+export class ProxyableFileSysOriginatorTabularRecordsFactory<
+  TR extends ProxyableFileSysOriginatorTabularRecord =
+    ProxyableFileSysOriginatorTabularRecord,
+> extends oTab.DependentOriginatorTabularRecordsFactory<
+  "file_sys_proxy_originator"
+> {
+  #originatorTR: oTab.OriginatorTabularRecord;
+  readonly proxyableFsRB: tab.TabularRecordsBuilder<
+    tab.InsertableRecord<TR>,
+    tab.InsertedRecord<TR>
+  >;
+
+  get originatorTR() {
+    return this.#originatorTR;
+  }
+
+  constructor(
+    parent:
+      | oTab.OriginatorTabularRecordsFactory<"originator">
+      | fsg.FileSysGlobsOriginatorTabularRecordsFactory
+      | ProxyableFileSysOriginatorTabularRecordsFactory<TR>,
+    originatorTRP: oTab.OriginatorTabularProps,
+  ) {
+    super(
+      parent as unknown as oTab.OriginatorTabularRecordsFactory<"originator">,
+    );
+    this.#originatorTR = this.parentFactory.originatorRB.upsert(originatorTRP);
+    this.proxyableFsRB = this.parentFactory.prepareBuilder(
+      "file_sys_proxy_originator",
+      tab.tabularRecordsAutoRowIdBuilder(),
+    );
+  }
+}
 
 export interface TypicalProxyableFileSysModelArguments<Model, OriginContext>
   extends
@@ -33,6 +77,7 @@ export interface TypicalProxyableFileSysModelArguments<Model, OriginContext>
     category: string;
     links?: Record<string, string>;
   };
+  readonly pfsotrFactory?: ProxyableFileSysOriginatorTabularRecordsFactory;
   readonly modelUnit?: string;
 }
 
@@ -96,6 +141,7 @@ export function typicalProxyableFileSysModelHealthStatusEmitter<
         ...typicalProxyableFileSysModelArguments(args),
         envVarNamesPrefix: args.envVarNamesPrefix,
         healthStatus: args.healthStatus,
+        pfsotrFactory: args.pfsotrFactory,
       },
     ),
   );
@@ -108,13 +154,14 @@ export function typicalProxyableFileSysHealthStatusEmitterArguments<
   Model,
   OriginContext,
 >(
-  pmfsa: cache.ProxyableFileSysModelArguments<Model, OriginContext> & {
+  pfsma: cache.ProxyableFileSysModelArguments<Model, OriginContext> & {
     readonly envVarNamesPrefix: string;
     readonly healthStatus: {
       componentId: string;
       category: string;
       links?: Record<string, string>;
     };
+    readonly pfsotrFactory?: ProxyableFileSysOriginatorTabularRecordsFactory;
   },
 ): cache.ProxyableFileSysModelArguments<Model, OriginContext> {
   const relFilePath = (fsrpsr: cache.FileSysModelProxyStrategyResult) => {
@@ -141,11 +188,11 @@ export function typicalProxyableFileSysHealthStatusEmitterArguments<
           links?: Record<string, string>,
         ): Omit<h.HealthyServiceHealthComponentStatus, "status"> => {
           return {
-            componentId: pmfsa.healthStatus.componentId,
+            componentId: pfsma.healthStatus.componentId,
             componentType: "component",
             links: {
               module: import.meta.url,
-              ...pmfsa.healthStatus.links,
+              ...pfsma.healthStatus.links,
               ...links,
             },
             time: new Date(),
@@ -161,7 +208,7 @@ export function typicalProxyableFileSysHealthStatusEmitterArguments<
               status = h.unhealthyComponent("warn", {
                 ...result.obsHealthComponentStatus.provenance(),
                 // deno-fmt-ignore
-                output: `Unable to originate ${pmfsa.proxyFilePathAndName}, proxy env vars not configured (using stale data)`,
+                output: `Unable to originate ${pfsma.proxyFilePathAndName}, proxy env vars not configured (using stale data)`,
               });
             }
           }
@@ -173,11 +220,11 @@ export function typicalProxyableFileSysHealthStatusEmitterArguments<
           status = h.unhealthyComponent("warn", {
             ...result.obsHealthComponentStatus.provenance(),
             // deno-fmt-ignore
-            output: `Unable to establish health of ${pmfsa.proxyFilePathAndName}, obsHealthStatus was executed before obsHealthComponentStatus.evaluated was set`,
+            output: `Unable to establish health of ${pfsma.proxyFilePathAndName}, obsHealthStatus was executed before obsHealthComponentStatus.evaluated was set`,
           });
         }
         yield {
-          category: pmfsa.healthStatus.category,
+          category: pfsma.healthStatus.category,
           status: status ||
             h.unhealthyComponent("fail", {
               ...result.obsHealthComponentStatus.provenance(),
@@ -185,56 +232,88 @@ export function typicalProxyableFileSysHealthStatusEmitterArguments<
             }),
         };
       },
-      ...pmfsa,
+      ...pfsma,
       constructFromOrigin: (oc, fsrpsr, args) => {
         result.obsHealthComponentStatus.evaluated = true;
+        const links = {
+          action: "acquired",
+          target: relFilePath(fsrpsr),
+          remarks: fsrpsr.proxyRemarks,
+        };
         result.obsHealthComponentStatus.state = h.healthyComponent(
-          result.obsHealthComponentStatus.provenance({
-            action: "acquired",
-            target: relFilePath(fsrpsr),
-            remarks: fsrpsr.proxyRemarks,
-          }),
+          result.obsHealthComponentStatus.provenance(links),
         );
-        return pmfsa.constructFromOrigin(oc, fsrpsr, args);
+        pfsma.pfsotrFactory?.proxyableFsRB.upsert({
+          originatorId: pfsma.pfsotrFactory.originatorTR.id,
+          envVarNamesPrefix: pfsma.envVarNamesPrefix,
+          ...links,
+          healthState: "pass",
+          healthStateElaboration: "",
+        });
+        return pfsma.constructFromOrigin(oc, fsrpsr, args);
       },
       constructFromCachedProxy: (state, args) => {
         // `Using cached content: ${relFilePath(state.proxyStrategyResult)} (${state.proxyStrategyResult.proxyRemarks})`
+        const links = {
+          action: "used-cached",
+          strategy: relFilePath(state.proxyStrategyResult),
+          remarks: state.proxyStrategyResult.proxyRemarks,
+        };
         result.obsHealthComponentStatus.evaluated = true;
         result.obsHealthComponentStatus.state = h.healthyComponent(
-          result.obsHealthComponentStatus.provenance({
-            action: "used-cached",
-            strategy: relFilePath(state.proxyStrategyResult),
-            remarks: state.proxyStrategyResult.proxyRemarks,
-          }),
+          result.obsHealthComponentStatus.provenance(links),
         );
-        return pmfsa.constructFromCachedProxy(state, args);
+        pfsma.pfsotrFactory?.proxyableFsRB.upsert({
+          originatorId: pfsma.pfsotrFactory.originatorTR.id,
+          envVarNamesPrefix: pfsma.envVarNamesPrefix,
+          ...links,
+          healthState: "pass",
+          healthStateElaboration: "",
+        });
+        return pfsma.constructFromCachedProxy(state, args);
       },
       constructFromError: (issue, cachedProxy, args) => {
         result.obsHealthComponentStatus.evaluated = true;
         if (cachedProxy) {
+          const links = {
+            "proxy-available": "yes",
+            diagnostics: JSON.stringify(issue),
+          };
           result.obsHealthComponentStatus.state = h.unhealthyComponent(
             "warn",
             {
-              ...result.obsHealthComponentStatus.provenance({
-                "proxy-available": "yes",
-                diagnostics: JSON.stringify(issue),
-              }),
+              ...result.obsHealthComponentStatus.provenance(links),
               output: issue.proxyStrategyResult.proxyRemarks,
             },
           );
+          pfsma.pfsotrFactory?.proxyableFsRB.upsert({
+            originatorId: pfsma.pfsotrFactory.originatorTR.id,
+            envVarNamesPrefix: pfsma.envVarNamesPrefix,
+            ...links,
+            healthState: "warn",
+            healthStateElaboration: issue.proxyStrategyResult.proxyRemarks,
+          });
         } else {
+          const links = {
+            "proxy-available": "no",
+            diagnostics: JSON.stringify(issue),
+          };
           result.obsHealthComponentStatus.state = h.unhealthyComponent(
             "fail",
             {
-              ...result.obsHealthComponentStatus.provenance({
-                "proxy-available": "no",
-                diagnostics: JSON.stringify(issue),
-              }),
+              ...result.obsHealthComponentStatus.provenance(links),
               output: issue.proxyStrategyResult.proxyRemarks,
             },
           );
+          pfsma.pfsotrFactory?.proxyableFsRB.upsert({
+            originatorId: pfsma.pfsotrFactory.originatorTR.id,
+            envVarNamesPrefix: pfsma.envVarNamesPrefix,
+            ...links,
+            healthState: "fail",
+            healthStateElaboration: issue.proxyStrategyResult.proxyRemarks,
+          });
         }
-        return pmfsa.constructFromError(issue, cachedProxy, args);
+        return pfsma.constructFromError(issue, cachedProxy, args);
       },
     };
   if (window.observability) {
@@ -251,25 +330,25 @@ export function typicalProxyableFileSysConsoleEmitterArguments<
   Model,
   OriginContext,
 >(
-  pmfsa: cache.ProxyableFileSysModelArguments<Model, OriginContext> & {
+  pfsma: cache.ProxyableFileSysModelArguments<Model, OriginContext> & {
     readonly envVarNamesPrefix: string;
   },
 ): cache.ProxyableFileSysModelArguments<Model, OriginContext> {
   if (window.disableAllProxies) {
-    return pmfsa;
+    return pfsma;
   }
   const config = new conf.TypicalEnvArgumentsConfiguration<
     { verbose: boolean }
   >(
     () => ({ verbose: false }),
     (ec) => ({ properties: [ec.booleanProperty("verbose")] }),
-    pmfsa.envVarNamesPrefix,
+    pfsma.envVarNamesPrefix,
   );
   const envVars = config.configureSync();
   if (envVars.verbose) {
     console.log(
       colors.brightBlue(
-        `${pmfsa.envVarNamesPrefix}VERBOSE ${
+        `${pfsma.envVarNamesPrefix}VERBOSE ${
           colors.gray("(typicalProxyableFileSysConsoleEmitterArguments)")
         }`,
       ),
@@ -280,14 +359,14 @@ export function typicalProxyableFileSysConsoleEmitterArguments<
         : fsrpsr.proxyFilePathAndName;
     };
     return {
-      ...pmfsa,
+      ...pfsma,
       // configState is optional so only wrap the function if it's defined
-      configState: pmfsa.configState
+      configState: pfsma.configState
         ? (async () => {
-          const state = await pmfsa.configState!();
+          const state = await pfsma.configState!();
           if (!state.isConfigured) {
             // deno-fmt-ignore
-            console.info(colors.brightRed(`Unable to originate ${colors.brightCyan(pmfsa.proxyFilePathAndName)}, proxy env vars not configured (using stale data)`));
+            console.info(colors.brightRed(`Unable to originate ${colors.brightCyan(pfsma.proxyFilePathAndName)}, proxy env vars not configured (using stale data)`));
           }
           return state;
         })
@@ -295,23 +374,23 @@ export function typicalProxyableFileSysConsoleEmitterArguments<
       constructFromOrigin: (oc, fsrpsr, args) => {
         // deno-fmt-ignore
         console.info(colors.cyan(`Acquiring ${colors.brightCyan(relFilePath(fsrpsr))} from origin: ${fsrpsr.proxyRemarks}`));
-        return pmfsa.constructFromOrigin(oc, fsrpsr, args);
+        return pfsma.constructFromOrigin(oc, fsrpsr, args);
       },
       constructFromCachedProxy: (state, args) => {
         // deno-fmt-ignore
         console.info(colors.gray(`Using cached content: ${relFilePath(state.proxyStrategyResult)} (${state.proxyStrategyResult.proxyRemarks})`));
-        return pmfsa.constructFromCachedProxy(state, args);
+        return pfsma.constructFromCachedProxy(state, args);
       },
       constructFromError: (issue, cachedProxy, args) => {
         // deno-fmt-ignore
         console.info(colors.red(`Error encountered, ${cachedProxy ? `proxy available`: 'proxy not available'} ${colors.gray(`(check operational-context/observability/health.json for diagnostics)`)}`));
-        return pmfsa.constructFromError(issue, cachedProxy, args);
+        return pfsma.constructFromError(issue, cachedProxy, args);
       },
     };
   } else {
-    console.info(colors.gray(`${pmfsa.envVarNamesPrefix}VERBOSE is not set`));
+    console.info(colors.gray(`${pfsma.envVarNamesPrefix}VERBOSE is not set`));
   }
-  return pmfsa;
+  return pfsma;
 }
 
 export const typicalSyncableAssetEnvVarNamesPrefix = `SYNCABLE_ASSETS_PROXY_`;
@@ -332,6 +411,7 @@ export interface TypicalSyncableAssetArguments extends
     category: string;
     links?: Record<string, string>;
   };
+  readonly pfsotrFactory?: ProxyableFileSysOriginatorTabularRecordsFactory;
 }
 
 function typicalSyncableAssetArguments(
@@ -376,6 +456,7 @@ export function typicalSyncableAssetConsoleEmitter(
         envVarNamesPrefix: args.envVarNamesPrefix ||
           typicalSyncableAssetEnvVarNamesPrefix,
         healthStatus: args.healthStatus,
+        pfsotrFactory: args.pfsotrFactory,
       },
     ),
   );
@@ -409,7 +490,18 @@ export function typicalSyncableReadableAssetsModuleConstructor(
   >,
 ): mr.FileSysResourceModuleConstructor<unknown> {
   // deno-lint-ignore require-await
-  return async (_we, _o, imported) => {
+  return async (we, _o, imported) => {
+    const pfsotrFactory = we.sqlViewsFactory
+      ? new ProxyableFileSysOriginatorTabularRecordsFactory(
+        we.sqlViewsFactory,
+        {
+          originator: `typicalSyncableReadableAssetsModuleConstructor`,
+          provenance: import.meta.url,
+          enabled: true,
+        },
+      )
+      : undefined;
+
     return {
       imported,
       // we set this to true so that resourcesFactories will get called
@@ -423,6 +515,7 @@ export function typicalSyncableReadableAssetsModuleConstructor(
           await s.SingletonsManager.globalInstance()
             .singletonSync(() =>
               typicalSyncableAssetConsoleEmitter({
+                pfsotrFactory,
                 assetPath: path.join(
                   readable.assetPath,
                   `${readable.assetName}.readable.html`,
