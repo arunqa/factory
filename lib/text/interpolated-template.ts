@@ -1,4 +1,4 @@
-import * as path from "https://deno.land/std@0.123.0/path/mod.ts";
+import * as path from "https://deno.land/std@0.137.0/path/mod.ts";
 import * as safety from "../safety/mod.ts";
 import * as tw from "./whitespace.ts";
 

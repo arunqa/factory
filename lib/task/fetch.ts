@@ -1,5 +1,5 @@
-import * as colors from "https://deno.land/std@0.123.0/fmt/colors.ts";
-import * as iosc from "https://deno.land/std@0.123.0/streams/conversion.ts";
+import * as colors from "https://deno.land/std@0.137.0/fmt/colors.ts";
+import * as iosc from "https://deno.land/std@0.137.0/streams/conversion.ts";
 import * as human from "../text/human.ts";
 
 export function singleHtmlFileDownloadTask(): () => Promise<void> {

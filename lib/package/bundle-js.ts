@@ -1,5 +1,5 @@
 import { events } from "./deps.ts";
-import * as terser from "https://cdn.jsdelivr.net/gh/lumeland/terser-deno@v5.9.0/deno/mod.js";
+import * as terser from "https://cdn.jsdelivr.net/gh/lumeland/terser-deno@v5.12.1/deno/mod.js";
 import * as fsi from "../fs/inspect.ts";
 import * as graph from "../module/graph.ts";
 
