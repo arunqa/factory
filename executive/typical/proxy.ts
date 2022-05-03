@@ -1,6 +1,7 @@
 import * as colors from "https://deno.land/std@0.123.0/fmt/colors.ts";
 import * as path from "https://deno.land/std@0.123.0/path/mod.ts";
 import * as fs from "https://deno.land/std@0.123.0/fs/mod.ts";
+import * as safety from "../../lib/safety/mod.ts";
 import * as cache from "../../lib/cache/mod.ts";
 import * as conf from "../../lib/conf/mod.ts";
 import * as s from "../../lib/singleton.ts";
@@ -17,21 +18,39 @@ import * as tab from "../../lib/tabular/mod.ts";
 import * as oTab from "../../core/originate/tabular.ts";
 import "./observability.ts"; // for window.observability global variable
 
-export interface ProxyableFileSysOriginatorTabularRecord
-  extends oTab.OriginatorTabularRecordRefSupplier {
+export interface ProxyablesOriginatorRegistry {
+  readonly pfsmtrFactory: ProxyableFileSysModelOriginatorTabularRecordsFactory;
+  readonly pfsdtrFactory:
+    ProxyableFileSysDirectoryOriginatorTabularRecordsFactory;
+}
+
+export const isProxyablesOriginatorRegistry = safety.typeGuard<
+  ProxyablesOriginatorRegistry
+>("pfsmtrFactory", "pfsdtrFactory");
+
+export interface ProxyableFileSysModelOriginatorTabularRecordProps {
+  readonly originatorId: tab.TabularRecordIdRef;
+  readonly modelIdentity: string;
   readonly healthState: "pass" | "warn" | "fail";
   readonly healthStateElaboration: string;
   readonly envVarNamesPrefix: string;
+  readonly envVarNamesValues: string;
 }
 
-export class ProxyableFileSysOriginatorTabularRecordsFactory<
-  TR extends ProxyableFileSysOriginatorTabularRecord =
-    ProxyableFileSysOriginatorTabularRecord,
+export function envVarNamesValues(prefix: string): string {
+  return Object.entries(Deno.env.toObject()).filter((e) =>
+    e[0].startsWith(prefix)
+  ).map((e) => `${e[0]} (${e[1]})`).join(", ");
+}
+
+export class ProxyableFileSysModelOriginatorTabularRecordsFactory<
+  TR extends ProxyableFileSysModelOriginatorTabularRecordProps =
+    ProxyableFileSysModelOriginatorTabularRecordProps,
 > extends oTab.DependentOriginatorTabularRecordsFactory<
-  "file_sys_proxy_originator"
+  "originator_fs_model_proxy"
 > {
   #originatorTR: oTab.OriginatorTabularRecord;
-  readonly proxyableFsRB: tab.TabularRecordsBuilder<
+  readonly proxyableFsModelRB: tab.TabularRecordsBuilder<
     tab.InsertableRecord<TR>,
     tab.InsertedRecord<TR>
   >;
@@ -44,15 +63,49 @@ export class ProxyableFileSysOriginatorTabularRecordsFactory<
     parent:
       | oTab.OriginatorTabularRecordsFactory<"originator">
       | fsg.FileSysGlobsOriginatorTabularRecordsFactory
-      | ProxyableFileSysOriginatorTabularRecordsFactory<TR>,
+      | ProxyableFileSysModelOriginatorTabularRecordsFactory<TR>,
     originatorTRP: oTab.OriginatorTabularProps,
   ) {
     super(
       parent as unknown as oTab.OriginatorTabularRecordsFactory<"originator">,
     );
     this.#originatorTR = this.parentFactory.originatorRB.upsert(originatorTRP);
-    this.proxyableFsRB = this.parentFactory.prepareBuilder(
-      "file_sys_proxy_originator",
+    this.proxyableFsModelRB = this.parentFactory.prepareBuilder(
+      "originator_fs_model_proxy",
+      tab.tabularRecordsAutoRowIdBuilder(),
+    );
+  }
+}
+
+export class ProxyableFileSysDirectoryOriginatorTabularRecordsFactory<
+  TR extends ProxyableFileSysModelOriginatorTabularRecordProps =
+    ProxyableFileSysModelOriginatorTabularRecordProps,
+> extends oTab.DependentOriginatorTabularRecordsFactory<
+  "originator_fs_dir_proxy"
+> {
+  #originatorTR: oTab.OriginatorTabularRecord;
+  readonly proxyableFsDirRB: tab.TabularRecordsBuilder<
+    tab.InsertableRecord<TR>,
+    tab.InsertedRecord<TR>
+  >;
+
+  get originatorTR() {
+    return this.#originatorTR;
+  }
+
+  constructor(
+    parent:
+      | oTab.OriginatorTabularRecordsFactory<"originator">
+      | fsg.FileSysGlobsOriginatorTabularRecordsFactory
+      | ProxyableFileSysModelOriginatorTabularRecordsFactory<TR>,
+    originatorTRP: oTab.OriginatorTabularProps,
+  ) {
+    super(
+      parent as unknown as oTab.OriginatorTabularRecordsFactory<"originator">,
+    );
+    this.#originatorTR = this.parentFactory.originatorRB.upsert(originatorTRP);
+    this.proxyableFsDirRB = this.parentFactory.prepareBuilder(
+      "originator_fs_dir_proxy",
       tab.tabularRecordsAutoRowIdBuilder(),
     );
   }
@@ -77,7 +130,7 @@ export interface TypicalProxyableFileSysModelArguments<Model, OriginContext>
     category: string;
     links?: Record<string, string>;
   };
-  readonly pfsotrFactory?: ProxyableFileSysOriginatorTabularRecordsFactory;
+  readonly poRegistry?: ProxyablesOriginatorRegistry;
   readonly modelUnit?: string;
 }
 
@@ -141,7 +194,7 @@ export function typicalProxyableFileSysModelHealthStatusEmitter<
         ...typicalProxyableFileSysModelArguments(args),
         envVarNamesPrefix: args.envVarNamesPrefix,
         healthStatus: args.healthStatus,
-        pfsotrFactory: args.pfsotrFactory,
+        poRegistry: args.poRegistry,
       },
     ),
   );
@@ -161,7 +214,7 @@ export function typicalProxyableFileSysHealthStatusEmitterArguments<
       category: string;
       links?: Record<string, string>;
     };
-    readonly pfsotrFactory?: ProxyableFileSysOriginatorTabularRecordsFactory;
+    readonly poRegistry?: ProxyablesOriginatorRegistry;
   },
 ): cache.ProxyableFileSysModelArguments<Model, OriginContext> {
   const relFilePath = (fsrpsr: cache.FileSysModelProxyStrategyResult) => {
@@ -243,11 +296,13 @@ export function typicalProxyableFileSysHealthStatusEmitterArguments<
         result.obsHealthComponentStatus.state = h.healthyComponent(
           result.obsHealthComponentStatus.provenance(links),
         );
-        pfsma.pfsotrFactory?.proxyableFsRB.upsert({
-          originatorId: pfsma.pfsotrFactory.originatorTR.id,
-          envVarNamesPrefix: pfsma.envVarNamesPrefix,
-          ...links,
+        pfsma.poRegistry?.pfsmtrFactory.proxyableFsModelRB.upsert({
+          originatorId: pfsma.poRegistry?.pfsmtrFactory.originatorTR.id,
           healthState: "pass",
+          modelIdentity: relFilePath(fsrpsr),
+          ...links,
+          envVarNamesPrefix: pfsma.envVarNamesPrefix,
+          envVarNamesValues: envVarNamesValues(pfsma.envVarNamesPrefix),
           healthStateElaboration: "",
         });
         return pfsma.constructFromOrigin(oc, fsrpsr, args);
@@ -263,11 +318,13 @@ export function typicalProxyableFileSysHealthStatusEmitterArguments<
         result.obsHealthComponentStatus.state = h.healthyComponent(
           result.obsHealthComponentStatus.provenance(links),
         );
-        pfsma.pfsotrFactory?.proxyableFsRB.upsert({
-          originatorId: pfsma.pfsotrFactory.originatorTR.id,
-          envVarNamesPrefix: pfsma.envVarNamesPrefix,
-          ...links,
+        pfsma.poRegistry?.pfsmtrFactory?.proxyableFsModelRB.upsert({
+          originatorId: pfsma.poRegistry?.pfsmtrFactory.originatorTR.id,
           healthState: "pass",
+          modelIdentity: relFilePath(state.proxyStrategyResult),
+          ...links,
+          envVarNamesPrefix: pfsma.envVarNamesPrefix,
+          envVarNamesValues: envVarNamesValues(pfsma.envVarNamesPrefix),
           healthStateElaboration: "",
         });
         return pfsma.constructFromCachedProxy(state, args);
@@ -286,12 +343,14 @@ export function typicalProxyableFileSysHealthStatusEmitterArguments<
               output: issue.proxyStrategyResult.proxyRemarks,
             },
           );
-          pfsma.pfsotrFactory?.proxyableFsRB.upsert({
-            originatorId: pfsma.pfsotrFactory.originatorTR.id,
-            envVarNamesPrefix: pfsma.envVarNamesPrefix,
-            ...links,
+          pfsma.poRegistry?.pfsmtrFactory?.proxyableFsModelRB.upsert({
+            originatorId: pfsma.poRegistry?.pfsmtrFactory.originatorTR.id,
             healthState: "warn",
+            modelIdentity: args.proxyFilePathAndName,
             healthStateElaboration: issue.proxyStrategyResult.proxyRemarks,
+            ...links,
+            envVarNamesPrefix: pfsma.envVarNamesPrefix,
+            envVarNamesValues: envVarNamesValues(pfsma.envVarNamesPrefix),
           });
         } else {
           const links = {
@@ -305,12 +364,14 @@ export function typicalProxyableFileSysHealthStatusEmitterArguments<
               output: issue.proxyStrategyResult.proxyRemarks,
             },
           );
-          pfsma.pfsotrFactory?.proxyableFsRB.upsert({
-            originatorId: pfsma.pfsotrFactory.originatorTR.id,
-            envVarNamesPrefix: pfsma.envVarNamesPrefix,
-            ...links,
+          pfsma.poRegistry?.pfsmtrFactory?.proxyableFsModelRB.upsert({
+            originatorId: pfsma.poRegistry?.pfsmtrFactory.originatorTR.id,
             healthState: "fail",
+            modelIdentity: args.proxyFilePathAndName,
             healthStateElaboration: issue.proxyStrategyResult.proxyRemarks,
+            ...links,
+            envVarNamesPrefix: pfsma.envVarNamesPrefix,
+            envVarNamesValues: envVarNamesValues(pfsma.envVarNamesPrefix),
           });
         }
         return pfsma.constructFromError(issue, cachedProxy, args);
@@ -411,7 +472,7 @@ export interface TypicalSyncableAssetArguments extends
     category: string;
     links?: Record<string, string>;
   };
-  readonly pfsotrFactory?: ProxyableFileSysOriginatorTabularRecordsFactory;
+  readonly poRegistry?: ProxyablesOriginatorRegistry;
 }
 
 function typicalSyncableAssetArguments(
@@ -456,7 +517,7 @@ export function typicalSyncableAssetConsoleEmitter(
         envVarNamesPrefix: args.envVarNamesPrefix ||
           typicalSyncableAssetEnvVarNamesPrefix,
         healthStatus: args.healthStatus,
-        pfsotrFactory: args.pfsotrFactory,
+        poRegistry: args.poRegistry,
       },
     ),
   );
@@ -491,15 +552,8 @@ export function typicalSyncableReadableAssetsModuleConstructor(
 ): mr.FileSysResourceModuleConstructor<unknown> {
   // deno-lint-ignore require-await
   return async (we, _o, imported) => {
-    const pfsotrFactory = we.sqlViewsFactory
-      ? new ProxyableFileSysOriginatorTabularRecordsFactory(
-        we.sqlViewsFactory,
-        {
-          originator: `typicalSyncableReadableAssetsModuleConstructor`,
-          provenance: import.meta.url,
-          enabled: true,
-        },
-      )
+    const poRegistry = isProxyablesOriginatorRegistry(we.fsgorSupplier)
+      ? we.fsgorSupplier
       : undefined;
 
     return {
@@ -515,7 +569,7 @@ export function typicalSyncableReadableAssetsModuleConstructor(
           await s.SingletonsManager.globalInstance()
             .singletonSync(() =>
               typicalSyncableAssetConsoleEmitter({
-                pfsotrFactory,
+                poRegistry,
                 assetPath: path.join(
                   readable.assetPath,
                   `${readable.assetName}.readable.html`,
