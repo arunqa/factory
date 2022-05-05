@@ -25,6 +25,7 @@ export type OriginMeasuresSupplier<Measures extends string> = Readonly<
 export interface MutatableResourceOriginatorSupplier<Originator> {
   originator: Originator;
   originatorTR?: oTab.OriginatorTabularRecord;
+  originatorRfExplorerNarrativeHTML?: string;
 }
 
 export type ResourceOriginatorSupplier<Originator> = Readonly<
@@ -55,8 +56,10 @@ export const isOriginatorSupplier = safety.typeGuard<
   "originator",
 );
 
-// deno-lint-ignore no-explicit-any
-export const isOriginMeasuresSupplier = safety.typeGuard<OriginMeasuresSupplier<any>>(
+export const isOriginMeasuresSupplier = safety.typeGuard<
+  // deno-lint-ignore no-explicit-any
+  OriginMeasuresSupplier<any>
+>(
   "originMeasures",
 );
 

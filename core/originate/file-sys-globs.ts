@@ -333,6 +333,12 @@ export class FileSysGlobsOriginator<Resource>
                   >
                 ));
                 mos.originator = this;
+                mos.originatorRfExplorerNarrativeHTML =
+                  `<a href="/workspace/editor-redirect/abs${
+                    path.fromFileUrl(import.meta.url)
+                  }" title="Edit FileSysGlobsOriginator in IDE"><code>FileSysGlobsOriginator</code></a> glob <code>${lfsPath.fileSysPath}/${glob.glob}${
+                    glob.humanFriendlyName ? `(${glob.humanFriendlyName})` : ""
+                  }</code>`;
                 mos.originatorTR =
                   this.fsgorSupplier?.fsgotrFactory.originatorTR;
                 mos.origin = fsgwe;
