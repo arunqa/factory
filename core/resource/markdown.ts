@@ -8,6 +8,7 @@ import * as route from "../../core/std/route.ts";
 import * as nature from "../../core/std/nature.ts";
 import * as fsrf from "../originate/file-sys-globs.ts";
 import * as extn from "../../lib/module/mod.ts";
+import * as i from "./instantiate.ts";
 
 export interface MarkdownModel extends govn.ContentModel {
   readonly isMarkdownModel: true;
@@ -91,7 +92,8 @@ export const constructStaticMarkdownResourceSync: (
     & MarkdownResource
     & govn.FrontmatterConsumer<govn.UntypedFrontmatter>
     & govn.RouteSupplier
-    & govn.ParsedRouteConsumer = {
+    & govn.ParsedRouteConsumer
+    & i.InstantiatorSupplier = {
       nature,
       frontmatter: {},
       route: {
@@ -134,6 +136,11 @@ export const constructStaticMarkdownResourceSync: (
       // deno-lint-ignore require-await
       text: async () => Deno.readTextFile(origination.path),
       textSync: () => Deno.readTextFileSync(origination.path),
+      ...i.typicalInstantiatorProps(
+        constructStaticMarkdownResourceSync,
+        import.meta.url,
+        "constructStaticMarkdownResourceSync",
+      ),
     };
   return result;
 };
@@ -157,7 +164,8 @@ export const constructMarkdownModuleResourceSync: (
   const nature = markdownContentNature;
   const result:
     & MarkdownResource
-    & govn.RouteSupplier = {
+    & govn.RouteSupplier
+    & i.InstantiatorSupplier = {
       nature,
       frontmatter,
       route: {
@@ -172,6 +180,11 @@ export const constructMarkdownModuleResourceSync: (
       // deno-lint-ignore require-await
       text: async () => content,
       textSync: () => content,
+      ...i.typicalInstantiatorProps(
+        constructMarkdownModuleResourceSync,
+        import.meta.url,
+        "constructMarkdownModuleResourceSync",
+      ),
     };
   return result;
 };
@@ -193,7 +206,8 @@ export function markdownModuleFileSysResourceFactory(
         const result:
           & govn.ModuleResource
           & MarkdownResource
-          & govn.RouteSupplier = {
+          & govn.RouteSupplier
+          & i.InstantiatorSupplier = {
             imported,
             nature,
             route: { ...we.route, nature },
@@ -201,6 +215,11 @@ export function markdownModuleFileSysResourceFactory(
             // deno-lint-ignore require-await
             text: async () => diagnostics,
             textSync: () => diagnostics,
+            ...i.typicalInstantiatorProps(
+              issue,
+              import.meta.url,
+              "markdownModuleFileSysResourceFactory.issue",
+            ),
           };
         return result;
       };
@@ -213,7 +232,8 @@ export function markdownModuleFileSysResourceFactory(
           const result:
             & govn.ModuleResource
             & MarkdownResource
-            & govn.RouteSupplier = {
+            & govn.RouteSupplier
+            & i.InstantiatorSupplier = {
               imported,
               frontmatter,
               nature,
@@ -229,6 +249,11 @@ export function markdownModuleFileSysResourceFactory(
               // deno-lint-ignore require-await
               text: async () => defaultValue,
               textSync: () => defaultValue,
+              ...i.typicalInstantiatorProps(
+                markdownModuleFileSysResourceFactory,
+                import.meta.url,
+                "markdownModuleFileSysResourceFactory.defaultValue",
+              ),
             };
           return result;
         } else {

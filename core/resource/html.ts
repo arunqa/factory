@@ -4,6 +4,7 @@ import * as fm from "../../core/std/frontmatter.ts";
 import * as route from "../../core/std/route.ts";
 import * as nature from "../../core/std/nature.ts";
 import * as fsrf from "../originate/file-sys-globs.ts";
+import * as i from "./instantiate.ts";
 
 export interface StaticHtmlResource
   extends
@@ -25,7 +26,8 @@ export const constructResourceSync: (
     & StaticHtmlResource
     & govn.FrontmatterConsumer<govn.UntypedFrontmatter>
     & govn.RouteSupplier
-    & govn.ParsedRouteConsumer = {
+    & govn.ParsedRouteConsumer
+    & i.InstantiatorSupplier = {
       nature: nature.htmlContentNature,
       frontmatter: {},
       route: { ...origination.route, nature: nature.htmlContentNature },
@@ -62,6 +64,11 @@ export const constructResourceSync: (
         text: async () => Deno.readTextFile(origination.path),
         textSync: () => Deno.readTextFileSync(origination.path),
       },
+      ...i.typicalInstantiatorProps(
+        constructResourceSync,
+        import.meta.url,
+        "constructResourceSync",
+      ),
     };
   return result;
 };

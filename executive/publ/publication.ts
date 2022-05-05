@@ -23,6 +23,7 @@ import * as oGovn from "../../core/originate/governance.ts";
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as tfsg from "../../core/originate/typical-file-sys-globs.ts";
 import * as reg from "../typical/registry.ts";
+import * as i from "../../core/resource/instantiate.ts";
 
 import * as html from "../../core/render/html/mod.ts";
 import * as jrs from "../../core/render/json.ts";
@@ -856,6 +857,7 @@ export abstract class TypicalPublication<
 
   async *resourcesTabularRecords() {
     const builders = tab.definedTabularRecordsBuilders<
+      | "instantiator"
       | "resource_nature"
       | "resource"
       | "resource_route_terminal"
@@ -866,6 +868,20 @@ export abstract class TypicalPublication<
       | "resource_fs_origin"
       | "persisted"
     >();
+    const instantiatorRB = builders.autoRowIdProxyBuilder<{
+      instantiator: string;
+      provenance: string;
+      narrativeHtml: string;
+    }, "instantiator">({
+      identity: "instantiator",
+      namespace: defaultSqlViewsNamespace,
+    }, {
+      upsertStrategy: {
+        exists: (r, _rowID, index) =>
+          index("instantiator")?.get(r.instantiator),
+        index: (r, index) => index("instantiator").set(r.instantiator, r),
+      },
+    });
     const resNatureRB = builders.autoRowIdProxyBuilder<{
       mediaType: rfGovn.MediaTypeIdentity;
     }, "mime">({
@@ -881,6 +897,7 @@ export abstract class TypicalPublication<
       mediaType: rfGovn.MediaTypeIdentity;
       resourceUuid: rfGovn.ResourceIdentity;
       originatorId: tab.TabularRecordIdRef;
+      instantiatorId: tab.TabularRecordIdRef;
       isMemoized: boolean;
       isTextAsync: boolean;
       isTextSync: boolean;
@@ -951,6 +968,15 @@ export abstract class TypicalPublication<
         }
       }
 
+      const instantiator = i.isInstantiatorSupplier(resource)
+        ? {
+          instantiator: resource.instantiatorIdentity,
+          provenance: resource.instantiationProvenance,
+          narrativeHtml: resource.instantiatorRfExplorerNarrativeHTML ?? "",
+        }
+        : { instantiator: "?", provenance: "?", narrativeHtml: "" };
+      const instantiatorRecord = instantiatorRB.upsert(instantiator);
+
       let resTerminalRouteNode: rfGovn.RouteNode | undefined = undefined;
       if (rfStd.isRouteSupplier(resource)) {
         if (resource.route.terminal) {
@@ -979,6 +1005,7 @@ export abstract class TypicalPublication<
         isContentModel: rfStd.isContentModelSupplier(resource),
         hasFrontmatter: rfStd.isFrontmatterSupplier(resource),
         properties: Object.keys(resource as Record<string, unknown>),
+        instantiatorId: instantiatorRecord?.id ?? "?",
       });
       const resourceId = resourceRecord.id;
 

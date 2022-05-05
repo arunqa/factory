@@ -25,6 +25,12 @@
         <span id="revisionSummary" style="padding-top: 5px; padding-bottom: 5px"></span>
         <sup elaboration="page-authors">#</sup>.
     </p>
+    <div interpolate-fx="{ target, result: { resource = 'not found' } }"
+        render-hook="({ target }) => routeResourceFx.done.watch(target.renderFx)">
+        ${resource.instantiatorRfExplorerNarrativeHTML ? `Instantiated by
+        ${resource.instantiatorRfExplorerNarrativeHTML}` : `Instantiator unknown (does not implement
+        <code>InstantiatorSupplier</code>)`}, originated by ${resource.originatorRfExplorerNarrativeHTML}.
+    </div>
 
     <details class="explore" open>
         <summary>
@@ -110,7 +116,11 @@
     <details id="footnotes" class="elaborations footnotes">
         <summary>Notes</summary>
         <div id="rf-resource">A Resource Factory (🏭) <em>Resource</em> is the <em>source</em> of content and could be
-            HTML, Markdown, a database query result, a Javascript or Typescript module.</div>
+            HTML, Markdown, a database query result, a Javascript or Typescript module. Each resource has an
+            <em>originator</em> and an <em>instantiator</em>. An originator is responsible for acquiring a resource from
+            its source and the instantiator is responsible for <em>constructing</em> the resource's Javascript object
+            <em>instance</em>.
+        </div>
         <div id="rf-clientLayout"><code>rfUniversalLayout</code> (exposed as <code>window.clientLayout</code> in the
             target build site / publication. It is often referred to colloquially as "client cargo" container and
             provides a unified browser-side global Javascript object that holds server-side data useful for the page

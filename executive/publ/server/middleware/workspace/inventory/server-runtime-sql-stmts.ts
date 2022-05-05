@@ -113,13 +113,24 @@ export function typicalSqlStmtsInventory(
       }, {
         database: DB(publicationDatabaseID),
         name: "persisted-without-originators",
-        label: "Show persisted files not tied to originated resource",
+        label: "Show persisted files not tied to instantiated resource",
         SQL: whs.unindentWhitespace(`
           USE DATABASE ${publicationDatabaseID};\n
           SELECT *
            FROM persisted
           WHERE resource_id < 0
           LIMIT 25`),
+        qualifiedName: qualifiedNamePlaceholder,
+      }, {
+        database: DB(publicationDatabaseID),
+        name: "resources-without-instantiation-provenance",
+        label: "Show resources without instantiation provenance",
+        SQL: whs.unindentWhitespace(`
+          USE DATABASE ${publicationDatabaseID};\n
+          SELECT *
+            FROM resource
+           WHERE resource.instantiator_id = 0
+           LIMIT 50`),
         qualifiedName: qualifiedNamePlaceholder,
       }],
       qualifiedName: qualifiedNamePlaceholder,
