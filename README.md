@@ -54,7 +54,8 @@ Resource Factory works with reasonable type-safety using three key concepts:
 ```
 
 - **Origination**. _Factory_ objects, called **originators**, supply _resource
-  constructors_. A resource could be any structured or unstructured data coming
+  constructors_ (known as _instantiators_ since they create Javascript object
+  instances). A resource could be any structured or unstructured data coming
   from any arbitrary source. The factory terminology matches the GoF creational
   pattern that uses factory methods to handle construction of the resources
   which will be _refined_ and _produced_ in the following steps.
@@ -62,8 +63,6 @@ Resource Factory works with reasonable type-safety using three key concepts:
     creates resource constructors for files in the local file system.
   - Other originators could pull resources from databases, fetch from URLs, or
     any arbitrary sources.
-  - [WunderGraph](https://wundergraph.com/) is a great comparable RF's origination
-    capabilities.
   - Proxying / caching is built-in so that expensive origination can be locally
     cached as JSON (file system) or other "proxies" (e.g. Redis).
 - **Refinement**. _Transformation_ objects, called **middleware** or **refineries**, 
