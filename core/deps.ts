@@ -11,4 +11,4 @@ export * as toml from "https://deno.land/std@0.137.0/encoding/toml.ts";
 export * as uuid from "https://deno.land/std@0.137.0/uuid/mod.ts";
 
 export * as mediaTypes from "https://raw.githubusercontent.com/oakserver/media_types/v3.0.2/mod.ts";
-export * as json5 from "https://cdn.skypack.dev/json5@2.2.1/";
+export * as json5 from "https://cdn.skypack.dev/json5@2.2.0/";
