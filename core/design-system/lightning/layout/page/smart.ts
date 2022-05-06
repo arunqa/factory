@@ -1,5 +1,6 @@
 import * as p from "../partial/mod.ts";
 import * as t from "./typical.ts";
+import * as ucm from "../partial/ugc-comments-matrix.ts";
 
 // deno-fmt-ignore (because we don't want ${...} wrapped)
 export const smartNavigationPage = t.lightningTemplate("lds/page/default", {moduleImportMetaURL: import.meta.url})`<!DOCTYPE html>
@@ -17,7 +18,6 @@ export const smartNavigationPage = t.lightningTemplate("lds/page/default", {modu
   <header class="slds-no-print">
   ${p.contextBarPartial}
   </header>
-
   <main class="slds-container_x-large slds-container_center slds-p-around_medium">
     <div class="slds-grid slds-grid_align-left slds-gutters">
       <div class="slds-col slds-size_3-of-12 slds-no-print">
@@ -49,6 +49,7 @@ export const smartNavigationPage = t.lightningTemplate("lds/page/default", {modu
     </div>
   </main>
   ${p.asideTocPartial}
+  ${ucm.ugcCommentsMatrix}
   ${p.footerFixedCopyrightBuildPartial}
   ${p.typicalTailPartial}
   ${p.redirectConsolePartial}
