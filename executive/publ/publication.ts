@@ -77,6 +77,15 @@ export interface PublicationMeasures {
   readonly finalizeProduceStartMS: number;
 }
 
+export interface PublicationMetricsSummary {
+  readonly initProduceDurationMS: number;
+  readonly originateDurationDurationMS: number;
+  readonly renderDurationMS: number;
+  readonly persistDurationMS: number;
+  readonly produceDurationMS: number;
+  readonly totalDurationMS: number;
+}
+
 export class PublicationResourcesIndex<Resource>
   extends gi.UniversalIndex<Resource> {
   readonly memoizedProducers = new Map<
@@ -92,12 +101,20 @@ export class PublicationResourcesIndex<Resource>
     { resource: unknown; statistic: number; provenance: string }
   >();
 
-  instantiatorsCount() {
+  flowMetrics() {
     const iset = new Set<string>();
+    let frontmatterSuppliers = 0;
+    let modelSuppliers = 0;
     this.resourcesIndex.forEach((r) => {
       if (i.isInstantiatorSupplier(r)) iset.add(r.instantiatorIdentity);
+      if (rfStd.isFrontmatterSupplier(r)) frontmatterSuppliers++;
+      if (rfStd.isModelSupplier(r)) modelSuppliers++;
     });
-    return iset.size;
+    return {
+      instantiators: iset.size,
+      frontmatterSuppliers,
+      modelSuppliers,
+    };
   }
 
   onConstructResource<Resource>(
@@ -611,6 +628,7 @@ export interface PublicationState {
   readonly persistedIndex: PublicationPersistedIndex;
   readonly producerStats: PublicationProducersStatistics;
   assetsMetrics?: fsA.AssetsMetricsResult;
+  summaryMetrics?: PublicationMetricsSummary;
 }
 
 export class ResourcesTree extends rfStd.TypicalRouteTree {
@@ -1484,23 +1502,44 @@ export abstract class TypicalPublication<
     }
   }
 
-  async produceMetrics(measures: PublicationMeasures) {
+  async produceMetrics(
+    measures: PublicationMeasures,
+  ): Promise<PublicationMetricsSummary> {
     // TODO: generate fs stats and put them here
     // const assetsTree = new fsT.FileSysAssetsTree();
     // for (const walker of this.config.assetsMetricsWalkers) {
     //   await assetsTree.consumeAssets(walker);
     // }
+    const result = {
+      initProduceDurationMS: -1,
+      originateDurationDurationMS: -1,
+      renderDurationMS: -1,
+      persistDurationMS: -1,
+      produceDurationMS: -1,
+      totalDurationMS: -1,
+    };
     const commonMetricsBaggage = {
       txID: "transactionID",
       txHost: Deno.hostname(),
     };
     const metrics = this.config.metrics;
+    result.initProduceDurationMS = measures.originateStartMS -
+      measures.initProduceStartMS;
+    result.originateDurationDurationMS = measures.finalizePrePersistStartMS -
+      measures.originateStartMS;
+    result.renderDurationMS = measures.persistStartMS -
+      measures.finalizePrePersistStartMS;
+    result.persistDurationMS = measures.finalizeProduceStartMS -
+      measures.persistStartMS;
+    result.produceDurationMS = Date.now() - measures.originateStartMS;
+    result.totalDurationMS = Date.now() -
+      this.config.operationalCtx.processStartTimestamp.getTime();
     metrics.record(
       metrics.gaugeMetric(
         "publ_lc_init_produce_milliseconds",
         "Time it took to initialize production",
       ).instance(
-        measures.originateStartMS - measures.initProduceStartMS,
+        result.initProduceDurationMS,
         commonMetricsBaggage,
       ),
     );
@@ -1509,7 +1548,7 @@ export abstract class TypicalPublication<
         "publ_lc_originate_milliseconds",
         "Time it took to originate and construct resources",
       ).instance(
-        measures.finalizePrePersistStartMS - measures.originateStartMS,
+        result.originateDurationDurationMS,
         commonMetricsBaggage,
       ),
     );
@@ -1518,7 +1557,7 @@ export abstract class TypicalPublication<
         "publ_lc_render_milliseconds",
         "Time it took to render and prepare for persistence",
       ).instance(
-        measures.persistStartMS - measures.finalizePrePersistStartMS,
+        result.renderDurationMS,
         commonMetricsBaggage,
       ),
     );
@@ -1527,7 +1566,7 @@ export abstract class TypicalPublication<
         "publ_lc_persist_milliseconds",
         "Time it took to persist rendered resources",
       ).instance(
-        measures.finalizeProduceStartMS - measures.persistStartMS,
+        result.persistDurationMS,
         commonMetricsBaggage,
       ),
     );
@@ -1562,7 +1601,7 @@ export abstract class TypicalPublication<
         "publ_lc_produce_milliseconds",
         "Total time it took to produce all resources",
       ).instance(
-        Date.now() - measures.originateStartMS,
+        result.produceDurationMS,
         commonMetricsBaggage,
       ),
     );
@@ -1571,7 +1610,7 @@ export abstract class TypicalPublication<
         "publ_lc_publish_milliseconds",
         "Total time it took to produce all resources and perform all other process functions",
       ).instance(
-        Date.now() - this.config.operationalCtx.processStartTimestamp.getTime(),
+        result.totalDurationMS,
         commonMetricsBaggage,
       ),
     );
@@ -1622,6 +1661,10 @@ export abstract class TypicalPublication<
       await resourcesIndex.index(await persist(resource));
     }
 
+    // recalculate to be more accurate, everything is now written
+    result.totalDurationMS = Date.now() -
+      this.config.operationalCtx.processStartTimestamp.getTime();
+
     const ocCtxRoute = ocC.operationalCtxRoute(this.config.fsRouteFactory);
     if (ocCtxRoute.terminal) {
       this.config.operationalCtx.produceOperationalCtxCargo?.(
@@ -1632,6 +1675,8 @@ export abstract class TypicalPublication<
         colors.red(`ocCtxRoute was not available (this should never happen)`),
       );
     }
+
+    return result;
   }
 
   async inspectResources(
@@ -1674,7 +1719,9 @@ export abstract class TypicalPublication<
     }
   }
 
-  async finalizeProduce(measures: PublicationMeasures) {
+  async finalizeProduce(
+    measures: PublicationMeasures,
+  ): Promise<PublicationMetricsSummary> {
     const resourcesIndex = this.state.resourcesIndex;
     const originationRefinery = this.originationRefinery();
     const persist = this.persistersRefinery();
@@ -1693,7 +1740,7 @@ export abstract class TypicalPublication<
 
     // produce metrics after the assets are mirrored in case we're walking the
     // destination path
-    await this.produceMetrics(measures);
+    return await this.produceMetrics(measures);
   }
 
   async produce() {
@@ -1715,7 +1762,7 @@ export abstract class TypicalPublication<
       await resourcesIndex.index(resource);
     }
 
-    // the first found of all resources are now available, but haven't yet been
+    // the first round of all resources are now available, but haven't yet been
     // persisted so let's do any routes finalization, new resources construction
     // or any other pre-persist activities
     const finalizePrePersistStartMS = Date.now();
@@ -1739,7 +1786,7 @@ export abstract class TypicalPublication<
     }
 
     // give opportunity for subclasses to finalize the production pipeline
-    await this.finalizeProduce({
+    this.state.summaryMetrics = await this.finalizeProduce({
       initProduceStartMS,
       originateStartMS,
       finalizePrePersistStartMS,

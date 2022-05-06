@@ -14,6 +14,7 @@ export class FlowImageMiddlewareSupplier {
     const flowSvgRelPath = "site/flow.drawio.svg";
     router.get(`${this.htmlEndpointURL}/${flowSvgRelPath}`, async (ctx) => {
       const svgSrcFile = path.join(wsPublicFsPath, flowSvgRelPath);
+      const flowMetrics = publication.state.resourcesIndex.flowMetrics();
       let svg = await Deno.readTextFile(svgSrcFile);
       svg = svg.replace(
         "${OC}",
@@ -21,7 +22,11 @@ export class FlowImageMiddlewareSupplier {
       );
       svg = svg.replace(
         "${IC}",
-        String(publication.state.resourcesIndex.instantiatorsCount()),
+        String(flowMetrics.instantiators),
+      );
+      svg = svg.replace(
+        "${ZC}",
+        String(publication.state.resourcesIndex.memoizedProducers.size),
       );
       svg = svg.replace(
         "${MC}",
@@ -31,11 +36,38 @@ export class FlowImageMiddlewareSupplier {
         "${RC}",
         String(publication.state.resourcesIndex.resourcesIndex.length),
       );
-      // TODO: should we automatically count what's in ${RF_HOME}/render/*?
-      svg = svg.replace("${PC}", "8");
+      svg = svg.replace(
+        "${RFC}",
+        String(flowMetrics.frontmatterSuppliers),
+      );
+      svg = svg.replace(
+        "${RMC}",
+        String(flowMetrics.modelSuppliers),
+      );
+      svg = svg.replace(
+        "${PC}",
+        String(publication.state.producerStats.producers.size),
+      );
       svg = svg.replace(
         "${SC}",
         String(publication.state.persistedIndex.persistedDestFiles.size),
+      );
+      svg = svg.replace(
+        "${ResourcesMS}",
+        String(publication.state.summaryMetrics?.originateDurationDurationMS) +
+          "ms",
+      );
+      svg = svg.replace(
+        "${ProducersMS}",
+        String(publication.state.summaryMetrics?.renderDurationMS) + "ms",
+      );
+      svg = svg.replace(
+        "${StaticMS}",
+        String(publication.state.summaryMetrics?.persistDurationMS) + "ms",
+      );
+      svg = svg.replace(
+        "${TotalMS}",
+        String(publication.state.summaryMetrics?.totalDurationMS) + "ms",
       );
       ctx.response.body = svg;
       ctx.response.type = "svg";
