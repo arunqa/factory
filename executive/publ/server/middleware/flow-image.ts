@@ -16,56 +16,56 @@ export class FlowImageMiddlewareSupplier {
       const svgSrcFile = path.join(wsPublicFsPath, flowSvgRelPath);
       const flowMetrics = publication.state.resourcesIndex.flowMetrics();
       let svg = await Deno.readTextFile(svgSrcFile);
-      svg = svg.replace(
+      svg = svg.replaceAll(
         "${OC}",
         String(publication.config.originatorRegistry.originatorsCount()),
       );
-      svg = svg.replace(
+      svg = svg.replaceAll(
         "${IC}",
         String(flowMetrics.instantiators),
       );
-      svg = svg.replace(
+      svg = svg.replaceAll(
         "${ZC}",
         String(publication.state.resourcesIndex.memoizedProducers.size),
       );
-      svg = svg.replace(
+      svg = svg.replaceAll(
         "${MC}",
         String(publication.config.originatorRegistry.refineries.size),
       );
-      svg = svg.replace(
+      svg = svg.replaceAll(
         "${RC}",
         String(publication.state.resourcesIndex.resourcesIndex.length),
       );
-      svg = svg.replace(
+      svg = svg.replaceAll(
         "${RFC}",
         String(flowMetrics.frontmatterSuppliers),
       );
-      svg = svg.replace(
+      svg = svg.replaceAll(
         "${RMC}",
         String(flowMetrics.modelSuppliers),
       );
-      svg = svg.replace(
+      svg = svg.replaceAll(
         "${PC}",
         String(publication.state.producerStats.producers.size),
       );
-      svg = svg.replace(
+      svg = svg.replaceAll(
         "${SC}",
         String(publication.state.persistedIndex.persistedDestFiles.size),
       );
-      svg = svg.replace(
+      svg = svg.replaceAll(
         "${ResourcesMS}",
         String(publication.state.summaryMetrics?.originateDurationDurationMS) +
           "ms",
       );
-      svg = svg.replace(
+      svg = svg.replaceAll(
         "${ProducersMS}",
         String(publication.state.summaryMetrics?.renderDurationMS) + "ms",
       );
-      svg = svg.replace(
+      svg = svg.replaceAll(
         "${StaticMS}",
         String(publication.state.summaryMetrics?.persistDurationMS) + "ms",
       );
-      svg = svg.replace(
+      svg = svg.replaceAll(
         "${TotalMS}",
         String(publication.state.summaryMetrics?.totalDurationMS) + "ms",
       );
