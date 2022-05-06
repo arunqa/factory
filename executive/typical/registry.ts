@@ -1,9 +1,12 @@
+import * as govn from "../../governance/mod.ts";
 import * as fsg from "../../core/originate/file-sys-globs.ts";
 import * as oTab from "../../core/originate/tabular.ts";
 import * as p from "../typical/proxy.ts";
 
 export class OriginatorsRegistry extends oTab.OriginatorTabularRecordsFactory
   implements p.ProxyablesOriginatorRegistry {
+  // deno-lint-ignore no-explicit-any
+  readonly refineries = new Set<govn.ResourceRefinery<any>>();
   readonly fsgotrFactory: fsg.FileSysGlobsOriginatorTabularRecordsFactory;
   readonly pfsmtrFactory:
     p.ProxyableFileSysModelOriginatorTabularRecordsFactory;
@@ -33,5 +36,16 @@ export class OriginatorsRegistry extends oTab.OriginatorTabularRecordsFactory
         provenance: import.meta.url,
       },
     );
+  }
+
+  originatorsCount() {
+    return this.fsgotrFactory.fileSysGlobRB.records.length +
+      this.pfsmtrFactory.proxyableFsModelRB.records.length +
+      this.pfsdtrFactory.proxyableFsDirRB.records.length;
+  }
+
+  // deno-lint-ignore no-explicit-any
+  registerRefinery(rr: govn.ResourceRefinery<any>) {
+    this.refineries.add(rr);
   }
 }

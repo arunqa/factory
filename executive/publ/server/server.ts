@@ -11,6 +11,7 @@ import * as pDB from "../publication-db.ts";
 import * as sqlP from "./middleware/server-runtime-sql-proxy.ts";
 import * as srJsTsProxy from "./middleware/server-runtime-script-proxy.ts";
 import * as rJSON from "../../../core/content/routes.json.ts";
+import * as fi from "./middleware/flow-image.ts";
 
 export interface PublicationServerAccessContext
   extends p.PublicationOperationalContext {
@@ -201,6 +202,22 @@ export class PublicationServer {
     staticEE: s.StaticEventEmitter,
     options?: ws.WorkspaceMiddlewareSupplierOptions,
   ) {
+    // executive/publ/server/middleware/workspace/public/site/flow.drawio.svg
+    // is a dynamic image and is handled by its own middleware; the route
+    // should be setup before WorkspaceMiddlewareSupplier routes.
+    new fi.FlowImageMiddlewareSupplier(
+      app,
+      router,
+      this.publication,
+      staticEE,
+      "/workspace",
+      path.join(
+        path.dirname(path.fromFileUrl(import.meta.url)),
+        "middleware",
+        "workspace",
+        "public",
+      ),
+    );
     this.#workspace = new ws.WorkspaceMiddlewareSupplier(
       {
         contentRootPath: this.publication.config.contentRootPath,

@@ -92,6 +92,14 @@ export class PublicationResourcesIndex<Resource>
     { resource: unknown; statistic: number; provenance: string }
   >();
 
+  instantiatorsCount() {
+    const iset = new Set<string>();
+    this.resourcesIndex.forEach((r) => {
+      if (i.isInstantiatorSupplier(r)) iset.add(r.instantiatorIdentity);
+    });
+    return iset.size;
+  }
+
   onConstructResource<Resource>(
     resource: Resource,
     lcMetrics: fsg.FileSysGlobWalkEntryLifecycleMetrics<Resource>,

@@ -166,6 +166,8 @@ export class FileSysGlobsOriginatorTabularRecordsFactory
 
 export interface FileSysGlobsOriginatorRegistrySupplier {
   readonly fsgotrFactory: FileSysGlobsOriginatorTabularRecordsFactory;
+  // deno-lint-ignore no-explicit-any
+  readonly registerRefinery: (rr: govn.ResourceRefinery<any>) => void;
 }
 
 export const isProxyablesOriginatorRegistry = safety.typeGuard<
@@ -306,7 +308,10 @@ export class FileSysGlobsOriginator<Resource>
                 const beforeConstruct = Date.now();
                 let resource = await construct(fsgwe, fsrOptions);
                 const afterConstruct = Date.now();
-                if (refine) resource = await refine(resource);
+                if (refine) {
+                  this.fsgorSupplier?.registerRefinery(refine);
+                  resource = await refine(resource);
+                }
 
                 const originMeasures: FileSysGlobWalkOriginLifecycleMeasures = {
                   originConstructDurationMS: afterConstruct - beforeConstruct,
