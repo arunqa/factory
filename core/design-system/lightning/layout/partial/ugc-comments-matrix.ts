@@ -23,7 +23,7 @@ export const ugcCommentsMatrix: ldsGovn.LightningPartial = (
     const commentSectionId = pageUrlslug;
     initComments({
       node: document.getElementById("comment-section"),
-      defaultHomeserverUrl: "${Deno.env.get(`${ugcEnvVarsPrefix}SERVER_URL`)}",
+      defaultHomeserverUrl: "${Deno.env.get(`${ugcEnvVarsPrefix}HOME_SERVER_URL`)}",
       serverName: "${matrixServerName}",
       siteName: "${Deno.env.get(`${ugcEnvVarsPrefix}SITE_NAME`)}",
       commentSectionId: commentSectionId,
