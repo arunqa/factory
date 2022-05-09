@@ -367,6 +367,46 @@ export function typicalSqlStmtsInventory(
           presentation: tableObjectProps,
           qualifiedName: qualifiedNamePlaceholder,
         },
+        {
+          database: DB(sqlShG.osQueryDatabaseID),
+          name: "FII-SCF-006-CRY-03-Transmission Confidentiality",
+          label: "FII-SCF-006-CRY-03",
+          SQL: whs.unindentWhitespace(`
+            USE DATABASE ${sqlShG.osQueryDatabaseID}; -- https://osquery.io/\n
+            SELECT valid_to FROM curl_certificate WHERE hostname = 'www.medigy.com'`),
+          presentation: tableObjectProps,
+          qualifiedName: qualifiedNamePlaceholder,
+        },
+        {
+          database: DB(sqlShG.osQueryDatabaseID),
+          name: "FII-SCF-003-BCD-11-Data Backups",
+          label: "FII-SCF-003-BCD-11",
+          SQL: whs.unindentWhitespace(`
+            USE DATABASE ${sqlShG.osQueryDatabaseID}; -- https://osquery.io/\n
+            select * from crontab`),
+          presentation: tableObjectProps,
+          qualifiedName: qualifiedNamePlaceholder,
+        },
+        {
+          database: DB(sqlShG.osQueryDatabaseID),
+          name: "FII-SCF-007-DCH-13.2-Portable Storage Devices",
+          label: "FII-SCF-007-DCH-13.2",
+          SQL: whs.unindentWhitespace(`
+            USE DATABASE ${sqlShG.osQueryDatabaseID}; -- https://osquery.io/\n
+            SELECT * FROM hardware_events`),
+          presentation: tableObjectProps,
+          qualifiedName: qualifiedNamePlaceholder,
+        },
+        {
+          database: DB(sqlShG.osQueryDatabaseID),
+          name: "FII-SCF-005-MON-01.7-file-integrity-monitoring (FIM)",
+          label: "FII-SCF-005-MON-01.7",
+          SQL: whs.unindentWhitespace(`
+            USE DATABASE ${sqlShG.osQueryDatabaseID}; -- https://osquery.io/\n
+            select target_path, category, action, atime, mtime from file_events`),
+          presentation: tableObjectProps,
+          qualifiedName: qualifiedNamePlaceholder,
+        },
       ],
       qualifiedName: qualifiedNamePlaceholder,
     }],
